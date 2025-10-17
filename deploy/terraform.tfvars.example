@@ -1,0 +1,111 @@
+# ==============================================================================
+# OSCAL CLI Terraform Configuration Template
+# ==============================================================================
+# Copy this file to terraform.tfvars and customize for your deployment
+# Example: cp terraform.tfvars.example terraform.tfvars
+
+# ==============================================================================
+# General Configuration
+# ==============================================================================
+
+project_name = "oscal-cli"
+environment  = "dev"
+location     = "eastus"
+
+tags = {
+  ManagedBy   = "Terraform"
+  Project     = "OSCAL-CLI"
+  Environment = "dev"
+  Owner       = "your-team@example.com"
+}
+
+# ==============================================================================
+# Deployment Mode
+# ==============================================================================
+# Options: "combined" (single container) or "separate" (frontend + backend)
+# Start with "combined" for simplicity, switch to "separate" for better scaling
+
+deployment_mode = "combined"
+
+# ==============================================================================
+# Container Registry
+# ==============================================================================
+
+acr_sku          = "Basic"    # Basic, Standard, or Premium
+docker_image_tag = "latest"
+
+# ==============================================================================
+# Combined Mode Configuration (if deployment_mode = "combined")
+# ==============================================================================
+
+combined_container_cpu    = 1      # CPU cores: 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2
+combined_container_memory = "2Gi"  # Memory: 0.5Gi to 4Gi
+combined_min_replicas     = 0      # Minimum replicas (0 = scale to zero)
+combined_max_replicas     = 10     # Maximum replicas
+
+# ==============================================================================
+# Separate Mode Configuration (if deployment_mode = "separate")
+# ==============================================================================
+
+# Backend
+backend_container_cpu    = 0.5
+backend_container_memory = "1Gi"
+backend_min_replicas     = 1
+backend_max_replicas     = 20
+backend_port             = 8080
+
+# Frontend
+frontend_container_cpu    = 0.5
+frontend_container_memory = "1Gi"
+frontend_min_replicas     = 1
+frontend_max_replicas     = 10
+frontend_port             = 3000
+
+# ==============================================================================
+# Auto-scaling Configuration
+# ==============================================================================
+
+enable_http_scaling       = true
+http_concurrent_requests  = 10   # Scale up at N concurrent requests
+enable_cpu_scaling        = true
+cpu_threshold             = 70   # CPU percentage threshold
+enable_memory_scaling     = false
+memory_threshold          = 80   # Memory percentage threshold
+
+# ==============================================================================
+# Application Configuration
+# ==============================================================================
+
+java_opts         = "-Xmx1g -Xms512m"
+node_env          = "production"
+enable_telemetry  = false
+
+# ==============================================================================
+# Monitoring and Observability
+# ==============================================================================
+
+enable_application_insights = true
+log_retention_days          = 30
+
+# ==============================================================================
+# Networking and Security
+# ==============================================================================
+
+enable_ingress               = true
+allow_insecure_connections   = false
+custom_domain                = null  # Set to your custom domain if you have one
+enable_cors                  = true
+cors_allowed_origins         = ["*"] # Restrict in production
+
+# ==============================================================================
+# Storage Configuration (Optional)
+# ==============================================================================
+
+enable_blob_storage         = false
+storage_account_replication = "LRS"  # LRS, GRS, RAGRS, ZRS
+
+# ==============================================================================
+# Cost Management
+# ==============================================================================
+
+enable_consumption_workload_profile = true
