@@ -20,6 +20,9 @@ frontend-install.log
 # H2 database
 data/
 
+# Environment variables (contains secrets)
+.env
+
 # Frontend dependencies and build
 front-end/node_modules/
 front-end/.next/

@@ -1,5 +1,12 @@
 package gov.nist.oscal.tools.api.service;
 
+import com.azure.core.util.BinaryData;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.OscalModelType;
 import gov.nist.oscal.tools.api.model.SavedFile;
@@ -9,188 +16,368 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class FileStorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(FileStorageService.class);
 
-    @Value("${oscal.storage.directory:uploads}")
-    private String storageDirectory;
+    @Value("${azure.storage.connection-string}")
+    private String connectionString;
 
-    private Path storagePath;
+    @Value("${azure.storage.container-name:oscal-files}")
+    private String containerName;
+
+    private BlobServiceClient blobServiceClient;
+    private BlobContainerClient containerClient;
 
     @PostConstruct
     public void init() {
+        // Check if Azure Storage is configured
+        if (connectionString == null || connectionString.trim().isEmpty()) {
+            logger.warn("Azure Blob Storage connection string not configured. File storage operations will not be available.");
+            logger.warn("To enable Azure Blob Storage:");
+            logger.warn("  1. For local development: Create .env file (copy .env.example and add your connection string)");
+            logger.warn("  2. For production: Set AZURE_STORAGE_CONNECTION_STRING environment variable");
+            return;
+        }
+
         try {
-            storagePath = Paths.get(storageDirectory).toAbsolutePath().normalize();
-            Files.createDirectories(storagePath);
-            logger.info("File storage initialized at: {}", storagePath);
-        } catch (IOException e) {
-            logger.error("Failed to create storage directory: {}", e.getMessage());
-            throw new RuntimeException("Could not initialize file storage", e);
+            logger.info("Initializing Azure Blob Storage client...");
+            blobServiceClient = new BlobServiceClientBuilder()
+                    .connectionString(connectionString)
+                    .buildClient();
+
+            containerClient = blobServiceClient.getBlobContainerClient(containerName);
+
+            // Create container if it doesn't exist
+            if (!containerClient.exists()) {
+                containerClient.create();
+                logger.info("Created blob container: {}", containerName);
+            } else {
+                logger.info("Using existing blob container: {}", containerName);
+            }
+
+            logger.info("Azure Blob Storage initialized successfully");
+        } catch (Exception e) {
+            logger.error("Failed to initialize Azure Blob Storage: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not initialize Azure Blob Storage", e);
         }
     }
 
     /**
-     * Save a file to storage
+     * Save a file to Azure Blob Storage
      */
-    public SavedFile saveFile(String content, String fileName, OscalModelType modelType, OscalFormat format, String username) throws IOException {
-        String fileId = UUID.randomUUID().toString();
-        String extension = getFileExtension(format);
-        String sanitizedFileName = sanitizeFileName(fileName);
-        String storedFileName = fileId + "_" + sanitizedFileName;
+    public SavedFile saveFile(String content, String fileName, OscalModelType modelType, OscalFormat format, String username) {
+        if (containerClient == null) {
+            throw new RuntimeException("Azure Blob Storage is not configured. Please set AZURE_STORAGE_CONNECTION_STRING environment variable.");
+        }
+        try {
+            String fileId = UUID.randomUUID().toString();
+            String sanitizedFileName = sanitizeFileName(fileName);
+            String blobName = buildBlobPath(username, fileId, sanitizedFileName);
 
-        // Create user-specific directory
-        Path userPath = storagePath.resolve(username);
-        Files.createDirectories(userPath);
+            // Upload to Azure Blob Storage
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+            byte[] contentBytes = content.getBytes(StandardCharsets.UTF_8);
+            blobClient.upload(new ByteArrayInputStream(contentBytes), contentBytes.length, true);
 
-        Path filePath = userPath.resolve(storedFileName);
-        Files.writeString(filePath, content, StandardCharsets.UTF_8);
+            // Set metadata
+            blobClient.setMetadata(java.util.Map.of(
+                "username", username,
+                "fileId", fileId,
+                "originalFileName", fileName,
+                "modelType", modelType != null ? modelType.toString() : "",
+                "format", format.toString()
+            ));
 
-        SavedFile savedFile = new SavedFile();
-        savedFile.setId(fileId);
-        savedFile.setFileName(fileName);
-        savedFile.setModelType(modelType);
-        savedFile.setFormat(format);
-        savedFile.setFileSize(content.getBytes(StandardCharsets.UTF_8).length);
-        savedFile.setUploadedAt(LocalDateTime.now());
-        savedFile.setFilePath(storedFileName);
-        savedFile.setUsername(username);
+            SavedFile savedFile = new SavedFile();
+            savedFile.setId(fileId);
+            savedFile.setFileName(fileName);
+            savedFile.setModelType(modelType);
+            savedFile.setFormat(format);
+            savedFile.setFileSize(contentBytes.length);
+            savedFile.setUploadedAt(LocalDateTime.now());
+            savedFile.setFilePath(blobName);
+            savedFile.setUsername(username);
 
-        logger.info("Saved file: {} (ID: {}) for user: {}", fileName, fileId, username);
-        return savedFile;
+            logger.info("Saved file to Azure Blob Storage: {} (ID: {}) for user: {}", fileName, fileId, username);
+            return savedFile;
+        } catch (Exception e) {
+            logger.error("Failed to save file to Azure Blob Storage: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save file", e);
+        }
     }
 
     /**
      * Get a list of all saved files for a specific user
      */
-    public List<SavedFile> listFiles(String username) throws IOException {
-        Path userPath = storagePath.resolve(username);
-        if (!Files.exists(userPath)) {
-            return List.of(); // Return empty list if user directory doesn't exist
+    public List<SavedFile> listFiles(String username) {
+        if (containerClient == null) {
+            logger.warn("Azure Blob Storage is not configured. Returning empty file list.");
+            return new ArrayList<>();
         }
+        try {
+            String prefix = username + "/";
+            List<SavedFile> files = new ArrayList<>();
 
-        try (Stream<Path> paths = Files.list(userPath)) {
-            return paths
-                .filter(Files::isRegularFile)
-                .map(path -> pathToSavedFile(path, username))
-                .filter(savedFile -> savedFile != null)
-                .sorted((a, b) -> b.getUploadedAt().compareTo(a.getUploadedAt()))
-                .collect(Collectors.toList());
+            ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
+
+            for (BlobItem blobItem : containerClient.listBlobs(options, null)) {
+                try {
+                    BlobClient blobClient = containerClient.getBlobClient(blobItem.getName());
+                    SavedFile savedFile = blobItemToSavedFile(blobItem, blobClient, username);
+                    if (savedFile != null) {
+                        files.add(savedFile);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error processing blob item: {}", blobItem.getName(), e);
+                }
+            }
+
+            // Sort by upload date, most recent first
+            return files.stream()
+                    .sorted((a, b) -> b.getUploadedAt().compareTo(a.getUploadedAt()))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("Failed to list files for user {}: {}", username, e.getMessage(), e);
+            return new ArrayList<>();
         }
     }
 
     /**
      * Get file content by ID for a specific user
      */
-    public String getFileContent(String fileId, String username) throws IOException {
-        Path filePath = findFileById(fileId, username);
-        if (filePath == null) {
-            throw new IOException("File not found: " + fileId);
+    public String getFileContent(String fileId, String username) {
+        if (containerClient == null) {
+            throw new RuntimeException("Azure Blob Storage is not configured. Please set AZURE_STORAGE_CONNECTION_STRING environment variable.");
         }
-        return Files.readString(filePath, StandardCharsets.UTF_8);
+        try {
+            String blobName = findBlobByFileId(fileId, username);
+            if (blobName == null) {
+                throw new RuntimeException("File not found: " + fileId);
+            }
+
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+            BinaryData content = blobClient.downloadContent();
+            return content.toString();
+        } catch (Exception e) {
+            logger.error("Failed to get file content for file {}: {}", fileId, e.getMessage(), e);
+            throw new RuntimeException("Failed to get file content", e);
+        }
     }
 
     /**
      * Get saved file metadata by ID for a specific user
      */
-    public SavedFile getFile(String fileId, String username) throws IOException {
-        Path filePath = findFileById(fileId, username);
-        if (filePath == null) {
-            throw new IOException("File not found: " + fileId);
+    public SavedFile getFile(String fileId, String username) {
+        if (containerClient == null) {
+            throw new RuntimeException("Azure Blob Storage is not configured. Please set AZURE_STORAGE_CONNECTION_STRING environment variable.");
         }
-        return pathToSavedFile(filePath, username);
+        try {
+            String blobName = findBlobByFileId(fileId, username);
+            if (blobName == null) {
+                throw new RuntimeException("File not found: " + fileId);
+            }
+
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+            var properties = blobClient.getProperties();
+
+            // Parse file information from blob name
+            String[] parts = blobName.split("/", 2);
+            if (parts.length < 2) {
+                throw new RuntimeException("Invalid blob name format: " + blobName);
+            }
+
+            String filePart = parts[1];
+            String[] fileNameParts = filePart.split("_", 2);
+            if (fileNameParts.length < 2) {
+                throw new RuntimeException("Invalid file name format: " + filePart);
+            }
+
+            String fileName = fileNameParts[1];
+
+            // Get metadata
+            var metadata = properties.getMetadata();
+            OscalFormat format = detectFormat(fileName);
+            OscalModelType modelType = null;
+
+            if (metadata != null) {
+                String formatStr = metadata.get("format");
+                if (formatStr != null && !formatStr.isEmpty()) {
+                    try {
+                        format = OscalFormat.valueOf(formatStr.toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        // Use detected format
+                    }
+                }
+
+                String modelTypeStr = metadata.get("modelType");
+                if (modelTypeStr != null && !modelTypeStr.isEmpty()) {
+                    try {
+                        modelType = OscalModelType.valueOf(modelTypeStr);
+                    } catch (IllegalArgumentException e) {
+                        // Leave as null
+                    }
+                }
+            }
+
+            if (modelType == null) {
+                modelType = detectModelType(fileName);
+            }
+
+            SavedFile savedFile = new SavedFile();
+            savedFile.setId(fileId);
+            savedFile.setFileName(fileName);
+            savedFile.setFormat(format);
+            savedFile.setModelType(modelType);
+            savedFile.setFileSize(properties.getBlobSize());
+            savedFile.setUploadedAt(
+                LocalDateTime.ofInstant(
+                    properties.getLastModified().toInstant(),
+                    ZoneId.systemDefault()
+                )
+            );
+            savedFile.setFilePath(blobName);
+            savedFile.setUsername(username);
+
+            return savedFile;
+        } catch (Exception e) {
+            logger.error("Failed to get file metadata for file {}: {}", fileId, e.getMessage(), e);
+            throw new RuntimeException("Failed to get file metadata", e);
+        }
     }
 
     /**
      * Delete a file by ID for a specific user
      */
-    public boolean deleteFile(String fileId, String username) throws IOException {
-        Path filePath = findFileById(fileId, username);
-        if (filePath == null) {
+    public boolean deleteFile(String fileId, String username) {
+        if (containerClient == null) {
+            throw new RuntimeException("Azure Blob Storage is not configured. Please set AZURE_STORAGE_CONNECTION_STRING environment variable.");
+        }
+        try {
+            String blobName = findBlobByFileId(fileId, username);
+            if (blobName == null) {
+                return false;
+            }
+
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+            blobClient.delete();
+
+            logger.info("Deleted file with ID: {} for user: {}", fileId, username);
+            return true;
+        } catch (Exception e) {
+            logger.error("Failed to delete file {}: {}", fileId, e.getMessage(), e);
             return false;
         }
-        Files.delete(filePath);
-        logger.info("Deleted file with ID: {} for user: {}", fileId, username);
-        return true;
     }
 
-    private Path findFileById(String fileId, String username) throws IOException {
-        Path userPath = storagePath.resolve(username);
-        if (!Files.exists(userPath)) {
-            return null;
-        }
+    /**
+     * Find blob name by file ID and username
+     */
+    private String findBlobByFileId(String fileId, String username) {
+        String prefix = username + "/";
+        ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
 
-        try (Stream<Path> paths = Files.list(userPath)) {
-            return paths
-                .filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().startsWith(fileId + "_"))
-                .findFirst()
-                .orElse(null);
+        for (BlobItem blobItem : containerClient.listBlobs(options, null)) {
+            if (blobItem.getName().contains(fileId + "_")) {
+                return blobItem.getName();
+            }
         }
+        return null;
     }
 
-    private SavedFile pathToSavedFile(Path path, String username) {
+    /**
+     * Convert BlobItem to SavedFile
+     */
+    private SavedFile blobItemToSavedFile(BlobItem blobItem, BlobClient blobClient, String username) {
         try {
-            String fileName = path.getFileName().toString();
-            String[] parts = fileName.split("_", 2);
+            String blobName = blobItem.getName();
+            String[] parts = blobName.split("/", 2);
+
             if (parts.length < 2) {
                 return null;
             }
 
-            String fileId = parts[0];
-            String originalFileName = parts[1];
+            String filePart = parts[1];
+            String[] fileNameParts = filePart.split("_", 2);
 
-            // Try to determine format and model type from file extension
+            if (fileNameParts.length < 2) {
+                return null;
+            }
+
+            String fileId = fileNameParts[0];
+            String originalFileName = fileNameParts[1];
+
+            // Get metadata
+            var metadata = blobClient.getProperties().getMetadata();
             OscalFormat format = detectFormat(originalFileName);
+            OscalModelType modelType = null;
+
+            if (metadata != null) {
+                String formatStr = metadata.get("format");
+                if (formatStr != null && !formatStr.isEmpty()) {
+                    try {
+                        format = OscalFormat.valueOf(formatStr.toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        // Use detected format
+                    }
+                }
+
+                String modelTypeStr = metadata.get("modelType");
+                if (modelTypeStr != null && !modelTypeStr.isEmpty()) {
+                    try {
+                        modelType = OscalModelType.valueOf(modelTypeStr);
+                    } catch (IllegalArgumentException e) {
+                        // Leave as null
+                    }
+                }
+            }
+
+            if (modelType == null) {
+                modelType = detectModelType(originalFileName);
+            }
 
             SavedFile savedFile = new SavedFile();
             savedFile.setId(fileId);
             savedFile.setFileName(originalFileName);
             savedFile.setFormat(format);
-            savedFile.setFileSize(Files.size(path));
+            savedFile.setModelType(modelType);
+            savedFile.setFileSize(blobItem.getProperties().getContentLength());
             savedFile.setUploadedAt(
                 LocalDateTime.ofInstant(
-                    Files.getLastModifiedTime(path).toInstant(),
-                    java.time.ZoneId.systemDefault()
+                    blobItem.getProperties().getLastModified().toInstant(),
+                    ZoneId.systemDefault()
                 )
             );
-            savedFile.setFilePath(fileName);
+            savedFile.setFilePath(blobName);
             savedFile.setUsername(username);
 
-            // Model type detection could be improved by reading the file content
-            // For now, we'll leave it null or try to infer from filename patterns
-            savedFile.setModelType(detectModelType(originalFileName));
-
             return savedFile;
-        } catch (IOException e) {
-            logger.error("Error reading file metadata: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error converting blob item to SavedFile: {}", e.getMessage(), e);
             return null;
         }
     }
 
-    private String getFileExtension(OscalFormat format) {
-        switch (format) {
-            case XML:
-                return ".xml";
-            case JSON:
-                return ".json";
-            case YAML:
-                return ".yaml";
-            default:
-                return ".txt";
-        }
+    /**
+     * Build blob path: {username}/{fileId}_{filename}
+     */
+    private String buildBlobPath(String username, String fileId, String fileName) {
+        return username + "/" + fileId + "_" + fileName;
+    }
+
+    private String sanitizeFileName(String fileName) {
+        // Remove or replace characters that might cause issues
+        return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     private OscalFormat detectFormat(String fileName) {
@@ -223,10 +410,5 @@ public class FileStorageService {
             return OscalModelType.PLAN_OF_ACTION_AND_MILESTONES;
         }
         return null; // Unknown
-    }
-
-    private String sanitizeFileName(String fileName) {
-        // Remove or replace characters that might cause issues
-        return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 }
