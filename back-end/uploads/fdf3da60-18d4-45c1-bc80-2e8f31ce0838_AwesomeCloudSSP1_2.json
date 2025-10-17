@@ -1,0 +1,1496 @@
+{
+  "system-security-plan" : {
+    "uuid" : "05ade390-4d01-4aeb-bc3a-e0084b4083b8",
+    "metadata" : {
+      "title" : "AwesomeCloud SSP",
+      "last-modified" : "2024-05-20T10:57:30-04:00",
+      "version" : "1.0",
+      "oscal-version" : "1.0.4",
+      "props" : [ {
+        "name" : "inventory-date",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "2024-05-20T10:57:30-04:00"
+      } ],
+      "roles" : [ {
+        "id" : "system-owner",
+        "title" : "Information System Owner",
+        "short-name" : "ISO"
+      }, {
+        "id" : "authorizing-official",
+        "title" : "Authorizing Official",
+        "short-name" : "AO"
+      }, {
+        "id" : "system-poc-management",
+        "title" : "Information System Management Point of Contact",
+        "short-name" : "ISMPoC"
+      }, {
+        "id" : "system-poc-technical",
+        "title" : "Information System Technical Point of Contact",
+        "short-name" : "ISTPoC"
+      }, {
+        "id" : "system-poc-other",
+        "title" : "Information System Other Point of Contact",
+        "short-name" : "ISOPoC"
+      }, {
+        "id" : "information-system-security-officer",
+        "title" : "Information System Security Officer",
+        "short-name" : "ISSO"
+      }, {
+        "id" : "authorizing-official-poc",
+        "title" : "Authorizing Official (AO) PoC",
+        "short-name" : "AOPoC"
+      }, {
+        "id" : "sys-admin",
+        "title" : "System Administrator",
+        "short-name" : "admin"
+      } ],
+      "parties" : [ {
+        "uuid" : "ff83daa9-85ce-4191-8110-88e099105270",
+        "type" : "person",
+        "name" : "Jon Doe",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Director Information Technology"
+        } ]
+      }, {
+        "uuid" : "1eefb7cd-a86e-4490-bb65-ce83141e6ee6",
+        "type" : "person",
+        "name" : "Tony Stark",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Chief Information Officer"
+        } ]
+      }, {
+        "uuid" : "1cd3950e-9959-464e-8294-8d0e89507d29",
+        "type" : "person",
+        "name" : "Eliot Dottie",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Sr Systems Engineer"
+        } ]
+      }, {
+        "uuid" : "9c33da3b-8d05-4737-8513-10e3bcd34a72",
+        "type" : "person",
+        "name" : "Elinor Des",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Systems Engineer"
+        } ]
+      }, {
+        "uuid" : "f1a42308-bbfc-4ad4-a990-fc310923fe05",
+        "type" : "person",
+        "name" : "Kailyn Mya",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Business Analyst"
+        } ]
+      }, {
+        "uuid" : "f8290312-3fdc-46e5-953d-01600dcc851d",
+        "type" : "person",
+        "name" : "Dave Smith",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Sr Information Security Analyst"
+        } ]
+      }, {
+        "uuid" : "263f31bd-3e0f-44b3-add9-ff0793edcf13",
+        "type" : "person",
+        "name" : "Janel Bowie",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Deputy Chief Information Officer"
+        } ]
+      }, {
+        "uuid" : "8679148a-7fbd-4c52-9e0f-1101a89ed8d6",
+        "type" : "person",
+        "name" : "Brenden Malinda",
+        "props" : [ {
+          "name" : "job-title",
+          "value" : "Network Engineer"
+        } ]
+      } ],
+      "responsible-parties" : [ {
+        "role-id" : "system-owner",
+        "party-uuids" : [ "ff83daa9-85ce-4191-8110-88e099105270" ]
+      }, {
+        "role-id" : "authorizing-official",
+        "party-uuids" : [ "1eefb7cd-a86e-4490-bb65-ce83141e6ee6" ]
+      }, {
+        "role-id" : "system-poc-management",
+        "party-uuids" : [ "9c33da3b-8d05-4737-8513-10e3bcd34a72" ]
+      }, {
+        "role-id" : "system-poc-technical",
+        "party-uuids" : [ "9c33da3b-8d05-4737-8513-10e3bcd34a72" ]
+      }, {
+        "role-id" : "system-poc-other",
+        "party-uuids" : [ "f1a42308-bbfc-4ad4-a990-fc310923fe05" ]
+      }, {
+        "role-id" : "information-system-security-officer",
+        "party-uuids" : [ "f8290312-3fdc-46e5-953d-01600dcc851d" ]
+      }, {
+        "role-id" : "authorizing-official-poc",
+        "party-uuids" : [ "263f31bd-3e0f-44b3-add9-ff0793edcf13" ]
+      }, {
+        "role-id" : "sys-admin",
+        "party-uuids" : [ "8679148a-7fbd-4c52-9e0f-1101a89ed8d6" ]
+      } ]
+    },
+    "import-profile" : {
+      "href" : "https://raw.githubusercontent.com/GSA/fedramp-automation/master/dist/content/rev4/baselines/xml/FedRAMP_rev4_MODERATE-baseline-resolved-profile_catalog.xml"
+    },
+    "system-characteristics" : {
+      "system-ids" : [ {
+        "identifier-type" : "https://fedramp.gov",
+        "id" : "F00000001"
+      } ],
+      "system-name" : "AwesomeCloud",
+      "system-name-short" : "AWC",
+      "description" : "AwesomeCloud hosts a public facing web application that collects surveys from consumers on their favorite condiments. Based on responses to surveys the AwesomeCloud proprietary algorithm assigns a score to each condiment and determines whether a condiment earns the endorsement of Awesome Sauce. The scores are updated dynamically as new surveys are submitted and the scores and Awesome Sauce endorsements are posted to the AwesomeCloud public web page.",
+      "props" : [ {
+        "name" : "authorization-type",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "fedramp-agency"
+      }, {
+        "name" : "cloud-service-model",
+        "value" : "saas"
+      }, {
+        "name" : "cloud-deployment-model",
+        "value" : "public-cloud"
+      }, {
+        "name" : "security-eauth-level",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "2",
+        "class" : "security-eauth"
+      }, {
+        "name" : "identity-assurance-level",
+        "value" : "2"
+      }, {
+        "name" : "authenticator-assurance-level",
+        "value" : "2"
+      }, {
+        "name" : "federation-assurance-level",
+        "value" : "2"
+      } ],
+      "security-sensitivity-level" : "fips-199-moderate",
+      "system-information" : {
+        "information-types" : [ {
+          "uuid" : "a955e21e-2050-420a-914e-8424132b9342",
+          "title" : "Research and Developemnt",
+          "description" : "Research and Development involves the gathering and analysis of data, dissemination of results, and development of new products, methodologies, and ideas. The sensitivity and criticality of most research and development information depends on the subject matter involved.",
+          "categorizations" : [ {
+            "system" : "https://doi.org/10.6028/NIST.SP.800-60v2r1",
+            "information-type-ids" : [ "D.20.1" ]
+          } ],
+          "confidentiality-impact" : {
+            "base" : "fips-199-low",
+            "selected" : "fips-199-low"
+          },
+          "integrity-impact" : {
+            "base" : "fips-199-moderate",
+            "selected" : "fips-199-moderate"
+          },
+          "availability-impact" : {
+            "base" : "fips-199-low",
+            "selected" : "fips-199-low"
+          }
+        } ]
+      },
+      "security-impact-level" : {
+        "security-objective-confidentiality" : "fips-199-moderate",
+        "security-objective-integrity" : "fips-199-moderate",
+        "security-objective-availability" : "fips-199-low"
+      },
+      "status" : {
+        "state" : "operational"
+      },
+      "authorization-boundary" : {
+        "description" : "# AwesomeCloud Information System Boundary",
+        "diagrams" : [ {
+          "uuid" : "16ebbf5d-b2ca-4447-9ea0-da9ef5a9a1a1",
+          "description" : "# AwesomeCloud Boundary Diagram",
+          "links" : [ {
+            "href" : "#51cbc2c8-7eb8-4ab1-a9fc-5a742508c968",
+            "rel" : "diagram"
+          } ]
+        } ]
+      },
+      "network-architecture" : {
+        "description" : "# AwesomeCloud network description",
+        "diagrams" : [ {
+          "uuid" : "5d35e4e0-2dc3-4871-a0aa-c65039a62c1b",
+          "description" : "# AwesomeCloud Network Diagram",
+          "links" : [ {
+            "href" : "#2de57f8e-9611-47f6-a124-a2095265627a",
+            "rel" : "diagram"
+          } ]
+        } ]
+      },
+      "data-flow" : {
+        "description" : "# AwesomeCloud Dataflow",
+        "diagrams" : [ {
+          "uuid" : "8ecdf38a-f2c9-4e3a-a597-e7335769b537",
+          "description" : "# AwesomeCloud Dataflow Diagram",
+          "links" : [ {
+            "href" : "#5ed3e8a9-3fdd-49e6-a4a3-a1485a496e07",
+            "rel" : "diagram"
+          } ]
+        } ]
+      }
+    },
+    "system-implementation" : {
+      "props" : [ {
+        "name" : "users-internal",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "0"
+      }, {
+        "name" : "users-external",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "0"
+      }, {
+        "name" : "users-internal-future",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "0"
+      }, {
+        "name" : "users-external-future",
+        "ns" : "https://fedramp.gov/ns/oscal",
+        "value" : "0"
+      } ],
+      "leveraged-authorizations" : [ {
+        "uuid" : "3bb49ebe-3e4e-4466-9405-b8c426469412",
+        "title" : "Microsoft Azure IaaS",
+        "party-uuid" : "e192a61d-9123-4991-8294-a936a42bfe50",
+        "date-authorized" : "2018-01-01"
+      } ],
+      "users" : [ {
+        "uuid" : "e34daa7e-9cce-4350-9d7e-2037890b4ada",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "system-owner" ],
+        "authorized-privileges" : [ {
+          "title" : "GRC Access (Read Only)",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "8921737a-98b3-4a8c-81ae-c73b41ed22c2",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "authorizing-official" ],
+        "authorized-privileges" : [ {
+          "title" : "GRC Access (Read Only)",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "76e6dc7f-fa58-469f-a9e4-858cfe674975",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "system-poc-management" ],
+        "authorized-privileges" : [ {
+          "title" : "GRC Access (Read Only)",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "26139e80-572a-4e40-94b4-e677133baf4d",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "system-poc-technical" ],
+        "authorized-privileges" : [ {
+          "title" : "GRC Access",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read and write access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "7b201a77-b213-4d21-804e-e60b4a0bda9e",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "system-poc-other" ],
+        "authorized-privileges" : [ {
+          "title" : "GRC Access",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read and write access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "9dec1073-6ce1-4145-92d1-f88f99428c0e",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "information-system-security-officer" ],
+        "authorized-privileges" : [ {
+          "title" : "Managerial Access",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read and write access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "9dec1073-6ce1-4145-92d1-f88f99428c0f",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "non-privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "limited"
+        } ],
+        "role-ids" : [ "authorizing-official-poc" ],
+        "authorized-privileges" : [ {
+          "title" : "Managerial Access",
+          "functions-performed" : [ "Read only access to system management tools", "Read and write access to file services", "Read access to GRC tool" ]
+        } ]
+      }, {
+        "uuid" : "c81c9e24-aa12-48dd-8518-ba266d014250",
+        "props" : [ {
+          "name" : "type",
+          "value" : "internal"
+        }, {
+          "name" : "privilege-level",
+          "value" : "privileged"
+        }, {
+          "name" : "sensitivity",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "moderate"
+        } ],
+        "role-ids" : [ "sys-admin" ],
+        "authorized-privileges" : [ {
+          "title" : "Administrative Access",
+          "functions-performed" : [ "Add/remove users and hardware", "Install and configure software", "OS updates, patches, and hot fixes" ]
+        } ]
+      } ],
+      "components" : [ {
+        "uuid" : "a9836f1e-2069-4996-aaa2-82686cac4e71",
+        "type" : "validation",
+        "title" : "Module Name",
+        "description" : "FIPS 140 Validated Module",
+        "props" : [ {
+          "name" : "asset-type",
+          "value" : "firewall"
+        }, {
+          "name" : "validation-type",
+          "value" : "fips-140-2"
+        }, {
+          "name" : "validation-reference",
+          "value" : "3928"
+        } ],
+        "links" : [ {
+          "href" : "https://csrc.nist.gov/projects/cryptographic-module-validation-program/Certificate/3928",
+          "rel" : "validation-details"
+        } ],
+        "status" : {
+          "state" : "operational"
+        }
+      }, {
+        "uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+        "type" : "this-system",
+        "title" : "The AwesomeCloud Software as a Service (SaaS) Solution",
+        "description" : "AwesomeCloud hosts a public facing web application that collects surveys from consumers on their favorite condiments.",
+        "props" : [ {
+          "name" : "component-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "this-system"
+        }, {
+          "name" : "asset-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "operating-system"
+        } ],
+        "status" : {
+          "state" : "operational"
+        }
+      } ],
+      "inventory-items" : [ {
+        "uuid" : "a9836f1e-2069-4996-aaa2-82686cac4e71",
+        "description" : "Microsoft Azure Traffic Manager",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "a9836f1e-2069-4996-aaa2-82686cac4e71"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "2601:243:202:4a30:34b6:d208:7117:66b4"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "yes"
+        }, {
+          "name" : "fqdn",
+          "value" : "AwesomeCloud.com"
+        }, {
+          "name" : "netbios-name",
+          "value" : "TM01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-10-F0-39-27-04"
+        }, {
+          "name" : "asset-type",
+          "value" : "firewall"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "TM_Config_01"
+        }, {
+          "name" : "is-scanned",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "function",
+          "value" : "Traffic Manager"
+        } ]
+      }, {
+        "uuid" : "e0e6b53a-c8b2-42db-ae2e-e40ed1e43746",
+        "description" : "Citrix NetScaler SDX",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "e0e6b53a-c8b2-42db-ae2e-e40ed1e43746"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "2601:141:8100:67a0::c07c"
+        }, {
+          "name" : "virtual",
+          "value" : "no"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "NS01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "NS01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-2D-AF-2B-3F-79"
+        }, {
+          "name" : "asset-type",
+          "value" : "router"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Citrix"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "NS_Config_01"
+        }, {
+          "name" : "is-scanned",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "function",
+          "value" : "Load Balancer"
+        } ]
+      }, {
+        "uuid" : "6e42dda9-ab8d-4b66-bf7e-bf65a548f174",
+        "description" : "Citrix NetScaler SDX",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "6e42dda9-ab8d-4b66-bf7e-bf65a548f174"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "fe80::1078:b4b3:4ee9:35b%42"
+        }, {
+          "name" : "virtual",
+          "value" : "no"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "NS02.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "NS02"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-C4-82-FD-F0-B0"
+        }, {
+          "name" : "asset-type",
+          "value" : "router"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Citrix"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "NS_Config_01"
+        }, {
+          "name" : "is-scanned",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "function",
+          "value" : "Load Balancer"
+        } ]
+      }, {
+        "uuid" : "20bae7c3-232f-4756-9be8-0bdf0c61f951",
+        "description" : "Microsoft IIS 10 Web Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "20bae7c3-232f-4756-9be8-0bdf0c61f951"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "WEB01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "WEB01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-FD-6F-0D-16-1D"
+        }, {
+          "name" : "software-name",
+          "value" : "Windows Server Datacenter"
+        }, {
+          "name" : "software-version",
+          "value" : "2019"
+        }, {
+          "name" : "asset-type",
+          "value" : "web-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "web"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "Web_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Web Server"
+        } ]
+      }, {
+        "uuid" : "f36128e6-952a-4d43-82e5-96380db7c591",
+        "description" : "Microsoft IIS 10 Web Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "f36128e6-952a-4d43-82e5-96380db7c591"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "WEB02.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "WEB02"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-8E-2B-2C-C2-CA"
+        }, {
+          "name" : "software-name",
+          "value" : "Windows Server Datacenter"
+        }, {
+          "name" : "software-version",
+          "value" : "2019"
+        }, {
+          "name" : "asset-type",
+          "value" : "web-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "web"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "Web_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Web Server"
+        } ]
+      }, {
+        "uuid" : "26c06837-8545-4702-8dee-b616aab0ac1c",
+        "description" : "Apache 2.4 Web Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "26c06837-8545-4702-8dee-b616aab0ac1c"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "WEBAPI01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "WEBAPI01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-F0-F1-22-5D-1E"
+        }, {
+          "name" : "software-name",
+          "value" : "RHEL"
+        }, {
+          "name" : "software-version",
+          "value" : "7"
+        }, {
+          "name" : "asset-type",
+          "value" : "web-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "RedHat"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "web"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "Web_Server_Config_2"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Web Server"
+        } ]
+      }, {
+        "uuid" : "3cfa6896-28f6-4e25-823d-f8899b954880",
+        "description" : "Citrix NetScaler SDX",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "3cfa6896-28f6-4e25-823d-f8899b954880"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "no"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "NS03.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "NS03"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-2B-50-FD-21-D1"
+        }, {
+          "name" : "asset-type",
+          "value" : "router"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Citrix"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "NS_Config_02"
+        }, {
+          "name" : "is-scanned",
+          "value" : "no",
+          "remarks" : "This is an appliance."
+        }, {
+          "name" : "function",
+          "value" : "Load Balancer"
+        } ]
+      }, {
+        "uuid" : "9f11c744-f917-4cec-a56b-4831fd3e10cc",
+        "description" : "Application Server hosting Splunk Enterprise Edition 9",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "9f11c744-f917-4cec-a56b-4831fd3e10cc"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "SPLUNK01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "SPLUNK01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-CE-BE-B4-25-62"
+        }, {
+          "name" : "software-name",
+          "value" : "CentOs"
+        }, {
+          "name" : "software-version",
+          "value" : "13.1"
+        }, {
+          "name" : "asset-type",
+          "value" : "web-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "CentOs"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "App_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Log Aggregation Server"
+        } ]
+      }, {
+        "uuid" : "10022d51-072a-4115-bf3b-9958863404e7",
+        "description" : "Microsoft Windows Server 2019 Datacenter File Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "10022d51-072a-4115-bf3b-9958863404e7"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "FS01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "FS01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-7B-E8-53-FA-2B"
+        }, {
+          "name" : "software-name",
+          "value" : "Windows Server Datacenter"
+        }, {
+          "name" : "software-version",
+          "value" : "2019"
+        }, {
+          "name" : "asset-type",
+          "value" : "storage-array"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "File_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "File Server"
+        } ]
+      }, {
+        "uuid" : "b8a94603-e5fb-4ee7-86ff-9f8123584449",
+        "description" : "RHEL Application Server hosting REST APIs",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "b8a94603-e5fb-4ee7-86ff-9f8123584449"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "APP01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "APP01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-BD-C7-70-DA-4F"
+        }, {
+          "name" : "software-name",
+          "value" : "RHEL"
+        }, {
+          "name" : "software-version",
+          "value" : "7"
+        }, {
+          "name" : "asset-type",
+          "value" : "web-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "RedHat"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "APP_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "REST API Server"
+        } ]
+      }, {
+        "uuid" : "93a27f42-6f4e-4500-9c87-d03567c13cfe",
+        "description" : "Ubuntu Database Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "93a27f42-6f4e-4500-9c87-d03567c13cfe"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "DB01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "DB01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-E8-FF-A0-B6-61"
+        }, {
+          "name" : "software-name",
+          "value" : "Ubuntu"
+        }, {
+          "name" : "software-version",
+          "value" : "22.04"
+        }, {
+          "name" : "asset-type",
+          "value" : "database"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Ubuntu"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "database"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "DB_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Database Server"
+        } ]
+      }, {
+        "uuid" : "3c0081ca-7283-4072-8748-52f5fb804d7a",
+        "description" : "Ubuntu Database Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "3c0081ca-7283-4072-8748-52f5fb804d7a"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "DB02.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "DB02"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-8E-2C-B0-DB-2E"
+        }, {
+          "name" : "software-name",
+          "value" : "Ubuntu"
+        }, {
+          "name" : "software-version",
+          "value" : "22.04"
+        }, {
+          "name" : "asset-type",
+          "value" : "database"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Ubuntu"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "database"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "DB_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Database Server"
+        } ]
+      }, {
+        "uuid" : "93ca750c-0f3a-4fde-810e-89585d46e671",
+        "description" : "Jump box for administrator access to AwesomeCloud network",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "93ca750c-0f3a-4fde-810e-89585d46e671"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "yes"
+        }, {
+          "name" : "fqdn",
+          "value" : "JUMP01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "JUMP01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-65-CA-E2-53-66"
+        }, {
+          "name" : "software-name",
+          "value" : "Windows"
+        }, {
+          "name" : "software-version",
+          "value" : "11"
+        }, {
+          "name" : "asset-type",
+          "value" : "operating-system"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "DB_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Jump box for Admin"
+        } ]
+      }, {
+        "uuid" : "004a098e-024f-4e56-8ad7-3cc65dd950fa",
+        "description" : "LDAP Active Directory Server",
+        "props" : [ {
+          "name" : "asset-id",
+          "value" : "004a098e-024f-4e56-8ad7-3cc65dd950fa"
+        }, {
+          "name" : "ipv4-address",
+          "value" : "0.0.0.0"
+        }, {
+          "name" : "ipv6-address",
+          "value" : "684D:1111:222:3333:4444:5555:6:77"
+        }, {
+          "name" : "virtual",
+          "value" : "yes"
+        }, {
+          "name" : "public",
+          "value" : "no"
+        }, {
+          "name" : "fqdn",
+          "value" : "AD01.AwesomeCloud.local"
+        }, {
+          "name" : "netbios-name",
+          "value" : "AD01"
+        }, {
+          "name" : "mac-address",
+          "value" : "AC-F5-7C-49-94-B4"
+        }, {
+          "name" : "software-name",
+          "value" : "Server 2019 Datacenter"
+        }, {
+          "name" : "software-version",
+          "value" : "2019"
+        }, {
+          "name" : "asset-type",
+          "value" : "directory-server"
+        }, {
+          "name" : "vendor-name",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "Microsoft"
+        }, {
+          "name" : "scan-type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "infrastructure"
+        }, {
+          "name" : "allows-authenticated-scan",
+          "value" : "yes"
+        }, {
+          "name" : "baseline-configuration-name",
+          "value" : "DB_Server_Config"
+        }, {
+          "name" : "is-scanned",
+          "value" : "yes"
+        }, {
+          "name" : "function",
+          "value" : "Jump box for Admin"
+        } ]
+      } ]
+    },
+    "control-implementation" : {
+      "description" : "# Security Control Implementations",
+      "implemented-requirements" : [ {
+        "uuid" : "41af2ac0-5e22-488d-a052-549a46ad181d",
+        "control-id" : "cm-8",
+        "props" : [ {
+          "name" : "control-origination",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "sp-system"
+        }, {
+          "name" : "implementation-status",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "implemented"
+        } ],
+        "set-parameters" : [ {
+          "param-id" : "cm-8_prm_1",
+          "values" : [ "the information contained in the FedRAMP Integrated Inventory Workbook Template" ]
+        }, {
+          "param-id" : "cm-8_prm_2",
+          "values" : [ "at least monthly" ],
+          "remarks" : "There is a FedRAMP constraint on this ODP: \"at least monthly\""
+        } ],
+        "responsible-roles" : [ {
+          "role-id" : "system-owner",
+          "party-uuids" : [ "ff83daa9-85ce-4191-8110-88e099105270" ]
+        } ],
+        "statements" : [ {
+          "statement-id" : "cm-8_smt",
+          "uuid" : "58b818b2-f282-4a7b-bc67-9cedc94fff57",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "67795913-5256-49af-9275-fbd4c3db0960",
+            "description" : "AwesomeCloud"
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.a",
+          "uuid" : "256453ac-da24-47fd-8693-047ee68610c6",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "3fc2560f-5dbf-44a6-8531-cbc682ae85fc",
+            "description" : "AwesomeCloud maintains the information system inventory to include the data elements outlined in the FedRAMP Integrated Inventory Workbook Template. Information system inventory items are documented within the AwesomeCloud System Security Plan (SSP). Monthly, the AwesomeCloud SSP is exported to OSCAL and submitted to the FedRAMP ConMon Web Service."
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.a.1",
+          "uuid" : "059e9814-d41f-4847-8d3e-001419fb0650",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "6decfc92-0d46-4fa5-a44c-62c4f2194669",
+            "description" : "The inventory: Accurately reflects the current information system, by documenting all of the mandatory fields contained within the FedRAMP Integrated Inventory Workbook Template"
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.a.2",
+          "uuid" : "89fa36e9-5432-41fa-a532-dbf252b5aa52",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "7736761a-26bf-4690-81ab-b12855a955fa",
+            "description" : "AwesomeCloud ensures that the inventory includes all components within the authorization boundary of the information system by reconciling the inventory with discovery scans performed by the vulnerability management tool (i.e. Tenable Nessus)"
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.a.3",
+          "uuid" : "aafa3cd2-7c12-4a73-85bb-ad5fcf94c9c1",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "ac3e7ecc-a2ca-447d-97e2-b4fe1a7a3547",
+            "description" : "AwesomeCloud ensures that the inventory is at the level of granularity deemed necessary for tracking and reporting, by capturing all of the required fields identified in the FedRAMP Integrated Inventory Workbook Template."
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.a.4",
+          "uuid" : "03e00899-39ee-41f0-8e3c-5b5791b67e88",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "8d3313f5-9dda-4f3a-b571-7033a485d2f6",
+            "description" : "Awesome ensure that the inventory contains the fields outlined within the FedRAMP Integrated Inventory Workbook Template."
+          } ]
+        }, {
+          "statement-id" : "cm-8_smt.b",
+          "uuid" : "e918de9b-a205-4e14-b256-4fe850fa5f61",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "b8d2ccbe-8391-4f7e-a434-db66eddd8a7f",
+            "description" : "Monthly, AwesomeCloud performs discovery scans using the vulnerability management tool (i.e. Tenable Nessus) and reconciles the inventory items from the discovery scan with the official inventory maintained within the AwesomeCloud GRC tool. The inventory is updated within the GRC tool to reflect the current state of the AwesomeCloud system."
+          } ]
+        }, {
+          "statement-id" : "cm-8_fr_smt.1",
+          "uuid" : "75a78c4c-efaf-4317-901a-0f315ea01016",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "ff3eb8d8-21d0-4456-9cb2-bd54ae06cfea",
+            "description" : "Monthly, the AwesomeCloud ISSO exports the SSP containing the inventory items to OSCAL and submits it to the FedRAMP using the FedRAMP Web Services API."
+          } ]
+        } ]
+      }, {
+        "uuid" : "da654bde-69d3-4a40-b0d9-8ac03aa533cf",
+        "control-id" : "ia-2",
+        "props" : [ {
+          "name" : "control-origination",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "sp-system"
+        }, {
+          "name" : "implementation-status",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "implemented"
+        } ],
+        "responsible-roles" : [ {
+          "role-id" : "system-owner",
+          "party-uuids" : [ "ff83daa9-85ce-4191-8110-88e099105270" ]
+        } ],
+        "statements" : [ {
+          "statement-id" : "ia-2_smt",
+          "uuid" : "fd6276a3-7c76-42f4-aab7-253d51da4f68",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "d5d1702f-d5e3-4cb3-92a9-faccff87ccf5",
+            "description" : "AwesomeCloud uses username and passwords to identify users for the website, jump boxes and other systems.\n\nUsernames and passwords are issued by the IT department according to AwesomeCloud Policy 12345."
+          } ]
+        } ]
+      }, {
+        "uuid" : "3ef6bf95-eeea-427f-a36a-9e5318038bae",
+        "control-id" : "ia-2.6",
+        "props" : [ {
+          "name" : "control-origination",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "sp-system"
+        }, {
+          "name" : "implementation-status",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "implemented"
+        } ],
+        "set-parameters" : [ {
+          "param-id" : "ia-02.06_odp.01",
+          "values" : [ "network", "remote" ]
+        }, {
+          "param-id" : "ia-02.06_odp.02",
+          "values" : [ "privileged accounts", "non-privileged accounts" ]
+        }, {
+          "param-id" : "ia-02.06_odp.03",
+          "values" : [ "FIPS-validated" ]
+        } ],
+        "responsible-roles" : [ {
+          "role-id" : "system-owner",
+          "party-uuids" : [ "ff83daa9-85ce-4191-8110-88e099105270" ]
+        } ],
+        "statements" : [ {
+          "statement-id" : "ia-2.6_smt.a",
+          "uuid" : "5f4e4fb9-1858-4a93-9a4c-b5d5cb65d64a",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "9c6e9028-9c1f-4ac7-a81f-3b1c66f767f9",
+            "description" : "AwesomeCloud provides a factor using a separate device for all accounts."
+          } ]
+        }, {
+          "statement-id" : "ia-2.6_smt.b",
+          "uuid" : "84bafa0e-57b3-4483-bcf8-52c314fae2ce",
+          "by-components" : [ {
+            "component-uuid" : "19a38c5f-e4af-494b-a482-acf22c28a448",
+            "uuid" : "da6528d5-47ca-4d04-a60d-09ad5e45ab4a",
+            "description" : "The device meets organizational requirements for cryptographic strength."
+          } ]
+        } ]
+      } ]
+    },
+    "back-matter" : {
+      "resources" : [ {
+        "uuid" : "51cbc2c8-7eb8-4ab1-a9fc-5a742508c968",
+        "title" : "Authorization Boundary Diagram",
+        "description" : "# AwesomeCloud System Boundary",
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloudHLA1.png?raw=true"
+        } ]
+      }, {
+        "uuid" : "2de57f8e-9611-47f6-a124-a2095265627a",
+        "title" : "Network Architecture Diagram",
+        "description" : "# AwesomeCLoud Network Architecture",
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloudHLA1.png?raw=true"
+        } ]
+      }, {
+        "uuid" : "5ed3e8a9-3fdd-49e6-a4a3-a1485a496e07",
+        "title" : "Data Flow Diagram",
+        "description" : "# AwesomeCloud Dataflow",
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloudHLA1.png?raw=true"
+        } ]
+      }, {
+        "uuid" : "33dce5f7-3b32-44d5-8aea-94d86507e20f",
+        "title" : "Laws and Regulations",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "fedramp-citations"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://www.fedramp.gov/assets/resources/templates/FedRAMP-Laws-Regulations-Standards-and-Guidance-Reference.xlsx"
+        } ]
+      }, {
+        "uuid" : "b680f64a-2c2f-4985-98fb-de68d181eaee",
+        "title" : "User Guide",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "user-guide"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloud-User-Guide.docx"
+        } ]
+      }, {
+        "uuid" : "1ec9b9e7-b65d-440d-b328-a55a6d45cf4c",
+        "title" : "Rules of Behavior",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "rules-of-behavior"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://www.fedramp.gov/assets/resources/templates/SSP-Appendix-F-Rules-of-Behavior-(RoB)-Template.docx"
+        } ]
+      }, {
+        "uuid" : "3cec07fa-070f-43b7-8f93-34addcbcc6e2",
+        "title" : "Contingency Plan",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "information-system-contingency-plan"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://www.fedramp.gov/assets/resources/templates/SSP-Appendix-G-Information-System-Contingency-Plan-(ISCP)-Template.docx"
+        } ]
+      }, {
+        "uuid" : "a91699d7-37cd-482a-87c0-6ad69e72399d",
+        "title" : "Configuration Management Plan",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "configuration-management-plan"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloud-CMP.docx"
+        } ]
+      }, {
+        "uuid" : "97363fce-ff4e-4390-9c3a-ff6110c2ff13",
+        "title" : "Incident Response Plan",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "incident-response-plan"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloud-IRP.docx"
+        } ]
+      }, {
+        "uuid" : "e5947269-fff6-4dc5-a4b9-e85be2965924",
+        "title" : "Separation of Duties Matrix",
+        "props" : [ {
+          "name" : "type",
+          "ns" : "https://fedramp.gov/ns/oscal",
+          "value" : "separation-of-duties-matrix"
+        } ],
+        "rlinks" : [ {
+          "href" : "https://github.com/GSA/fedramp-automation/blob/develop/src/content/awesome-cloud/artifacts/AwesomeCloud%20SOD%20Matrix.xlsx"
+        } ]
+      } ]
+    }
+  }
+}

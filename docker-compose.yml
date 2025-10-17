@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  oscal-ux:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oscal-ux
+    image: oscal-ux:latest
+    ports:
+      - "3000:3000"  # Frontend
+      - "8080:8080"  # Backend API
+    environment:
+      # Java options for backend
+      - JAVA_OPTS=-Xmx1g -Xms512m
+      # Node environment
+      - NODE_ENV=production
+      # Frontend configuration
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api
+      - NEXT_PUBLIC_USE_MOCK=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Optional: Nginx reverse proxy (uncomment if needed)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: oscal-ux-nginx
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - oscal-ux
+  #   restart: unless-stopped
+
+# Optional: Volumes for data persistence
+# volumes:
+#   oscal-data:
+#     driver: local

@@ -1,0 +1,5 @@
+{
+  "modelType": "catalog",
+  "format": "JSON",
+  "content": "{\"catalog\":{\"invalid\":\"this is not valid OSCAL\"}}"
+}

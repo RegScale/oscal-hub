@@ -1,0 +1,502 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'front-end/ui/**'
+      - '.github/workflows/frontend-ci-cd.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'front-end/ui/**'
+      - '.github/workflows/frontend-ci-cd.yml'
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: docker.io
+  IMAGE_NAME: oscal-ux
+
+jobs:
+  # Job 1: Run Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front-end/ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: front-end/ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run unit tests
+        id: unit-tests
+        run: |
+          npm test -- --reporter=json --outputFile=test-results.json || true
+          npm test 2>&1 | tee unit-test-output.txt
+        continue-on-error: true
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        id: e2e-tests
+        run: |
+          npm run test:e2e 2>&1 | tee e2e-test-output.txt
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            front-end/ui/test-results.json
+            front-end/ui/unit-test-output.txt
+            front-end/ui/e2e-test-output.txt
+            front-end/ui/playwright-report/
+          retention-days: 30
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: front-end/ui/playwright-report/
+          retention-days: 30
+
+      - name: Set test status
+        id: test-status
+        if: always()
+        run: |
+          if [ "${{ steps.unit-tests.outcome }}" == "success" ] && [ "${{ steps.e2e-tests.outcome }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "Tests passed successfully ✅"
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "Tests failed ❌"
+            exit 1
+          fi
+
+    outputs:
+      test-status: ${{ steps.test-status.outputs.status }}
+
+  # Job 2: Build Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    defaults:
+      run:
+        working-directory: front-end/ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front-end/ui
+          file: ./front-end/ui/Dockerfile
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Test Docker image
+        run: |
+          docker run -d --name test-container -p 3000:3000 ${{ env.IMAGE_NAME }}:test
+          sleep 10
+
+          # Test health endpoint
+          if curl -f http://localhost:3000/api/health; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed"
+            docker logs test-container
+            exit 1
+          fi
+
+          docker stop test-container
+          docker rm test-container
+
+      - name: Save Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:test | gzip > oscal-ux-image.tar.gz
+
+      - name: Upload Docker image artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: front-end/ui/oscal-ux-image.tar.gz
+          retention-days: 1
+
+  # Job 3: PR Comment with Test Results
+  comment-pr:
+    name: Comment Test Results on PR
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+      - name: Parse test results
+        id: parse-results
+        run: |
+          # Count test results
+          UNIT_TESTS_PASSED=$(grep -c "✓" test-results/unit-test-output.txt || echo "0")
+          E2E_TESTS_PASSED=$(grep -c "passed" test-results/e2e-test-output.txt || echo "0")
+          UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt || echo "0")
+          E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt || echo "0")
+
+          echo "unit_passed=$UNIT_TESTS_PASSED" >> $GITHUB_OUTPUT
+          echo "unit_failed=$UNIT_TESTS_FAILED" >> $GITHUB_OUTPUT
+          echo "e2e_passed=$E2E_TESTS_PASSED" >> $GITHUB_OUTPUT
+          echo "e2e_failed=$E2E_TESTS_FAILED" >> $GITHUB_OUTPUT
+
+          # Determine overall status
+          if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
+            echo "overall_status=✅ All tests passed" >> $GITHUB_OUTPUT
+          else
+            echo "overall_status=❌ Some tests failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Read test outputs
+            let unitOutput = '';
+            let e2eOutput = '';
+
+            try {
+              unitOutput = fs.readFileSync('test-results/unit-test-output.txt', 'utf8');
+            } catch (e) {
+              unitOutput = 'No unit test output available';
+            }
+
+            try {
+              e2eOutput = fs.readFileSync('test-results/e2e-test-output.txt', 'utf8');
+            } catch (e) {
+              e2eOutput = 'No E2E test output available';
+            }
+
+            const comment = `## 🧪 Test Results
+
+            **Overall Status:** ${{ steps.parse-results.outputs.overall_status }}
+
+            ### Unit Tests
+            - ✅ Passed: ${{ steps.parse-results.outputs.unit_passed }}
+            - ❌ Failed: ${{ steps.parse-results.outputs.unit_failed }}
+
+            ### E2E Tests
+            - ✅ Passed: ${{ steps.parse-results.outputs.e2e_passed }}
+            - ❌ Failed: ${{ steps.parse-results.outputs.e2e_failed }}
+
+            ### Docker Build
+            - Status: ${{ needs.build.result == 'success' && '✅ Success' || '❌ Failed' }}
+
+            <details>
+            <summary>📝 Unit Test Details</summary>
+
+            \`\`\`
+            ${unitOutput.split('\n').slice(-50).join('\n')}
+            \`\`\`
+
+            </details>
+
+            <details>
+            <summary>📝 E2E Test Details</summary>
+
+            \`\`\`
+            ${e2eOutput.split('\n').slice(-50).join('\n')}
+            \`\`\`
+
+            </details>
+
+            ---
+            *Workflow run: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('🧪 Test Results')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+  # Job 4: Claude Code Review
+  claude-review:
+    name: Claude AI Code Review
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get list of changed files in the PR
+          git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} > changed_files.txt
+
+          # Filter for TypeScript/JavaScript files in front-end/ui
+          grep -E '^front-end/ui/.*\.(ts|tsx|js|jsx)$' changed_files.txt > frontend_changed_files.txt || echo "No frontend files changed"
+
+          # Store for next step
+          echo "has_changes=$([ -s frontend_changed_files.txt ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Code Review
+        if: steps.changed-files.outputs.has_changes == 'true'
+        id: claude-review
+        run: |
+          # Prepare the diff for review
+          DIFF_CONTENT=$(git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- front-end/ui/)
+
+          # Prepare the prompt for Claude
+          cat > review_prompt.txt << 'EOF'
+          You are an expert code reviewer specializing in React, Next.js, TypeScript, and web application security.
+
+          Please review the following code changes and provide feedback on:
+
+          1. **Performance**: Identify any performance issues, inefficient algorithms, or unnecessary re-renders
+          2. **Security**: Check for security vulnerabilities, XSS risks, improper data handling, or exposed secrets
+          3. **Best Practices**: Ensure code follows React/Next.js best practices, proper TypeScript usage, and clean code principles
+          4. **Accessibility**: Verify WCAG 2.1 AA compliance, proper ARIA labels, and keyboard navigation
+          5. **Testing**: Suggest areas that need better test coverage
+
+          Format your review as a structured markdown document with sections for each category.
+          Be specific, cite line numbers or code snippets, and provide actionable recommendations.
+          Only report issues if you find them - don't create false positives.
+
+          CODE CHANGES:
+          EOF
+
+          echo "$DIFF_CONTENT" >> review_prompt.txt
+
+          # Call Claude API (requires ANTHROPIC_API_KEY secret)
+          REVIEW_RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-3-5-sonnet-20241022",
+              "max_tokens": 4096,
+              "messages": [{
+                "role": "user",
+                "content": "'"$(cat review_prompt.txt | jq -Rs .)"'"
+              }]
+            }')
+
+          # Extract review content
+          REVIEW_CONTENT=$(echo "$REVIEW_RESPONSE" | jq -r '.content[0].text')
+
+          # Save review to file
+          echo "$REVIEW_CONTENT" > claude_review.md
+
+          # Check if Claude found any issues
+          if echo "$REVIEW_CONTENT" | grep -qiE "(issue|warning|vulnerability|problem|concern)"; then
+            echo "issues_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "issues_found=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Comment Claude Review on PR
+        if: steps.changed-files.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            let reviewContent = '✅ No issues found by Claude AI code review.';
+
+            try {
+              reviewContent = fs.readFileSync('claude_review.md', 'utf8');
+            } catch (e) {
+              reviewContent = '⚠️ Claude code review could not be completed. Please check the workflow logs.';
+            }
+
+            const comment = `## 🤖 Claude AI Code Review
+
+            ${reviewContent}
+
+            ---
+            *AI-powered review by Claude | [Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('🤖 Claude AI Code Review')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+  # Job 5: Deploy to Docker Hub
+  deploy:
+    name: Deploy to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [test, build, claude-review]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.test.outputs.test-status == 'success'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front-end/ui
+          file: ./front-end/ui/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Create deployment summary
+        run: |
+          echo "## 🚀 Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pull Command:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Command:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 3000:3000 ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # Summary Job
+  summary:
+    name: CI/CD Summary
+    runs-on: ubuntu-latest
+    needs: [test, build, comment-pr, claude-review, deploy]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📊 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PR Comment | ${{ needs.comment-pr.result == 'success' && '✅ Posted' || needs.comment-pr.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Claude Review | ${{ needs.claude-review.result == 'success' && '✅ Completed' || needs.claude-review.result == 'skipped' && '⏭️ Skipped' || '⚠️ Warning' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result == 'success' && '✅ Deployed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY

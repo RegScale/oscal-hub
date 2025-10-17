@@ -10,3 +10,25 @@ target/
 pom.xml.releaseBackup
 release.properties
 .factorypath
+
+# Web interface logs
+backend.log
+backend-build.log
+frontend.log
+frontend-install.log
+
+# H2 database
+data/
+
+# Frontend dependencies and build
+front-end/node_modules/
+front-end/.next/
+front-end/out/
+front-end/.env*.local
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

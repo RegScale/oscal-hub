@@ -1,0 +1,7 @@
+{
+  "content": "{\"catalog\":{\"uuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"metadata\":{\"title\":\"Test Catalog\",\"last-modified\":\"2025-01-01T00:00:00.000Z\",\"version\":\"1.0\",\"oscal-version\":\"1.0.0\"}}}",
+  "fromFormat": "json",
+  "toFormat": "xml",
+  "modelType": "catalog",
+  "fileName": "test-catalog.json"
+}
