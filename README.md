@@ -12,6 +12,8 @@ OSCAL Hub consists of three integrated components:
 
 Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-java) and [OSCAL Java Library](https://github.com/usnistgov/liboscal-java/), OSCAL Hub makes it easier to work with OSCAL content across all seven model types.
 
+![OSCAL Hub Dashboard](oscal-hub.png)
+
 ## Features
 
 ### Core OSCAL Operations
