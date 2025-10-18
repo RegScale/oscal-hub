@@ -18,7 +18,6 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState(user?.email || '');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -64,7 +63,6 @@ export default function ProfilePage() {
       await apiClient.updateProfile(updates);
 
       setSuccessMessage('Profile updated successfully');
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
 
@@ -75,9 +73,9 @@ export default function ProfilePage() {
           window.location.reload();
         }, 1500);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Profile update error:', error);
-      setErrorMessage(error.message || 'Failed to update profile. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
     } finally {
       setIsUpdating(false);
     }

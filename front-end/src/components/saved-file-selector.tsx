@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
-import type { SavedFile, OscalFormat, OscalModelType } from '@/types/oscal';
+import type { SavedFile, OscalModelType } from '@/types/oscal';
 
 interface SavedFileSelectorProps {
   onFileSelect: (file: SavedFile, content: string) => void;

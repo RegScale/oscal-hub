@@ -145,7 +145,7 @@ class ApiClient {
    */
   async logout(): Promise<void> {
     try {
-      const response = await this.fetchWithTimeout(
+      await this.fetchWithTimeout(
         `${API_BASE_URL}/auth/logout`,
         {
           method: 'POST',
@@ -157,11 +157,11 @@ class ApiClient {
       // Clear local storage regardless of response
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-    } catch (error) {
+    } catch {
       // Clear local storage even if request fails
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      console.error('Logout request failed:', error);
+      console.error('Logout request failed');
     }
   }
 
@@ -296,7 +296,7 @@ class ApiClient {
       }
 
       return await response.json();
-    } catch (error) {
+    } catch {
       console.warn('Backend unavailable, using mock validation');
       return this.mockValidate(content, modelType, format);
     }
@@ -330,7 +330,7 @@ class ApiClient {
       }
 
       return await response.json();
-    } catch (error) {
+    } catch {
       console.warn('Backend unavailable, using mock conversion');
       return this.mockConvert(request);
     }
@@ -362,7 +362,7 @@ class ApiClient {
       }
 
       return await response.json();
-    } catch (error) {
+    } catch {
       console.warn('Backend unavailable, using mock profile resolution');
       return this.mockResolveProfile(request);
     }

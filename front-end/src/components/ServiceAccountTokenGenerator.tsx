@@ -35,9 +35,9 @@ export function ServiceAccountTokenGenerator() {
 
       setGeneratedToken(response);
       toast.success('Service account token generated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to generate token:', error);
-      toast.error(error.message || 'Failed to generate service account token');
+      toast.error(error instanceof Error ? error.message : 'Failed to generate service account token');
     } finally {
       setIsGenerating(false);
     }
@@ -144,7 +144,7 @@ export function ServiceAccountTokenGenerator() {
             <Alert className="border-green-500/50 bg-green-500/10">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
               <AlertDescription className="text-green-600">
-                Service account token generated successfully! Copy it now - it won't be shown again.
+                Service account token generated successfully! Copy it now - it won&apos;t be shown again.
               </AlertDescription>
             </Alert>
 

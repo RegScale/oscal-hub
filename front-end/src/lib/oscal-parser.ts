@@ -99,7 +99,7 @@ function extractCatalogFromXml(doc: Document): CatalogAnalysis {
   };
 }
 
-function countControlsInJsonGroup(group: any): number {
+function countControlsInJsonGroup(group: Record<string, unknown>): number {
   let count = 0;
 
   if (group.controls && Array.isArray(group.controls)) {
@@ -107,7 +107,7 @@ function countControlsInJsonGroup(group: any): number {
   }
 
   if (group.groups && Array.isArray(group.groups)) {
-    group.groups.forEach((subGroup: any) => {
+    group.groups.forEach((subGroup: Record<string, unknown>) => {
       count += countControlsInJsonGroup(subGroup);
     });
   }
@@ -115,27 +115,27 @@ function countControlsInJsonGroup(group: any): number {
   return count;
 }
 
-function extractCatalogFromJson(obj: any): CatalogAnalysis {
-  const catalog = obj.catalog;
+function extractCatalogFromJson(obj: Record<string, unknown>): CatalogAnalysis {
+  const catalog = obj.catalog as Record<string, unknown>;
   if (!catalog) {
     throw new Error('Invalid catalog JSON: No catalog property found');
   }
 
-  const metadata = catalog.metadata || {};
+  const metadata = (catalog.metadata as Record<string, unknown>) || {};
   const catalogMetadata: CatalogMetadata = {
-    title: metadata.title || 'Untitled Catalog',
-    version: metadata.version,
-    lastModified: metadata['last-modified'],
-    oscalVersion: metadata['oscal-version'],
-    published: metadata.published,
+    title: (metadata.title as string) || 'Untitled Catalog',
+    version: metadata.version as string | undefined,
+    lastModified: metadata['last-modified'] as string | undefined,
+    oscalVersion: metadata['oscal-version'] as string | undefined,
+    published: metadata.published as string | undefined,
   };
 
   const families: ControlFamily[] = [];
 
   if (catalog.groups && Array.isArray(catalog.groups)) {
-    catalog.groups.forEach((group: any) => {
-      const id = group.id || 'unknown';
-      const title = group.title || id;
+    catalog.groups.forEach((group: Record<string, unknown>) => {
+      const id = (group.id as string) || 'unknown';
+      const title = (group.title as string) || id;
       const controlCount = countControlsInJsonGroup(group);
 
       families.push({

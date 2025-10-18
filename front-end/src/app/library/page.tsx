@@ -20,8 +20,6 @@ import {
   FileText,
   Calendar,
   User,
-  TrendingUp,
-  Filter,
   ArrowLeft
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';

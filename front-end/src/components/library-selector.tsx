@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Library, Search, Download, Tag, Filter, Upload, RefreshCw, Eye, Star } from 'lucide-react';
+import { Library, Search, Download, Tag, Upload, RefreshCw, Eye } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
-import type { LibraryItem, OscalFormat } from '@/types/oscal';
+import type { LibraryItem } from '@/types/oscal';
 
 interface LibrarySelectorProps {
   onItemSelect: (item: LibraryItem, content: string) => void;

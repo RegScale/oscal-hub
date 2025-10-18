@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { Card } from '@/components/ui/card';
 import type { OscalFormat } from '@/types/oscal';
+import type { editor } from 'monaco-editor';
 
 interface CodeEditorProps {
   content: string;
@@ -22,8 +23,8 @@ export function CodeEditor({
   highlightLine,
   height = '600px',
 }: CodeEditorProps) {
-  const editorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;

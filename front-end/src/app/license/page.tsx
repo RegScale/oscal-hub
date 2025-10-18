@@ -29,7 +29,7 @@ export default function LicensePage() {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-            associated documentation files (the "Software"), to use the Software for <strong>non-commercial purposes only</strong>,
+            associated documentation files (the &quot;Software&quot;), to use the Software for <strong>non-commercial purposes only</strong>,
             subject to the following conditions:
           </p>
         </CardContent>
@@ -183,7 +183,7 @@ export default function LicensePage() {
           </p>
           <ol className="text-sm text-muted-foreground space-y-1 ml-4">
             <li>1. This license notice</li>
-            <li>2. Copyright notice: "OSCAL UX © 2025 RegScale, Inc."</li>
+            <li>2. Copyright notice: &quot;OSCAL UX © 2025 RegScale, Inc.&quot;</li>
             <li>3. Link to the original source repository</li>
             <li>4. Acknowledgment that this is a contribution from RegScale</li>
           </ol>
@@ -254,7 +254,7 @@ export default function LicensePage() {
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
-            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+            THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
             INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
             PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
             FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,

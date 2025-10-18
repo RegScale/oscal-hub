@@ -45,7 +45,7 @@ Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-
 
 ### Prerequisites
 
-- **Java 11+** - Required for backend and CLI
+- **Java 21** - Required for backend and CLI (LTS version)
 - **Maven 3.8.4+** - For building Java components
 - **Node.js 18+** - For frontend development
 
@@ -232,8 +232,8 @@ az group create --name oscal-hub-rg --location eastus
 # Create App Service plan
 az appservice plan create --name oscal-hub-plan --resource-group oscal-hub-rg --sku B1 --is-linux
 
-# Create backend web app (Java 11)
-az webapp create --resource-group oscal-hub-rg --plan oscal-hub-plan --name oscal-hub-backend --runtime "JAVA:11-java11"
+# Create backend web app (Java 21)
+az webapp create --resource-group oscal-hub-rg --plan oscal-hub-plan --name oscal-hub-backend --runtime "JAVA:21-java21"
 
 # Configure environment variables
 az webapp config appsettings set --resource-group oscal-hub-rg --name oscal-hub-backend --settings \
@@ -276,10 +276,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Java 11
+      - name: Set up Java 21
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
+          java-version: '21'
           distribution: 'temurin'
       - name: Build with Maven
         run: cd back-end && mvn clean package -DskipTests
@@ -474,7 +474,7 @@ tail -f backend.log
 
 Common issues:
 - Port 8080 already in use: Change in `application.properties`
-- Java version: Requires Java 11+
+- Java version: Requires Java 21 (LTS)
 - Maven not found: Install via SDKMAN or system package manager
 
 ### Frontend errors

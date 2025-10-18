@@ -401,7 +401,7 @@ export interface Asset {
   softwareName: string;
   softwareVersion: string;
   vendorName: string;
-  isScanned: boolean;
+  scanned: boolean;
 }
 
 export interface SspVisualizationData {

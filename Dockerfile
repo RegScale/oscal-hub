@@ -5,7 +5,7 @@
 # =============================================================================
 # Stage 1: Build Backend (Spring Boot with Maven)
 # =============================================================================
-FROM maven:3.9-eclipse-temurin-11 AS backend-builder
+FROM maven:3.9-eclipse-temurin-21 AS backend-builder
 
 WORKDIR /build
 
@@ -49,7 +49,7 @@ RUN npm run build
 # =============================================================================
 # Stage 4: Runtime - Combine both applications
 # =============================================================================
-FROM eclipse-temurin:11-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # Install Node.js for Next.js standalone server
 RUN apt-get update && \

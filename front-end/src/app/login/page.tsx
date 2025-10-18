@@ -46,8 +46,8 @@ export default function LoginPage() {
         }
         await register(username, password, email);
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
       setIsLoading(false);
     }
   };

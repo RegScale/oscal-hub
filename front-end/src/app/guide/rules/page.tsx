@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
   ShieldCheck,
-  AlertCircle,
   AlertTriangle,
   Info,
   CheckCircle,
@@ -165,10 +164,10 @@ export default function RulesGuidePage() {
                     Custom Rules Management
                   </Link> page
                 </li>
-                <li>Click the "New Rule" button</li>
+                <li>Click the &quot;New Rule&quot; button</li>
                 <li>Fill in the required information:
                   <ul className="list-disc pl-6 mt-2 space-y-1">
-                    <li><strong className="text-foreground">Rule ID:</strong> Unique identifier (e.g., "custom-rule-001")</li>
+                    <li><strong className="text-foreground">Rule ID:</strong> Unique identifier (e.g., &quot;custom-rule-001&quot;)</li>
                     <li><strong className="text-foreground">Name:</strong> Descriptive name for the rule</li>
                     <li><strong className="text-foreground">Description:</strong> What the rule validates</li>
                     <li><strong className="text-foreground">Rule Type:</strong> Type of validation (required-field, pattern-match, etc.)</li>
@@ -177,7 +176,7 @@ export default function RulesGuidePage() {
                     <li><strong className="text-foreground">Applicable Model Types:</strong> Which OSCAL models this rule applies to</li>
                   </ul>
                 </li>
-                <li>Click "Create Rule" to save</li>
+                <li>Click &quot;Create Rule&quot; to save</li>
               </ol>
               <div className="pt-4">
                 <Link href="/rules/custom">
@@ -289,7 +288,7 @@ export default function RulesGuidePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 text-muted-foreground">
-                <p className="mb-2">Issues that should be addressed but don't prevent processing:</p>
+                <p className="mb-2">Issues that should be addressed but don&apos;t prevent processing:</p>
                 <ul className="list-disc pl-6 space-y-1">
                   <li>Recommended best practices not followed</li>
                   <li>Potential quality issues</li>
@@ -417,7 +416,7 @@ export default function RulesGuidePage() {
               <div className="space-y-4 text-muted-foreground">
                 <div>
                   <h4 className="font-semibold text-foreground mb-2">Start with Built-in Rules</h4>
-                  <p>Review all built-in rules to understand what's already being validated before creating custom rules.</p>
+                  <p>Review all built-in rules to understand what&apos;s already being validated before creating custom rules.</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-foreground mb-2">Use Descriptive Names</h4>
@@ -433,7 +432,7 @@ export default function RulesGuidePage() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-foreground mb-2">Document Your Rules</h4>
-                  <p>Include detailed descriptions explaining what the rule checks and why it's important.</p>
+                  <p>Include detailed descriptions explaining what the rule checks and why it&apos;s important.</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-foreground mb-2">Test Before Enabling</h4>

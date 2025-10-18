@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Search, ShieldCheck, AlertCircle, AlertTriangle, Info, Filter, Settings } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import type { ValidationRulesResponse, ValidationRule, OscalModelType } from '@/types/oscal';
+import type { ValidationRulesResponse, OscalModelType } from '@/types/oscal';
 
 const modelTypeLabels: Record<OscalModelType, string> = {
   'catalog': 'Catalog',
@@ -24,12 +24,6 @@ const severityIcons = {
   error: <AlertCircle className="h-4 w-4 text-red-500" />,
   warning: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
   info: <Info className="h-4 w-4 text-blue-500" />,
-};
-
-const severityColors = {
-  error: 'text-red-500',
-  warning: 'text-yellow-500',
-  info: 'text-blue-500',
 };
 
 export default function ValidationRulesPage() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Play, CheckCircle2, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -201,20 +201,13 @@ export default function BatchOperationsPage() {
 
                 {/* Format Settings */}
                 {operationType === 'CONVERT' ? (
-                  <>
-                    <FormatSelector
-                      label="From Format"
-                      value={fromFormat}
-                      onChange={setFromFormat}
-                      disabled={operationStatus !== 'idle'}
-                    />
-                    <FormatSelector
-                      label="To Format"
-                      value={toFormat}
-                      onChange={setToFormat}
-                      disabled={operationStatus !== 'idle'}
-                    />
-                  </>
+                  <FormatSelector
+                    fromFormat={fromFormat}
+                    toFormat={toFormat}
+                    onFromFormatChange={setFromFormat}
+                    onToFormatChange={setToFormat}
+                    disabled={operationStatus !== 'idle'}
+                  />
                 ) : (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Detected Format</label>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Card,
@@ -40,7 +39,6 @@ import {
   AlertCircle,
   Loader2,
   Search,
-  Filter,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -89,7 +87,6 @@ const CATEGORIES = [
 ];
 
 export default function CustomRulesPage() {
-  const router = useRouter();
   const [customRules, setCustomRules] = useState<CustomRuleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,8 +214,8 @@ export default function CustomRulesPage() {
 
       await loadCustomRules();
       setDialogOpen(false);
-    } catch (err: any) {
-      setFormError(err.message || 'Failed to save rule. Please try again.');
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to save rule. Please try again.');
       console.error('Error saving rule:', err);
     } finally {
       setSubmitting(false);
