@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Shield } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, Library, BarChart3 } from 'lucide-react';
 
 export function Hero() {
   return (
@@ -66,12 +66,12 @@ export function Hero() {
         <Card className="border-primary/20">
           <CardHeader className="space-y-4">
             <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <GitMerge className="h-8 w-8 text-primary" />
+              <Library className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-xl mb-2">Resolve</CardTitle>
+              <CardTitle className="text-xl mb-2">Library</CardTitle>
               <CardDescription>
-                Resolve OSCAL profiles into catalogs with intelligent control selection
+                Browse, share, and download example OSCAL documents from the community
               </CardDescription>
             </div>
           </CardHeader>
@@ -80,12 +80,12 @@ export function Hero() {
         <Card className="border-primary/20">
           <CardHeader className="space-y-4">
             <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <Shield className="h-8 w-8 text-primary" />
+              <BarChart3 className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-xl mb-2">Manage</CardTitle>
+              <CardTitle className="text-xl mb-2">Visualize</CardTitle>
               <CardDescription>
-                Track operation history, manage files, and create custom validation rules
+                Explore and understand OSCAL documents through interactive data visualizations
               </CardDescription>
             </div>
           </CardHeader>

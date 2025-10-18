@@ -67,6 +67,16 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Tools</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
+                <Link href="/library" className="hover:text-foreground transition-colors">
+                  Library
+                </Link>
+              </li>
+              <li>
+                <Link href="/visualize" className="hover:text-foreground transition-colors">
+                  Visualize
+                </Link>
+              </li>
+              <li>
                 <Link href="/validate" className="hover:text-foreground transition-colors">
                   Validate Documents
                 </Link>
@@ -76,16 +86,6 @@ export function Footer() {
                   Convert Formats
                 </Link>
               </li>
-              <li>
-                <Link href="/resolve" className="hover:text-foreground transition-colors">
-                  Resolve Profiles
-                </Link>
-              </li>
-              <li>
-                <Link href="/batch" className="hover:text-foreground transition-colors">
-                  Batch Processing
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -93,7 +93,7 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4">About</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              OSCAL UX provides a modern, user-friendly interface for working with OSCAL documents,
+              OSCAL Hub provides a modern, user-friendly interface for working with OSCAL documents,
               making security compliance documentation more accessible.
             </p>
             <div className="text-xs text-muted-foreground space-y-1">
@@ -116,7 +116,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-border text-center text-xs text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} OSCAL UX. Open source contribution from{' '}
+            © {new Date().getFullYear()} OSCAL Hub. Open source contribution from{' '}
             <a
               href="https://www.regscale.com"
               target="_blank"

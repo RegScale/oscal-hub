@@ -212,7 +212,15 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-12 px-4">
-        <div className="flex items-center justify-between mb-8">
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/')}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors px-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
           <div className="flex items-center">
             <Library className="h-10 w-10 text-primary mr-4" />
             <div>
@@ -222,14 +230,6 @@ export default function LibraryPage() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
         </div>
 
         {error && (

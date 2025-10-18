@@ -664,7 +664,7 @@ class ApiClient {
         `${API_BASE_URL}/rules`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -689,7 +689,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/model/${modelType}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -714,7 +714,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/stats`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -739,7 +739,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/categories`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -764,7 +764,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -789,7 +789,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/${id}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -817,7 +817,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/rule/${ruleId}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -845,7 +845,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
           body: JSON.stringify(request),
         },
         5000
@@ -872,7 +872,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/${id}`,
         {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
           body: JSON.stringify(request),
         },
         5000
@@ -899,7 +899,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/${id}`,
         {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -922,7 +922,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/${id}/toggle`,
         {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -947,7 +947,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/enabled`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -972,7 +972,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/category/${category}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -997,7 +997,7 @@ class ApiClient {
         `${API_BASE_URL}/rules/custom/model/${modelType}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );

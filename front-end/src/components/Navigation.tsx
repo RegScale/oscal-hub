@@ -23,19 +23,11 @@ export function Navigation() {
           <div className="flex items-center space-x-4">
             {isAuthenticated && user ? (
               <>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">{user.username}</span>
-                </div>
                 <Link href="/profile">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center space-x-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Profile</span>
-                  </Button>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">{user.username}</span>
+                  </div>
                 </Link>
                 <Button
                   variant="outline"

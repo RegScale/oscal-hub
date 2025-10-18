@@ -134,6 +134,48 @@ export default function UserGuidePage() {
                   <li>Statistics dashboard with success rates</li>
                 </ul>
               </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">✅ OSCAL Library</h3>
+                <p className="text-muted-foreground mb-2">
+                  Browse, share, and download example OSCAL documents from the community.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
+                  <li>Upload OSCAL documents to share with the community</li>
+                  <li>Browse and download example documents</li>
+                  <li>Version control for uploaded documents</li>
+                  <li>Search by type, tag, or keyword</li>
+                  <li>View analytics and popular downloads</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">✅ Data Visualization</h3>
+                <p className="text-muted-foreground mb-2">
+                  Explore and understand OSCAL documents through interactive visualizations.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
+                  <li>Visual representation of catalog controls</li>
+                  <li>Control family distribution charts</li>
+                  <li>Interactive data exploration</li>
+                  <li>Export visualization data</li>
+                  <li>Support for all OSCAL model types</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">✅ Service Account Tokens</h3>
+                <p className="text-muted-foreground mb-2">
+                  Generate JWT tokens for programmatic API access from external applications.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
+                  <li>Create named service account tokens</li>
+                  <li>Configurable expiration periods (1-3650 days)</li>
+                  <li>Secure JWT-based authentication</li>
+                  <li>Use tokens for CI/CD pipelines and automation</li>
+                  <li>Full API access with service account tokens</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
 
@@ -346,6 +388,226 @@ export default function UserGuidePage() {
                   </p>
                 </li>
               </ol>
+            </CardContent>
+          </Card>
+
+          {/* How to Use Library */}
+          <Card>
+            <CardHeader>
+              <CardTitle>How to Use the OSCAL Library</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <h3 className="font-semibold text-lg mb-2">Browsing the Library</h3>
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground mb-6">
+                <li>
+                  <span className="font-medium text-foreground">Navigate to Library</span>
+                  <p className="ml-6 mt-1">Click the &quot;Library&quot; card on the dashboard.</p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Browse Items</span>
+                  <p className="ml-6 mt-1">
+                    View all available OSCAL documents in the library. Each card shows the title,
+                    type, tags, and download count.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Download Items</span>
+                  <p className="ml-6 mt-1">
+                    Click the &quot;Download&quot; button on any item to save it to your computer,
+                    or click the card to view detailed information.
+                  </p>
+                </li>
+              </ol>
+
+              <h3 className="font-semibold text-lg mb-2">Uploading to the Library</h3>
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground mb-6">
+                <li>
+                  <span className="font-medium text-foreground">Go to Upload Tab</span>
+                  <p className="ml-6 mt-1">Click the &quot;Upload&quot; tab in the Library page.</p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Fill in Metadata</span>
+                  <p className="ml-6 mt-1">
+                    Provide a title, description, OSCAL type, and optional tags for your document.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Select File</span>
+                  <p className="ml-6 mt-1">
+                    Choose your OSCAL file (JSON, XML, or YAML format). The format will be auto-detected.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Upload</span>
+                  <p className="ml-6 mt-1">
+                    Click &quot;Upload to Library&quot;. Your document will be added to the community library.
+                  </p>
+                </li>
+              </ol>
+
+              <h3 className="font-semibold text-lg mb-2">Searching the Library</h3>
+              <p className="text-muted-foreground">
+                Use the Search tab to filter library items by keyword, OSCAL type, or tag.
+                The Analytics tab provides insights into library usage and popular downloads.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* How to Use Visualization */}
+          <Card>
+            <CardHeader>
+              <CardTitle>How to Visualize OSCAL Documents</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">Navigate to Visualize</span>
+                  <p className="ml-6 mt-1">Click the &quot;Visualize&quot; card on the dashboard.</p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Upload Your Document</span>
+                  <p className="ml-6 mt-1">
+                    Upload an OSCAL document (JSON, XML, or YAML). The format will be auto-detected.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Select Model Type</span>
+                  <p className="ml-6 mt-1">
+                    Choose the appropriate OSCAL model type. The visualization will be customized
+                    based on the document structure.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Generate Visualization</span>
+                  <p className="ml-6 mt-1">
+                    Click &quot;Visualize Document&quot;. Interactive charts and graphs will be
+                    generated showing document structure, control families, and relationships.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Explore the Data</span>
+                  <p className="ml-6 mt-1">
+                    Interact with the visualizations to explore your OSCAL data. For catalogs,
+                    view control family distribution. For SSPs, see implementation status.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Export Data</span>
+                  <p className="ml-6 mt-1">
+                    Download the visualization data or export charts for presentations and reports.
+                  </p>
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+
+          {/* How to Use Service Account Tokens */}
+          <Card>
+            <CardHeader>
+              <CardTitle>How to Create and Use Service Account Tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <h3 className="font-semibold text-lg mb-2">Creating a Service Account Token</h3>
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground mb-6">
+                <li>
+                  <span className="font-medium text-foreground">Navigate to Profile</span>
+                  <p className="ml-6 mt-1">
+                    Click your username in the top-right corner and select &quot;Profile&quot;.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Scroll to Service Account Tokens</span>
+                  <p className="ml-6 mt-1">
+                    Find the &quot;Service Account Tokens&quot; section at the bottom of the profile page.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Enter Token Details</span>
+                  <p className="ml-6 mt-1">
+                    Provide a descriptive name (e.g., &quot;CI/CD Pipeline&quot;) and set the
+                    expiration period in days (1-3650 days).
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Generate Token</span>
+                  <p className="ml-6 mt-1">
+                    Click &quot;Generate Service Account Token&quot;. The token will be displayed
+                    once and cannot be retrieved later.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Copy and Store Securely</span>
+                  <p className="ml-6 mt-1">
+                    Copy the token immediately and store it in a secure location such as a password
+                    manager or secrets vault. Never commit tokens to version control.
+                  </p>
+                </li>
+              </ol>
+
+              <h3 className="font-semibold text-lg mb-2">Using Service Account Tokens with the API</h3>
+              <p className="text-muted-foreground mb-4">
+                Service account tokens provide full API access and can be used for automation,
+                CI/CD pipelines, and external applications.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Example: Validate a Document</h4>
+                  <code className="block bg-muted p-3 rounded text-sm font-mono whitespace-pre overflow-x-auto">
+{`curl -X POST http://localhost:8080/api/validate \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \\
+  -d '{
+    "content": "{ \\"catalog\\": { ... } }",
+    "modelType": "catalog",
+    "format": "JSON",
+    "fileName": "my-catalog.json"
+  }'`}
+                  </code>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Example: Convert Format</h4>
+                  <code className="block bg-muted p-3 rounded text-sm font-mono whitespace-pre overflow-x-auto">
+{`curl -X POST http://localhost:8080/api/convert \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \\
+  -d '{
+    "content": "<catalog>...</catalog>",
+    "fromFormat": "XML",
+    "toFormat": "JSON",
+    "modelType": "catalog"
+  }'`}
+                  </code>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Security Best Practices</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-4">
+                    <li>Store tokens in environment variables or secure vaults</li>
+                    <li>Use different tokens for different applications/environments</li>
+                    <li>Set appropriate expiration periods based on usage</li>
+                    <li>Rotate tokens regularly for better security</li>
+                    <li>Never share tokens or commit them to source control</li>
+                    <li>Revoke tokens immediately if compromised</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">API Documentation</h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    For complete API documentation with all available endpoints, visit:
+                  </p>
+                  <a
+                    href="http://localhost:8080/swagger-ui/index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline text-sm"
+                  >
+                    http://localhost:8080/swagger-ui/index.html
+                  </a>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

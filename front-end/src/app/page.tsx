@@ -217,7 +217,7 @@ export default function Dashboard() {
             </CardHeader>
             <div className="px-6 pb-6 space-y-3 text-muted-foreground">
               <p>
-                Welcome to OSCAL UX! This tool provides a modern, visual interface for working with OSCAL documents.
+                Welcome to OSCAL Hub! This tool provides a modern, visual interface for working with OSCAL documents.
               </p>
               <div className="pt-2 space-y-2">
                 <div>
