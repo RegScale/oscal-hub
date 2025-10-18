@@ -25,6 +25,8 @@ import type {
   LibraryVersionRequest,
   LibraryTag,
   LibraryAnalytics,
+  ServiceAccountTokenRequest,
+  ServiceAccountTokenResponse,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -1418,6 +1420,35 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to get popular tags:', error);
       return [];
+    }
+  }
+
+  /**
+   * Generate a service account JWT token
+   */
+  async generateServiceAccountToken(
+    request: ServiceAccountTokenRequest
+  ): Promise<ServiceAccountTokenResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/service-account-token`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate service account token');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to generate service account token:', error);
+      throw error;
     }
   }
 

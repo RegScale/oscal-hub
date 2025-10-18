@@ -4,6 +4,9 @@ import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
+import gov.nist.oscal.tools.api.model.ServiceAccountTokenRequest;
+import gov.nist.oscal.tools.api.model.ServiceAccountTokenResponse;
+import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -16,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +30,9 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(
         summary = "Register new user",
@@ -181,6 +188,62 @@ public class AuthController {
             response.put("message", "Profile updated successfully");
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Generate Service Account Token",
+        description = "Generate a service account JWT token with custom name and expiration. This token is not stored and must be saved by the user."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Token generated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/service-account-token")
+    public ResponseEntity<?> generateServiceAccountToken(@Valid @RequestBody ServiceAccountTokenRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            String username = authentication.getName();
+
+            // Calculate expiration date
+            java.util.Date expirationDate = authService.generateServiceAccountToken(
+                    username,
+                    request.getTokenName(),
+                    request.getExpirationDays()
+            );
+
+            // Generate the token using JwtUtil
+            String token = jwtUtil.generateServiceAccountToken(
+                    username,
+                    request.getTokenName(),
+                    request.getExpirationDays()
+            );
+
+            // Format the expiration date
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            String expiresAt = dateFormat.format(expirationDate);
+
+            ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
+                    token,
+                    request.getTokenName(),
+                    username,
+                    expiresAt,
+                    request.getExpirationDays()
+            );
 
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {

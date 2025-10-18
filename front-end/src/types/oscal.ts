@@ -303,3 +303,17 @@ export interface LibraryAnalytics {
     downloadCount: number;
   }>;
 }
+
+// Service Account Token Types
+export interface ServiceAccountTokenRequest {
+  tokenName: string;
+  expirationDays: number;
+}
+
+export interface ServiceAccountTokenResponse {
+  token: string;
+  tokenName: string;
+  username: string;
+  expiresAt: string; // ISO 8601 date string
+  expirationDays: number;
+}

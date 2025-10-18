@@ -133,4 +133,24 @@ public class AuthService {
 
         return userRepository.save(user);
     }
+
+    /**
+     * Generate a service account token for the current user
+     * @param username The username to generate the token for
+     * @param tokenName The name/description for the service account token
+     * @param expirationDays Number of days until the token expires
+     * @return Date when the token expires
+     */
+    public java.util.Date generateServiceAccountToken(String username, String tokenName, int expirationDays) {
+        // Validate user exists
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Calculate expiration date
+        java.util.Date now = new java.util.Date();
+        long expirationMillis = (long) expirationDays * 24 * 60 * 60 * 1000;
+        java.util.Date expirationDate = new java.util.Date(now.getTime() + expirationMillis);
+
+        return expirationDate;
+    }
 }

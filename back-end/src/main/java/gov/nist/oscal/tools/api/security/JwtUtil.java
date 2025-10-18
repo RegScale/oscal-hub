@@ -76,4 +76,30 @@ public class JwtUtil {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
+
+    /**
+     * Generate a service account token with custom expiration and token name
+     * @param username The username for the token
+     * @param tokenName The name/description of the service account token
+     * @param expirationDays Number of days until the token expires
+     * @return JWT token string
+     */
+    public String generateServiceAccountToken(String username, String tokenName, int expirationDays) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenName", tokenName);
+        claims.put("tokenType", "service-account");
+
+        Date now = new Date();
+        // Convert days to milliseconds: days * 24 * 60 * 60 * 1000
+        long expirationMillis = (long) expirationDays * 24 * 60 * 60 * 1000;
+        Date expirationDate = new Date(now.getTime() + expirationMillis);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setIssuedAt(now)
+                .setExpiration(expirationDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
 }

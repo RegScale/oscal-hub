@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { ServiceAccountTokenGenerator } from '@/components/ServiceAccountTokenGenerator';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -246,6 +247,11 @@ export default function ProfilePage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Service Account Token Generator */}
+          <div className="mt-6">
+            <ServiceAccountTokenGenerator />
+          </div>
         </div>
       </div>
     </ProtectedRoute>
