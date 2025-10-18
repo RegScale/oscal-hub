@@ -10,11 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { FileUploader } from '@/components/file-uploader';
 import { SavedFileSelector, SavedFileSelectorRef } from '@/components/saved-file-selector';
+import { LibrarySelector, LibrarySelectorRef } from '@/components/library-selector';
 import { CatalogVisualization } from '@/components/CatalogVisualization';
 import { analyzeCatalog, type CatalogAnalysis } from '@/lib/oscal-parser';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { toast } from 'sonner';
-import type { OscalFormat, SavedFile } from '@/types/oscal';
+import type { OscalFormat, SavedFile, LibraryItem } from '@/types/oscal';
 import { apiClient } from '@/lib/api-client';
 
 export default function VisualizePage() {
@@ -25,6 +26,7 @@ export default function VisualizePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
+  const libraryRef = useRef<LibrarySelectorRef>(null);
 
   const handleFileSelect = async (file: File, content: string) => {
     setSelectedFile(file);
@@ -64,6 +66,39 @@ export default function VisualizePage() {
 
     // Convert format to lowercase for consistency
     const normalizedFormat = file.format.toLowerCase() as OscalFormat;
+
+    setSelectedFile(virtualFile);
+    setFileContent(content);
+    setCatalogAnalysis(null);
+    setError(null);
+    setFormat(normalizedFormat);
+
+    // Auto-trigger visualization
+    setIsAnalyzing(true);
+    toast.info('Analyzing document...');
+
+    try {
+      const analysis = analyzeCatalog(content, normalizedFormat);
+      setCatalogAnalysis(analysis);
+      toast.success('Document analyzed successfully!');
+    } catch (err) {
+      console.error('Analysis error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze document';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleLibraryItemSelect = async (item: LibraryItem, content: string) => {
+    // Create a virtual File object for consistency
+    const fileName = item.currentVersion?.fileName || `${item.title}.json`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const virtualFile = new File([blob], fileName, { type: 'text/plain' });
+
+    // Convert format to lowercase for consistency
+    const normalizedFormat = (item.currentVersion?.format || 'json').toLowerCase() as OscalFormat;
 
     setSelectedFile(virtualFile);
     setFileContent(content);
@@ -149,9 +184,10 @@ export default function VisualizePage() {
             {/* Left column - Upload and settings */}
             <div className="lg:col-span-1 space-y-6">
               <Tabs defaultValue="upload" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="upload">Upload Document</TabsTrigger>
-                  <TabsTrigger value="saved">Saved Documents</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="upload">Upload</TabsTrigger>
+                  <TabsTrigger value="saved">Saved</TabsTrigger>
+                  <TabsTrigger value="library">Library</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="upload" className="mt-4">
@@ -198,6 +234,15 @@ export default function VisualizePage() {
                   <SavedFileSelector
                     ref={savedFilesRef}
                     onFileSelect={handleSavedFileSelect}
+                    onUploadNew={handleClear}
+                    showUploadButton={false}
+                  />
+                </TabsContent>
+
+                <TabsContent value="library" className="mt-4">
+                  <LibrarySelector
+                    ref={libraryRef}
+                    onItemSelect={handleLibraryItemSelect}
                     onUploadNew={handleClear}
                     showUploadButton={false}
                   />
