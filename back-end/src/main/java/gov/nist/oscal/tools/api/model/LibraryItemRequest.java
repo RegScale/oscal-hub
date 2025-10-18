@@ -1,7 +1,7 @@
 package gov.nist.oscal.tools.api.model;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Set;
 
 /**

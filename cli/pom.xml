@@ -100,9 +100,9 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 
 		<!-- compiler settings -->
-		<maven.compiler.source>11</maven.compiler.source>
-		<maven.compiler.target>11</maven.compiler.target>
-		<maven.compiler.release>11</maven.compiler.release>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+		<maven.compiler.release>21</maven.compiler.release>
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
@@ -111,12 +111,12 @@
 		<!-- other dependencies -->
 		<dependency.auto-service.version>1.1.1</dependency.auto-service.version>
 		<dependency.commons-cli.version>1.5.0</dependency.commons-cli.version>
-		<dependency.commons-io.version>2.15.1</dependency.commons-io.version>
+		<dependency.commons-io.version>2.17.0</dependency.commons-io.version>
 		<dependency.everit-json.version>1.14.4</dependency.everit-json.version>
 		<dependency.jline.version>3.21.0</dependency.jline.version>
-		<dependency.log4j2.version>2.20.0</dependency.log4j2.version>
+		<dependency.log4j2.version>2.24.1</dependency.log4j2.version>
 		<dependency.spotbugs-annotations.version>4.7.3</dependency.spotbugs-annotations.version>
-		<dependency.saxon-he.version>12.4</dependency.saxon-he.version>
+		<dependency.saxon-he.version>12.5</dependency.saxon-he.version>
 		<dependency.xmlresolver.version>5.2.2</dependency.xmlresolver.version>
 
 		<plugin.license.version>4.2</plugin.license.version>

@@ -1,6 +1,6 @@
 package gov.nist.oscal.tools.api.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
