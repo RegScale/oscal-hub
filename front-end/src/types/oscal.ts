@@ -317,3 +317,101 @@ export interface ServiceAccountTokenResponse {
   expiresAt: string; // ISO 8601 date string
   expirationDays: number;
 }
+
+// SSP Visualization Types
+export interface SspVisualizationRequest {
+  content: string;
+  format: OscalFormat;
+  fileName?: string;
+}
+
+export interface SystemInfo {
+  uuid: string;
+  name: string;
+  shortName: string;
+  description: string;
+  status: string;
+  systemIds: Array<{
+    identifierType: string;
+    id: string;
+  }>;
+}
+
+export interface SecurityCategorization {
+  confidentiality: string;
+  integrity: string;
+  availability: string;
+  overall: string;
+}
+
+export interface InformationType {
+  uuid: string;
+  title: string;
+  description: string;
+  categorizations: string[];
+  confidentiality: {
+    base: string;
+    selected: string;
+  };
+  integrity: {
+    base: string;
+    selected: string;
+  };
+  availability: {
+    base: string;
+    selected: string;
+  };
+}
+
+export interface PersonnelRole {
+  roleId: string;
+  roleTitle: string;
+  roleShortName: string;
+  assignedPersonnel: Array<{
+    uuid: string;
+    name: string;
+    jobTitle: string;
+    type: string;
+  }>;
+}
+
+export interface ControlFamilyStatus {
+  familyId: string;
+  familyName: string;
+  totalControls: number;
+  statusCounts: Record<string, number>;
+  controls: Array<{
+    controlId: string;
+    implementationStatus: string;
+    controlOrigination: string;
+  }>;
+}
+
+export interface Asset {
+  uuid: string;
+  description: string;
+  assetType: string;
+  function: string;
+  fqdn: string;
+  ipv4Address: string;
+  ipv6Address: string;
+  macAddress: string;
+  virtual: boolean;
+  publicAccess: boolean;
+  softwareName: string;
+  softwareVersion: string;
+  vendorName: string;
+  isScanned: boolean;
+}
+
+export interface SspVisualizationData {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  systemInfo: SystemInfo;
+  categorization: SecurityCategorization;
+  informationTypes: InformationType[];
+  personnel: PersonnelRole[];
+  controlsByFamily: Record<string, ControlFamilyStatus>;
+  assets: Asset[];
+}

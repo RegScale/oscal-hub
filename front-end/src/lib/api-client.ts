@@ -27,6 +27,7 @@ import type {
   LibraryAnalytics,
   ServiceAccountTokenRequest,
   ServiceAccountTokenResponse,
+  SspVisualizationData,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -364,6 +365,40 @@ class ApiClient {
     } catch (error) {
       console.warn('Backend unavailable, using mock profile resolution');
       return this.mockResolveProfile(request);
+    }
+  }
+
+  /**
+   * Visualize System Security Plan
+   */
+  async visualizeSSP(
+    content: string,
+    format: OscalFormat,
+    fileName?: string
+  ): Promise<SspVisualizationData> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/visualization/ssp`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({
+            content,
+            format: format.toUpperCase(),
+            fileName
+          }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`SSP visualization failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('SSP visualization failed:', error);
+      throw error;
     }
   }
 

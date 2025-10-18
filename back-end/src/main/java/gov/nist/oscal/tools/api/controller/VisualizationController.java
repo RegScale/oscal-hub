@@ -1,0 +1,46 @@
+package gov.nist.oscal.tools.api.controller;
+
+import gov.nist.oscal.tools.api.model.SspVisualizationRequest;
+import gov.nist.oscal.tools.api.model.SspVisualizationResult;
+import gov.nist.oscal.tools.api.service.VisualizationService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import javax.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+
+@RestController
+@RequestMapping("/api/visualization")
+@Tag(name = "OSCAL Visualization", description = "APIs for visualizing OSCAL documents")
+public class VisualizationController {
+
+    private final VisualizationService visualizationService;
+
+    @Autowired
+    public VisualizationController(VisualizationService visualizationService) {
+        this.visualizationService = visualizationService;
+    }
+
+    @Operation(
+        summary = "Analyze System Security Plan for visualization",
+        description = "Analyzes an OSCAL SSP document and extracts key information for visualization including categorization, information types, personnel/roles, control status by family, and assets."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "SSP analyzed successfully (check 'success' field in response)")
+    })
+    @PostMapping("/ssp")
+    public ResponseEntity<SspVisualizationResult> visualizeSSP(
+        @Valid @RequestBody SspVisualizationRequest request,
+        Principal principal
+    ) {
+        SspVisualizationResult result = visualizationService.analyzeSSP(request, principal.getName());
+        return ResponseEntity.ok(result);
+    }
+}

@@ -12,10 +12,11 @@ import { FileUploader } from '@/components/file-uploader';
 import { SavedFileSelector, SavedFileSelectorRef } from '@/components/saved-file-selector';
 import { LibrarySelector, LibrarySelectorRef } from '@/components/library-selector';
 import { CatalogVisualization } from '@/components/CatalogVisualization';
+import { SspVisualization } from '@/components/SspVisualization';
 import { analyzeCatalog, type CatalogAnalysis } from '@/lib/oscal-parser';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { toast } from 'sonner';
-import type { OscalFormat, SavedFile, LibraryItem } from '@/types/oscal';
+import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData } from '@/types/oscal';
 import { apiClient } from '@/lib/api-client';
 
 export default function VisualizePage() {
@@ -23,6 +24,7 @@ export default function VisualizePage() {
   const [fileContent, setFileContent] = useState<string>('');
   const [format, setFormat] = useState<OscalFormat>('json');
   const [catalogAnalysis, setCatalogAnalysis] = useState<CatalogAnalysis | null>(null);
+  const [sspVisualization, setSspVisualization] = useState<SspVisualizationData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
@@ -32,6 +34,7 @@ export default function VisualizePage() {
     setSelectedFile(file);
     setFileContent(content);
     setCatalogAnalysis(null);
+    setSspVisualization(null);
     setError(null);
 
     // Auto-detect format from file extension
@@ -70,6 +73,7 @@ export default function VisualizePage() {
     setSelectedFile(virtualFile);
     setFileContent(content);
     setCatalogAnalysis(null);
+    setSspVisualization(null);
     setError(null);
     setFormat(normalizedFormat);
 
@@ -78,9 +82,22 @@ export default function VisualizePage() {
     toast.info('Analyzing document...');
 
     try {
-      const analysis = analyzeCatalog(content, normalizedFormat);
-      setCatalogAnalysis(analysis);
-      toast.success('Document analyzed successfully!');
+      // Detect document type and visualize appropriately
+      const docType = detectDocumentType(content, normalizedFormat);
+
+      if (docType === 'catalog') {
+        const analysis = analyzeCatalog(content, normalizedFormat);
+        setCatalogAnalysis(analysis);
+        setSspVisualization(null);
+        toast.success('Catalog analyzed successfully!');
+      } else if (docType === 'ssp') {
+        const sspData = await apiClient.visualizeSSP(content, normalizedFormat, file.fileName);
+        setSspVisualization(sspData);
+        setCatalogAnalysis(null);
+        toast.success('SSP analyzed successfully!');
+      } else {
+        throw new Error('Unsupported document type. Please upload a Catalog or System Security Plan (SSP).');
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze document';
@@ -103,6 +120,7 @@ export default function VisualizePage() {
     setSelectedFile(virtualFile);
     setFileContent(content);
     setCatalogAnalysis(null);
+    setSspVisualization(null);
     setError(null);
     setFormat(normalizedFormat);
 
@@ -111,9 +129,22 @@ export default function VisualizePage() {
     toast.info('Analyzing document...');
 
     try {
-      const analysis = analyzeCatalog(content, normalizedFormat);
-      setCatalogAnalysis(analysis);
-      toast.success('Document analyzed successfully!');
+      // Detect document type and visualize appropriately
+      const docType = detectDocumentType(content, normalizedFormat);
+
+      if (docType === 'catalog') {
+        const analysis = analyzeCatalog(content, normalizedFormat);
+        setCatalogAnalysis(analysis);
+        setSspVisualization(null);
+        toast.success('Catalog analyzed successfully!');
+      } else if (docType === 'ssp') {
+        const sspData = await apiClient.visualizeSSP(content, normalizedFormat, fileName);
+        setSspVisualization(sspData);
+        setCatalogAnalysis(null);
+        toast.success('SSP analyzed successfully!');
+      } else {
+        throw new Error('Unsupported document type. Please upload a Catalog or System Security Plan (SSP).');
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze document';
@@ -128,7 +159,60 @@ export default function VisualizePage() {
     setSelectedFile(null);
     setFileContent('');
     setCatalogAnalysis(null);
+    setSspVisualization(null);
     setError(null);
+  };
+
+  const detectDocumentType = (content: string, docFormat: OscalFormat): 'catalog' | 'ssp' | 'unknown' => {
+    try {
+      // Normalize content for searching (trim whitespace)
+      const normalizedContent = content.trim().toLowerCase();
+
+      console.log(`Detecting document type - Format: ${docFormat}, Content length: ${content.length}`);
+      console.log(`First 200 chars: ${normalizedContent.substring(0, 200)}`);
+
+      if (docFormat === 'json') {
+        // JSON format: look for the property name with quotes
+        // Check multiple patterns to be safe
+        if (normalizedContent.includes('"system-security-plan"') ||
+            normalizedContent.includes("'system-security-plan'") ||
+            normalizedContent.includes('system-security-plan')) {
+          console.log('Document type detected: SSP (JSON)');
+          return 'ssp';
+        } else if (normalizedContent.includes('"catalog"') ||
+                   normalizedContent.includes("'catalog'") ||
+                   (normalizedContent.includes('catalog') && normalizedContent.includes('{'))) {
+          console.log('Document type detected: Catalog (JSON)');
+          return 'catalog';
+        }
+      } else if (docFormat === 'yaml') {
+        // YAML format: look for the key with colon (no quotes typically)
+        if (normalizedContent.includes('system-security-plan:') ||
+            normalizedContent.includes('system_security_plan:')) {
+          console.log('Document type detected: SSP (YAML)');
+          return 'ssp';
+        } else if (normalizedContent.includes('catalog:')) {
+          console.log('Document type detected: Catalog (YAML)');
+          return 'catalog';
+        }
+      } else if (docFormat === 'xml') {
+        // XML format: look for the element tag
+        if (normalizedContent.includes('<system-security-plan') ||
+            normalizedContent.includes('<system_security_plan')) {
+          console.log('Document type detected: SSP (XML)');
+          return 'ssp';
+        } else if (normalizedContent.includes('<catalog')) {
+          console.log('Document type detected: Catalog (XML)');
+          return 'catalog';
+        }
+      }
+
+      console.log(`Document type detected: unknown (no match found)`);
+      return 'unknown';
+    } catch (err) {
+      console.error('Error detecting document type:', err);
+      return 'unknown';
+    }
   };
 
   const handleVisualize = async () => {
@@ -139,11 +223,21 @@ export default function VisualizePage() {
     toast.info('Analyzing document...');
 
     try {
-      // For now, we only support catalog visualization
-      // In the future, we'll detect the model type and route to appropriate visualizer
-      const analysis = analyzeCatalog(fileContent, format);
-      setCatalogAnalysis(analysis);
-      toast.success('Document analyzed successfully!');
+      const docType = detectDocumentType(fileContent, format);
+
+      if (docType === 'catalog') {
+        const analysis = analyzeCatalog(fileContent, format);
+        setCatalogAnalysis(analysis);
+        setSspVisualization(null);
+        toast.success('Catalog analyzed successfully!');
+      } else if (docType === 'ssp') {
+        const sspData = await apiClient.visualizeSSP(fileContent, format, selectedFile?.name);
+        setSspVisualization(sspData);
+        setCatalogAnalysis(null);
+        toast.success('SSP analyzed successfully!');
+      } else {
+        throw new Error('Unsupported document type. Please upload a Catalog or System Security Plan (SSP).');
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze document';
@@ -211,9 +305,9 @@ export default function VisualizePage() {
 
                       <Alert>
                         <AlertDescription className="text-sm">
-                          Currently supports: Catalogs
+                          Currently supports: Catalogs, System Security Plans (SSPs)
                           <br />
-                          Coming soon: Profiles, SSPs, Components, Assessment Results, POA&Ms
+                          Coming soon: Profiles, Components, Assessment Results, POA&Ms
                         </AlertDescription>
                       </Alert>
 
@@ -280,13 +374,15 @@ export default function VisualizePage() {
 
               {catalogAnalysis ? (
                 <CatalogVisualization analysis={catalogAnalysis} />
+              ) : sspVisualization ? (
+                <SspVisualization data={sspVisualization} />
               ) : (
                 <Card className="h-[500px] flex items-center justify-center">
                   <CardContent>
                     <div className="text-center text-muted-foreground">
                       <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
                       <p className="text-lg mb-2">No document visualized</p>
-                      <p className="text-sm">Upload or select a catalog to begin visualization</p>
+                      <p className="text-sm">Upload or select a document to begin visualization</p>
                     </div>
                   </CardContent>
                 </Card>
