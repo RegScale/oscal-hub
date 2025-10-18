@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3 } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,6 +57,26 @@ export default function Dashboard() {
                   <CardTitle className="text-2xl mb-2">Library</CardTitle>
                   <CardDescription className="text-base">
                     Browse, share, and download example OSCAL documents from the community
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+            <Link
+              href="/visualize"
+              className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
+              aria-label="Navigate to Visualize page to explore OSCAL documents with data visualizations"
+            >
+            <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
+              <CardHeader className="space-y-4">
+                <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                  <BarChart3 className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl mb-2">Visualize</CardTitle>
+                  <CardDescription className="text-base">
+                    Explore and understand OSCAL documents through interactive visualizations
                   </CardDescription>
                 </div>
               </CardHeader>
