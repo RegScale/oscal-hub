@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { FileText, Clock, Trash2, RefreshCw, Upload } from 'lucide-react';
+import { FileText, Clock, Trash2, RefreshCw, Upload, Search } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import type { SavedFile, OscalFormat, OscalModelType } from '@/types/oscal';
 
@@ -25,6 +26,7 @@ export const SavedFileSelector = forwardRef<SavedFileSelectorRef, SavedFileSelec
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const loadFiles = async () => {
     setIsLoading(true);
@@ -122,6 +124,20 @@ export const SavedFileSelector = forwardRef<SavedFileSelectorRef, SavedFileSelec
     return colors[modelType] || 'bg-gray-500/10 text-gray-500';
   };
 
+  // Filter files based on search query
+  const filteredFiles = savedFiles.filter(file => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    const fileName = file.fileName.toLowerCase();
+    const format = file.format.toLowerCase();
+    const modelType = file.modelType?.toLowerCase().replace(/-/g, ' ') || '';
+
+    return fileName.includes(query) ||
+           format.includes(query) ||
+           modelType.includes(query);
+  });
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -156,6 +172,20 @@ export const SavedFileSelector = forwardRef<SavedFileSelectorRef, SavedFileSelec
           </Alert>
         )}
 
+        {/* Search input */}
+        {!isLoading && savedFiles.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search files by name, type, or format..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
@@ -169,9 +199,15 @@ export const SavedFileSelector = forwardRef<SavedFileSelectorRef, SavedFileSelec
               <p className="text-xs mt-1">Upload a document to get started</p>
             )}
           </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No files match your search</p>
+            <p className="text-xs mt-1">Try a different search term</p>
+          </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {savedFiles.map((file) => (
+            {filteredFiles.map((file) => (
               <div
                 key={file.id}
                 onClick={() => handleFileClick(file)}

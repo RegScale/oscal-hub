@@ -656,6 +656,42 @@ class ApiClient {
   }
 
   /**
+   * Save a file to storage
+   */
+  async saveFile(
+    content: string,
+    fileName: string,
+    format: OscalFormat,
+    modelType?: OscalModelType
+  ): Promise<SavedFile | null> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/files`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({
+            content,
+            fileName,
+            format: format.toUpperCase(),
+            modelType,
+          }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to save file: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get all validation rules
    */
   async getValidationRules(): Promise<ValidationRulesResponse> {

@@ -15,6 +15,7 @@ import { analyzeCatalog, type CatalogAnalysis } from '@/lib/oscal-parser';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { toast } from 'sonner';
 import type { OscalFormat, SavedFile } from '@/types/oscal';
+import { apiClient } from '@/lib/api-client';
 
 export default function VisualizePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -25,7 +26,7 @@ export default function VisualizePage() {
   const [error, setError] = useState<string | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
 
-  const handleFileSelect = (file: File, content: string) => {
+  const handleFileSelect = async (file: File, content: string) => {
     setSelectedFile(file);
     setFileContent(content);
     setCatalogAnalysis(null);
@@ -33,23 +34,59 @@ export default function VisualizePage() {
 
     // Auto-detect format from file extension
     const extension = file.name.split('.').pop()?.toLowerCase();
-    if (extension === 'xml') setFormat('xml');
-    else if (extension === 'json') setFormat('json');
-    else if (extension === 'yaml' || extension === 'yml') setFormat('yaml');
+    let detectedFormat: OscalFormat = 'json';
+    if (extension === 'xml') detectedFormat = 'xml';
+    else if (extension === 'json') detectedFormat = 'json';
+    else if (extension === 'yaml' || extension === 'yml') detectedFormat = 'yaml';
 
-    toast.success('File loaded successfully');
+    setFormat(detectedFormat);
+
+    // Save the file to backend storage
+    try {
+      const savedFile = await apiClient.saveFile(content, file.name, detectedFormat);
+      if (savedFile) {
+        // Refresh the saved files list
+        savedFilesRef.current?.refresh();
+        toast.success('File loaded and saved successfully');
+      } else {
+        toast.success('File loaded successfully');
+      }
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      toast.success('File loaded successfully');
+    }
   };
 
-  const handleSavedFileSelect = (file: SavedFile, content: string) => {
+  const handleSavedFileSelect = async (file: SavedFile, content: string) => {
     // Create a virtual File object for consistency
     const blob = new Blob([content], { type: 'text/plain' });
     const virtualFile = new File([blob], file.fileName, { type: 'text/plain' });
+
+    // Convert format to lowercase for consistency
+    const normalizedFormat = file.format.toLowerCase() as OscalFormat;
 
     setSelectedFile(virtualFile);
     setFileContent(content);
     setCatalogAnalysis(null);
     setError(null);
-    setFormat(file.format);
+    setFormat(normalizedFormat);
+
+    // Auto-trigger visualization
+    setIsAnalyzing(true);
+    toast.info('Analyzing document...');
+
+    try {
+      const analysis = analyzeCatalog(content, normalizedFormat);
+      setCatalogAnalysis(analysis);
+      toast.success('Document analyzed successfully!');
+    } catch (err) {
+      console.error('Analysis error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze document';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleClear = () => {

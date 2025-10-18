@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.model.FileUploadRequest;
 import gov.nist.oscal.tools.api.model.SavedFile;
 import gov.nist.oscal.tools.api.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +98,32 @@ public class FileController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @Operation(
+        summary = "Upload and save file",
+        description = "Upload an OSCAL document and save it to storage"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File saved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "500", description = "Failed to save file")
+    })
+    @PostMapping
+    public ResponseEntity<SavedFile> uploadFile(@Valid @RequestBody FileUploadRequest request, Principal principal) {
+        try {
+            String fileName = request.getFileName() != null ? request.getFileName() : "document." + request.getFormat().toString().toLowerCase();
+            SavedFile savedFile = fileStorageService.saveFile(
+                request.getContent(),
+                fileName,
+                request.getModelType(),
+                request.getFormat(),
+                principal.getName()
+            );
+            return ResponseEntity.ok(savedFile);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

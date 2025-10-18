@@ -130,7 +130,7 @@ export function CatalogVisualization({ analysis }: CatalogVisualizationProps) {
         <CardContent>
           {chartData.length > 0 ? (
             <div className="w-full h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={chartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
