@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +44,26 @@ export default function Dashboard() {
           <h2 className="sr-only">Available Operations</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             <Link
+              href="/library"
+              className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
+              aria-label="Navigate to Library page to browse and share OSCAL files"
+            >
+            <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
+              <CardHeader className="space-y-4">
+                <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                  <Library className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl mb-2">Library</CardTitle>
+                  <CardDescription className="text-base">
+                    Browse, share, and download example OSCAL documents from the community
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+            <Link
               href="/validate"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
               aria-label="Navigate to Validate page to check if your OSCAL document is valid"
@@ -84,19 +104,19 @@ export default function Dashboard() {
           </Link>
 
             <Link
-              href="/resolve"
+              href="/rules"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
-              aria-label="Navigate to Resolve page to resolve OSCAL profiles into catalogs"
+              aria-label="Navigate to Validation Rules page to view and understand validation rules"
             >
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <GitMerge className="h-8 w-8 text-primary" />
+                  <ShieldCheck className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl mb-2">Resolve</CardTitle>
+                  <CardTitle className="text-2xl mb-2">Validation Rules</CardTitle>
                   <CardDescription className="text-base">
-                    Resolve OSCAL profiles into catalogs with control selection
+                    View and understand the validation rules checked for OSCAL documents
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -144,19 +164,19 @@ export default function Dashboard() {
           </Link>
 
             <Link
-              href="/rules"
+              href="/resolve"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
-              aria-label="Navigate to Validation Rules page to view and understand validation rules"
+              aria-label="Navigate to Resolve page to resolve OSCAL profiles into catalogs"
             >
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <ShieldCheck className="h-8 w-8 text-primary" />
+                  <GitMerge className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl mb-2">Validation Rules</CardTitle>
+                  <CardTitle className="text-2xl mb-2">Resolve</CardTitle>
                   <CardDescription className="text-base">
-                    View and understand the validation rules checked for OSCAL documents
+                    Resolve OSCAL profiles into catalogs with control selection
                   </CardDescription>
                 </div>
               </CardHeader>

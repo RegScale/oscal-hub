@@ -16,6 +16,7 @@ import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import { downloadFile, generateConvertedFilename } from '@/lib/download';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { toast } from 'sonner';
 import type { OscalModelType, OscalFormat, ConversionResult, SavedFile } from '@/types/oscal';
 
 export default function ConvertPage() {
@@ -48,6 +49,8 @@ export default function ConvertPage() {
       setFromFormat('yaml');
       if (toFormat === 'yaml') setToFormat('xml');
     }
+
+    toast.success('File loaded successfully');
   };
 
   const handleSavedFileSelect = (file: SavedFile, content: string) => {
@@ -89,6 +92,7 @@ export default function ConvertPage() {
     setIsConverting(true);
     setOutputContent('');
     setConversionResult(null);
+    toast.info('Converting document...');
 
     try {
       const result = await apiClient.convert({
@@ -102,11 +106,15 @@ export default function ConvertPage() {
       setConversionResult(result);
       if (result.success && result.content) {
         setOutputContent(result.content);
+        toast.success('Document converted successfully!');
+      } else {
+        toast.error('Conversion failed');
       }
       // Refresh saved files list after conversion
       savedFilesRef.current?.refresh();
     } catch (error) {
       console.error('Conversion error:', error);
+      toast.error('Conversion failed');
       setConversionResult({
         success: false,
         error: 'Failed to convert document. Please try again.',
@@ -123,6 +131,7 @@ export default function ConvertPage() {
 
     const filename = generateConvertedFilename(selectedFile.name, toFormat);
     downloadFile(outputContent, filename, toFormat);
+    toast.success('Converted file downloaded');
   };
 
   const handleSwapFormats = () => {

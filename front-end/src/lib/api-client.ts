@@ -18,6 +18,13 @@ import type {
   ValidationRuleCategory,
   CustomRuleRequest,
   CustomRuleResponse,
+  LibraryItem,
+  LibraryItemRequest,
+  LibraryItemUpdateRequest,
+  LibraryVersion,
+  LibraryVersionRequest,
+  LibraryTag,
+  LibraryAnalytics,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -395,7 +402,7 @@ class ApiClient {
         `${API_BASE_URL}/batch/${operationId}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         10000
       );
@@ -445,7 +452,7 @@ class ApiClient {
         `${API_BASE_URL}/history/stats`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -479,7 +486,7 @@ class ApiClient {
         `${API_BASE_URL}/history?page=${page}&size=${size}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -510,7 +517,7 @@ class ApiClient {
         `${API_BASE_URL}/history/${id}`,
         {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -533,7 +540,7 @@ class ApiClient {
         `${API_BASE_URL}/history/batch/${batchOperationId}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getAuthHeaders(),
         },
         5000
       );
@@ -1001,6 +1008,416 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to get custom rules by model type:', error);
       throw error;
+    }
+  }
+
+  // ========================================
+  // Library API Methods
+  // ========================================
+
+  /**
+   * Create a new library item
+   */
+  async createLibraryItem(request: LibraryItemRequest): Promise<LibraryItem> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        15000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create library item: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create library item:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update library item metadata
+   */
+  async updateLibraryItem(itemId: string, request: LibraryItemUpdateRequest): Promise<LibraryItem> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update library item: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update library item:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a new version to a library item
+   */
+  async addLibraryVersion(itemId: string, request: LibraryVersionRequest): Promise<LibraryVersion> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}/versions`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        15000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to add library version: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to add library version:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a library item by ID
+   */
+  async getLibraryItem(itemId: string): Promise<LibraryItem> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library item: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get library item:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get library item file content
+   */
+  async getLibraryItemContent(itemId: string): Promise<string> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}/content`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library item content: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.content;
+    } catch (error) {
+      console.error('Failed to get library item content:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get version history for a library item
+   */
+  async getLibraryVersionHistory(itemId: string): Promise<LibraryVersion[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}/versions`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get version history: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get version history:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get specific version content
+   */
+  async getLibraryVersionContent(versionId: string): Promise<string> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/versions/${versionId}/content`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get version content: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.content;
+    } catch (error) {
+      console.error('Failed to get version content:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a library item
+   */
+  async deleteLibraryItem(itemId: string): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/${itemId}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete library item:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Search library items
+   */
+  async searchLibrary(params: { q?: string; oscalType?: string; tag?: string }): Promise<LibraryItem[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.q) queryParams.append('q', params.q);
+      if (params.oscalType) queryParams.append('oscalType', params.oscalType);
+      if (params.tag) queryParams.append('tag', params.tag);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/search?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search library: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search library:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all library items
+   */
+  async getAllLibraryItems(): Promise<LibraryItem[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library items: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get library items:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get library items by OSCAL type
+   */
+  async getLibraryItemsByType(oscalType: string): Promise<LibraryItem[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/type/${oscalType}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library items by type: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get library items by type:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get most popular library items
+   */
+  async getMostPopularLibraryItems(limit = 10): Promise<LibraryItem[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/popular?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get popular items: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get popular items:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recently updated library items
+   */
+  async getRecentlyUpdatedLibraryItems(limit = 10): Promise<LibraryItem[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/recent?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get recent items: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get recent items:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get library analytics
+   */
+  async getLibraryAnalytics(): Promise<LibraryAnalytics> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/analytics`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library analytics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get library analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all library tags
+   */
+  async getAllLibraryTags(): Promise<LibraryTag[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/tags`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get library tags: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get library tags:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get popular library tags
+   */
+  async getPopularLibraryTags(limit = 10): Promise<LibraryTag[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/library/tags/popular?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get popular tags: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get popular tags:', error);
+      return [];
     }
   }
 

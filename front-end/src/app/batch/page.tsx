@@ -13,6 +13,7 @@ import { ModelTypeSelector } from '@/components/model-type-selector';
 import { FormatSelector } from '@/components/format-selector';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { toast } from 'sonner';
 import type {
   OscalModelType,
   OscalFormat,
@@ -63,12 +64,14 @@ export default function BatchOperationsPage() {
           setBatchResult(result);
           setOperationStatus('completed');
           clearInterval(pollInterval);
+          toast.success('Batch operation completed!');
         }
       } catch (error) {
         console.error('Error polling batch operation:', error);
         setErrorMessage('Failed to check operation status');
         setOperationStatus('error');
         clearInterval(pollInterval);
+        toast.error('Batch operation failed');
       }
     }, 2000); // Poll every 2 seconds
 
@@ -79,6 +82,7 @@ export default function BatchOperationsPage() {
     setSelectedFiles(files);
     setBatchResult(null);
     setErrorMessage(null);
+    toast.success(`${files.length} file${files.length !== 1 ? 's' : ''} loaded`);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -99,6 +103,7 @@ export default function BatchOperationsPage() {
     setOperationStatus('submitting');
     setErrorMessage(null);
     setBatchResult(null);
+    toast.info(`Processing ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}...`);
 
     try {
       const request = {
@@ -122,6 +127,7 @@ export default function BatchOperationsPage() {
       console.error('Failed to start batch operation:', error);
       setErrorMessage('Failed to start batch operation. Please try again.');
       setOperationStatus('error');
+      toast.error('Batch operation failed');
     }
   };
 

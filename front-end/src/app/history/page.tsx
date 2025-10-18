@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { toast } from 'sonner';
 import type { OperationHistory, OperationStats } from '@/types/oscal';
 
 export default function HistoryPage() {
@@ -30,6 +31,7 @@ export default function HistoryPage() {
       setStats(statsData);
     } catch (error) {
       console.error('Failed to load history data:', error);
+      toast.error('Failed to load history');
     } finally {
       setIsLoading(false);
     }
@@ -46,10 +48,11 @@ export default function HistoryPage() {
 
     try {
       await apiClient.deleteOperation(id);
+      toast.success('Operation deleted');
       loadData(); // Reload data after deletion
     } catch (error) {
       console.error('Failed to delete operation:', error);
-      alert('Failed to delete operation. Please try again.');
+      toast.error('Failed to delete operation');
     }
   };
 

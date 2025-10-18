@@ -48,6 +48,17 @@ export function Footer() {
                   <ExternalLink className="h-3 w-3 ml-1" />
                 </a>
               </li>
+              <li>
+                <a
+                  href="https://github.com/usnistgov/oscal-content"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors inline-flex items-center"
+                >
+                  OSCAL Content Repository
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
+              </li>
             </ul>
           </div>
 

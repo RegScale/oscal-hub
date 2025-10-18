@@ -13,6 +13,7 @@ import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import { downloadFile } from '@/lib/download';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { toast } from 'sonner';
 import type { OscalFormat, ProfileResolutionResult } from '@/types/oscal';
 
 export default function ResolvePage() {
@@ -36,6 +37,8 @@ export default function ResolvePage() {
     if (extension === 'xml') setFormat('xml');
     else if (extension === 'json') setFormat('json');
     else if (extension === 'yaml' || extension === 'yml') setFormat('yaml');
+
+    toast.success('Profile loaded successfully');
   };
 
   const handleClear = () => {
@@ -51,6 +54,7 @@ export default function ResolvePage() {
     setIsResolving(true);
     setResolvedCatalog('');
     setResolutionResult(null);
+    toast.info('Resolving profile...');
 
     try {
       const result = await apiClient.resolveProfile({
@@ -61,9 +65,13 @@ export default function ResolvePage() {
       setResolutionResult(result);
       if (result.success && result.resolvedCatalog) {
         setResolvedCatalog(result.resolvedCatalog);
+        toast.success('Profile resolved successfully!');
+      } else {
+        toast.error('Resolution failed');
       }
     } catch (error) {
       console.error('Resolution error:', error);
+      toast.error('Resolution failed');
       setResolutionResult({
         success: false,
         error: 'Failed to resolve profile. Please try again.',
@@ -85,6 +93,7 @@ export default function ResolvePage() {
     const filename = `${originalName}-resolved.${extensions[format]}`;
 
     downloadFile(resolvedCatalog, filename, format);
+    toast.success('Resolved catalog downloaded');
   };
 
   const canResolve = selectedFile && profileContent && !isResolving;

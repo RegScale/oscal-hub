@@ -15,6 +15,7 @@ import { ModelTypeSelector } from '@/components/model-type-selector';
 import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { toast } from 'sonner';
 import type { OscalModelType, OscalFormat, ValidationResult, SavedFile } from '@/types/oscal';
 
 export default function ValidatePage() {
@@ -38,6 +39,8 @@ export default function ValidatePage() {
     if (extension === 'xml') setFormat('xml');
     else if (extension === 'json') setFormat('json');
     else if (extension === 'yaml' || extension === 'yml') setFormat('yaml');
+
+    toast.success('File loaded successfully');
   };
 
   const handleSavedFileSelect = (file: SavedFile, content: string) => {
@@ -70,6 +73,7 @@ export default function ValidatePage() {
     setIsValidating(true);
     setValidationResult(null);
     setHighlightedLine(undefined);
+    toast.info('Validating document...');
 
     try {
       const result = await apiClient.validate(
@@ -79,10 +83,18 @@ export default function ValidatePage() {
         selectedFile?.name
       );
       setValidationResult(result);
+
+      if (result.valid) {
+        toast.success('Document is valid!');
+      } else {
+        toast.error('Validation failed with errors');
+      }
+
       // Refresh saved files list after validation
       savedFilesRef.current?.refresh();
     } catch (error) {
       console.error('Validation error:', error);
+      toast.error('Validation failed with errors');
       setValidationResult({
         valid: false,
         errors: [

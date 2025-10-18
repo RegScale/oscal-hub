@@ -232,3 +232,74 @@ export interface CustomRuleResponse {
   updatedDate: string; // ISO 8601 date string
   createdBy?: string;
 }
+
+// Library Types
+export interface LibraryVersion {
+  versionId: string;
+  versionNumber: number;
+  fileName: string;
+  format: string;
+  fileSize: number;
+  uploadedBy: string;
+  uploadedAt: string; // ISO 8601 date string
+  changeDescription?: string;
+}
+
+export interface LibraryItem {
+  itemId: string;
+  title: string;
+  description?: string;
+  oscalType: string;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  tags: string[];
+  currentVersion?: LibraryVersion;
+  downloadCount: number;
+  viewCount: number;
+  versionCount: number;
+}
+
+export interface LibraryItemRequest {
+  title: string;
+  description?: string;
+  oscalType: string;
+  fileName: string;
+  format: string;
+  fileContent: string;
+  tags?: string[];
+}
+
+export interface LibraryItemUpdateRequest {
+  title?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface LibraryVersionRequest {
+  fileName: string;
+  format: string;
+  fileContent: string;
+  changeDescription?: string;
+}
+
+export interface LibraryTag {
+  name: string;
+  usageCount: number;
+}
+
+export interface LibraryAnalytics {
+  totalItems: number;
+  totalVersions: number;
+  totalTags: number;
+  itemsByType: Record<string, number>;
+  popularTags: Array<{
+    name: string;
+    count: number;
+  }>;
+  mostDownloaded: Array<{
+    itemId: string;
+    title: string;
+    downloadCount: number;
+  }>;
+}
