@@ -1,5 +1,7 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.model.ProfileVisualizationRequest;
+import gov.nist.oscal.tools.api.model.ProfileVisualizationResult;
 import gov.nist.oscal.tools.api.model.SspVisualizationRequest;
 import gov.nist.oscal.tools.api.model.SspVisualizationResult;
 import gov.nist.oscal.tools.api.service.VisualizationService;
@@ -41,6 +43,22 @@ public class VisualizationController {
         Principal principal
     ) {
         SspVisualizationResult result = visualizationService.analyzeSSP(request, principal.getName());
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(
+        summary = "Analyze Profile for visualization",
+        description = "Analyzes an OSCAL Profile document and extracts key information for visualization including imports, control counts by family, and modifications."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Profile analyzed successfully (check 'success' field in response)")
+    })
+    @PostMapping("/profile")
+    public ResponseEntity<ProfileVisualizationResult> visualizeProfile(
+        @Valid @RequestBody ProfileVisualizationRequest request,
+        Principal principal
+    ) {
+        ProfileVisualizationResult result = visualizationService.analyzeProfile(request, principal.getName());
         return ResponseEntity.ok(result);
     }
 }

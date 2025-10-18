@@ -110,6 +110,247 @@ public class VisualizationService {
         return result;
     }
 
+    public ProfileVisualizationResult analyzeProfile(ProfileVisualizationRequest request, String username) {
+        ProfileVisualizationResult result = new ProfileVisualizationResult();
+
+        try {
+            logger.info("Analyzing Profile - Format: {}, Content length: {}", request.getFormat(), request.getContent().length());
+
+            // Parse the content as JSON (converting if necessary)
+            JsonNode profileNode = parseContent(request.getContent(), request.getFormat());
+
+            if (profileNode == null) {
+                result.setSuccess(false);
+                result.setMessage("Failed to parse profile document");
+                return result;
+            }
+
+            // Handle different format structures
+            JsonNode profile;
+            if (profileNode.has("profile")) {
+                // JSON/YAML format: root has "profile" field
+                profile = profileNode.get("profile");
+                logger.info("Found Profile in JSON/YAML format");
+            } else if (profileNode.has("metadata")) {
+                // XML format: root node IS the profile (no wrapper field)
+                profile = profileNode;
+                logger.info("Found Profile in XML format (root node is Profile)");
+            } else {
+                result.setSuccess(false);
+                result.setMessage("Invalid Profile document: missing required fields");
+                return result;
+            }
+
+            // Extract profile information
+            extractProfileInfo(profile, result);
+            extractImports(profile, result);
+            extractModifications(profile, result);
+            calculateControlSummary(result);
+
+            result.setSuccess(true);
+            result.setMessage("Profile analyzed successfully");
+            logger.info("Successfully analyzed Profile document");
+
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setMessage("Failed to analyze Profile: " + e.getMessage());
+            logger.error("Profile analysis failed: {}", e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+    private void extractProfileInfo(JsonNode profile, ProfileVisualizationResult result) {
+        ProfileVisualizationResult.ProfileInfo profileInfo = new ProfileVisualizationResult.ProfileInfo();
+
+        profileInfo.setUuid(getString(profile, "uuid"));
+
+        JsonNode metadata = profile.get("metadata");
+        if (metadata != null) {
+            profileInfo.setTitle(getString(metadata, "title"));
+            profileInfo.setVersion(getString(metadata, "version"));
+            profileInfo.setOscalVersion(getString(metadata, "oscal-version"));
+            profileInfo.setLastModified(getString(metadata, "last-modified"));
+            profileInfo.setPublished(getString(metadata, "published"));
+        }
+
+        result.setProfileInfo(profileInfo);
+    }
+
+    private void extractImports(JsonNode profile, ProfileVisualizationResult result) {
+        // Check for both plural (JSON/YAML) and singular (XML) forms
+        JsonNode imports = profile.get("imports");
+        if (imports == null) {
+            imports = profile.get("import");
+        }
+
+        if (imports == null) {
+            logger.warn("No imports found in profile");
+            return;
+        }
+
+        List<ProfileVisualizationResult.ImportInfo> importList = new ArrayList<>();
+
+        for (JsonNode importNode : imports) {
+            ProfileVisualizationResult.ImportInfo importInfo = new ProfileVisualizationResult.ImportInfo();
+            importInfo.setHref(getString(importNode, "href"));
+
+            // Extract include-all
+            JsonNode includeAll = importNode.get("include-all");
+            if (includeAll != null) {
+                // If include-all is present, it means all controls from the catalog
+                // We'll set a special marker
+                importInfo.getIncludeAllIds().add("*");
+            }
+
+            // Extract include-controls
+            JsonNode includeControls = importNode.get("include-controls");
+            if (includeControls == null) {
+                includeControls = importNode.get("include-control");
+            }
+            if (includeControls != null) {
+                for (JsonNode withId : includeControls) {
+                    JsonNode withIds = withId.get("with-ids");
+                    if (withIds == null) {
+                        withIds = withId.get("with-id");
+                    }
+                    if (withIds != null) {
+                        for (JsonNode id : withIds) {
+                            importInfo.getIncludeAllIds().add(id.asText());
+                        }
+                    }
+                }
+            }
+
+            // Extract exclude-controls
+            JsonNode excludeControls = importNode.get("exclude-controls");
+            if (excludeControls == null) {
+                excludeControls = importNode.get("exclude-control");
+            }
+            if (excludeControls != null) {
+                for (JsonNode withId : excludeControls) {
+                    JsonNode withIds = withId.get("with-ids");
+                    if (withIds == null) {
+                        withIds = withId.get("with-id");
+                    }
+                    if (withIds != null) {
+                        for (JsonNode id : withIds) {
+                            importInfo.getExcludeIds().add(id.asText());
+                        }
+                    }
+                }
+            }
+
+            importList.add(importInfo);
+        }
+
+        result.setImports(importList);
+    }
+
+    private void extractModifications(JsonNode profile, ProfileVisualizationResult result) {
+        JsonNode modify = profile.get("modify");
+        if (modify == null) {
+            return;
+        }
+
+        ProfileVisualizationResult.ModificationSummary modSummary = new ProfileVisualizationResult.ModificationSummary();
+
+        // Extract set-parameters
+        JsonNode setParams = modify.get("set-parameters");
+        if (setParams == null) {
+            setParams = modify.get("set-parameter");
+        }
+        if (setParams != null && setParams.isArray()) {
+            modSummary.setTotalSetsParameters(setParams.size());
+        }
+
+        // Extract alters
+        JsonNode alters = modify.get("alters");
+        if (alters == null) {
+            alters = modify.get("alter");
+        }
+        if (alters != null && alters.isArray()) {
+            modSummary.setTotalAlters(alters.size());
+            List<String> modifiedIds = new ArrayList<>();
+            for (JsonNode alter : alters) {
+                String controlId = getString(alter, "control-id");
+                if (!controlId.isEmpty()) {
+                    modifiedIds.add(controlId);
+                }
+            }
+            modSummary.setModifiedControlIds(modifiedIds);
+        }
+
+        result.setModificationSummary(modSummary);
+    }
+
+    private void calculateControlSummary(ProfileVisualizationResult result) {
+        ProfileVisualizationResult.ControlSummary summary = new ProfileVisualizationResult.ControlSummary();
+
+        // Count controls from imports
+        int totalIncluded = 0;
+        int totalExcluded = 0;
+        Map<String, ProfileVisualizationResult.ControlFamilyInfo> familyMap = new HashMap<>();
+
+        for (ProfileVisualizationResult.ImportInfo importInfo : result.getImports()) {
+            // Process included controls
+            for (String controlId : importInfo.getIncludeAllIds()) {
+                if ("*".equals(controlId)) {
+                    // Special marker for include-all
+                    continue;
+                }
+                totalIncluded++;
+                String familyId = extractFamilyId(controlId.toLowerCase());
+                String familyName = CONTROL_FAMILIES.getOrDefault(familyId, familyId.toUpperCase());
+
+                ProfileVisualizationResult.ControlFamilyInfo familyInfo = familyMap.computeIfAbsent(familyId, key -> {
+                    ProfileVisualizationResult.ControlFamilyInfo fi = new ProfileVisualizationResult.ControlFamilyInfo();
+                    fi.setFamilyId(familyId);
+                    fi.setFamilyName(familyName);
+                    fi.setIncludedCount(0);
+                    fi.setExcludedCount(0);
+                    return fi;
+                });
+
+                familyInfo.setIncludedCount(familyInfo.getIncludedCount() + 1);
+                familyInfo.getIncludedControls().add(controlId);
+            }
+
+            // Process excluded controls
+            for (String controlId : importInfo.getExcludeIds()) {
+                totalExcluded++;
+                String familyId = extractFamilyId(controlId.toLowerCase());
+                String familyName = CONTROL_FAMILIES.getOrDefault(familyId, familyId.toUpperCase());
+
+                ProfileVisualizationResult.ControlFamilyInfo familyInfo = familyMap.computeIfAbsent(familyId, key -> {
+                    ProfileVisualizationResult.ControlFamilyInfo fi = new ProfileVisualizationResult.ControlFamilyInfo();
+                    fi.setFamilyId(familyId);
+                    fi.setFamilyName(familyName);
+                    fi.setIncludedCount(0);
+                    fi.setExcludedCount(0);
+                    return fi;
+                });
+
+                familyInfo.setExcludedCount(familyInfo.getExcludedCount() + 1);
+                familyInfo.getExcludedControls().add(controlId);
+            }
+        }
+
+        summary.setTotalIncludedControls(totalIncluded);
+        summary.setTotalExcludedControls(totalExcluded);
+        summary.setUniqueFamilies(familyMap.size());
+
+        if (result.getModificationSummary() != null) {
+            summary.setTotalModifications(
+                result.getModificationSummary().getTotalSetsParameters() +
+                result.getModificationSummary().getTotalAlters()
+            );
+        }
+
+        result.setControlSummary(summary);
+        result.setControlsByFamily(familyMap);
+    }
+
     private JsonNode parseContent(String content, OscalFormat format) throws Exception {
         ObjectMapper mapper;
         switch (format) {

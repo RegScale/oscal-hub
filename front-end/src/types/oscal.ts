@@ -415,3 +415,59 @@ export interface SspVisualizationData {
   controlsByFamily: Record<string, ControlFamilyStatus>;
   assets: Asset[];
 }
+
+// Profile Visualization Types
+export interface ProfileVisualizationRequest {
+  content: string;
+  format: OscalFormat;
+  fileName?: string;
+}
+
+export interface ProfileInfo {
+  uuid: string;
+  title: string;
+  version: string;
+  oscalVersion: string;
+  lastModified: string;
+  published: string;
+}
+
+export interface ImportInfo {
+  href: string;
+  includeAllIds: string[];
+  excludeIds: string[];
+  estimatedControlCount: number;
+}
+
+export interface ControlSummary {
+  totalIncludedControls: number;
+  totalExcludedControls: number;
+  totalModifications: number;
+  uniqueFamilies: number;
+}
+
+export interface ControlFamilyInfo {
+  familyId: string;
+  familyName: string;
+  includedCount: number;
+  excludedCount: number;
+  includedControls: string[];
+  excludedControls: string[];
+}
+
+export interface ModificationSummary {
+  totalSetsParameters: number;
+  totalAlters: number;
+  modifiedControlIds: string[];
+}
+
+export interface ProfileVisualizationData {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  profileInfo: ProfileInfo;
+  imports: ImportInfo[];
+  controlSummary: ControlSummary;
+  controlsByFamily: Record<string, ControlFamilyInfo>;
+  modificationSummary: ModificationSummary;
+}
