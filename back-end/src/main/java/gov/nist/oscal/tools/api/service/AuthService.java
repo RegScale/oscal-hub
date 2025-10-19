@@ -131,6 +131,29 @@ public class AuthService {
             user.setPassword(passwordEncoder.encode(newPassword));
         }
 
+        // Update profile metadata fields if provided
+        if (updates.containsKey("street")) {
+            user.setStreet(updates.get("street"));
+        }
+        if (updates.containsKey("city")) {
+            user.setCity(updates.get("city"));
+        }
+        if (updates.containsKey("state")) {
+            user.setState(updates.get("state"));
+        }
+        if (updates.containsKey("zip")) {
+            user.setZip(updates.get("zip"));
+        }
+        if (updates.containsKey("title")) {
+            user.setTitle(updates.get("title"));
+        }
+        if (updates.containsKey("organization")) {
+            user.setOrganization(updates.get("organization"));
+        }
+        if (updates.containsKey("phoneNumber")) {
+            user.setPhoneNumber(updates.get("phoneNumber"));
+        }
+
         return userRepository.save(user);
     }
 

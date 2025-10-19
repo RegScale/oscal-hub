@@ -99,6 +99,13 @@ public class AuthController {
         response.put("userId", user.getId());
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
+        response.put("street", user.getStreet());
+        response.put("city", user.getCity());
+        response.put("state", user.getState());
+        response.put("zip", user.getZip());
+        response.put("title", user.getTitle());
+        response.put("organization", user.getOrganization());
+        response.put("phoneNumber", user.getPhoneNumber());
 
         return ResponseEntity.ok(response);
     }
@@ -157,6 +164,13 @@ public class AuthController {
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
         response.put("userId", user.getId());
+        response.put("street", user.getStreet());
+        response.put("city", user.getCity());
+        response.put("state", user.getState());
+        response.put("zip", user.getZip());
+        response.put("title", user.getTitle());
+        response.put("organization", user.getOrganization());
+        response.put("phoneNumber", user.getPhoneNumber());
 
         return ResponseEntity.ok(response);
     }
@@ -188,6 +202,13 @@ public class AuthController {
             response.put("message", "Profile updated successfully");
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+            response.put("street", user.getStreet());
+            response.put("city", user.getCity());
+            response.put("state", user.getState());
+            response.put("zip", user.getZip());
+            response.put("title", user.getTitle());
+            response.put("organization", user.getOrganization());
+            response.put("phoneNumber", user.getPhoneNumber());
 
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {

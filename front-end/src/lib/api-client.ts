@@ -95,6 +95,13 @@ class ApiClient {
         userId: authResponse.userId,
         username: authResponse.username,
         email: authResponse.email,
+        street: authResponse.street,
+        city: authResponse.city,
+        state: authResponse.state,
+        zip: authResponse.zip,
+        title: authResponse.title,
+        organization: authResponse.organization,
+        phoneNumber: authResponse.phoneNumber,
       }));
 
       return authResponse;
@@ -132,6 +139,13 @@ class ApiClient {
         userId: authResponse.userId,
         username: authResponse.username,
         email: authResponse.email,
+        street: authResponse.street,
+        city: authResponse.city,
+        state: authResponse.state,
+        zip: authResponse.zip,
+        title: authResponse.title,
+        organization: authResponse.organization,
+        phoneNumber: authResponse.phoneNumber,
       }));
 
       return authResponse;
@@ -217,6 +231,13 @@ class ApiClient {
         userId: authResponse.userId,
         username: authResponse.username,
         email: authResponse.email,
+        street: authResponse.street,
+        city: authResponse.city,
+        state: authResponse.state,
+        zip: authResponse.zip,
+        title: authResponse.title,
+        organization: authResponse.organization,
+        phoneNumber: authResponse.phoneNumber,
       }));
 
       return authResponse;
@@ -227,9 +248,19 @@ class ApiClient {
   }
 
   /**
-   * Update user profile (email and/or password)
+   * Update user profile (email, password, and/or profile metadata)
    */
-  async updateProfile(updates: { email?: string; password?: string }): Promise<void> {
+  async updateProfile(updates: {
+    email?: string;
+    password?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    title?: string;
+    organization?: string;
+    phoneNumber?: string;
+  }): Promise<void> {
     try {
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/auth/profile`,
@@ -248,14 +279,19 @@ class ApiClient {
 
       const result = await response.json();
 
-      // Update user info in localStorage if email changed
-      if (updates.email) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          user.email = result.email;
-          localStorage.setItem('user', JSON.stringify(user));
-        }
+      // Update user info in localStorage if any fields changed
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (result.email !== undefined) user.email = result.email;
+        if (result.street !== undefined) user.street = result.street;
+        if (result.city !== undefined) user.city = result.city;
+        if (result.state !== undefined) user.state = result.state;
+        if (result.zip !== undefined) user.zip = result.zip;
+        if (result.title !== undefined) user.title = result.title;
+        if (result.organization !== undefined) user.organization = result.organization;
+        if (result.phoneNumber !== undefined) user.phoneNumber = result.phoneNumber;
+        localStorage.setItem('user', JSON.stringify(user));
       }
     } catch (error) {
       console.error('Failed to update profile:', error);

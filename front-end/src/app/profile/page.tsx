@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { ServiceAccountTokenGenerator } from '@/components/ServiceAccountTokenGenerator';
+import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -20,6 +21,13 @@ export default function ProfilePage() {
   const [email, setEmail] = useState(user?.email || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [street, setStreet] = useState(user?.street || '');
+  const [city, setCity] = useState(user?.city || '');
+  const [state, setState] = useState(user?.state || '');
+  const [zip, setZip] = useState(user?.zip || '');
+  const [title, setTitle] = useState(user?.title || '');
+  const [organization, setOrganization] = useState(user?.organization || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +62,34 @@ export default function ProfilePage() {
         updates.password = newPassword;
       }
 
+      if (street !== user?.street) {
+        updates.street = street;
+      }
+
+      if (city !== user?.city) {
+        updates.city = city;
+      }
+
+      if (state !== user?.state) {
+        updates.state = state;
+      }
+
+      if (zip !== user?.zip) {
+        updates.zip = zip;
+      }
+
+      if (title !== user?.title) {
+        updates.title = title;
+      }
+
+      if (organization !== user?.organization) {
+        updates.organization = organization;
+      }
+
+      if (phoneNumber !== user?.phoneNumber) {
+        updates.phoneNumber = phoneNumber;
+      }
+
       if (Object.keys(updates).length === 0) {
         setErrorMessage('No changes to save');
         setIsUpdating(false);
@@ -63,6 +99,7 @@ export default function ProfilePage() {
       await apiClient.updateProfile(updates);
 
       setSuccessMessage('Profile updated successfully');
+      toast.success('Profile updated successfully');
       setNewPassword('');
       setConfirmPassword('');
 
@@ -169,11 +206,136 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                {/* Profile Metadata Section */}
+                <div className="space-y-4 pb-6 border-b">
+                  <Label className="flex items-center gap-2 text-base">
+                    <User className="h-4 w-4" />
+                    Profile Information
+                  </Label>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., Software Engineer"
+                        disabled={isUpdating}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="organization">Organization/Company</Label>
+                      <Input
+                        id="organization"
+                        type="text"
+                        value={organization}
+                        onChange={(e) => setOrganization(e.target.value)}
+                        placeholder="e.g., ACME Corp"
+                        disabled={isUpdating}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g., (555) 123-4567"
+                      disabled={isUpdating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="street">Street Address</Label>
+                    <Input
+                      id="street"
+                      type="text"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="e.g., 123 Main St"
+                      disabled={isUpdating}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g., New York"
+                        disabled={isUpdating}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        type="text"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="e.g., NY"
+                        disabled={isUpdating}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="zip">ZIP Code</Label>
+                      <Input
+                        id="zip"
+                        type="text"
+                        value={zip}
+                        onChange={(e) => setZip(e.target.value)}
+                        placeholder="e.g., 10001"
+                        disabled={isUpdating}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Save Profile Button */}
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      type="submit"
+                      disabled={isUpdating}
+                      className="flex-1"
+                    >
+                      {isUpdating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Profile
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/')}
+                      disabled={isUpdating}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Password Section */}
                 <div className="space-y-4">
                   <Label className="flex items-center gap-2 text-base">
                     <Lock className="h-4 w-4" />
-                    Change Password
+                    Change Password (Optional)
                   </Label>
 
                   <div className="space-y-2">
@@ -224,12 +386,12 @@ export default function ProfilePage() {
                     {isUpdating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Updating...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Save Changes
+                        Save All Changes
                       </>
                     )}
                   </Button>

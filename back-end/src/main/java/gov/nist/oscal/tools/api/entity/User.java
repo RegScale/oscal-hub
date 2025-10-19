@@ -36,6 +36,28 @@ public class User {
     @Column(name = "role")
     private Set<String> roles = new HashSet<>();
 
+    // Profile metadata fields
+    @Column(length = 255)
+    private String street;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 50)
+    private String state;
+
+    @Column(length = 20)
+    private String zip;
+
+    @Column(length = 100)
+    private String title;
+
+    @Column(length = 255)
+    private String organization;
+
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
+
     // Constructors
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -112,5 +134,61 @@ public class User {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getZip() {
+        return zip;
+    }
+
+    public void setZip(String zip) {
+        this.zip = zip;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(String organization) {
+        this.organization = organization;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }
