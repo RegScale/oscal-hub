@@ -24,10 +24,36 @@ export default function UserGuidePage() {
           </p>
         </header>
 
+        {/* Table of Contents */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Table of Contents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <a href="#getting-started" className="text-primary hover:underline">Getting Started</a>
+              <a href="#features" className="text-primary hover:underline">Features</a>
+              <a href="#validate" className="text-primary hover:underline">How to Validate Documents</a>
+              <a href="#convert" className="text-primary hover:underline">How to Convert Document Formats</a>
+              <a href="#resolve" className="text-primary hover:underline">How to Resolve Profiles</a>
+              <a href="#batch" className="text-primary hover:underline">How to Process Multiple Files</a>
+              <a href="#history" className="text-primary hover:underline">How to Use Operation History</a>
+              <a href="#library" className="text-primary hover:underline">How to Use the OSCAL Library</a>
+              <a href="#visualize" className="text-primary hover:underline">How to Visualize OSCAL Documents</a>
+              <a href="#authorizations" className="text-primary hover:underline">How to Create System Authorizations</a>
+              <a href="#service-tokens" className="text-primary hover:underline">How to Create and Use Service Account Tokens</a>
+              <a href="#model-types" className="text-primary hover:underline">OSCAL Model Types</a>
+              <a href="#keyboard-shortcuts" className="text-primary hover:underline">Keyboard Shortcuts</a>
+              <a href="#troubleshooting" className="text-primary hover:underline">Troubleshooting</a>
+              <a href="#resources" className="text-primary hover:underline">Additional Resources</a>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Content */}
         <div className="space-y-8">
           {/* Getting Started */}
-          <Card>
+          <Card id="getting-started">
             <CardHeader>
               <CardTitle>Getting Started</CardTitle>
             </CardHeader>
@@ -62,7 +88,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Features */}
-          <Card>
+          <Card id="features">
             <CardHeader>
               <CardTitle>Features</CardTitle>
             </CardHeader>
@@ -176,11 +202,26 @@ export default function UserGuidePage() {
                   <li>Full API access with service account tokens</li>
                 </ul>
               </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">✅ System Authorizations</h3>
+                <p className="text-muted-foreground mb-2">
+                  Create professional system authorization documents using customizable templates.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
+                  <li>Create reusable markdown templates with variables</li>
+                  <li>Multi-step wizard for generating authorization documents</li>
+                  <li>Link authorizations to System Security Plans (SSPs)</li>
+                  <li>Live preview with variable substitution</li>
+                  <li>Track authorization history and metadata</li>
+                  <li>Search and filter authorizations by system</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
 
           {/* How to Use Validation */}
-          <Card>
+          <Card id="validate">
             <CardHeader>
               <CardTitle>How to Validate Documents</CardTitle>
             </CardHeader>
@@ -224,7 +265,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use Convert */}
-          <Card>
+          <Card id="convert">
             <CardHeader>
               <CardTitle>How to Convert Document Formats</CardTitle>
             </CardHeader>
@@ -264,7 +305,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use Resolve */}
-          <Card>
+          <Card id="resolve">
             <CardHeader>
               <CardTitle>How to Resolve Profiles</CardTitle>
             </CardHeader>
@@ -305,7 +346,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use Batch */}
-          <Card>
+          <Card id="batch">
             <CardHeader>
               <CardTitle>How to Process Multiple Files</CardTitle>
             </CardHeader>
@@ -350,7 +391,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use History */}
-          <Card>
+          <Card id="history">
             <CardHeader>
               <CardTitle>How to Use Operation History</CardTitle>
             </CardHeader>
@@ -392,7 +433,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use Library */}
-          <Card>
+          <Card id="library">
             <CardHeader>
               <CardTitle>How to Use the OSCAL Library</CardTitle>
             </CardHeader>
@@ -454,7 +495,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* How to Use Visualization */}
-          <Card>
+          <Card id="visualize">
             <CardHeader>
               <CardTitle>How to Visualize OSCAL Documents</CardTitle>
             </CardHeader>
@@ -501,8 +542,218 @@ export default function UserGuidePage() {
             </CardContent>
           </Card>
 
+          {/* How to Use Authorizations */}
+          <Card id="authorizations">
+            <CardHeader>
+              <CardTitle>How to Create System Authorizations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                The Authorization feature allows you to create professional system authorization documents
+                using customizable templates with variable substitution. Perfect for ATO (Authority to Operate)
+                decisions, FedRAMP authorizations, and internal system approvals.
+              </p>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Creating Authorization Templates</h3>
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground mb-6">
+                <li>
+                  <span className="font-medium text-foreground">Navigate to Authorizations</span>
+                  <p className="ml-6 mt-1">
+                    Click the &quot;Authorizations&quot; card on the dashboard with the ShieldCheck icon.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Go to Templates Tab</span>
+                  <p className="ml-6 mt-1">
+                    Click the &quot;Templates&quot; tab to view and manage authorization templates.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Create New Template</span>
+                  <p className="ml-6 mt-1">
+                    Click &quot;Create New Template&quot; to start creating a reusable template.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Enter Template Details</span>
+                  <p className="ml-6 mt-1">
+                    Provide a template name (e.g., &quot;FedRAMP ATO Template&quot; or &quot;Internal Authorization&quot;).
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Write Template Content with Variables</span>
+                  <p className="ml-6 mt-1">
+                    Use markdown formatting and insert variables using double curly braces.
+                    Variables can contain letters, numbers, hyphens, underscores, spaces, and special characters.
+                  </p>
+                  <code className="block bg-muted p-3 rounded text-sm font-mono whitespace-pre overflow-x-auto mt-2">
+{`# System Authorization for {{ system_name }}
+
+**System Owner:** {{ system_owner }}
+**Environment:** {{ environment }}
+
+## Authorization Decision
+
+This system is **{{ decision }}** for {{ environment }} operations.
+
+**Authorizing Official:** {{ authorizing_official }}
+**Date:** {{ authorization_date }}
+**Period:** {{ authorization_period }}
+
+## Risk Level
+{{ risk_level }}
+
+## Special Conditions
+{{ conditions }}`}
+                  </code>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Preview Template</span>
+                  <p className="ml-6 mt-1">
+                    View the live preview on the right side. Variables are automatically detected and
+                    highlighted in amber. The list of variables appears below the editor.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Save Template</span>
+                  <p className="ml-6 mt-1">
+                    Click &quot;Save Template&quot; to save your template for reuse.
+                  </p>
+                </li>
+              </ol>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Creating an Authorization Document</h3>
+              <ol className="list-decimal list-inside space-y-4 text-muted-foreground mb-6">
+                <li>
+                  <span className="font-medium text-foreground">Go to Authorizations Tab</span>
+                  <p className="ml-6 mt-1">
+                    Click the &quot;Authorizations&quot; tab and then &quot;Create New Authorization&quot;.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Step 1: Select SSP</span>
+                  <p className="ml-6 mt-1">
+                    Choose a System Security Plan from your library. This links the authorization to a specific system.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Step 2: Choose Template</span>
+                  <p className="ml-6 mt-1">
+                    Select an authorization template. You&apos;ll see the template preview and list of variables
+                    that need to be filled.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Step 3: Fill Variable Values</span>
+                  <p className="ml-6 mt-1">
+                    Enter values for each variable. As you type, the preview on the right updates in real-time
+                    to show your completed document. All variables must be filled before proceeding.
+                  </p>
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Step 4: Review and Name</span>
+                  <p className="ml-6 mt-1">
+                    Review the final document, enter a name for this authorization, and click
+                    &quot;Create Authorization&quot; to save it.
+                  </p>
+                </li>
+              </ol>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Managing Authorizations</h3>
+              <div className="space-y-3 text-muted-foreground ml-4">
+                <div>
+                  <span className="font-medium text-foreground">View Authorizations:</span>
+                  <p className="mt-1">
+                    Browse all authorization documents in the Authorizations tab. Each card shows the authorization
+                    name, linked SSP, template used, and creation date.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Search:</span>
+                  <p className="mt-1">
+                    Use the search box to find authorizations by name or filter by system.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Delete:</span>
+                  <p className="mt-1">
+                    Click the delete button to remove an authorization. You&apos;ll be asked to confirm.
+                  </p>
+                </div>
+              </div>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Variable Naming Best Practices</h3>
+              <div className="bg-muted p-4 rounded space-y-2 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Supported Variable Formats:</p>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li><code className="bg-background px-1.5 py-0.5 rounded">{'{{ system_name }}'}</code> - Letters, numbers, underscores, hyphens</li>
+                  <li><code className="bg-background px-1.5 py-0.5 rounded">{'{{ Low, Moderate, or High }}'}</code> - Spaces and commas allowed</li>
+                  <li><code className="bg-background px-1.5 py-0.5 rounded">{'{{ Federal Agency/Office }}'}</code> - Special characters allowed</li>
+                  <li><code className="bg-background px-1.5 py-0.5 rounded">{'{{ agency logo }}'}</code> - Spaces for multi-word variables</li>
+                </ul>
+                <p className="mt-3 font-medium text-foreground">Tips:</p>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li>Use descriptive variable names that clearly indicate what should be filled in</li>
+                  <li>Keep variable names concise but meaningful</li>
+                  <li>Use consistent naming conventions across templates</li>
+                  <li>Variables are case-sensitive: <code className="bg-background px-1.5 py-0.5 rounded">{'{{ Date }}'}</code> ≠ <code className="bg-background px-1.5 py-0.5 rounded">{'{{ date }}'}</code></li>
+                </ul>
+              </div>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Example: FedRAMP Authorization Template</h3>
+              <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
+{`{{ agency logo }}
+
+{{ Insert Date }}
+
+To: {{ CSP System Owner Name }}
+
+The {{ Federal Agency/Office }} has completed review of the
+{{ Insert CSP and cloud service name }} system and grants
+Authority to Operate based on categorization of
+"{{ Low, Moderate, or High }}".
+
+This authorization is valid for {{ authorization period }}
+and is subject to {{ special conditions }}.
+
+SIGNED:
+{{ Authorizing Official }}
+{{ Title }}
+{{ Date }}`}
+              </code>
+
+              <h3 className="font-semibold text-lg mb-2 mt-6">Common Use Cases</h3>
+              <div className="space-y-3 text-muted-foreground ml-4">
+                <div>
+                  <span className="font-medium text-foreground">FedRAMP Authorizations:</span>
+                  <p className="mt-1">
+                    Create formal ATO documents for cloud service providers seeking FedRAMP authorization.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Internal System Approvals:</span>
+                  <p className="mt-1">
+                    Generate authorization documents for internal systems with standardized templates.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Conditional Authorizations:</span>
+                  <p className="mt-1">
+                    Document ATOs with specific conditions, requirements, or limitations.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Authorization Renewals:</span>
+                  <p className="mt-1">
+                    Track authorization periods and create renewal documents when needed.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* How to Use Service Account Tokens */}
-          <Card>
+          <Card id="service-tokens">
             <CardHeader>
               <CardTitle>How to Create and Use Service Account Tokens</CardTitle>
             </CardHeader>
@@ -612,7 +863,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* OSCAL Model Types */}
-          <Card>
+          <Card id="model-types">
             <CardHeader>
               <CardTitle>OSCAL Model Types</CardTitle>
             </CardHeader>
@@ -649,7 +900,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Keyboard Shortcuts */}
-          <Card>
+          <Card id="keyboard-shortcuts">
             <CardHeader>
               <CardTitle>Keyboard Shortcuts</CardTitle>
             </CardHeader>
@@ -684,7 +935,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Troubleshooting */}
-          <Card>
+          <Card id="troubleshooting">
             <CardHeader>
               <CardTitle>Troubleshooting</CardTitle>
             </CardHeader>
@@ -747,7 +998,7 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Additional Resources */}
-          <Card>
+          <Card id="resources">
             <CardHeader>
               <CardTitle>Additional Resources</CardTitle>
             </CardHeader>

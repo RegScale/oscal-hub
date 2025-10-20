@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, Library, BarChart3 } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck } from 'lucide-react';
 
 export function Hero() {
   return (
@@ -34,7 +34,7 @@ export function Hero() {
       </div>
 
       {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
         <Card className="border-primary/20">
           <CardHeader className="space-y-4">
             <div className="p-3 rounded-lg bg-primary/10 w-fit">
@@ -86,6 +86,20 @@ export function Hero() {
               <CardTitle className="text-xl mb-2">Visualize</CardTitle>
               <CardDescription>
                 Explore and understand OSCAL documents through interactive data visualizations
+              </CardDescription>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-primary/20">
+          <CardHeader className="space-y-4">
+            <div className="p-3 rounded-lg bg-primary/10 w-fit">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl mb-2">Authorizations</CardTitle>
+              <CardDescription>
+                Create and manage system authorization documents with customizable templates
               </CardDescription>
             </div>
           </CardHeader>

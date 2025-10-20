@@ -157,6 +157,15 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    @Transactional
+    public User updateLogo(String username, String logo) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setLogo(logo);
+        return userRepository.save(user);
+    }
+
     /**
      * Generate a service account token for the current user
      * @param username The username to generate the token for

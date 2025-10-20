@@ -106,6 +106,7 @@ public class AuthController {
         response.put("title", user.getTitle());
         response.put("organization", user.getOrganization());
         response.put("phoneNumber", user.getPhoneNumber());
+        response.put("logo", user.getLogo());
 
         return ResponseEntity.ok(response);
     }
@@ -171,6 +172,7 @@ public class AuthController {
         response.put("title", user.getTitle());
         response.put("organization", user.getOrganization());
         response.put("phoneNumber", user.getPhoneNumber());
+        response.put("logo", user.getLogo());
 
         return ResponseEntity.ok(response);
     }
@@ -209,6 +211,56 @@ public class AuthController {
             response.put("title", user.getTitle());
             response.put("organization", user.getOrganization());
             response.put("phoneNumber", user.getPhoneNumber());
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Upload user logo",
+        description = "Upload or update logo for the current user. Logo should be provided as base64-encoded data URL."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Logo uploaded successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid logo data"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/logo")
+    public ResponseEntity<?> uploadLogo(@RequestBody Map<String, String> logoData) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            String username = authentication.getName();
+            String logo = logoData.get("logo");
+
+            if (logo == null || logo.isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Logo data is required");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // Validate that it's a data URL
+            if (!logo.startsWith("data:image/")) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Logo must be a valid data URL (data:image/...)");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            User user = authService.updateLogo(username, logo);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Logo uploaded successfully");
+            response.put("logo", user.getLogo());
 
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {

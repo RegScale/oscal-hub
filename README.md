@@ -22,6 +22,7 @@ Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-
 - **Format Conversion** - Convert between XML, JSON, and YAML formats
 - **Profile Resolution** - Resolve OSCAL Profiles into Catalogs
 - **Batch Processing** - Process multiple files simultaneously
+- **System Authorizations** - Create and manage system authorization documents with customizable templates
 
 ### Supported OSCAL Models
 
@@ -40,6 +41,9 @@ Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-
 - **Interactive Validation** - Real-time validation feedback with detailed error messages
 - **Operation History** - Track and review past operations
 - **Drag-and-Drop Upload** - Easy file upload with format auto-detection
+- **Authorization Templates** - Create reusable markdown templates with variable placeholders
+- **System Authorizations** - Generate professional authorization documents by filling template variables
+- **SSP Linking** - Link authorizations to System Security Plans for full traceability
 
 ## Quick Start
 
@@ -352,6 +356,11 @@ Interactive API documentation is available via Swagger UI when the backend is ru
 - `POST /api/profile/resolve` - Resolve OSCAL Profile
 - `GET /api/files` - List saved files
 - `GET /api/history` - Operation history
+- `POST /api/authorization-templates` - Create authorization template
+- `GET /api/authorization-templates` - List all templates
+- `POST /api/authorizations` - Create system authorization
+- `GET /api/authorizations` - List all authorizations
+- `GET /api/authorizations/ssp/{sspId}` - Get authorizations for an SSP
 
 ## CLI Usage
 

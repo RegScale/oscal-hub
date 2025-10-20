@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Lock, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Save, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,19 +18,37 @@ import { toast } from 'sonner';
 export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [street, setStreet] = useState(user?.street || '');
-  const [city, setCity] = useState(user?.city || '');
-  const [state, setState] = useState(user?.state || '');
-  const [zip, setZip] = useState(user?.zip || '');
-  const [title, setTitle] = useState(user?.title || '');
-  const [organization, setOrganization] = useState(user?.organization || '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+  const [title, setTitle] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [pendingLogo, setPendingLogo] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update form state when user data loads
+  useEffect(() => {
+    if (user) {
+      setEmail(user.email || '');
+      setStreet(user.street || '');
+      setCity(user.city || '');
+      setState(user.state || '');
+      setZip(user.zip || '');
+      setTitle(user.title || '');
+      setOrganization(user.organization || '');
+      setPhoneNumber(user.phoneNumber || '');
+      setLogoPreview(user.logo || null);
+    }
+  }, [user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,32 +108,81 @@ export default function ProfilePage() {
         updates.phoneNumber = phoneNumber;
       }
 
-      if (Object.keys(updates).length === 0) {
+      // Check if there are any changes (including logo)
+      if (Object.keys(updates).length === 0 && !pendingLogo) {
         setErrorMessage('No changes to save');
         setIsUpdating(false);
         return;
       }
 
-      await apiClient.updateProfile(updates);
+      // Update profile fields if there are any
+      if (Object.keys(updates).length > 0) {
+        await apiClient.updateProfile(updates);
+      }
+
+      // Upload logo if there's a pending logo change
+      if (pendingLogo) {
+        await apiClient.uploadLogo(pendingLogo);
+        setPendingLogo(null);
+      }
+
+      // Fetch the updated user data from the server
+      const updatedUser = await apiClient.getCurrentUser();
+
+      // Update localStorage with the complete user data
+      localStorage.setItem('user', JSON.stringify(updatedUser));
 
       setSuccessMessage('Profile updated successfully');
       toast.success('Profile updated successfully');
       setNewPassword('');
       setConfirmPassword('');
 
-      // If email was updated, update the user context
-      if (updates.email) {
-        // Refresh the page to reload user data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
+      // Refresh the page to reload user data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error: unknown) {
       console.error('Profile update error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please select an image file');
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMessage('Logo file size must be less than 2MB');
+      toast.error('Logo file size must be less than 2MB');
+      return;
+    }
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    // Convert file to base64 data URL for preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Logo = reader.result as string;
+      setLogoPreview(base64Logo);
+      setPendingLogo(base64Logo);
+      toast.success('Logo selected. Click "Save Profile" or "Save All Changes" to upload.');
+    };
+    reader.onerror = () => {
+      setErrorMessage('Failed to read file. Please try again.');
+      toast.error('Failed to read file');
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -172,6 +239,60 @@ export default function ProfilePage() {
                 <Label className="text-sm text-muted-foreground">User ID</Label>
                 <p className="text-sm font-mono text-muted-foreground">{user?.userId}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Logo Upload Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                User Logo
+              </CardTitle>
+              <CardDescription>
+                Select your logo to use in authorization templates with the {'{{ logo }}'} tag. Logo will be saved with your profile.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Logo Preview */}
+              {logoPreview && (
+                <div className="flex justify-center p-4 border rounded-lg bg-muted/50">
+                  <img
+                    src={logoPreview}
+                    alt="User logo"
+                    className="max-h-32 max-w-full object-contain"
+                  />
+                </div>
+              )}
+
+              {/* Upload Button */}
+              <div className="flex gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUpdating}
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {logoPreview ? 'Change Logo' : 'Select Logo'}
+                </Button>
+              </div>
+              {pendingLogo && (
+                <p className="text-sm text-amber-600 font-medium">
+                  Logo selected. Click "Save Profile" or "Save All Changes" below to upload.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Supported formats: PNG, JPG, GIF (max 2MB). Logo will be saved when you click "Save Profile" or "Save All Changes" and will be available in authorization templates using the {'{{ logo }}'} variable.
+              </p>
             </CardContent>
           </Card>
 

@@ -58,6 +58,9 @@ public class User {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
+    @Column(columnDefinition = "TEXT")
+    private String logo; // Base64-encoded logo image (data URL format: data:image/png;base64,...)
+
     // Constructors
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -190,5 +193,13 @@ public class User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public String getLogo() {
+        return logo;
+    }
+
+    public void setLogo(String logo) {
+        this.logo = logo;
     }
 }

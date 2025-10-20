@@ -28,6 +28,7 @@ oscal-cli/
 │   ├── public/         # Static assets
 │   ├── package.json    # Node.js dependencies
 │   └── next.config.ts  # Next.js configuration
+├── docs/               # Documentation directory
 ├── pom.xml             # Parent Maven POM (aggregator)
 ├── Dockerfile          # Multi-stage Docker build
 ├── docker-compose.yml  # Docker Compose configuration
@@ -35,6 +36,33 @@ oscal-cli/
 ├── start.sh            # Production-like startup
 └── stop.sh             # Stop all servers
 ```
+
+## Documentation Guidelines
+
+**IMPORTANT**: All documentation files created during development should be placed in the `docs/` directory.
+
+### Documentation Best Practices
+
+1. **Location**: Always create documentation files in `docs/` directory, not in project root
+2. **Naming**: Use descriptive UPPERCASE names with hyphens (e.g., `FEATURE-NAME-GUIDE.md`)
+3. **Format**: Use Markdown (.md) format for all documentation
+4. **Content**: Include:
+   - Date and status at the top
+   - Clear problem/solution sections
+   - Code examples where relevant
+   - Testing results
+   - Step-by-step guides for complex features
+
+### Current Documentation
+
+The `docs/` directory contains:
+- **AUTHORIZATION-FEATURE-SUMMARY.md** - Complete guide to the authorization feature
+- **TEMPLATE-EDITOR-FIX.md** - Technical details on template editor fixes
+- **VARIABLE-DETECTION-SUMMARY.md** - User guide for variable detection
+- **VARIABLE-PATTERN-UPDATE.md** - Pattern matching updates for variables
+- **JAVA_SPRING_UPGRADE_PLAN.md** - Java and Spring upgrade planning
+
+When creating new features or fixing issues, document your work in the `docs/` folder so future developers can understand the implementation and decisions made.
 
 ## Build Commands
 

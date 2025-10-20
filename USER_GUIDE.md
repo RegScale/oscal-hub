@@ -12,6 +12,7 @@ A comprehensive guide for using the OSCAL Command Line Interface tool.
   - [Validating OSCAL Documents](#validating-oscal-documents)
   - [Converting Between Formats](#converting-between-formats)
   - [Resolving Profiles](#resolving-profiles)
+  - [Creating System Authorizations](#creating-system-authorizations)
 - [Working with OSCAL Models](#working-with-oscal-models)
   - [Catalogs](#catalogs)
   - [Profiles](#profiles)
@@ -181,6 +182,108 @@ oscal-cli profile resolve --to json my-profile.xml
 - Applies parameter modifications
 - Applies control modifications (add, set-parameter)
 - Produces a stand-alone catalog with resolved controls
+
+### Creating System Authorizations
+
+> **Note:** System authorization creation is available through the OSCAL Hub web interface. This feature is not available in the CLI.
+
+The web interface provides a comprehensive system for creating and managing system authorization documents:
+
+#### Authorization Templates
+
+Create reusable markdown templates with variable placeholders for authorization documents:
+
+1. **Navigate to Authorizations** in the web interface
+2. **Go to Templates tab**
+3. **Create a new template** with markdown content
+4. **Use variables** in your template with the syntax `{{ variable_name }}`
+
+**Example Template:**
+```markdown
+# System Authorization for {{ system_name }}
+
+**System Owner:** {{ system_owner }}
+**Environment:** {{ environment }}
+
+## Authorization Decision
+
+This system is **{{ decision }}** for {{ environment }} operations.
+
+**Authorizing Official:** {{ authorizing_official }}
+**Date:** {{ authorization_date }}
+**Period:** {{ authorization_period }}
+
+## Risk Level
+{{ risk_level }}
+
+## Special Conditions
+{{ conditions }}
+```
+
+**Variable Naming:**
+- Variables can contain any text including spaces, commas, and special characters
+- Examples: `{{ agency logo }}`, `{{ Low, Moderate, or High }}`, `{{ Federal Agency/Office }}`
+- Wrap variable names in double curly braces: `{{ }}`
+
+#### Creating Authorizations
+
+Generate professional authorization documents from templates:
+
+1. **Go to Authorizations tab** and click "Create New Authorization"
+2. **Select an SSP** from your library
+3. **Choose a template** to use
+4. **Fill in all variables** - see live preview as you type
+5. **Review and name** your authorization
+6. **Create** - the system generates the completed document
+
+**Benefits:**
+- **Consistency** - Use the same template for multiple systems
+- **Efficiency** - Fill variables instead of writing from scratch
+- **Traceability** - Link authorizations to specific SSPs
+- **Audit Trail** - Track who authorized what and when
+- **Flexibility** - Templates support any variable naming convention
+
+#### Managing Authorizations
+
+- **View** completed authorization documents
+- **Search** by name or SSP
+- **Filter** authorizations by system
+- **Track** authorization history and metadata
+- **Delete** outdated authorizations
+
+#### Common Use Cases
+
+**FedRAMP Authorization:**
+```markdown
+{{agency logo}}
+
+{{Insert Date}}
+
+To: {{CSP System Owner Name}}
+
+The {{Federal Agency/Office}} has completed review of the
+{{Insert CSP and cloud service name}} system and grants
+Authority to Operate based on categorization of
+"{{Low, Moderate, or High}}".
+
+SIGNED:
+{{Authorizing Official}}
+{{Title}}
+```
+
+**Internal System Authorization:**
+```markdown
+# Authorization: {{ system_name }}
+
+Authorized by: {{ authorizing_official }}
+Date: {{ authorization_date }}
+Period: {{ authorization_period }}
+
+Risk Level: {{ risk_level }}
+Conditions: {{ conditions }}
+```
+
+For detailed documentation on the authorization system, see [docs/AUTHORIZATION-FEATURE-SUMMARY.md](docs/AUTHORIZATION-FEATURE-SUMMARY.md).
 
 ## Working with OSCAL Models
 

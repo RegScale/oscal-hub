@@ -125,6 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: response.userId,
         username: response.username,
         email: response.email,
+        street: response.street,
+        city: response.city,
+        state: response.state,
+        zip: response.zip,
+        title: response.title,
+        organization: response.organization,
+        phoneNumber: response.phoneNumber,
+        logo: response.logo,
       });
       updateActivity();
       router.push('/');
@@ -142,6 +150,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: response.userId,
         username: response.username,
         email: response.email,
+        street: response.street,
+        city: response.city,
+        state: response.state,
+        zip: response.zip,
+        title: response.title,
+        organization: response.organization,
+        phoneNumber: response.phoneNumber,
+        logo: response.logo,
       });
       updateActivity();
       router.push('/');

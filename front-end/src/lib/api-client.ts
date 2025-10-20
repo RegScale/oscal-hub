@@ -29,6 +29,10 @@ import type {
   ServiceAccountTokenResponse,
   SspVisualizationData,
   ProfileVisualizationData,
+  AuthorizationTemplateRequest,
+  AuthorizationTemplateResponse,
+  AuthorizationRequest,
+  AuthorizationResponse,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -102,6 +106,7 @@ class ApiClient {
         title: authResponse.title,
         organization: authResponse.organization,
         phoneNumber: authResponse.phoneNumber,
+        logo: authResponse.logo,
       }));
 
       return authResponse;
@@ -146,6 +151,7 @@ class ApiClient {
         title: authResponse.title,
         organization: authResponse.organization,
         phoneNumber: authResponse.phoneNumber,
+        logo: authResponse.logo,
       }));
 
       return authResponse;
@@ -295,6 +301,59 @@ class ApiClient {
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload user logo (base64-encoded data URL)
+   */
+  async uploadLogo(logo: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/logo`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ logo }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        // Try to parse error as JSON, but handle empty responses
+        let errorMessage = 'Failed to upload logo';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            errorMessage = error.error || error.message || errorMessage;
+          } else {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          }
+        } catch {
+          // If JSON parsing fails, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+
+        if (response.status === 403) {
+          throw new Error('Access denied. Please make sure you are logged in.');
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      // Update user info in localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        user.logo = result.logo;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    } catch (error) {
+      console.error('Failed to upload logo:', error);
       throw error;
     }
   }
@@ -1591,6 +1650,341 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to generate service account token:', error);
       throw error;
+    }
+  }
+
+  // ========================================
+  // Authorization Template API Methods
+  // ========================================
+
+  /**
+   * Create a new authorization template
+   */
+  async createAuthorizationTemplate(request: AuthorizationTemplateRequest): Promise<AuthorizationTemplateResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create template: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create authorization template:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an authorization template
+   */
+  async updateAuthorizationTemplate(id: number, request: AuthorizationTemplateRequest): Promise<AuthorizationTemplateResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates/${id}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update template: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update authorization template:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get authorization template by ID
+   */
+  async getAuthorizationTemplate(id: number): Promise<AuthorizationTemplateResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates/${id}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get template: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get authorization template:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all authorization templates
+   */
+  async getAllAuthorizationTemplates(): Promise<AuthorizationTemplateResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get templates: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get authorization templates:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search authorization templates
+   */
+  async searchAuthorizationTemplates(searchTerm?: string): Promise<AuthorizationTemplateResponse[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (searchTerm) queryParams.append('q', searchTerm);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates/search?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search templates: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search authorization templates:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete an authorization template
+   */
+  async deleteAuthorizationTemplate(id: number): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorization-templates/${id}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete authorization template:', error);
+      return false;
+    }
+  }
+
+  // ========================================
+  // Authorization API Methods
+  // ========================================
+
+  /**
+   * Create a new authorization
+   */
+  async createAuthorization(request: AuthorizationRequest): Promise<AuthorizationResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create authorization: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create authorization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an authorization
+   */
+  async updateAuthorization(id: number, request: Partial<AuthorizationRequest>): Promise<AuthorizationResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${id}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update authorization: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update authorization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get authorization by ID
+   */
+  async getAuthorization(id: number): Promise<AuthorizationResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${id}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get authorization: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get authorization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all authorizations
+   */
+  async getAllAuthorizations(): Promise<AuthorizationResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get authorizations: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get authorizations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get authorizations for a specific SSP
+   */
+  async getAuthorizationsBySsp(sspItemId: string): Promise<AuthorizationResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/ssp/${sspItemId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get authorizations by SSP: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get authorizations by SSP:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search authorizations
+   */
+  async searchAuthorizations(searchTerm?: string): Promise<AuthorizationResponse[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (searchTerm) queryParams.append('q', searchTerm);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/search?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search authorizations: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search authorizations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete an authorization
+   */
+  async deleteAuthorization(id: number): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${id}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete authorization:', error);
+      return false;
     }
   }
 

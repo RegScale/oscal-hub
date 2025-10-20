@@ -471,3 +471,51 @@ export interface ProfileVisualizationData {
   controlsByFamily: Record<string, ControlFamilyInfo>;
   modificationSummary: ModificationSummary;
 }
+
+// Authorization Template Types
+export interface AuthorizationTemplateRequest {
+  name: string;
+  content: string;
+}
+
+export interface AuthorizationTemplateResponse {
+  id: number;
+  name: string;
+  content: string;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  lastUpdatedBy: string;
+  lastUpdatedAt: string; // ISO 8601 date string
+  variables: string[]; // Extracted variables from content
+}
+
+// Authorization Types
+export interface AuthorizationRequest {
+  name: string;
+  sspItemId: string;
+  templateId: number;
+  variableValues: Record<string, string>;
+  dateAuthorized?: string;
+  dateExpired?: string;
+  systemOwner?: string;
+  securityManager?: string;
+  authorizingOfficial?: string;
+  editedContent?: string; // User-edited template content
+}
+
+export interface AuthorizationResponse {
+  id: number;
+  name: string;
+  sspItemId: string;
+  templateId: number;
+  templateName: string;
+  variableValues: Record<string, string>;
+  completedContent: string; // Final markdown with variables replaced
+  authorizedBy: string;
+  authorizedAt: string; // ISO 8601 date string
+  createdAt: string; // ISO 8601 date string
+  dateExpired?: string; // ISO 8601 date string
+  systemOwner?: string;
+  securityManager?: string;
+  authorizingOfficial?: string;
+}

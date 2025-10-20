@@ -9,6 +9,7 @@ export interface User {
   title?: string;
   organization?: string;
   phoneNumber?: string;
+  logo?: string;
 }
 
 export interface AuthResponse {
@@ -23,6 +24,7 @@ export interface AuthResponse {
   title?: string;
   organization?: string;
   phoneNumber?: string;
+  logo?: string;
 }
 
 export interface LoginRequest {
