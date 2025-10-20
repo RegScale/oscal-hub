@@ -29,6 +29,7 @@ import type {
   ServiceAccountTokenResponse,
   SspVisualizationData,
   ProfileVisualizationData,
+  SarVisualizationData,
   AuthorizationTemplateRequest,
   AuthorizationTemplateResponse,
   AuthorizationRequest,
@@ -528,6 +529,40 @@ class ApiClient {
       return await response.json();
     } catch (error) {
       console.error('Profile visualization failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Visualize Security Assessment Results (SAR)
+   */
+  async visualizeSAR(
+    content: string,
+    format: OscalFormat,
+    fileName?: string
+  ): Promise<SarVisualizationData> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/visualization/sar`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({
+            content,
+            format: format.toUpperCase(),
+            fileName
+          }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`SAR visualization failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('SAR visualization failed:', error);
       throw error;
     }
   }

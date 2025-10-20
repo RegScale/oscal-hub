@@ -786,17 +786,576 @@ public class VisualizationService {
     }
 
     private String extractFamilyId(String controlId) {
-        // Extract family identifier from control ID (e.g., "ac-1" -> "ac")
-        int dashIndex = controlId.indexOf('-');
-        if (dashIndex > 0) {
-            return controlId.substring(0, dashIndex);
+        // Extract family identifier from control ID
+        // Supports multiple formats:
+        // - Standard NIST format: "ac-1" -> "ac"
+        // - CMMC format: "AC.L1-3.1.1" -> "ac"
+        // - Dotted format: "ac.1" -> "ac"
+
+        String lowerControlId = controlId.toLowerCase();
+
+        // Check for dot (CMMC format like "AC.L1-3.1.1")
+        int dotIndex = lowerControlId.indexOf('.');
+        if (dotIndex > 0) {
+            return lowerControlId.substring(0, dotIndex);
         }
-        // For control IDs without a dash, take the first two characters
-        return controlId.length() >= 2 ? controlId.substring(0, 2) : controlId;
+
+        // Check for dash (standard format like "ac-1")
+        int dashIndex = lowerControlId.indexOf('-');
+        if (dashIndex > 0) {
+            return lowerControlId.substring(0, dashIndex);
+        }
+
+        // For control IDs without a separator, take the first two characters
+        return lowerControlId.length() >= 2 ? lowerControlId.substring(0, 2) : lowerControlId;
     }
 
     private String getString(JsonNode node, String field) {
         return getString(node, field, "");
+    }
+
+    public SarVisualizationResult analyzeSAR(SarVisualizationRequest request, String username) {
+        SarVisualizationResult result = new SarVisualizationResult();
+
+        try {
+            logger.info("Analyzing SAR - Format: {}, Content length: {}", request.getFormat(), request.getContent().length());
+
+            // Parse the content as JSON (converting if necessary)
+            JsonNode sarNode = parseContent(request.getContent(), request.getFormat());
+
+            if (sarNode == null) {
+                result.setSuccess(false);
+                result.setMessage("Failed to parse SAR document");
+                return result;
+            }
+
+            // Handle different format structures
+            JsonNode sar;
+            if (sarNode.has("assessment-results")) {
+                // JSON/YAML format: root has "assessment-results" field
+                sar = sarNode.get("assessment-results");
+                logger.info("Found SAR in JSON/YAML format");
+            } else if (sarNode.has("metadata")) {
+                // XML format: root node IS the assessment-results (no wrapper field)
+                sar = sarNode;
+                logger.info("Found SAR in XML format (root node is assessment-results)");
+            } else {
+                result.setSuccess(false);
+                result.setMessage("Invalid SAR document: missing required fields");
+
+                // Log available fields for debugging
+                if (sarNode != null) {
+                    StringBuilder availableFields = new StringBuilder();
+                    sarNode.fieldNames().forEachRemaining(name -> availableFields.append(name).append(", "));
+                    logger.error("Invalid document - Available fields: [{}]", availableFields.toString());
+                }
+                return result;
+            }
+
+            // Extract various sections
+            extractAssessmentInfo(sar, result);
+            extractResults(sar, result);
+            calculateAssessmentSummary(result);
+
+            result.setSuccess(true);
+            result.setMessage("SAR analyzed successfully");
+            logger.info("Successfully analyzed SAR document");
+
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setMessage("Failed to analyze SAR: " + e.getMessage());
+            logger.error("SAR analysis failed: {}", e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+    private void extractAssessmentInfo(JsonNode sar, SarVisualizationResult result) {
+        SarVisualizationResult.AssessmentInfo assessmentInfo = new SarVisualizationResult.AssessmentInfo();
+
+        assessmentInfo.setUuid(getString(sar, "uuid"));
+
+        JsonNode metadata = sar.get("metadata");
+        if (metadata != null) {
+            assessmentInfo.setTitle(getString(metadata, "title"));
+            assessmentInfo.setVersion(getString(metadata, "version"));
+            assessmentInfo.setOscalVersion(getString(metadata, "oscal-version"));
+            assessmentInfo.setLastModified(getString(metadata, "last-modified"));
+            assessmentInfo.setPublished(getString(metadata, "published"));
+        }
+
+        // Extract import-ssp href
+        JsonNode importSsp = sar.get("import-ssp");
+        if (importSsp != null) {
+            assessmentInfo.setSspImportHref(getString(importSsp, "href"));
+        }
+
+        result.setAssessmentInfo(assessmentInfo);
+    }
+
+    private void extractResults(JsonNode sar, SarVisualizationResult result) {
+        // Check for both plural (JSON/YAML) and singular (XML) forms
+        JsonNode results = sar.get("results");
+        if (results == null) {
+            results = sar.get("result");
+        }
+
+        if (results == null) {
+            logger.warn("No results found in SAR");
+            return;
+        }
+
+        // Results can be an array, iterate through them
+        for (JsonNode resultNode : results) {
+            // Extract reviewed-controls
+            extractReviewedControls(resultNode, result);
+
+            // Extract observations
+            extractObservations(resultNode, result);
+
+            // Extract findings
+            extractFindings(resultNode, result);
+
+            // Extract risks
+            extractRisks(resultNode, result);
+        }
+    }
+
+    private void extractReviewedControls(JsonNode resultNode, SarVisualizationResult result) {
+        JsonNode reviewedControls = resultNode.get("reviewed-controls");
+        if (reviewedControls == null) {
+            reviewedControls = resultNode.get("reviewed-control");
+        }
+
+        if (reviewedControls == null) {
+            return;
+        }
+
+        // Get control-selections
+        JsonNode controlSelections = reviewedControls.get("control-selections");
+        if (controlSelections == null) {
+            controlSelections = reviewedControls.get("control-selection");
+        }
+
+        if (controlSelections == null) {
+            return;
+        }
+
+        Map<String, SarVisualizationResult.ControlFamilyAssessment> familyMap = new HashMap<>();
+
+        for (JsonNode selection : controlSelections) {
+            // Get include-controls
+            JsonNode includeControls = selection.get("include-controls");
+            if (includeControls == null) {
+                includeControls = selection.get("include-control");
+            }
+
+            if (includeControls != null) {
+                for (JsonNode includeControl : includeControls) {
+                    // Check for statement-ids (SAR format) or with-ids (other formats)
+                    JsonNode ids = includeControl.get("statement-ids");
+                    if (ids == null) {
+                        ids = includeControl.get("statement-id");
+                    }
+                    if (ids == null) {
+                        ids = includeControl.get("with-ids");
+                    }
+                    if (ids == null) {
+                        ids = includeControl.get("with-id");
+                    }
+
+                    if (ids != null) {
+                        for (JsonNode idNode : ids) {
+                            String controlId = idNode.asText().toLowerCase();
+                            String familyId = extractFamilyId(controlId);
+                            String familyName = CONTROL_FAMILIES.getOrDefault(familyId, familyId.toUpperCase());
+
+                            // Get or create family assessment
+                            SarVisualizationResult.ControlFamilyAssessment familyAssessment = familyMap.computeIfAbsent(familyId, key -> {
+                                SarVisualizationResult.ControlFamilyAssessment fa = new SarVisualizationResult.ControlFamilyAssessment();
+                                fa.setFamilyId(familyId);
+                                fa.setFamilyName(familyName);
+                                fa.setTotalControlsAssessed(0);
+                                fa.setTotalFindings(0);
+                                fa.setTotalObservations(0);
+                                fa.setAssessedControls(new ArrayList<>());
+                                return fa;
+                            });
+
+                            // Add assessed control
+                            familyAssessment.setTotalControlsAssessed(familyAssessment.getTotalControlsAssessed() + 1);
+                            familyAssessment.getAssessedControls().add(new SarVisualizationResult.ControlFamilyAssessment.AssessedControl(
+                                controlId,
+                                0,  // Will be updated when processing findings
+                                0,  // Will be updated when processing observations
+                                "assessed"
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        result.setControlsByFamily(familyMap);
+    }
+
+    private void extractObservations(JsonNode resultNode, SarVisualizationResult result) {
+        JsonNode observations = resultNode.get("observations");
+        if (observations == null) {
+            observations = resultNode.get("observation");
+        }
+
+        if (observations == null) {
+            return;
+        }
+
+        List<SarVisualizationResult.Observation> observationList = new ArrayList<>();
+
+        for (JsonNode obsNode : observations) {
+            SarVisualizationResult.Observation observation = new SarVisualizationResult.Observation();
+            observation.setUuid(getString(obsNode, "uuid"));
+            observation.setTitle(getString(obsNode, "title"));
+            observation.setDescription(getString(obsNode, "description"));
+
+            // Extract observation type from types array (OSCAL 1.1+ format)
+            JsonNode types = obsNode.get("types");
+            if (types == null) {
+                types = obsNode.get("type");
+            }
+
+            if (types != null && types.isArray() && types.size() > 0) {
+                // Use the first type from the array
+                observation.setObservationType(types.get(0).asText());
+            } else {
+                // Fallback: try to find type in props (older format)
+                JsonNode props = obsNode.get("props");
+                if (props == null) {
+                    props = obsNode.get("prop");
+                }
+
+                if (props != null && props.isArray()) {
+                    for (JsonNode prop : props) {
+                        if ("type".equals(getString(prop, "name"))) {
+                            observation.setObservationType(getString(prop, "value"));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Extract related controls and scores from props
+            JsonNode props = obsNode.get("props");
+            if (props == null) {
+                props = obsNode.get("prop");
+            }
+
+            if (props != null && props.isArray()) {
+                for (JsonNode prop : props) {
+                    String propName = getString(prop, "name");
+                    String propValue = getString(prop, "value");
+
+                    if ("control-id".equals(propName)) {
+                        if (propValue != null && !propValue.isEmpty()) {
+                            observation.getRelatedControls().add(propValue);
+                        }
+                    } else if ("overall-score".equals(propName)) {
+                        try {
+                            observation.setOverallScore(Double.parseDouble(propValue));
+                        } catch (NumberFormatException e) {
+                            logger.warn("Failed to parse overall-score '{}' for observation {}", propValue, observation.getUuid());
+                        }
+                    } else if ("quality-score".equals(propName)) {
+                        try {
+                            observation.setQualityScore(Double.parseDouble(propValue));
+                        } catch (NumberFormatException e) {
+                            logger.warn("Failed to parse quality-score '{}' for observation {}", propValue, observation.getUuid());
+                        }
+                    } else if ("completeness-score".equals(propName)) {
+                        try {
+                            observation.setCompletenessScore(Double.parseDouble(propValue));
+                        } catch (NumberFormatException e) {
+                            logger.warn("Failed to parse completeness-score '{}' for observation {}", propValue, observation.getUuid());
+                        }
+                    }
+                }
+            }
+
+            // Also check relevant-evidence for control references
+            JsonNode relevantEvidence = obsNode.get("relevant-evidence");
+            if (relevantEvidence != null && relevantEvidence.isArray()) {
+                for (JsonNode evidence : relevantEvidence) {
+                    String href = getString(evidence, "href");
+                    if (href != null && href.startsWith("#")) {
+                        observation.getRelatedControls().add(href.substring(1));
+                    }
+                }
+            }
+
+            // Update control family counts
+            for (String controlId : observation.getRelatedControls()) {
+                updateControlObservationCount(result, controlId);
+            }
+
+            observationList.add(observation);
+        }
+
+        result.setObservations(observationList);
+    }
+
+    private void extractFindings(JsonNode resultNode, SarVisualizationResult result) {
+        JsonNode findings = resultNode.get("findings");
+        if (findings == null) {
+            findings = resultNode.get("finding");
+        }
+
+        if (findings == null) {
+            return;
+        }
+
+        // Build maps of observation UUID -> scores from already extracted observations
+        Map<String, Double> observationScores = new HashMap<>();
+        Map<String, Double> observationQualityScores = new HashMap<>();
+        Map<String, Double> observationCompletenessScores = new HashMap<>();
+        for (SarVisualizationResult.Observation obs : result.getObservations()) {
+            if (obs.getOverallScore() != null) {
+                observationScores.put(obs.getUuid(), obs.getOverallScore());
+            }
+            if (obs.getQualityScore() != null) {
+                observationQualityScores.put(obs.getUuid(), obs.getQualityScore());
+            }
+            if (obs.getCompletenessScore() != null) {
+                observationCompletenessScores.put(obs.getUuid(), obs.getCompletenessScore());
+            }
+        }
+
+        List<SarVisualizationResult.Finding> findingList = new ArrayList<>();
+
+        for (JsonNode findingNode : findings) {
+            SarVisualizationResult.Finding finding = new SarVisualizationResult.Finding();
+            finding.setUuid(getString(findingNode, "uuid"));
+            finding.setTitle(getString(findingNode, "title"));
+            finding.setDescription(getString(findingNode, "description"));
+
+            // Extract related controls
+            JsonNode relatedObservations = findingNode.get("related-observations");
+            if (relatedObservations == null) {
+                relatedObservations = findingNode.get("related-observation");
+            }
+
+            List<Double> relatedScores = new ArrayList<>();
+            List<Double> relatedQualityScores = new ArrayList<>();
+            List<Double> relatedCompletenessScores = new ArrayList<>();
+            if (relatedObservations != null && relatedObservations.isArray()) {
+                for (JsonNode relObs : relatedObservations) {
+                    String observationUuid = getString(relObs, "observation-uuid");
+                    if (observationUuid != null) {
+                        finding.getRelatedObservations().add(observationUuid);
+
+                        // Collect scores from related observation
+                        if (observationScores.containsKey(observationUuid)) {
+                            relatedScores.add(observationScores.get(observationUuid));
+                        }
+                        if (observationQualityScores.containsKey(observationUuid)) {
+                            relatedQualityScores.add(observationQualityScores.get(observationUuid));
+                        }
+                        if (observationCompletenessScores.containsKey(observationUuid)) {
+                            relatedCompletenessScores.add(observationCompletenessScores.get(observationUuid));
+                        }
+                    }
+                }
+            }
+
+            // Calculate average scores from related observations
+            if (!relatedScores.isEmpty()) {
+                double sum = 0.0;
+                for (Double score : relatedScores) {
+                    sum += score;
+                }
+                finding.setScore(sum / relatedScores.size());
+            }
+            if (!relatedQualityScores.isEmpty()) {
+                double sum = 0.0;
+                for (Double score : relatedQualityScores) {
+                    sum += score;
+                }
+                finding.setQualityScore(sum / relatedQualityScores.size());
+            }
+            if (!relatedCompletenessScores.isEmpty()) {
+                double sum = 0.0;
+                for (Double score : relatedCompletenessScores) {
+                    sum += score;
+                }
+                finding.setCompletenessScore(sum / relatedCompletenessScores.size());
+            }
+
+            // Extract target controls
+            JsonNode target = findingNode.get("target");
+            if (target != null) {
+                String targetType = getString(target, "type");
+                if ("objective-id".equals(targetType)) {
+                    JsonNode targetId = target.get("target-id");
+                    if (targetId != null) {
+                        String controlId = targetId.asText();
+                        finding.getRelatedControls().add(controlId);
+                        updateControlFindingCount(result, controlId);
+                    }
+                }
+            }
+
+            findingList.add(finding);
+        }
+
+        result.setFindings(findingList);
+    }
+
+    private void extractRisks(JsonNode resultNode, SarVisualizationResult result) {
+        JsonNode risks = resultNode.get("risks");
+        if (risks == null) {
+            risks = resultNode.get("risk");
+        }
+
+        if (risks == null) {
+            return;
+        }
+
+        List<SarVisualizationResult.Risk> riskList = new ArrayList<>();
+
+        for (JsonNode riskNode : risks) {
+            SarVisualizationResult.Risk risk = new SarVisualizationResult.Risk();
+            risk.setUuid(getString(riskNode, "uuid"));
+            risk.setTitle(getString(riskNode, "title"));
+            risk.setDescription(getString(riskNode, "description"));
+            risk.setStatus(getString(riskNode, "status"));
+
+            // Extract related controls from characterization
+            JsonNode characterization = riskNode.get("characterization");
+            if (characterization != null) {
+                JsonNode facets = characterization.get("facets");
+                if (facets == null) {
+                    facets = characterization.get("facet");
+                }
+
+                if (facets != null && facets.isArray()) {
+                    for (JsonNode facet : facets) {
+                        if ("control-id".equals(getString(facet, "name"))) {
+                            String controlId = getString(facet, "value");
+                            if (controlId != null) {
+                                risk.getRelatedControls().add(controlId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            riskList.add(risk);
+        }
+
+        result.setRisks(riskList);
+    }
+
+    private void updateControlObservationCount(SarVisualizationResult result, String controlId) {
+        String familyId = extractFamilyId(controlId.toLowerCase());
+        SarVisualizationResult.ControlFamilyAssessment familyAssessment = result.getControlsByFamily().get(familyId);
+
+        if (familyAssessment != null) {
+            familyAssessment.setTotalObservations(familyAssessment.getTotalObservations() + 1);
+
+            for (SarVisualizationResult.ControlFamilyAssessment.AssessedControl control : familyAssessment.getAssessedControls()) {
+                if (control.getControlId().equalsIgnoreCase(controlId)) {
+                    control.setObservationsCount(control.getObservationsCount() + 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void updateControlFindingCount(SarVisualizationResult result, String controlId) {
+        String familyId = extractFamilyId(controlId.toLowerCase());
+        SarVisualizationResult.ControlFamilyAssessment familyAssessment = result.getControlsByFamily().get(familyId);
+
+        if (familyAssessment != null) {
+            familyAssessment.setTotalFindings(familyAssessment.getTotalFindings() + 1);
+
+            for (SarVisualizationResult.ControlFamilyAssessment.AssessedControl control : familyAssessment.getAssessedControls()) {
+                if (control.getControlId().equalsIgnoreCase(controlId)) {
+                    control.setFindingsCount(control.getFindingsCount() + 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void calculateAssessmentSummary(SarVisualizationResult result) {
+        SarVisualizationResult.AssessmentSummary summary = new SarVisualizationResult.AssessmentSummary();
+
+        // Count total controls assessed
+        int totalControls = 0;
+        for (SarVisualizationResult.ControlFamilyAssessment family : result.getControlsByFamily().values()) {
+            totalControls += family.getTotalControlsAssessed();
+        }
+        summary.setTotalControlsAssessed(totalControls);
+
+        // Set counts from collected data
+        summary.setTotalFindings(result.getFindings().size());
+        summary.setTotalObservations(result.getObservations().size());
+        summary.setTotalRisks(result.getRisks().size());
+        summary.setUniqueFamiliesAssessed(result.getControlsByFamily().size());
+
+        // Calculate findings by severity (simplified - would need to extract from props)
+        summary.getFindingsBySeverity().put("total", result.getFindings().size());
+
+        // Calculate observations by type
+        Map<String, Integer> obsByType = new HashMap<>();
+        for (SarVisualizationResult.Observation obs : result.getObservations()) {
+            String type = obs.getObservationType() != null ? obs.getObservationType() : "unknown";
+            obsByType.merge(type, 1, Integer::sum);
+        }
+        summary.setObservationsByType(obsByType);
+
+        // Calculate score distribution in 10-point buckets (0-10, 10-20, etc.)
+        Map<String, Integer> scoreDistribution = new HashMap<>();
+        // Initialize all buckets to 0
+        scoreDistribution.put("0-10", 0);
+        scoreDistribution.put("10-20", 0);
+        scoreDistribution.put("20-30", 0);
+        scoreDistribution.put("30-40", 0);
+        scoreDistribution.put("40-50", 0);
+        scoreDistribution.put("50-60", 0);
+        scoreDistribution.put("60-70", 0);
+        scoreDistribution.put("70-80", 0);
+        scoreDistribution.put("80-90", 0);
+        scoreDistribution.put("90-100", 0);
+
+        for (SarVisualizationResult.Observation obs : result.getObservations()) {
+            if (obs.getOverallScore() != null) {
+                double score = obs.getOverallScore();
+                String bucket;
+
+                if (score < 10) bucket = "0-10";
+                else if (score < 20) bucket = "10-20";
+                else if (score < 30) bucket = "20-30";
+                else if (score < 40) bucket = "30-40";
+                else if (score < 50) bucket = "40-50";
+                else if (score < 60) bucket = "50-60";
+                else if (score < 70) bucket = "60-70";
+                else if (score < 80) bucket = "70-80";
+                else if (score < 90) bucket = "80-90";
+                else bucket = "90-100";
+
+                scoreDistribution.merge(bucket, 1, Integer::sum);
+            }
+        }
+        summary.setScoreDistribution(scoreDistribution);
+
+        // Calculate risks by severity
+        Map<String, Integer> risksBySev = new HashMap<>();
+        for (SarVisualizationResult.Risk risk : result.getRisks()) {
+            String status = risk.getStatus() != null ? risk.getStatus() : "unknown";
+            risksBySev.merge(status, 1, Integer::sum);
+        }
+        summary.setRisksBySeverity(risksBySev);
+
+        result.setAssessmentSummary(summary);
     }
 
     private String getString(JsonNode node, String field, String defaultValue) {

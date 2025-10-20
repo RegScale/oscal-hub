@@ -472,6 +472,92 @@ export interface ProfileVisualizationData {
   modificationSummary: ModificationSummary;
 }
 
+// SAR (Security Assessment Results) Visualization Types
+export interface SarVisualizationRequest {
+  content: string;
+  format: OscalFormat;
+  fileName?: string;
+}
+
+export interface AssessmentInfo {
+  uuid: string;
+  title: string;
+  description: string;
+  version: string;
+  oscalVersion: string;
+  published: string;
+  lastModified: string;
+  sspImportHref: string;
+}
+
+export interface AssessmentSummary {
+  totalControlsAssessed: number;
+  totalFindings: number;
+  totalObservations: number;
+  totalRisks: number;
+  findingsBySeverity: Record<string, number>;
+  observationsByType: Record<string, number>;
+  scoreDistribution: Record<string, number>;
+  risksBySeverity: Record<string, number>;
+  uniqueFamiliesAssessed: number;
+}
+
+export interface ControlFamilyAssessment {
+  familyId: string;
+  familyName: string;
+  totalControlsAssessed: number;
+  totalFindings: number;
+  totalObservations: number;
+  assessedControls: Array<{
+    controlId: string;
+    findingsCount: number;
+    observationsCount: number;
+    assessmentStatus: string;
+  }>;
+}
+
+export interface Finding {
+  uuid: string;
+  title: string;
+  description: string;
+  relatedControls: string[];
+  relatedObservations: string[];
+  score?: number;
+  qualityScore?: number;
+  completenessScore?: number;
+}
+
+export interface Observation {
+  uuid: string;
+  title: string;
+  description: string;
+  relatedControls: string[];
+  observationType: string;
+  overallScore?: number;
+  qualityScore?: number;
+  completenessScore?: number;
+}
+
+export interface Risk {
+  uuid: string;
+  title: string;
+  description: string;
+  status: string;
+  relatedControls: string[];
+}
+
+export interface SarVisualizationData {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  assessmentInfo: AssessmentInfo;
+  assessmentSummary: AssessmentSummary;
+  controlsByFamily: Record<string, ControlFamilyAssessment>;
+  findings: Finding[];
+  observations: Observation[];
+  risks: Risk[];
+}
+
 // Authorization Template Types
 export interface AuthorizationTemplateRequest {
   name: string;

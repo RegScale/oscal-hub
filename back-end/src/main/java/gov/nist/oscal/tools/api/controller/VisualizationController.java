@@ -2,6 +2,8 @@ package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.model.ProfileVisualizationRequest;
 import gov.nist.oscal.tools.api.model.ProfileVisualizationResult;
+import gov.nist.oscal.tools.api.model.SarVisualizationRequest;
+import gov.nist.oscal.tools.api.model.SarVisualizationResult;
 import gov.nist.oscal.tools.api.model.SspVisualizationRequest;
 import gov.nist.oscal.tools.api.model.SspVisualizationResult;
 import gov.nist.oscal.tools.api.service.VisualizationService;
@@ -59,6 +61,22 @@ public class VisualizationController {
         Principal principal
     ) {
         ProfileVisualizationResult result = visualizationService.analyzeProfile(request, principal.getName());
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(
+        summary = "Analyze Security Assessment Results for visualization",
+        description = "Analyzes an OSCAL Assessment Results document and extracts key information for visualization including controls assessed, findings, observations, and risks."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "SAR analyzed successfully (check 'success' field in response)")
+    })
+    @PostMapping("/sar")
+    public ResponseEntity<SarVisualizationResult> visualizeSAR(
+        @Valid @RequestBody SarVisualizationRequest request,
+        Principal principal
+    ) {
+        SarVisualizationResult result = visualizationService.analyzeSAR(request, principal.getName());
         return ResponseEntity.ok(result);
     }
 }

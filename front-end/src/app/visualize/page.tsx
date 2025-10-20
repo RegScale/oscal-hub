@@ -14,10 +14,11 @@ import { LibrarySelector, LibrarySelectorRef } from '@/components/library-select
 import { CatalogVisualization } from '@/components/CatalogVisualization';
 import { SspVisualization } from '@/components/SspVisualization';
 import { ProfileVisualization } from '@/components/ProfileVisualization';
+import { SarVisualization } from '@/components/SarVisualization';
 import { analyzeCatalog, type CatalogAnalysis } from '@/lib/oscal-parser';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { toast } from 'sonner';
-import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData, ProfileVisualizationData } from '@/types/oscal';
+import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData, ProfileVisualizationData, SarVisualizationData } from '@/types/oscal';
 import { apiClient } from '@/lib/api-client';
 
 export default function VisualizePage() {
@@ -27,6 +28,7 @@ export default function VisualizePage() {
   const [catalogAnalysis, setCatalogAnalysis] = useState<CatalogAnalysis | null>(null);
   const [sspVisualization, setSspVisualization] = useState<SspVisualizationData | null>(null);
   const [profileVisualization, setProfileVisualization] = useState<ProfileVisualizationData | null>(null);
+  const [sarVisualization, setSarVisualization] = useState<SarVisualizationData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
@@ -38,6 +40,7 @@ export default function VisualizePage() {
     setCatalogAnalysis(null);
     setSspVisualization(null);
     setProfileVisualization(null);
+    setSarVisualization(null);
     setError(null);
 
     // Auto-detect format from file extension
@@ -78,6 +81,7 @@ export default function VisualizePage() {
     setCatalogAnalysis(null);
     setSspVisualization(null);
     setProfileVisualization(null);
+    setSarVisualization(null);
     setError(null);
     setFormat(normalizedFormat);
 
@@ -94,21 +98,31 @@ export default function VisualizePage() {
         setCatalogAnalysis(analysis);
         setSspVisualization(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('Catalog analyzed successfully!');
       } else if (docType === 'ssp') {
         const sspData = await apiClient.visualizeSSP(content, normalizedFormat, file.fileName);
         setSspVisualization(sspData);
         setCatalogAnalysis(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('SSP analyzed successfully!');
       } else if (docType === 'profile') {
         const profileData = await apiClient.visualizeProfile(content, normalizedFormat, file.fileName);
         setProfileVisualization(profileData);
         setCatalogAnalysis(null);
         setSspVisualization(null);
+        setSarVisualization(null);
         toast.success('Profile analyzed successfully!');
+      } else if (docType === 'sar') {
+        const sarData = await apiClient.visualizeSAR(content, normalizedFormat, file.fileName);
+        setSarVisualization(sarData);
+        setCatalogAnalysis(null);
+        setSspVisualization(null);
+        setProfileVisualization(null);
+        toast.success('SAR analyzed successfully!');
       } else {
-        throw new Error('Unsupported document type. Please upload a Catalog, Profile, or System Security Plan (SSP).');
+        throw new Error('Unsupported document type. Please upload a Catalog, Profile, System Security Plan (SSP), or Security Assessment Results (SAR).');
       }
     } catch (err) {
       console.error('Analysis error:', err);
@@ -134,6 +148,7 @@ export default function VisualizePage() {
     setCatalogAnalysis(null);
     setSspVisualization(null);
     setProfileVisualization(null);
+    setSarVisualization(null);
     setError(null);
     setFormat(normalizedFormat);
 
@@ -150,21 +165,31 @@ export default function VisualizePage() {
         setCatalogAnalysis(analysis);
         setSspVisualization(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('Catalog analyzed successfully!');
       } else if (docType === 'ssp') {
         const sspData = await apiClient.visualizeSSP(content, normalizedFormat, fileName);
         setSspVisualization(sspData);
         setCatalogAnalysis(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('SSP analyzed successfully!');
       } else if (docType === 'profile') {
         const profileData = await apiClient.visualizeProfile(content, normalizedFormat, fileName);
         setProfileVisualization(profileData);
         setCatalogAnalysis(null);
         setSspVisualization(null);
+        setSarVisualization(null);
         toast.success('Profile analyzed successfully!');
+      } else if (docType === 'sar') {
+        const sarData = await apiClient.visualizeSAR(content, normalizedFormat, fileName);
+        setSarVisualization(sarData);
+        setCatalogAnalysis(null);
+        setSspVisualization(null);
+        setProfileVisualization(null);
+        toast.success('SAR analyzed successfully!');
       } else {
-        throw new Error('Unsupported document type. Please upload a Catalog, Profile, or System Security Plan (SSP).');
+        throw new Error('Unsupported document type. Please upload a Catalog, Profile, System Security Plan (SSP), or Security Assessment Results (SAR).');
       }
     } catch (err) {
       console.error('Analysis error:', err);
@@ -182,10 +207,11 @@ export default function VisualizePage() {
     setCatalogAnalysis(null);
     setSspVisualization(null);
     setProfileVisualization(null);
+    setSarVisualization(null);
     setError(null);
   };
 
-  const detectDocumentType = (content: string, docFormat: OscalFormat): 'catalog' | 'ssp' | 'profile' | 'unknown' => {
+  const detectDocumentType = (content: string, docFormat: OscalFormat): 'catalog' | 'ssp' | 'profile' | 'sar' | 'unknown' => {
     try {
       // Normalize content for searching (trim whitespace)
       const normalizedContent = content.trim().toLowerCase();
@@ -196,7 +222,12 @@ export default function VisualizePage() {
       if (docFormat === 'json') {
         // JSON format: look for the property name with quotes
         // Check multiple patterns to be safe
-        if (normalizedContent.includes('"system-security-plan"') ||
+        if (normalizedContent.includes('"assessment-results"') ||
+            normalizedContent.includes("'assessment-results'") ||
+            normalizedContent.includes('assessment-results')) {
+          console.log('Document type detected: SAR (JSON)');
+          return 'sar';
+        } else if (normalizedContent.includes('"system-security-plan"') ||
             normalizedContent.includes("'system-security-plan'") ||
             normalizedContent.includes('system-security-plan')) {
           console.log('Document type detected: SSP (JSON)');
@@ -214,7 +245,11 @@ export default function VisualizePage() {
         }
       } else if (docFormat === 'yaml') {
         // YAML format: look for the key with colon (no quotes typically)
-        if (normalizedContent.includes('system-security-plan:') ||
+        if (normalizedContent.includes('assessment-results:') ||
+            normalizedContent.includes('assessment_results:')) {
+          console.log('Document type detected: SAR (YAML)');
+          return 'sar';
+        } else if (normalizedContent.includes('system-security-plan:') ||
             normalizedContent.includes('system_security_plan:')) {
           console.log('Document type detected: SSP (YAML)');
           return 'ssp';
@@ -227,7 +262,11 @@ export default function VisualizePage() {
         }
       } else if (docFormat === 'xml') {
         // XML format: look for the element tag
-        if (normalizedContent.includes('<system-security-plan') ||
+        if (normalizedContent.includes('<assessment-results') ||
+            normalizedContent.includes('<assessment_results')) {
+          console.log('Document type detected: SAR (XML)');
+          return 'sar';
+        } else if (normalizedContent.includes('<system-security-plan') ||
             normalizedContent.includes('<system_security_plan')) {
           console.log('Document type detected: SSP (XML)');
           return 'ssp';
@@ -263,21 +302,31 @@ export default function VisualizePage() {
         setCatalogAnalysis(analysis);
         setSspVisualization(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('Catalog analyzed successfully!');
       } else if (docType === 'ssp') {
         const sspData = await apiClient.visualizeSSP(fileContent, format, selectedFile?.name);
         setSspVisualization(sspData);
         setCatalogAnalysis(null);
         setProfileVisualization(null);
+        setSarVisualization(null);
         toast.success('SSP analyzed successfully!');
       } else if (docType === 'profile') {
         const profileData = await apiClient.visualizeProfile(fileContent, format, selectedFile?.name);
         setProfileVisualization(profileData);
         setCatalogAnalysis(null);
         setSspVisualization(null);
+        setSarVisualization(null);
         toast.success('Profile analyzed successfully!');
+      } else if (docType === 'sar') {
+        const sarData = await apiClient.visualizeSAR(fileContent, format, selectedFile?.name);
+        setSarVisualization(sarData);
+        setCatalogAnalysis(null);
+        setSspVisualization(null);
+        setProfileVisualization(null);
+        toast.success('SAR analyzed successfully!');
       } else {
-        throw new Error('Unsupported document type. Please upload a Catalog, Profile, or System Security Plan (SSP).');
+        throw new Error('Unsupported document type. Please upload a Catalog, Profile, System Security Plan (SSP), or Security Assessment Results (SAR).');
       }
     } catch (err) {
       console.error('Analysis error:', err);
@@ -346,9 +395,9 @@ export default function VisualizePage() {
 
                       <Alert>
                         <AlertDescription className="text-sm">
-                          Currently supports: Catalogs, System Security Plans (SSPs), Profiles
+                          Currently supports: Catalogs, System Security Plans (SSPs), Profiles, Security Assessment Results (SAR)
                           <br />
-                          Coming soon: Components, Assessment Results, POA&Ms
+                          Coming soon: Components, POA&Ms
                         </AlertDescription>
                       </Alert>
 
@@ -419,6 +468,8 @@ export default function VisualizePage() {
                 <SspVisualization data={sspVisualization} />
               ) : profileVisualization ? (
                 <ProfileVisualization data={profileVisualization} />
+              ) : sarVisualization ? (
+                <SarVisualization data={sarVisualization} />
               ) : (
                 <Card className="h-[500px] flex items-center justify-center">
                   <CardContent>
