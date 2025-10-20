@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+                .requestMatchers("/swagger-custom.css").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 // All other endpoints require authentication
                 .anyRequest().authenticated()

@@ -33,6 +33,9 @@ export default function UserGuidePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <a href="#getting-started" className="text-primary hover:underline">Getting Started</a>
               <a href="#features" className="text-primary hover:underline">Features</a>
+              <Link href="/guide/automation" className="text-primary hover:underline font-semibold">
+                API Automation Guide →
+              </Link>
               <a href="#validate" className="text-primary hover:underline">How to Validate Documents</a>
               <a href="#convert" className="text-primary hover:underline">How to Convert Document Formats</a>
               <a href="#resolve" className="text-primary hover:underline">How to Resolve Profiles</a>

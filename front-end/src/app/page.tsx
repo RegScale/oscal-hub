@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3 } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
@@ -247,6 +247,15 @@ export default function Dashboard() {
                   >
                     View User Guide
                     <ArrowRightLeft className="h-4 w-4 ml-2 rotate-45" />
+                  </Link>
+                </div>
+                <div>
+                  <Link
+                    href="/guide/automation"
+                    className="text-primary hover:underline font-medium inline-flex items-center"
+                  >
+                    API Automation Guide
+                    <Terminal className="h-4 w-4 ml-2" />
                   </Link>
                 </div>
                 <div>

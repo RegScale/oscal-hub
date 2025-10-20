@@ -1,0 +1,342 @@
+/* OSCAL CLI API - Custom Swagger UI Styling */
+/* Dark Mode Theme with Fixes */
+
+/* Fix for vertical URL rendering bug */
+.opblock-summary-path,
+.opblock-summary-path a,
+.opblock-summary-path span {
+    word-break: normal !important;
+    white-space: normal !important;
+    overflow-wrap: normal !important;
+    display: inline !important;
+    font-family: 'Source Code Pro', monospace !important;
+}
+
+/* Ensure parameter names don't break */
+.parameter__name,
+.parameter__type {
+    word-break: normal !important;
+    white-space: nowrap !important;
+}
+
+/* Dark Mode Base Colors */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b8b8b8;
+    --border-color: #404040;
+    --accent-blue: #4a9eff;
+    --accent-green: #49cc90;
+    --accent-orange: #fca130;
+    --accent-red: #f93e3e;
+}
+
+/* Main Background */
+body,
+.swagger-ui {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Information Section */
+.swagger-ui .info {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+.swagger-ui .info .title,
+.swagger-ui .info .title small,
+.swagger-ui .info p,
+.swagger-ui .info a {
+    color: var(--text-primary) !important;
+}
+
+.swagger-ui .info a {
+    color: var(--accent-blue) !important;
+}
+
+.swagger-ui .info a:hover {
+    color: var(--accent-green) !important;
+}
+
+/* Servers Section */
+.swagger-ui .scheme-container {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 15px !important;
+    border-radius: 4px !important;
+}
+
+.swagger-ui .scheme-container .schemes > label,
+.swagger-ui select {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Operation Blocks */
+.swagger-ui .opblock {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    margin-bottom: 15px !important;
+    border-radius: 4px !important;
+}
+
+.swagger-ui .opblock .opblock-summary {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .opblock.opblock-get {
+    border-color: var(--accent-blue) !important;
+}
+
+.swagger-ui .opblock.opblock-post {
+    border-color: var(--accent-green) !important;
+}
+
+.swagger-ui .opblock.opblock-put {
+    border-color: var(--accent-orange) !important;
+}
+
+.swagger-ui .opblock.opblock-delete {
+    border-color: var(--accent-red) !important;
+}
+
+/* Operation Summary */
+.swagger-ui .opblock .opblock-summary-description,
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path a {
+    color: var(--text-primary) !important;
+}
+
+/* Operation Details */
+.swagger-ui .opblock-description-wrapper,
+.swagger-ui .opblock-body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Parameters Table */
+.swagger-ui table thead tr th,
+.swagger-ui table thead tr td {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui table tbody tr td {
+    color: var(--text-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .parameter__name {
+    color: var(--text-primary) !important;
+    font-weight: bold !important;
+}
+
+.swagger-ui .parameter__type {
+    color: var(--accent-green) !important;
+}
+
+/* Response Section */
+.swagger-ui .responses-inner {
+    background-color: var(--bg-primary) !important;
+}
+
+.swagger-ui .response-col_status {
+    color: var(--accent-green) !important;
+    font-weight: bold !important;
+}
+
+.swagger-ui .response-col_description {
+    color: var(--text-secondary) !important;
+}
+
+/* Code Blocks */
+.swagger-ui .highlight-code,
+.swagger-ui .microlight {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+}
+
+/* Request/Response Bodies */
+.swagger-ui .model-box,
+.swagger-ui .model {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .model-title {
+    color: var(--text-primary) !important;
+}
+
+.swagger-ui .model-toggle {
+    color: var(--accent-blue) !important;
+}
+
+.swagger-ui .prop-type {
+    color: var(--accent-orange) !important;
+}
+
+.swagger-ui .prop-format {
+    color: var(--text-secondary) !important;
+}
+
+/* Buttons */
+.swagger-ui .btn {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .btn:hover {
+    background-color: var(--accent-blue) !important;
+    border-color: var(--accent-blue) !important;
+}
+
+.swagger-ui .btn.execute {
+    background-color: var(--accent-blue) !important;
+    color: white !important;
+    border-color: var(--accent-blue) !important;
+}
+
+.swagger-ui .btn.execute:hover {
+    background-color: #3a8eef !important;
+}
+
+/* Input Fields */
+.swagger-ui input[type=text],
+.swagger-ui input[type=password],
+.swagger-ui input[type=email],
+.swagger-ui textarea {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui input[type=text]:focus,
+.swagger-ui input[type=password]:focus,
+.swagger-ui input[type=email]:focus,
+.swagger-ui textarea:focus {
+    border-color: var(--accent-blue) !important;
+    outline: none !important;
+}
+
+/* Authorization */
+.swagger-ui .auth-wrapper {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .auth-container {
+    background-color: var(--bg-primary) !important;
+}
+
+/* Models Section */
+.swagger-ui section.models {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+}
+
+.swagger-ui section.models h4 {
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui section.models .model-container {
+    background-color: var(--bg-primary) !important;
+}
+
+/* Scrollbars */
+.swagger-ui ::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+    background: var(--bg-primary) !important;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary) !important;
+    border-radius: 5px !important;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-color) !important;
+}
+
+/* Try it out section */
+.swagger-ui .try-out__btn {
+    background-color: transparent !important;
+    color: var(--accent-blue) !important;
+    border: 1px solid var(--accent-blue) !important;
+}
+
+.swagger-ui .try-out__btn:hover {
+    background-color: var(--accent-blue) !important;
+    color: white !important;
+}
+
+/* Loading spinner */
+.swagger-ui .loading-container .loading:after {
+    border-color: var(--accent-blue) transparent transparent transparent !important;
+}
+
+/* Topbar */
+.swagger-ui .topbar {
+    background-color: var(--bg-secondary) !important;
+    border-bottom: 2px solid var(--border-color) !important;
+}
+
+.swagger-ui .topbar .download-url-wrapper input[type=text] {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Fix for tags */
+.swagger-ui .opblock-tag {
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.swagger-ui .opblock-tag:hover {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Markdown content */
+.swagger-ui .markdown p,
+.swagger-ui .markdown pre,
+.swagger-ui .markdown code {
+    color: var(--text-secondary) !important;
+}
+
+.swagger-ui .markdown code {
+    background-color: var(--bg-tertiary) !important;
+    padding: 2px 6px !important;
+    border-radius: 3px !important;
+}
+
+/* Version badge */
+.swagger-ui .info .title small {
+    background-color: var(--accent-green) !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-weight: bold !important;
+}
+
+/* Custom branding for OSCAL */
+.swagger-ui .info .title small.version-stamp {
+    background-color: var(--accent-blue) !important;
+}
