@@ -629,3 +629,58 @@ export interface ConditionOfApprovalResponse {
   createdAt: string; // ISO 8601 date string
   updatedAt: string; // ISO 8601 date string
 }
+
+// Component Definition Builder Types
+export interface ComponentDefinitionRequest {
+  title: string;
+  description?: string;
+  version?: string;
+  oscalVersion: string;
+  filename: string;
+  jsonContent: string;
+  oscalUuid?: string; // Optional, extracted from JSON if not provided
+  componentCount?: number;
+  controlCount?: number;
+}
+
+export interface ComponentDefinitionResponse {
+  id: number;
+  oscalUuid: string;
+  title: string;
+  description?: string;
+  version?: string;
+  oscalVersion: string;
+  azureBlobPath: string;
+  filename: string;
+  fileSize: number;
+  componentCount?: number;
+  controlCount?: number;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  lastUpdatedBy?: string;
+  updatedAt: string; // ISO 8601 date string
+}
+
+// Reusable Element Types
+export type ReusableElementType = 'ROLE' | 'PARTY' | 'LINK' | 'BACK_MATTER' | 'RESPONSIBLE_PARTY';
+
+export interface ReusableElementRequest {
+  type: ReusableElementType;
+  name: string;
+  jsonContent: string;
+  description?: string;
+  isShared?: boolean;
+}
+
+export interface ReusableElementResponse {
+  id: number;
+  type: ReusableElementType;
+  name: string;
+  jsonContent: string;
+  description?: string;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  isShared: boolean;
+  useCount: number;
+}

@@ -34,6 +34,10 @@ import type {
   AuthorizationTemplateResponse,
   AuthorizationRequest,
   AuthorizationResponse,
+  ComponentDefinitionRequest,
+  ComponentDefinitionResponse,
+  ReusableElementRequest,
+  ReusableElementResponse,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -2019,6 +2023,567 @@ class ApiClient {
       return response.ok;
     } catch (error) {
       console.error('Failed to delete authorization:', error);
+      return false;
+    }
+  }
+
+  // ========================================
+  // Reusable Elements API Methods
+  // ========================================
+
+  /**
+   * Create a new reusable element
+   */
+  async createReusableElement(request: ReusableElementRequest): Promise<ReusableElementResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create reusable element: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create reusable element:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a reusable element
+   */
+  async updateReusableElement(elementId: number, request: Partial<ReusableElementRequest>): Promise<ReusableElementResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/${elementId}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update reusable element: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update reusable element:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a reusable element by ID
+   */
+  async getReusableElement(elementId: number): Promise<ReusableElementResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/${elementId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get reusable element: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get reusable element:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all reusable elements for the current user
+   */
+  async getUserReusableElements(): Promise<ReusableElementResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get reusable elements: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get reusable elements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get reusable elements by type
+   */
+  async getReusableElementsByType(type: string): Promise<ReusableElementResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/type/${type}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get reusable elements by type: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get reusable elements by type:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search reusable elements
+   */
+  async searchReusableElements(params: { q?: string; type?: string }): Promise<ReusableElementResponse[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.q) queryParams.append('q', params.q);
+      if (params.type) queryParams.append('type', params.type);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/search?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search reusable elements: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search reusable elements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a reusable element
+   */
+  async deleteReusableElement(elementId: number): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/${elementId}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete reusable element:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get recent reusable elements
+   */
+  async getRecentReusableElements(limit = 10): Promise<ReusableElementResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/recent?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get recent reusable elements: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get recent reusable elements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get most used reusable elements
+   */
+  async getMostUsedReusableElements(limit = 10): Promise<ReusableElementResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/most-used?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get most used reusable elements: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get most used reusable elements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get reusable element statistics
+   */
+  async getReusableElementStatistics(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/statistics`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get reusable element statistics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get reusable element statistics:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Increment reusable element use count
+   */
+  async incrementReusableElementUseCount(elementId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/elements/${elementId}/use`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to increment use count: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to increment use count:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Component Definitions API Methods
+  // ========================================
+
+  /**
+   * Create a new component definition
+   */
+  async createComponentDefinition(request: ComponentDefinitionRequest): Promise<ComponentDefinitionResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        15000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create component definition: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create component definition:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a component definition
+   */
+  async updateComponentDefinition(componentId: number, request: Partial<ComponentDefinitionRequest>): Promise<ComponentDefinitionResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/${componentId}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update component definition: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update component definition:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a component definition by ID
+   */
+  async getComponentDefinition(componentId: number): Promise<ComponentDefinitionResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/${componentId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get component definition: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get component definition:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a component definition by OSCAL UUID
+   */
+  async getComponentDefinitionByUuid(oscalUuid: string): Promise<ComponentDefinitionResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/uuid/${oscalUuid}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get component definition by UUID: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get component definition by UUID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get component definition JSON content
+   */
+  async getComponentDefinitionContent(componentId: number): Promise<string> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/${componentId}/content`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get component definition content: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.content;
+    } catch (error) {
+      console.error('Failed to get component definition content:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all component definitions for the current user
+   */
+  async getUserComponentDefinitions(): Promise<ComponentDefinitionResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get component definitions: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get component definitions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search component definitions
+   */
+  async searchComponentDefinitions(searchTerm?: string): Promise<ComponentDefinitionResponse[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (searchTerm) queryParams.append('q', searchTerm);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/search?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search component definitions: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search component definitions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a component definition
+   */
+  async deleteComponentDefinition(componentId: number): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/${componentId}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete component definition:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get recent component definitions
+   */
+  async getRecentComponentDefinitions(limit = 10): Promise<ComponentDefinitionResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/recent?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get recent component definitions: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get recent component definitions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get component definition statistics
+   */
+  async getComponentDefinitionStatistics(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/statistics`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get component definition statistics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get component definition statistics:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Check if component definition exists
+   */
+  async checkComponentDefinitionExists(componentId: number): Promise<boolean> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/build/components/${componentId}/exists`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      return data.exists;
+    } catch (error) {
+      console.error('Failed to check component definition existence:', error);
       return false;
     }
   }
