@@ -107,9 +107,12 @@ export default function AuthorizationsPage() {
           tags: [],
           createdBy: '',
           createdAt: file.uploadedAt,
+          updatedAt: file.uploadedAt,
           lastUpdatedAt: file.uploadedAt,
           lastUpdatedBy: '',
           downloadCount: 0,
+          viewCount: 0,
+          versionCount: 1,
           versions: [],
         }));
 
@@ -138,9 +141,12 @@ export default function AuthorizationsPage() {
           tags: [],
           createdBy: '',
           createdAt: file.uploadedAt,
+          updatedAt: file.uploadedAt,
           lastUpdatedAt: file.uploadedAt,
           lastUpdatedBy: '',
           downloadCount: 0,
+          viewCount: 0,
+          versionCount: 1,
           versions: [],
         }));
 

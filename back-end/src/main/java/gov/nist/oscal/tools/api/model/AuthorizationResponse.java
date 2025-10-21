@@ -4,7 +4,9 @@ import gov.nist.oscal.tools.api.entity.Authorization;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Response DTO for authorization
@@ -27,6 +29,7 @@ public class AuthorizationResponse {
     private String systemOwner;
     private String securityManager;
     private String authorizingOfficial;
+    private List<ConditionOfApprovalResponse> conditions;
 
     // Constructors
     public AuthorizationResponse() {
@@ -49,6 +52,9 @@ public class AuthorizationResponse {
         this.systemOwner = authorization.getSystemOwner();
         this.securityManager = authorization.getSecurityManager();
         this.authorizingOfficial = authorization.getAuthorizingOfficial();
+        this.conditions = authorization.getConditions().stream()
+                .map(ConditionOfApprovalResponse::new)
+                .collect(Collectors.toList());
     }
 
     // Getters and Setters
@@ -178,5 +184,13 @@ public class AuthorizationResponse {
 
     public void setAuthorizingOfficial(String authorizingOfficial) {
         this.authorizingOfficial = authorizingOfficial;
+    }
+
+    public List<ConditionOfApprovalResponse> getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(List<ConditionOfApprovalResponse> conditions) {
+        this.conditions = conditions;
     }
 }

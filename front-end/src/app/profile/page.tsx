@@ -250,7 +250,7 @@ export default function ProfilePage() {
                 User Logo
               </CardTitle>
               <CardDescription>
-                Select your logo to use in authorization templates with the {'{{ logo }}'} tag. Logo will be saved with your profile.
+                Select your logo to use in authorization templates with the {'{'}&#123; logo &#125;{'}'} tag. Logo will be saved with your profile.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -287,11 +287,11 @@ export default function ProfilePage() {
               </div>
               {pendingLogo && (
                 <p className="text-sm text-amber-600 font-medium">
-                  Logo selected. Click "Save Profile" or "Save All Changes" below to upload.
+                  Logo selected. Click &quot;Save Profile&quot; or &quot;Save All Changes&quot; below to upload.
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                Supported formats: PNG, JPG, GIF (max 2MB). Logo will be saved when you click "Save Profile" or "Save All Changes" and will be available in authorization templates using the {'{{ logo }}'} variable.
+                Supported formats: PNG, JPG, GIF (max 2MB). Logo will be saved when you click &quot;Save Profile&quot; or &quot;Save All Changes&quot; and will be available in authorization templates using the {'{{ logo }}'} variable.
               </p>
             </CardContent>
           </Card>

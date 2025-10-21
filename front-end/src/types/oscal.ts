@@ -607,4 +607,25 @@ export interface AuthorizationResponse {
   systemOwner?: string;
   securityManager?: string;
   authorizingOfficial?: string;
+  conditions?: ConditionOfApprovalResponse[]; // Conditions of approval
+}
+
+// Condition of Approval Types
+export type ConditionType = 'MANDATORY' | 'RECOMMENDED';
+
+export interface ConditionOfApprovalRequest {
+  authorizationId: number;
+  condition: string;
+  conditionType: ConditionType;
+  dueDate?: string; // ISO date string, optional for RECOMMENDED, required for MANDATORY
+}
+
+export interface ConditionOfApprovalResponse {
+  id: number;
+  authorizationId: number;
+  condition: string;
+  conditionType: ConditionType;
+  dueDate?: string; // ISO date string
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
 }

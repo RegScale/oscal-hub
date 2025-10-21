@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.entity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,6 +66,9 @@ public class Authorization {
 
     @Column(name = "authorizing_official", length = 255)
     private String authorizingOfficial;
+
+    @OneToMany(mappedBy = "authorization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ConditionOfApproval> conditions = new ArrayList<>();
 
     // Constructors
     public Authorization() {
@@ -202,5 +207,23 @@ public class Authorization {
 
     public void setAuthorizingOfficial(String authorizingOfficial) {
         this.authorizingOfficial = authorizingOfficial;
+    }
+
+    public List<ConditionOfApproval> getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(List<ConditionOfApproval> conditions) {
+        this.conditions = conditions;
+    }
+
+    public void addCondition(ConditionOfApproval condition) {
+        conditions.add(condition);
+        condition.setAuthorization(this);
+    }
+
+    public void removeCondition(ConditionOfApproval condition) {
+        conditions.remove(condition);
+        condition.setAuthorization(null);
     }
 }

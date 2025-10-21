@@ -12,6 +12,7 @@ import { CheckCircle, ChevronRight, RefreshCw } from 'lucide-react';
 import { MarkdownPreview } from './markdown-preview';
 import { SspVisualization } from './SspVisualization';
 import { SarVisualization } from './SarVisualization';
+import { ConditionsManager, type Condition } from './conditions-manager';
 import type { AuthorizationTemplateResponse, LibraryItem, SspVisualizationData, SarVisualizationData } from '@/types/oscal';
 import type { editor } from 'monaco-editor';
 import { apiClient } from '@/lib/api-client';
@@ -37,7 +38,7 @@ interface AuthorizationWizardProps {
   isSaving?: boolean;
 }
 
-type Step = 'select-ssp' | 'select-sar' | 'stakeholder-info' | 'visualize' | 'select-template' | 'fill-variables' | 'review';
+type Step = 'select-ssp' | 'select-sar' | 'stakeholder-info' | 'visualize' | 'select-template' | 'fill-variables' | 'conditions' | 'review';
 
 export function AuthorizationWizard({
   templates,
@@ -68,6 +69,9 @@ export function AuthorizationWizard({
   const [systemOwner, setSystemOwner] = useState('');
   const [securityManager, setSecurityManager] = useState('');
   const [authorizingOfficial, setAuthorizingOfficial] = useState('');
+
+  // Conditions of Approval
+  const [conditions, setConditions] = useState<Condition[]>([]);
 
   // Load SSP visualization when SSP is selected
   useEffect(() => {
@@ -210,6 +214,8 @@ export function AuthorizationWizard({
         return selectedTemplate !== null;
       case 'fill-variables':
         return detectedVariables.every((v) => variableValues[v]?.trim());
+      case 'conditions':
+        return true; // Conditions are optional, so always allow proceeding
       case 'review':
         return true;
       default:
@@ -227,11 +233,13 @@ export function AuthorizationWizard({
     }
     else if (step === 'visualize') setStep('select-template');
     else if (step === 'select-template') setStep('fill-variables');
-    else if (step === 'fill-variables') setStep('review');
+    else if (step === 'fill-variables') setStep('conditions');
+    else if (step === 'conditions') setStep('review');
   };
 
   const handleBack = () => {
-    if (step === 'review') setStep('fill-variables');
+    if (step === 'review') setStep('conditions');
+    else if (step === 'conditions') setStep('fill-variables');
     else if (step === 'fill-variables') setStep('select-template');
     else if (step === 'select-template') setStep('visualize');
     else if (step === 'visualize') setStep('stakeholder-info');
@@ -311,8 +319,8 @@ export function AuthorizationWizard({
       {/* Progress Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          {(['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'review'] as Step[]).map((s, index) => {
-            const steps: Step[] = ['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'review'];
+          {(['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review'] as Step[]).map((s, index) => {
+            const steps: Step[] = ['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review'];
             const currentIndex = steps.indexOf(step);
             const thisIndex = steps.indexOf(s);
 
@@ -326,6 +334,7 @@ export function AuthorizationWizard({
               'visualize': 'Visualize',
               'select-template': 'Template',
               'fill-variables': 'Variables',
+              'conditions': 'Conditions',
               'review': 'Review',
             };
 
@@ -806,6 +815,14 @@ export function AuthorizationWizard({
           </div>
         )}
 
+        {/* Step: Conditions of Approval */}
+        {step === 'conditions' && (
+          <ConditionsManager
+            conditions={conditions}
+            onConditionsChange={setConditions}
+          />
+        )}
+
         {/* Step 5: Review */}
         {step === 'review' && selectedSsp && selectedTemplate && (
           <div className="space-y-6">
@@ -888,6 +905,46 @@ export function AuthorizationWizard({
                   </Card>
                 </div>
               </div>
+
+              {/* Conditions of Approval Summary */}
+              {conditions.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold border-b pb-2">Conditions of Approval</h3>
+                  <div className="space-y-2">
+                    {conditions.map((condition, index) => (
+                      <Card
+                        key={index}
+                        className={`p-3 ${
+                          condition.conditionType === 'MANDATORY'
+                            ? 'bg-red-900/10 border-red-800'
+                            : 'bg-yellow-900/10 border-yellow-800'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Badge
+                            variant={condition.conditionType === 'MANDATORY' ? 'destructive' : 'default'}
+                            className={
+                              condition.conditionType === 'MANDATORY'
+                                ? 'bg-red-600 text-white mt-0.5'
+                                : 'bg-yellow-600 text-white mt-0.5'
+                            }
+                          >
+                            {condition.conditionType}
+                          </Badge>
+                          <div className="flex-1">
+                            <p className="text-sm">{condition.condition}</p>
+                            {condition.dueDate && (
+                              <p className="text-xs text-slate-400 mt-1">
+                                Due: {new Date(condition.dueDate).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Completed Authorization */}
               <div className="space-y-2">
