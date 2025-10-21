@@ -32,7 +32,7 @@ public class AuthorizationController {
 
     @Operation(
         summary = "Create new authorization",
-        description = "Create a new system authorization linked to an SSP and template"
+        description = "Create a new system authorization linked to an SSP, optional SAR, and template"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Authorization created successfully"),
@@ -47,6 +47,7 @@ public class AuthorizationController {
             Authorization authorization = authorizationService.createAuthorization(
                     request.getName(),
                     request.getSspItemId(),
+                    request.getSarItemId(),
                     request.getTemplateId(),
                     request.getVariableValues(),
                     principal.getName(),

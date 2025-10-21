@@ -14,6 +14,7 @@ public class AuthorizationResponse {
     private Long id;
     private String name;
     private String sspItemId;
+    private String sarItemId;
     private Long templateId;
     private String templateName;
     private Map<String, String> variableValues;
@@ -21,6 +22,7 @@ public class AuthorizationResponse {
     private String authorizedBy;
     private LocalDateTime authorizedAt;
     private LocalDateTime createdAt;
+    private LocalDate dateAuthorized;
     private LocalDate dateExpired;
     private String systemOwner;
     private String securityManager;
@@ -34,6 +36,7 @@ public class AuthorizationResponse {
         this.id = authorization.getId();
         this.name = authorization.getName();
         this.sspItemId = authorization.getSspItemId();
+        this.sarItemId = authorization.getSarItemId();
         this.templateId = authorization.getTemplate().getId();
         this.templateName = authorization.getTemplate().getName();
         this.variableValues = authorization.getVariableValues();
@@ -41,6 +44,7 @@ public class AuthorizationResponse {
         this.authorizedBy = authorization.getAuthorizedBy().getUsername();
         this.authorizedAt = authorization.getAuthorizedAt();
         this.createdAt = authorization.getCreatedAt();
+        this.dateAuthorized = authorization.getDateAuthorized();
         this.dateExpired = authorization.getDateExpired();
         this.systemOwner = authorization.getSystemOwner();
         this.securityManager = authorization.getSecurityManager();
@@ -70,6 +74,14 @@ public class AuthorizationResponse {
 
     public void setSspItemId(String sspItemId) {
         this.sspItemId = sspItemId;
+    }
+
+    public String getSarItemId() {
+        return sarItemId;
+    }
+
+    public void setSarItemId(String sarItemId) {
+        this.sarItemId = sarItemId;
     }
 
     public Long getTemplateId() {
@@ -126,6 +138,14 @@ public class AuthorizationResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDate getDateAuthorized() {
+        return dateAuthorized;
+    }
+
+    public void setDateAuthorized(LocalDate dateAuthorized) {
+        this.dateAuthorized = dateAuthorized;
     }
 
     public LocalDate getDateExpired() {

@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldCheck, FileText, CheckCircle, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, FileText, CheckCircle, ArrowLeft, Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { TemplateEditor } from '@/components/template-editor';
 import { TemplateList } from '@/components/template-list';
 import { AuthorizationWizard } from '@/components/authorization-wizard';
@@ -42,14 +43,16 @@ export default function AuthorizationsPage() {
   const [loadingAuthorizations, setLoadingAuthorizations] = useState(false);
   const [savingAuthorization, setSavingAuthorization] = useState(false);
 
-  // SSP items for authorization creation
+  // SSP and SAR items for authorization creation
   const [sspItems, setSspItems] = useState<LibraryItem[]>([]);
+  const [sarItems, setSarItems] = useState<LibraryItem[]>([]);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadTemplates();
       loadAuthorizations();
       loadSspItems();
+      loadSarItems();
     }
   }, [isAuthenticated]);
 
@@ -110,6 +113,37 @@ export default function AuthorizationsPage() {
     }
   };
 
+  const loadSarItems = async () => {
+    try {
+      // Load saved files that are SARs (Security Assessment Results)
+      const savedFiles = await apiClient.getSavedFiles();
+
+      // Convert saved SAR files to LibraryItem format
+      const sarSavedFiles: LibraryItem[] = savedFiles
+        .filter(file => file.modelType === 'assessment-results')
+        .map(file => ({
+          itemId: file.id,
+          title: file.fileName || 'Untitled SAR',
+          description: `Uploaded SAR (${file.format.toUpperCase()})`,
+          oscalType: 'assessment-results',
+          format: file.format,
+          fileSize: file.fileSize,
+          tags: [],
+          createdBy: '',
+          createdAt: file.uploadedAt,
+          lastUpdatedAt: file.uploadedAt,
+          lastUpdatedBy: '',
+          downloadCount: 0,
+          versions: [],
+        }));
+
+      setSarItems(sarSavedFiles);
+    } catch (err) {
+      console.error('Failed to load SAR items:', err);
+      toast.error('Failed to load SAR items');
+    }
+  };
+
   const handleCreateTemplate = async (name: string, content: string) => {
     try {
       setSavingTemplate(true);
@@ -161,6 +195,7 @@ export default function AuthorizationsPage() {
   const handleCreateAuthorization = async (data: {
     name: string;
     sspItemId: string;
+    sarItemId?: string;
     templateId: number;
     variableValues: Record<string, string>;
     dateAuthorized: string;
@@ -290,6 +325,7 @@ export default function AuthorizationsPage() {
                 <AuthorizationWizard
                   templates={templates}
                   sspItems={sspItems}
+                  sarItems={sarItems}
                   onSave={handleCreateAuthorization}
                   onCancel={() => setView('list-authorizations')}
                   isSaving={savingAuthorization}
@@ -319,19 +355,199 @@ export default function AuthorizationsPage() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">SSP Item ID</p>
-                      <p className="font-medium">{selectedAuthorization.sspItemId}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Template</p>
-                      <p className="font-medium">{selectedAuthorization.templateName}</p>
+                  {/* Authorization Metadata */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Authorization Details</h3>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {/* Authorization Dates */}
+                      {(selectedAuthorization.dateAuthorized || selectedAuthorization.dateExpired) && (
+                        <Card className="p-4 bg-slate-800 border-slate-700">
+                          <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
+                          <div className="space-y-2">
+                            {selectedAuthorization.dateAuthorized && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Date Authorized</Label>
+                                <p className="font-medium">{new Date(selectedAuthorization.dateAuthorized).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}</p>
+                              </div>
+                            )}
+                            {selectedAuthorization.dateExpired && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Date Expired</Label>
+                                <p className="font-medium">{new Date(selectedAuthorization.dateExpired).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}</p>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      )}
+
+                      {/* Stakeholders */}
+                      {(selectedAuthorization.systemOwner || selectedAuthorization.securityManager || selectedAuthorization.authorizingOfficial) && (
+                        <Card className="p-4 bg-slate-800 border-slate-700">
+                          <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
+                          <div className="space-y-2">
+                            {selectedAuthorization.systemOwner && (
+                              <div>
+                                <Label className="text-xs text-slate-400">System Owner</Label>
+                                <p className="font-medium">{selectedAuthorization.systemOwner}</p>
+                              </div>
+                            )}
+                            {selectedAuthorization.securityManager && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Security Manager</Label>
+                                <p className="font-medium">{selectedAuthorization.securityManager}</p>
+                              </div>
+                            )}
+                            {selectedAuthorization.authorizingOfficial && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Authorizing Official</Label>
+                                <p className="font-medium">{selectedAuthorization.authorizingOfficial}</p>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold mb-3">Authorization Document</h3>
+                  {/* System Documents */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">System Documents</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {/* SSP */}
+                      <Card className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold mb-2">System Security Plan</h4>
+                            <p className="text-sm text-gray-600 mb-1">
+                              {sspItems.find(item => item.itemId === selectedAuthorization.sspItemId)?.title || 'Unknown SSP'}
+                            </p>
+                            <p className="text-xs text-slate-400">ID: {selectedAuthorization.sspItemId}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const sspItem = sspItems.find(item => item.itemId === selectedAuthorization.sspItemId);
+                              if (sspItem) {
+                                router.push(`/visualize?fileId=${sspItem.itemId}`);
+                              }
+                            }}
+                            className="flex-1"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Visualize
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const sspItem = sspItems.find(item => item.itemId === selectedAuthorization.sspItemId);
+                              if (sspItem) {
+                                const content = await apiClient.getFileContent(sspItem.itemId);
+                                if (content) {
+                                  const blob = new Blob([content], { type: 'text/plain' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = sspItem.title;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                  toast.success('SSP downloaded');
+                                }
+                              }
+                            }}
+                            className="flex-1"
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </Card>
+
+                      {/* SAR */}
+                      <Card className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold mb-2">Security Assessment Report</h4>
+                            {selectedAuthorization.sarItemId ? (
+                              <>
+                                <p className="text-sm text-gray-600 mb-1">
+                                  {sarItems.find(item => item.itemId === selectedAuthorization.sarItemId)?.title || 'Unknown SAR'}
+                                </p>
+                                <p className="text-xs text-slate-400">ID: {selectedAuthorization.sarItemId}</p>
+                              </>
+                            ) : (
+                              <p className="text-sm text-gray-400 italic">Not selected</p>
+                            )}
+                          </div>
+                        </div>
+                        {selectedAuthorization.sarItemId && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const sarItem = sarItems.find(item => item.itemId === selectedAuthorization.sarItemId);
+                                if (sarItem) {
+                                  router.push(`/visualize?fileId=${sarItem.itemId}`);
+                                }
+                              }}
+                              className="flex-1"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Visualize
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                const sarItem = sarItems.find(item => item.itemId === selectedAuthorization.sarItemId);
+                                if (sarItem) {
+                                  const content = await apiClient.getFileContent(sarItem.itemId);
+                                  if (content) {
+                                    const blob = new Blob([content], { type: 'text/plain' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = sarItem.title;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                    toast.success('SAR downloaded');
+                                  }
+                                }
+                              }}
+                              className="flex-1"
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download
+                            </Button>
+                          </div>
+                        )}
+                      </Card>
+
+                      {/* Template */}
+                      <Card className="p-4">
+                        <h4 className="font-semibold mb-2">Template</h4>
+                        <p className="text-sm text-gray-600">{selectedAuthorization.templateName}</p>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* Authorization Document */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold border-b pb-2">Authorization Document</h3>
+                    <p className="text-xs text-slate-400 mb-2">Scroll to view the complete document</p>
                     <MarkdownPreview
                       content={selectedAuthorization.completedContent}
                       height="600px"

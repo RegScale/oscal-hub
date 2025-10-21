@@ -24,6 +24,9 @@ public class Authorization {
     @Column(name = "ssp_item_id", nullable = false, length = 100)
     private String sspItemId; // References LibraryItem.itemId
 
+    @Column(name = "sar_item_id", length = 100)
+    private String sarItemId; // References LibraryItem.itemId for SAR (Security Assessment Results)
+
     @ManyToOne
     @JoinColumn(name = "template_id", nullable = false)
     private AuthorizationTemplate template;
@@ -46,6 +49,9 @@ public class Authorization {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "date_authorized")
+    private LocalDate dateAuthorized;
 
     @Column(name = "date_expired")
     private LocalDate dateExpired;
@@ -98,6 +104,14 @@ public class Authorization {
         this.sspItemId = sspItemId;
     }
 
+    public String getSarItemId() {
+        return sarItemId;
+    }
+
+    public void setSarItemId(String sarItemId) {
+        this.sarItemId = sarItemId;
+    }
+
     public AuthorizationTemplate getTemplate() {
         return template;
     }
@@ -148,6 +162,14 @@ public class Authorization {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDate getDateAuthorized() {
+        return dateAuthorized;
+    }
+
+    public void setDateAuthorized(LocalDate dateAuthorized) {
+        this.dateAuthorized = dateAuthorized;
     }
 
     public LocalDate getDateExpired() {

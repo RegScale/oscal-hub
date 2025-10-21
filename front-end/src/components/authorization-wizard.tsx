@@ -11,15 +11,19 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, ChevronRight, RefreshCw } from 'lucide-react';
 import { MarkdownPreview } from './markdown-preview';
 import { SspVisualization } from './SspVisualization';
-import type { AuthorizationTemplateResponse, LibraryItem, SspVisualizationData } from '@/types/oscal';
+import { SarVisualization } from './SarVisualization';
+import type { AuthorizationTemplateResponse, LibraryItem, SspVisualizationData, SarVisualizationData } from '@/types/oscal';
 import type { editor } from 'monaco-editor';
+import { apiClient } from '@/lib/api-client';
 
 interface AuthorizationWizardProps {
   templates: AuthorizationTemplateResponse[];
   sspItems: LibraryItem[];
+  sarItems: LibraryItem[];
   onSave: (data: {
     name: string;
     sspItemId: string;
+    sarItemId?: string;
     templateId: number;
     variableValues: Record<string, string>;
     dateAuthorized: string;
@@ -33,11 +37,12 @@ interface AuthorizationWizardProps {
   isSaving?: boolean;
 }
 
-type Step = 'select-ssp' | 'stakeholder-info' | 'select-template' | 'fill-variables' | 'review';
+type Step = 'select-ssp' | 'select-sar' | 'stakeholder-info' | 'visualize' | 'select-template' | 'fill-variables' | 'review';
 
 export function AuthorizationWizard({
   templates,
   sspItems,
+  sarItems,
   onSave,
   onCancel,
   isSaving = false,
@@ -45,7 +50,10 @@ export function AuthorizationWizard({
   const [step, setStep] = useState<Step>('select-ssp');
   const [authorizationName, setAuthorizationName] = useState('');
   const [selectedSsp, setSelectedSsp] = useState<LibraryItem | null>(null);
+  const [selectedSar, setSelectedSar] = useState<LibraryItem | null>(null);
   const [sspVisualization, setSspVisualization] = useState<SspVisualizationData | null>(null);
+  const [sarVisualization, setSarVisualization] = useState<SarVisualizationData | null>(null);
+  const [loadingVisualizations, setLoadingVisualizations] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<AuthorizationTemplateResponse | null>(null);
   const [editedContent, setEditedContent] = useState(''); // The user's edited template content
   const [detectedVariables, setDetectedVariables] = useState<string[]>([]); // Variables detected from edited content
@@ -117,6 +125,61 @@ export function AuthorizationWizard({
     setSelectedSsp(ssp);
   };
 
+  const handleSarSelect = (sar: LibraryItem) => {
+    setSelectedSar(sar);
+  };
+
+  // Load visualizations for SSP and SAR
+  const loadVisualizations = async () => {
+    if (!selectedSsp) return;
+
+    setLoadingVisualizations(true);
+    try {
+      // Fetch SSP file info and content
+      const sspFile = await apiClient.getSavedFile(selectedSsp.itemId);
+      if (!sspFile) {
+        console.error('Failed to load SSP file');
+        return;
+      }
+
+      const sspContent = await apiClient.getFileContent(selectedSsp.itemId);
+      if (!sspContent) {
+        console.error('Failed to load SSP content');
+        return;
+      }
+
+      // Get SSP visualization
+      const sspVizData = await apiClient.visualizeSSP(
+        sspContent,
+        sspFile.format,
+        sspFile.fileName
+      );
+      setSspVisualization(sspVizData);
+
+      // Get SAR visualization if SAR is selected
+      if (selectedSar) {
+        const sarFile = await apiClient.getSavedFile(selectedSar.itemId);
+        if (sarFile) {
+          const sarContent = await apiClient.getFileContent(selectedSar.itemId);
+          if (sarContent) {
+            const sarVizData = await apiClient.visualizeSAR(
+              sarContent,
+              sarFile.format,
+              sarFile.fileName
+            );
+            setSarVisualization(sarVizData);
+          }
+        }
+      } else {
+        setSarVisualization(null);
+      }
+    } catch (error) {
+      console.error('Failed to load visualizations:', error);
+    } finally {
+      setLoadingVisualizations(false);
+    }
+  };
+
   const handleTemplateSelect = (template: AuthorizationTemplateResponse) => {
     setSelectedTemplate(template);
     // Initialize edited content with template content
@@ -137,8 +200,12 @@ export function AuthorizationWizard({
     switch (step) {
       case 'select-ssp':
         return selectedSsp !== null;
+      case 'select-sar':
+        return true; // SAR is optional, so always allow proceeding
       case 'stakeholder-info':
         return authorizationName.trim() !== '' && systemOwner.trim() !== '' && securityManager.trim() !== '' && authorizingOfficial.trim() !== '' && dateExpired !== '';
+      case 'visualize':
+        return true; // Visualizations are informational, always allow proceeding
       case 'select-template':
         return selectedTemplate !== null;
       case 'fill-variables':
@@ -150,9 +217,15 @@ export function AuthorizationWizard({
     }
   };
 
-  const handleNext = () => {
-    if (step === 'select-ssp') setStep('stakeholder-info');
-    else if (step === 'stakeholder-info') setStep('select-template');
+  const handleNext = async () => {
+    if (step === 'select-ssp') setStep('select-sar');
+    else if (step === 'select-sar') setStep('stakeholder-info');
+    else if (step === 'stakeholder-info') {
+      // Load visualizations when moving to visualize step
+      await loadVisualizations();
+      setStep('visualize');
+    }
+    else if (step === 'visualize') setStep('select-template');
     else if (step === 'select-template') setStep('fill-variables');
     else if (step === 'fill-variables') setStep('review');
   };
@@ -160,8 +233,10 @@ export function AuthorizationWizard({
   const handleBack = () => {
     if (step === 'review') setStep('fill-variables');
     else if (step === 'fill-variables') setStep('select-template');
-    else if (step === 'select-template') setStep('stakeholder-info');
-    else if (step === 'stakeholder-info') setStep('select-ssp');
+    else if (step === 'select-template') setStep('visualize');
+    else if (step === 'visualize') setStep('stakeholder-info');
+    else if (step === 'stakeholder-info') setStep('select-sar');
+    else if (step === 'select-sar') setStep('select-ssp');
   };
 
   // Calculate progress for variables
@@ -218,6 +293,7 @@ export function AuthorizationWizard({
       onSave({
         name: authorizationName,
         sspItemId: selectedSsp.itemId,
+        sarItemId: selectedSar?.itemId, // Optional SAR item ID
         templateId: selectedTemplate.id,
         variableValues,
         dateAuthorized,
@@ -235,8 +311,8 @@ export function AuthorizationWizard({
       {/* Progress Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          {(['select-ssp', 'stakeholder-info', 'select-template', 'fill-variables', 'review'] as Step[]).map((s, index) => {
-            const steps: Step[] = ['select-ssp', 'stakeholder-info', 'select-template', 'fill-variables', 'review'];
+          {(['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'review'] as Step[]).map((s, index) => {
+            const steps: Step[] = ['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'review'];
             const currentIndex = steps.indexOf(step);
             const thisIndex = steps.indexOf(s);
 
@@ -245,7 +321,9 @@ export function AuthorizationWizard({
 
             const stepLabels = {
               'select-ssp': 'SSP',
+              'select-sar': 'SAR',
               'stakeholder-info': 'Details',
+              'visualize': 'Visualize',
               'select-template': 'Template',
               'fill-variables': 'Variables',
               'review': 'Review',
@@ -286,6 +364,23 @@ export function AuthorizationWizard({
         </div>
       </div>
 
+      {/* Top Navigation - Duplicate for scrolling pages */}
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="outline" onClick={step === 'select-ssp' ? onCancel : handleBack}>
+          {step === 'select-ssp' ? 'Cancel' : 'Back'}
+        </Button>
+
+        {step === 'review' ? (
+          <Button type="button" onClick={handleSubmit} disabled={!canProceed() || isSaving}>
+            {isSaving ? 'Creating Authorization...' : 'Create Authorization'}
+          </Button>
+        ) : (
+          <Button type="button" onClick={handleNext} disabled={!canProceed()}>
+            Next
+          </Button>
+        )}
+      </div>
+
       {/* Step Content */}
       <Card className="p-6">
         {/* Step 1: Select SSP */}
@@ -321,7 +416,67 @@ export function AuthorizationWizard({
           </div>
         )}
 
-        {/* Step 2: Stakeholder Information */}
+        {/* Step 2: Select SAR */}
+        {step === 'select-sar' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold mb-2">Select Security Assessment Report (Optional)</h2>
+              <p className="text-gray-600">Choose the SAR associated with this authorization, or skip to continue</p>
+            </div>
+
+            {sarItems.length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-gray-600">No SAR files available. You can skip this step and continue.</p>
+                <p className="text-sm text-gray-500 mt-2">Upload SAR files in the Validate section to make them available here.</p>
+              </Card>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+                {sarItems.map((sar) => (
+                  <Card
+                    key={sar.itemId}
+                    className={`p-4 cursor-pointer transition-all relative ${
+                      selectedSar?.itemId === sar.itemId
+                        ? 'border-green-600 bg-slate-800'
+                        : 'hover:border-slate-600'
+                    }`}
+                    onClick={() => handleSarSelect(sar)}
+                  >
+                    {selectedSar?.itemId === sar.itemId && (
+                      <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500" />
+                    )}
+                    <h3 className="font-semibold truncate">{sar.title}</h3>
+                    <p className="text-sm text-slate-400 mt-1 line-clamp-2">{sar.description}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Badge variant="secondary">{sar.oscalType}</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {selectedSar && (
+              <Card className="p-4 bg-green-900/20 border-green-600">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-400">Selected SAR</p>
+                    <p className="font-semibold text-green-400">{selectedSar.title}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedSar(null)}
+                    className="text-red-400 border-red-400 hover:bg-red-900/20"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Stakeholder Information */}
         {step === 'stakeholder-info' && (
           <div className="space-y-6">
             <div>
@@ -404,7 +559,59 @@ export function AuthorizationWizard({
           </div>
         )}
 
-        {/* Step 3: Select Template */}
+        {/* Step 4: Visualize SSP and SAR */}
+        {step === 'visualize' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold mb-2">System Overview</h2>
+              <p className="text-gray-600">Review the system and assessment information to inform your authorization decision</p>
+            </div>
+
+            {loadingVisualizations ? (
+              <Card className="p-8">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                  <p className="text-muted-foreground">Loading visualizations...</p>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {/* SSP Visualization */}
+                {sspVisualization && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Badge variant="default">System Security Plan</Badge>
+                      {selectedSsp.title}
+                    </h3>
+                    <SspVisualization data={sspVisualization} />
+                  </div>
+                )}
+
+                {/* SAR Visualization */}
+                {sarVisualization && selectedSar && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Badge variant="secondary">Security Assessment Report</Badge>
+                      {selectedSar.title}
+                    </h3>
+                    <SarVisualization data={sarVisualization} />
+                  </div>
+                )}
+
+                {/* Message if no SAR was selected */}
+                {!selectedSar && (
+                  <Card className="p-6 bg-slate-800/50 border-slate-700">
+                    <p className="text-center text-slate-400">
+                      No Security Assessment Report selected. Only SSP information is displayed.
+                    </p>
+                  </Card>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: Select Template */}
         {step === 'select-template' && (
           <div className="space-y-4">
             <div>
@@ -601,33 +808,92 @@ export function AuthorizationWizard({
 
         {/* Step 5: Review */}
         {step === 'review' && selectedSsp && selectedTemplate && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <h2 className="text-xl font-bold mb-2">Review Authorization</h2>
               <p className="text-gray-600">Review and finalize the authorization</p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Authorization Metadata */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Authorization Details</h3>
+                <div className="space-y-2">
+                  <Label>Authorization Title</Label>
+                  <p className="font-medium text-lg">{authorizationName}</p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card className="p-4 bg-slate-800 border-slate-700">
+                    <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs text-slate-400">Date Authorized</Label>
+                        <p className="font-medium">{new Date(dateAuthorized).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-400">Date Expired</Label>
+                        <p className="font-medium">{new Date(dateExpired).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4 bg-slate-800 border-slate-700">
+                    <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs text-slate-400">System Owner</Label>
+                        <p className="font-medium">{systemOwner}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-400">Security Manager</Label>
+                        <p className="font-medium">{securityManager}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-400">Authorizing Official</Label>
+                        <p className="font-medium">{authorizingOfficial}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* System Documents */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">System Documents</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">System Security Plan</h4>
+                    <p className="text-sm text-gray-600">{selectedSsp.title}</p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Security Assessment Report</h4>
+                    <p className="text-sm text-gray-600">
+                      {selectedSar ? selectedSar.title : <span className="text-gray-400 italic">Not selected</span>}
+                    </p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Template</h4>
+                    <p className="text-sm text-gray-600">{selectedTemplate.name}</p>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Completed Authorization */}
               <div className="space-y-2">
-                <Label>Authorization Title</Label>
-                <p className="font-medium text-lg">{authorizationName}</p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">System</h3>
-                  <p className="text-sm text-gray-600">{selectedSsp.title}</p>
-                </Card>
-
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">Template</h3>
-                  <p className="text-sm text-gray-600">{selectedTemplate.name}</p>
-                </Card>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Completed Authorization</h3>
-                <MarkdownPreview content={completedContent} height="400px" />
+                <h3 className="text-lg font-semibold border-b pb-2">Completed Authorization</h3>
+                <p className="text-xs text-slate-400 mb-2">Scroll to view the complete document</p>
+                <MarkdownPreview content={completedContent} height="600px" />
               </div>
             </div>
           </div>

@@ -579,6 +579,7 @@ export interface AuthorizationTemplateResponse {
 export interface AuthorizationRequest {
   name: string;
   sspItemId: string;
+  sarItemId?: string; // Optional SAR item ID
   templateId: number;
   variableValues: Record<string, string>;
   dateAuthorized?: string;
@@ -593,13 +594,15 @@ export interface AuthorizationResponse {
   id: number;
   name: string;
   sspItemId: string;
+  sarItemId?: string; // Optional SAR item ID
   templateId: number;
   templateName: string;
   variableValues: Record<string, string>;
   completedContent: string; // Final markdown with variables replaced
   authorizedBy: string;
-  authorizedAt: string; // ISO 8601 date string
+  authorizedAt: string; // ISO 8601 date string - system timestamp when created
   createdAt: string; // ISO 8601 date string
+  dateAuthorized?: string; // ISO 8601 date string - user-specified authorization date
   dateExpired?: string; // ISO 8601 date string
   systemOwner?: string;
   securityManager?: string;

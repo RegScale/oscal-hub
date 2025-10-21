@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -22,6 +23,7 @@ import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData, Profile
 import { apiClient } from '@/lib/api-client';
 
 export default function VisualizePage() {
+  const searchParams = useSearchParams();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [format, setFormat] = useState<OscalFormat>('json');
@@ -33,6 +35,82 @@ export default function VisualizePage() {
   const [error, setError] = useState<string | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
   const libraryRef = useRef<LibrarySelectorRef>(null);
+
+  // Auto-load file from query parameter
+  useEffect(() => {
+    const fileId = searchParams?.get('fileId');
+    if (fileId) {
+      loadFileById(fileId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const loadFileById = async (fileId: string) => {
+    try {
+      setIsAnalyzing(true);
+      toast.info('Loading file...');
+
+      // Get file info
+      const fileInfo = await apiClient.getSavedFile(fileId);
+      if (!fileInfo) {
+        throw new Error('File not found');
+      }
+
+      // Get file content
+      const content = await apiClient.getFileContent(fileId);
+      if (!content) {
+        throw new Error('Failed to load file content');
+      }
+
+      // Create a virtual File object
+      const blob = new Blob([content], { type: 'text/plain' });
+      const virtualFile = new File([blob], fileInfo.fileName, { type: 'text/plain' });
+
+      // Convert format to lowercase for consistency
+      const normalizedFormat = fileInfo.format.toLowerCase() as OscalFormat;
+
+      setSelectedFile(virtualFile);
+      setFileContent(content);
+      setFormat(normalizedFormat);
+      setCatalogAnalysis(null);
+      setSspVisualization(null);
+      setProfileVisualization(null);
+      setSarVisualization(null);
+      setError(null);
+
+      // Auto-trigger visualization
+      toast.info('Analyzing document...');
+
+      const docType = detectDocumentType(content, normalizedFormat);
+
+      if (docType === 'catalog') {
+        const analysis = analyzeCatalog(content, normalizedFormat);
+        setCatalogAnalysis(analysis);
+        toast.success('Catalog analyzed successfully!');
+      } else if (docType === 'ssp') {
+        const sspData = await apiClient.visualizeSSP(content, normalizedFormat, fileInfo.fileName);
+        setSspVisualization(sspData);
+        toast.success('SSP analyzed successfully!');
+      } else if (docType === 'profile') {
+        const profileData = await apiClient.visualizeProfile(content, normalizedFormat, fileInfo.fileName);
+        setProfileVisualization(profileData);
+        toast.success('Profile analyzed successfully!');
+      } else if (docType === 'sar') {
+        const sarData = await apiClient.visualizeSAR(content, normalizedFormat, fileInfo.fileName);
+        setSarVisualization(sarData);
+        toast.success('SAR analyzed successfully!');
+      } else {
+        throw new Error('Unsupported document type.');
+      }
+    } catch (err) {
+      console.error('Failed to load file:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load file';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleFileSelect = async (file: File, content: string) => {
     setSelectedFile(file);

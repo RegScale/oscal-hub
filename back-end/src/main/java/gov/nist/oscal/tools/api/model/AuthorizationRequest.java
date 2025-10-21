@@ -16,6 +16,8 @@ public class AuthorizationRequest {
     @NotBlank(message = "SSP item ID is required")
     private String sspItemId;
 
+    private String sarItemId; // Optional SAR (Security Assessment Results) item ID
+
     @NotNull(message = "Template ID is required")
     private Long templateId;
 
@@ -65,6 +67,14 @@ public class AuthorizationRequest {
 
     public void setSspItemId(String sspItemId) {
         this.sspItemId = sspItemId;
+    }
+
+    public String getSarItemId() {
+        return sarItemId;
+    }
+
+    public void setSarItemId(String sarItemId) {
+        this.sarItemId = sarItemId;
     }
 
     public Long getTemplateId() {

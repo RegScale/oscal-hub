@@ -43,12 +43,12 @@ public class AuthorizationService {
      * Create a new authorization
      */
     @Transactional
-    public Authorization createAuthorization(String name, String sspItemId, Long templateId,
+    public Authorization createAuthorization(String name, String sspItemId, String sarItemId, Long templateId,
                                             Map<String, String> variableValues, String username,
                                             String dateAuthorized, String dateExpired,
                                             String systemOwner, String securityManager,
                                             String authorizingOfficial, String editedContent) {
-        logger.info("Creating new authorization: {} for SSP: {} by user: {}", name, sspItemId, username);
+        logger.info("Creating new authorization: {} for SSP: {} SAR: {} by user: {}", name, sspItemId, sarItemId, username);
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -58,11 +58,12 @@ public class AuthorizationService {
 
         // Create authorization
         Authorization authorization = new Authorization(name, sspItemId, template, user);
+        authorization.setSarItemId(sarItemId);
         authorization.setVariableValues(variableValues);
 
         // Set metadata
         if (dateAuthorized != null && !dateAuthorized.isEmpty()) {
-            authorization.setAuthorizedAt(LocalDate.parse(dateAuthorized).atStartOfDay());
+            authorization.setDateAuthorized(LocalDate.parse(dateAuthorized));
         }
         if (dateExpired != null && !dateExpired.isEmpty()) {
             authorization.setDateExpired(LocalDate.parse(dateExpired));
