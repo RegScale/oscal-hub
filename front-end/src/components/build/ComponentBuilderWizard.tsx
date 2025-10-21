@@ -8,20 +8,22 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ChevronRight,
   ChevronLeft,
   Save,
   Plus,
-  Trash2,
   Eye,
-  FileJson,
   CheckCircle2,
   Circle,
-  ArrowRight
+  ArrowRight,
+  Library,
+  Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { ControlSelector } from '@/components/build/ControlSelector';
 import type { ComponentDefinitionRequest } from '@/types/oscal';
 
 interface WizardStep {
@@ -30,37 +32,43 @@ interface WizardStep {
   description: string;
 }
 
-const WIZARD_STEPS: WizardStep[] = [
-  { id: 1, title: 'Metadata', description: 'Component definition information' },
-  { id: 2, title: 'Components', description: 'Add system components' },
-  { id: 3, title: 'Control Implementations', description: 'Map to security controls' },
-  { id: 4, title: 'Review & Save', description: 'Preview and save your work' },
-];
-
-interface ComponentItem {
+interface ComponentOrCapability {
   uuid: string;
-  type: string;
+  type: 'component' | 'capability';
+  // For components
+  componentType?: string;
   title: string;
   description: string;
-  props?: Array<{ name: string; value: string; }>;
+  // For capabilities
+  name?: string;
 }
 
-interface ControlImplementation {
-  uuid: string;
-  source: string;
-  description: string;
-  implementedRequirements: Array<{
-    uuid: string;
-    controlId: string;
-    description: string;
-  }>;
+interface ControlAssignment {
+  componentUuid: string;
+  controlIds: string[];
 }
+
+interface ImplementationDetail {
+  componentUuid: string;
+  controlId: string;
+  description: string;
+}
+
+const WIZARD_STEPS: WizardStep[] = [
+  { id: 1, title: 'Metadata', description: 'Basic information' },
+  { id: 2, title: 'Select Controls', description: 'Choose catalog and controls' },
+  { id: 3, title: 'Components/Capabilities', description: 'Define components or capabilities' },
+  { id: 4, title: 'Assign Controls', description: 'Map controls to components' },
+  { id: 5, title: 'Implementation Details', description: 'Add implementation guidance' },
+  { id: 6, title: 'Review & Save', description: 'Preview and save your work' },
+];
 
 export function ComponentBuilderWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showControlSelector, setShowControlSelector] = useState(false);
 
   // Step 1: Metadata
   const [metadata, setMetadata] = useState({
@@ -70,105 +78,136 @@ export function ComponentBuilderWizard() {
     description: '',
   });
 
-  // Step 2: Components
-  const [components, setComponents] = useState<ComponentItem[]>([]);
+  // Step 2: Catalog and Control Selection
+  const [selectedCatalog, setSelectedCatalog] = useState<{
+    title: string;
+    source: string;
+  } | null>(null);
+  const [selectedControls, setSelectedControls] = useState<Array<{
+    controlId: string;
+    title: string;
+    description: string;
+  }>>([]);
 
-  // Step 3: Control Implementations
-  const [controlImplementations, setControlImplementations] = useState<ControlImplementation[]>([]);
+  // Step 3: Components/Capabilities
+  const [componentsAndCapabilities, setComponentsAndCapabilities] = useState<ComponentOrCapability[]>([]);
 
+  // Step 4: Control Assignments
+  const [controlAssignments, setControlAssignments] = useState<ControlAssignment[]>([]);
+
+  // Step 5: Implementation Details
+  const [implementationDetails, setImplementationDetails] = useState<ImplementationDetail[]>([]);
+
+  const handleCatalogAndControlSelection = (
+    catalog: { title: string; source: string },
+    controls: Array<{ controlId: string; title: string; description: string; }>
+  ) => {
+    setSelectedCatalog(catalog);
+    setSelectedControls(controls);
+    setShowControlSelector(false);
+    // Auto-advance to next step after selecting controls
+    if (currentStep === 2) {
+      setCurrentStep(3);
+    }
+  };
+
+  // Component/Capability management
   const addComponent = () => {
-    const newComponent: ComponentItem = {
+    const newComponent: ComponentOrCapability = {
       uuid: crypto.randomUUID(),
-      type: 'software',
+      type: 'component',
+      componentType: 'software',
       title: '',
       description: '',
-      props: [],
     };
-    setComponents([...components, newComponent]);
+    setComponentsAndCapabilities([...componentsAndCapabilities, newComponent]);
   };
 
-  const updateComponent = (uuid: string, field: string, value: string) => {
-    setComponents(components.map(c =>
-      c.uuid === uuid ? { ...c, [field]: value } : c
-    ));
-  };
-
-  const removeComponent = (uuid: string) => {
-    setComponents(components.filter(c => c.uuid !== uuid));
-  };
-
-  const addControlImplementation = () => {
-    const newImplementation: ControlImplementation = {
+  const addCapability = () => {
+    const newCapability: ComponentOrCapability = {
       uuid: crypto.randomUUID(),
-      source: '',
+      type: 'capability',
+      name: '',
+      title: '',
       description: '',
-      implementedRequirements: [],
     };
-    setControlImplementations([...controlImplementations, newImplementation]);
+    setComponentsAndCapabilities([...componentsAndCapabilities, newCapability]);
   };
 
-  const updateControlImplementation = (uuid: string, field: string, value: string) => {
-    setControlImplementations(controlImplementations.map(ci =>
-      ci.uuid === uuid ? { ...ci, [field]: value } : ci
+  const updateComponentOrCapability = (uuid: string, field: string, value: string) => {
+    setComponentsAndCapabilities(componentsAndCapabilities.map(item =>
+      item.uuid === uuid ? { ...item, [field]: value } : item
     ));
   };
 
-  const removeControlImplementation = (uuid: string) => {
-    setControlImplementations(controlImplementations.filter(ci => ci.uuid !== uuid));
+  const removeComponentOrCapability = (uuid: string) => {
+    setComponentsAndCapabilities(componentsAndCapabilities.filter(item => item.uuid !== uuid));
+    // Also remove related control assignments and implementation details
+    setControlAssignments(controlAssignments.filter(ca => ca.componentUuid !== uuid));
+    setImplementationDetails(implementationDetails.filter(id => id.componentUuid !== uuid));
   };
 
-  const addImplementedRequirement = (controlImplUuid: string) => {
-    setControlImplementations(controlImplementations.map(ci => {
-      if (ci.uuid === controlImplUuid) {
-        return {
-          ...ci,
-          implementedRequirements: [
-            ...ci.implementedRequirements,
-            {
-              uuid: crypto.randomUUID(),
-              controlId: '',
-              description: '',
-            }
-          ]
-        };
+  // Control assignment management
+  const toggleControlAssignment = (componentUuid: string, controlId: string) => {
+    const assignment = controlAssignments.find(ca => ca.componentUuid === componentUuid);
+
+    if (assignment) {
+      if (assignment.controlIds.includes(controlId)) {
+        // Remove control
+        const newControlIds = assignment.controlIds.filter(id => id !== controlId);
+        if (newControlIds.length === 0) {
+          setControlAssignments(controlAssignments.filter(ca => ca.componentUuid !== componentUuid));
+        } else {
+          setControlAssignments(controlAssignments.map(ca =>
+            ca.componentUuid === componentUuid
+              ? { ...ca, controlIds: newControlIds }
+              : ca
+          ));
+        }
+        // Remove implementation details for this control
+        setImplementationDetails(implementationDetails.filter(
+          id => !(id.componentUuid === componentUuid && id.controlId === controlId)
+        ));
+      } else {
+        // Add control
+        setControlAssignments(controlAssignments.map(ca =>
+          ca.componentUuid === componentUuid
+            ? { ...ca, controlIds: [...ca.controlIds, controlId] }
+            : ca
+        ));
       }
-      return ci;
-    }));
+    } else {
+      // Create new assignment
+      setControlAssignments([...controlAssignments, {
+        componentUuid,
+        controlIds: [controlId],
+      }]);
+    }
   };
 
-  const updateImplementedRequirement = (
-    controlImplUuid: string,
-    reqUuid: string,
-    field: string,
-    value: string
-  ) => {
-    setControlImplementations(controlImplementations.map(ci => {
-      if (ci.uuid === controlImplUuid) {
-        return {
-          ...ci,
-          implementedRequirements: ci.implementedRequirements.map(req =>
-            req.uuid === reqUuid ? { ...req, [field]: value } : req
-          )
-        };
-      }
-      return ci;
-    }));
-  };
+  // Implementation details management
+  const updateImplementationDetail = (componentUuid: string, controlId: string, description: string) => {
+    const existing = implementationDetails.find(
+      id => id.componentUuid === componentUuid && id.controlId === controlId
+    );
 
-  const removeImplementedRequirement = (controlImplUuid: string, reqUuid: string) => {
-    setControlImplementations(controlImplementations.map(ci => {
-      if (ci.uuid === controlImplUuid) {
-        return {
-          ...ci,
-          implementedRequirements: ci.implementedRequirements.filter(req => req.uuid !== reqUuid)
-        };
-      }
-      return ci;
-    }));
+    if (existing) {
+      setImplementationDetails(implementationDetails.map(id =>
+        id.componentUuid === componentUuid && id.controlId === controlId
+          ? { ...id, description }
+          : id
+      ));
+    } else {
+      setImplementationDetails([...implementationDetails, {
+        componentUuid,
+        controlId,
+        description,
+      }]);
+    }
   };
 
   const generateOSCALJson = () => {
-    return {
+    const oscalDoc: any = {
       'component-definition': {
         uuid: crypto.randomUUID(),
         metadata: {
@@ -178,27 +217,79 @@ export function ComponentBuilderWizard() {
           'oscal-version': metadata.oscalVersion,
           ...(metadata.description && { description: metadata.description }),
         },
-        components: components.map(c => ({
-          uuid: c.uuid,
-          type: c.type,
-          title: c.title,
-          description: c.description,
-          ...(c.props && c.props.length > 0 && { props: c.props }),
-        })),
-        ...(controlImplementations.length > 0 && {
-          'control-implementations': controlImplementations.map(ci => ({
-            uuid: ci.uuid,
-            source: ci.source,
-            description: ci.description,
-            'implemented-requirements': ci.implementedRequirements.map(req => ({
-              uuid: req.uuid,
-              'control-id': req.controlId,
-              description: req.description,
-            }))
-          }))
-        })
       }
     };
+
+    // Add components
+    const components = componentsAndCapabilities.filter(item => item.type === 'component');
+    if (components.length > 0) {
+      oscalDoc['component-definition'].components = components.map(comp => {
+        const assignment = controlAssignments.find(ca => ca.componentUuid === comp.uuid);
+        const compObj: any = {
+          uuid: comp.uuid,
+          type: comp.componentType,
+          title: comp.title,
+          description: comp.description,
+        };
+
+        // Add control implementations if controls are assigned
+        if (assignment && assignment.controlIds.length > 0 && selectedCatalog) {
+          compObj['control-implementations'] = [{
+            uuid: crypto.randomUUID(),
+            source: selectedCatalog.source,
+            description: `Implementation of controls from ${selectedCatalog.title}`,
+            'implemented-requirements': assignment.controlIds.map(controlId => {
+              const implDetail = implementationDetails.find(
+                id => id.componentUuid === comp.uuid && id.controlId === controlId
+              );
+              return {
+                uuid: crypto.randomUUID(),
+                'control-id': controlId,
+                description: implDetail?.description || '',
+              };
+            }),
+          }];
+        }
+
+        return compObj;
+      });
+    }
+
+    // Add capabilities
+    const capabilities = componentsAndCapabilities.filter(item => item.type === 'capability');
+    if (capabilities.length > 0) {
+      oscalDoc['component-definition'].capabilities = capabilities.map(cap => {
+        const assignment = controlAssignments.find(ca => ca.componentUuid === cap.uuid);
+        const capObj: any = {
+          uuid: cap.uuid,
+          name: cap.name || cap.title,
+          description: cap.description,
+        };
+
+        // Add control implementations if controls are assigned
+        if (assignment && assignment.controlIds.length > 0 && selectedCatalog) {
+          capObj['control-implementations'] = [{
+            uuid: crypto.randomUUID(),
+            source: selectedCatalog.source,
+            description: `Implementation of controls from ${selectedCatalog.title}`,
+            'implemented-requirements': assignment.controlIds.map(controlId => {
+              const implDetail = implementationDetails.find(
+                id => id.componentUuid === cap.uuid && id.controlId === controlId
+              );
+              return {
+                uuid: crypto.randomUUID(),
+                'control-id': controlId,
+                description: implDetail?.description || '',
+              };
+            }),
+          }];
+        }
+
+        return capObj;
+      });
+    }
+
+    return oscalDoc;
   };
 
   const handleSave = async () => {
@@ -211,6 +302,8 @@ export function ComponentBuilderWizard() {
       const jsonContent = JSON.stringify(oscalJson, null, 2);
       const filename = `${metadata.title.toLowerCase().replace(/\s+/g, '-')}.json`;
 
+      const totalControls = controlAssignments.reduce((sum, ca) => sum + ca.controlIds.length, 0);
+
       const request: ComponentDefinitionRequest = {
         title: metadata.title,
         description: metadata.description || '',
@@ -218,11 +311,8 @@ export function ComponentBuilderWizard() {
         oscalVersion: metadata.oscalVersion,
         filename,
         jsonContent,
-        componentCount: components.length,
-        controlCount: controlImplementations.reduce(
-          (sum, ci) => sum + ci.implementedRequirements.length,
-          0
-        ),
+        componentCount: componentsAndCapabilities.length,
+        controlCount: totalControls,
       };
 
       await apiClient.createComponentDefinition(request);
@@ -240,10 +330,15 @@ export function ComponentBuilderWizard() {
       case 1:
         return metadata.title.trim() !== '' && metadata.version.trim() !== '';
       case 2:
-        return components.length > 0 && components.every(c => c.title.trim() !== '');
+        return true; // Optional
       case 3:
-        return true; // Control implementations are optional
+        return componentsAndCapabilities.length > 0 &&
+               componentsAndCapabilities.every(item => item.title.trim() !== '');
       case 4:
+        return true; // Optional
+      case 5:
+        return true; // Optional
+      case 6:
         return true;
       default:
         return false;
@@ -263,9 +358,9 @@ export function ComponentBuilderWizard() {
   };
 
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-between mb-8">
+    <div className="flex items-center justify-between mb-8 overflow-x-auto">
       {WIZARD_STEPS.map((step, index) => (
-        <div key={step.id} className="flex items-center flex-1">
+        <div key={step.id} className="flex items-center flex-1 min-w-0">
           <div className="flex flex-col items-center flex-1">
             <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
               currentStep > step.id
@@ -281,38 +376,43 @@ export function ComponentBuilderWizard() {
               )}
             </div>
             <div className="mt-2 text-center">
-              <div className={`text-sm font-medium ${
+              <div className={`text-xs sm:text-sm font-medium ${
                 currentStep === step.id ? 'text-foreground' : 'text-muted-foreground'
               }`}>
                 {step.title}
               </div>
-              <div className="text-xs text-muted-foreground hidden sm:block">
+              <div className="text-xs text-muted-foreground hidden lg:block">
                 {step.description}
               </div>
             </div>
           </div>
           {index < WIZARD_STEPS.length - 1 && (
-            <ArrowRight className="h-5 w-5 text-muted-foreground mx-2 flex-shrink-0" />
+            <ArrowRight className="h-4 w-4 text-muted-foreground mx-1 flex-shrink-0" />
           )}
         </div>
       ))}
     </div>
   );
 
+  // Step render functions will continue...
   const renderStep1 = () => (
     <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium mb-2">Component Definition Metadata</h3>
+        <p className="text-sm text-muted-foreground">
+          Provide basic information about this component definition
+        </p>
+      </div>
+
       <div className="space-y-2">
-        <Label htmlFor="title">Component Definition Title *</Label>
+        <Label htmlFor="title">Title *</Label>
         <Input
           id="title"
           value={metadata.title}
           onChange={(e) => setMetadata({ ...metadata, title: e.target.value })}
-          placeholder="e.g., Django Web Framework Security Controls"
+          placeholder="e.g., Django Web Framework Component Definition"
           required
         />
-        <p className="text-xs text-muted-foreground">
-          A descriptive title for this component definition
-        </p>
       </div>
 
       <div className="space-y-2">
@@ -321,7 +421,7 @@ export function ComponentBuilderWizard() {
           id="description"
           value={metadata.description}
           onChange={(e) => setMetadata({ ...metadata, description: e.target.value })}
-          placeholder="Describe the purpose of this component definition..."
+          placeholder="Describe the purpose and scope of this component definition..."
           rows={4}
         />
       </div>
@@ -361,53 +461,137 @@ export function ComponentBuilderWizard() {
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">System Components</h3>
-          <p className="text-sm text-muted-foreground">
-            Add the components that make up your system
-          </p>
-        </div>
-        <Button onClick={addComponent}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Component
-        </Button>
+      <div>
+        <h3 className="text-lg font-medium mb-2">Select Catalog and Controls</h3>
+        <p className="text-sm text-muted-foreground">
+          Choose a catalog or profile and select the controls you want to implement
+        </p>
       </div>
 
-      {components.length === 0 ? (
+      {selectedCatalog && selectedControls.length > 0 ? (
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950">
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-green-900 dark:text-green-100">
+                    Catalog: {selectedCatalog.title}
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    {selectedControls.length} control{selectedControls.length !== 1 ? 's' : ''} selected
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowControlSelector(true)}
+              >
+                Change
+              </Button>
+            </div>
+            <div className="mt-4">
+              <Label className="text-sm font-medium">Selected Controls:</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedControls.map((control) => (
+                  <Badge key={control.controlId} variant="secondary">
+                    {control.controlId}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileJson className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">No components added yet</p>
-            <Button onClick={addComponent}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add First Component
+            <Library className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No controls selected</p>
+            <p className="text-sm text-muted-foreground mb-4 text-center">
+              Select a catalog and controls (optional but recommended)
+            </p>
+            <Button onClick={() => setShowControlSelector(true)} variant="outline">
+              <Library className="mr-2 h-4 w-4" />
+              Browse Catalogs
             </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-medium mb-2">Components and Capabilities</h3>
+          <p className="text-sm text-muted-foreground">
+            Define the components or capabilities - you can add multiple
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={addComponent} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            Add Component
+          </Button>
+          <Button onClick={addCapability} size="sm" variant="outline">
+            <Plus className="mr-1 h-4 w-4" />
+            Add Capability
+          </Button>
+        </div>
+      </div>
+
+      {componentsAndCapabilities.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <CheckCircle2 className="h-4 w-4 text-blue-600" />
+          <p className="text-sm text-blue-900 dark:text-blue-100">
+            <strong>{componentsAndCapabilities.length}</strong> {componentsAndCapabilities.length === 1 ? 'item' : 'items'} added.
+            Click the buttons above to add more, or click Next when done.
+          </p>
+        </div>
+      )}
+
+      {componentsAndCapabilities.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No components or capabilities defined</p>
+            <p className="text-sm text-muted-foreground mb-4 text-center">
+              Click one of the buttons above to add your first component or capability
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {components.map((component, index) => (
-            <Card key={component.uuid}>
+          {componentsAndCapabilities.map((item) => (
+            <Card key={item.uuid}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Component {index + 1}</CardTitle>
+                  <div>
+                    <CardTitle className="text-base">
+                      {item.type === 'component' ? 'Component' : 'Capability'}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {item.type === 'component' ? item.componentType : 'Capability'}
+                    </CardDescription>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeComponent(component.uuid)}
+                    onClick={() => removeComponentOrCapability(item.uuid)}
                   >
                     <Trash2 className="h-4 w-4 text-red-600" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {item.type === 'component' && (
                   <div className="space-y-2">
-                    <Label>Component Type</Label>
+                    <Label>Component Type *</Label>
                     <Select
-                      value={component.type}
-                      onValueChange={(value) => updateComponent(component.uuid, 'type', value)}
+                      value={item.componentType || 'software'}
+                      onValueChange={(value) => updateComponentOrCapability(item.uuid, 'componentType', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -426,24 +610,23 @@ export function ComponentBuilderWizard() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <Label>Component Title *</Label>
-                    <Input
-                      value={component.title}
-                      onChange={(e) => updateComponent(component.uuid, 'title', e.target.value)}
-                      placeholder="e.g., Django Web Framework"
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>{item.type === 'component' ? 'Title' : 'Name'} *</Label>
+                  <Input
+                    value={item.title}
+                    onChange={(e) => updateComponentOrCapability(item.uuid, 'title', e.target.value)}
+                    placeholder={item.type === 'component' ? 'Component title...' : 'Capability name...'}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Description</Label>
                   <Textarea
-                    value={component.description}
-                    onChange={(e) => updateComponent(component.uuid, 'description', e.target.value)}
-                    placeholder="Describe this component..."
+                    value={item.description}
+                    onChange={(e) => updateComponentOrCapability(item.uuid, 'description', e.target.value)}
+                    placeholder="Describe this..."
                     rows={3}
                   />
                 </div>
@@ -455,133 +638,140 @@ export function ComponentBuilderWizard() {
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep4 = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Control Implementations</h3>
-          <p className="text-sm text-muted-foreground">
-            Map your components to security controls (optional)
-          </p>
-        </div>
-        <Button onClick={addControlImplementation}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Control Implementation
-        </Button>
+      <div>
+        <h3 className="text-lg font-medium mb-2">Assign Controls to Components/Capabilities</h3>
+        <p className="text-sm text-muted-foreground">
+          Select which controls each component or capability implements
+        </p>
       </div>
 
-      {controlImplementations.length === 0 ? (
+      {selectedControls.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-2">No control implementations yet</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Control implementations are optional but recommended
+            <Library className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No controls selected</p>
+            <p className="text-sm text-muted-foreground mb-4 text-center">
+              Go back to Step 2 to select controls
             </p>
-            <Button onClick={addControlImplementation} variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Control Implementation
+            <Button onClick={() => setCurrentStep(2)} variant="outline">
+              Select Controls
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {controlImplementations.map((impl, index) => (
-            <Card key={impl.uuid}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Control Implementation {index + 1}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeControlImplementation(impl.uuid)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
+          {componentsAndCapabilities.map((item) => {
+            const assignment = controlAssignments.find(ca => ca.componentUuid === item.uuid);
+
+            return (
+              <Card key={item.uuid}>
+                <CardHeader>
+                  <CardTitle className="text-base">{item.title || 'Unnamed'}</CardTitle>
+                  <CardDescription>
+                    {item.type === 'component' ? `Component (${item.componentType})` : 'Capability'} -{' '}
+                    {assignment ? assignment.controlIds.length : 0} controls assigned
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-2">
-                    <Label>Source (e.g., NIST SP 800-53 Rev 5)</Label>
-                    <Input
-                      value={impl.source}
-                      onChange={(e) => updateControlImplementation(impl.uuid, 'source', e.target.value)}
-                      placeholder="https://doi.org/10.6028/NIST.SP.800-53r5"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={impl.description}
-                      onChange={(e) => updateControlImplementation(impl.uuid, 'description', e.target.value)}
-                      placeholder="Describe this control implementation..."
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <Label className="text-sm font-medium">Implemented Requirements</Label>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => addImplementedRequirement(impl.uuid)}
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Add Requirement
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {impl.implementedRequirements.map((req) => (
-                      <div key={req.uuid} className="flex gap-2 items-start p-3 border rounded-lg">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                          <Input
-                            value={req.controlId}
-                            onChange={(e) => updateImplementedRequirement(
-                              impl.uuid,
-                              req.uuid,
-                              'controlId',
-                              e.target.value
-                            )}
-                            placeholder="Control ID (e.g., AC-1)"
-                            className="text-sm"
-                          />
-                          <Input
-                            value={req.description}
-                            onChange={(e) => updateImplementedRequirement(
-                              impl.uuid,
-                              req.uuid,
-                              'description',
-                              e.target.value
-                            )}
-                            placeholder="Description"
-                            className="text-sm"
-                          />
+                    {selectedControls.map((control) => (
+                      <div key={control.controlId} className="flex items-center gap-3 p-2 border rounded hover:bg-muted/50">
+                        <Checkbox
+                          checked={assignment?.controlIds.includes(control.controlId) || false}
+                          onCheckedChange={() => toggleControlAssignment(item.uuid, control.controlId)}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{control.controlId}</div>
+                          <div className="text-xs text-muted-foreground">{control.title}</div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeImplementedRequirement(impl.uuid, req.uuid)}
-                        >
-                          <Trash2 className="h-3 w-3 text-red-600" />
-                        </Button>
                       </div>
                     ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
   );
 
-  const renderStep4 = () => {
+  const renderStep5 = () => {
+    const assignedPairs: Array<{ component: ComponentOrCapability; controlId: string; }> = [];
+    controlAssignments.forEach(ca => {
+      const component = componentsAndCapabilities.find(c => c.uuid === ca.componentUuid);
+      if (component) {
+        ca.controlIds.forEach(controlId => {
+          assignedPairs.push({ component, controlId });
+        });
+      }
+    });
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium mb-2">Implementation Details</h3>
+          <p className="text-sm text-muted-foreground">
+            Add implementation guidance for each control in each component/capability
+          </p>
+        </div>
+
+        {assignedPairs.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-2">No control assignments</p>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Go back to Step 4 to assign controls to components
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {componentsAndCapabilities.map((component) => {
+              const componentPairs = assignedPairs.filter(p => p.component.uuid === component.uuid);
+              if (componentPairs.length === 0) return null;
+
+              return (
+                <Card key={component.uuid}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{component.title}</CardTitle>
+                    <CardDescription>
+                      {componentPairs.length} control{componentPairs.length !== 1 ? 's' : ''} to implement
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {componentPairs.map(({ controlId }) => {
+                      const control = selectedControls.find(c => c.controlId === controlId);
+                      const existingDetail = implementationDetails.find(
+                        id => id.componentUuid === component.uuid && id.controlId === controlId
+                      );
+
+                      return (
+                        <div key={controlId} className="space-y-2 p-3 border rounded">
+                          <div className="font-medium text-sm">{controlId} - {control?.title}</div>
+                          <Textarea
+                            value={existingDetail?.description || ''}
+                            onChange={(e) => updateImplementationDetail(component.uuid, controlId, e.target.value)}
+                            placeholder="Describe how this component implements this control..."
+                            rows={3}
+                          />
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStep6 = () => {
     const oscalJson = generateOSCALJson();
     const jsonString = JSON.stringify(oscalJson, null, 2);
 
@@ -606,20 +796,20 @@ export function ComponentBuilderWizard() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Components</CardDescription>
+              <CardDescription>Components/Capabilities</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="font-medium">{components.length}</p>
+              <p className="font-medium">{componentsAndCapabilities.length}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Controls</CardDescription>
+              <CardDescription>Total Control Assignments</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="font-medium">
-                {controlImplementations.reduce((sum, ci) => sum + ci.implementedRequirements.length, 0)}
+                {controlAssignments.reduce((sum, ca) => sum + ca.controlIds.length, 0)}
               </p>
             </CardContent>
           </Card>
@@ -631,9 +821,6 @@ export function ComponentBuilderWizard() {
               <Eye className="h-4 w-4" />
               OSCAL JSON Preview
             </CardTitle>
-            <CardDescription>
-              This is the OSCAL-compliant JSON that will be saved
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs max-h-96 overflow-y-auto">
@@ -670,59 +857,73 @@ export function ComponentBuilderWizard() {
   };
 
   return (
-    <div className="space-y-8">
-      {renderStepIndicator()}
+    <>
+      <div className="space-y-8">
+        {renderStepIndicator()}
 
-      <Card>
-        <CardContent className="pt-6">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardContent className="pt-6">
+            {currentStep === 1 && renderStep1()}
+            {currentStep === 2 && renderStep2()}
+            {currentStep === 3 && renderStep3()}
+            {currentStep === 4 && renderStep4()}
+            {currentStep === 5 && renderStep5()}
+            {currentStep === 6 && renderStep6()}
+          </CardContent>
+        </Card>
 
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={previousStep}
-          disabled={currentStep === 1}
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Previous
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={previousStep}
+            disabled={currentStep === 1}
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Previous
+          </Button>
 
-        <div className="flex gap-2">
-          {currentStep < WIZARD_STEPS.length ? (
-            <Button
-              onClick={nextStep}
-              disabled={!canProceedToNext()}
-            >
-              Next
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || saveSuccess}
-            >
-              {isSaving ? (
-                <>Saving...</>
-              ) : saveSuccess ? (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Component Definition
-                </>
-              )}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {currentStep < WIZARD_STEPS.length ? (
+              <Button
+                onClick={nextStep}
+                disabled={!canProceedToNext()}
+              >
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || saveSuccess}
+              >
+                {isSaving ? (
+                  <>Saving...</>
+                ) : saveSuccess ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Saved
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Component Definition
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Control Selector Dialog */}
+      <Dialog open={showControlSelector} onOpenChange={setShowControlSelector}>
+        <DialogContent className="max-w-4xl">
+          <ControlSelector
+            onAddControls={handleCatalogAndControlSelection}
+            onClose={() => setShowControlSelector(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
