@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldCheck, FileText, CheckCircle, ArrowLeft, Download, Eye } from 'lucide-react';
+import { ShieldCheck, FileText, CheckCircle, ArrowLeft, Download, Eye, Calendar, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { TemplateEditor } from '@/components/template-editor';
 import { TemplateList } from '@/components/template-list';
 import { AuthorizationWizard } from '@/components/authorization-wizard';
@@ -46,6 +48,11 @@ export default function AuthorizationsPage() {
   // SSP and SAR items for authorization creation
   const [sspItems, setSspItems] = useState<LibraryItem[]>([]);
   const [sarItems, setSarItems] = useState<LibraryItem[]>([]);
+
+  // Calendar view state
+  const [calendarSearchTerm, setCalendarSearchTerm] = useState('');
+  const [calendarStartDate, setCalendarStartDate] = useState('');
+  const [calendarEndDate, setCalendarEndDate] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -288,14 +295,18 @@ export default function AuthorizationsPage() {
           setActiveTab(value);
           if (value === 'templates') {
             setView('list-templates');
-          } else {
+          } else if (value === 'authorizations') {
             setView('list-authorizations');
           }
         }} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="authorizations">
               <CheckCircle className="h-4 w-4 mr-2" />
               Authorizations
+            </TabsTrigger>
+            <TabsTrigger value="calendar">
+              <Calendar className="h-4 w-4 mr-2" />
+              Calendar
             </TabsTrigger>
             <TabsTrigger value="templates">
               <FileText className="h-4 w-4 mr-2" />
@@ -556,6 +567,306 @@ export default function AuthorizationsPage() {
                 </div>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Calendar Tab */}
+          <TabsContent value="calendar" className="space-y-6">
+            {/* Recently Authorized (Last 90 days) */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <h3 className="text-lg font-semibold">Recently Authorized (Last 90 days)</h3>
+                <Badge variant="secondary">
+                  {(() => {
+                    const now = new Date();
+                    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                    return authorizations.filter(auth => {
+                      if (!auth.dateAuthorized) return false;
+                      const authDate = new Date(auth.dateAuthorized);
+                      return authDate >= ninetyDaysAgo && authDate <= now;
+                    }).length;
+                  })()}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {(() => {
+                  const now = new Date();
+                  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                  const recent = authorizations.filter(auth => {
+                    if (!auth.dateAuthorized) return false;
+                    const authDate = new Date(auth.dateAuthorized);
+                    return authDate >= ninetyDaysAgo && authDate <= now;
+                  });
+
+                  if (recent.length === 0) {
+                    return <p className="text-sm text-slate-400">No authorizations in the last 90 days</p>;
+                  }
+
+                  return recent.map(auth => (
+                    <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors" onClick={() => {
+                      setSelectedAuthorization(auth);
+                      setView('view-authorization');
+                      setActiveTab('authorizations');
+                    }}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{auth.name}</h4>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Authorized: {auth.dateAuthorized ? new Date(auth.dateAuthorized).toLocaleDateString() : 'N/A'}
+                          </p>
+                          {auth.dateExpired && (
+                            <p className="text-sm text-slate-400">
+                              Expires: {new Date(auth.dateExpired).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400">
+                          Recent
+                        </Badge>
+                      </div>
+                    </Card>
+                  ));
+                })()}
+              </div>
+            </Card>
+
+            {/* Overdue (Expired) */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <h3 className="text-lg font-semibold">Overdue (Expired)</h3>
+                <Badge variant="destructive">
+                  {(() => {
+                    const now = new Date();
+                    return authorizations.filter(auth => {
+                      if (!auth.dateExpired) return false;
+                      const expDate = new Date(auth.dateExpired);
+                      return expDate < now;
+                    }).length;
+                  })()}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {(() => {
+                  const now = new Date();
+                  const overdue = authorizations.filter(auth => {
+                    if (!auth.dateExpired) return false;
+                    const expDate = new Date(auth.dateExpired);
+                    return expDate < now;
+                  });
+
+                  if (overdue.length === 0) {
+                    return <p className="text-sm text-slate-400">No overdue authorizations</p>;
+                  }
+
+                  return overdue.map(auth => (
+                    <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors border-red-500/20" onClick={() => {
+                      setSelectedAuthorization(auth);
+                      setView('view-authorization');
+                      setActiveTab('authorizations');
+                    }}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{auth.name}</h4>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Authorized: {auth.dateAuthorized ? new Date(auth.dateAuthorized).toLocaleDateString() : 'N/A'}
+                          </p>
+                          <p className="text-sm text-red-400 font-medium">
+                            Expired: {new Date(auth.dateExpired!).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400">
+                          Expired
+                        </Badge>
+                      </div>
+                    </Card>
+                  ));
+                })()}
+              </div>
+            </Card>
+
+            {/* Expiring Soon (Next 90 days) */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="h-5 w-5 text-yellow-500" />
+                <h3 className="text-lg font-semibold">Expiring Soon (Next 90 days)</h3>
+                <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                  {(() => {
+                    const now = new Date();
+                    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+                    return authorizations.filter(auth => {
+                      if (!auth.dateExpired) return false;
+                      const expDate = new Date(auth.dateExpired);
+                      return expDate >= now && expDate <= ninetyDaysFromNow;
+                    }).length;
+                  })()}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {(() => {
+                  const now = new Date();
+                  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+                  const expiringSoon = authorizations.filter(auth => {
+                    if (!auth.dateExpired) return false;
+                    const expDate = new Date(auth.dateExpired);
+                    return expDate >= now && expDate <= ninetyDaysFromNow;
+                  });
+
+                  if (expiringSoon.length === 0) {
+                    return <p className="text-sm text-slate-400">No authorizations expiring in the next 90 days</p>;
+                  }
+
+                  return expiringSoon.map(auth => (
+                    <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors border-yellow-500/20" onClick={() => {
+                      setSelectedAuthorization(auth);
+                      setView('view-authorization');
+                      setActiveTab('authorizations');
+                    }}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{auth.name}</h4>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Authorized: {auth.dateAuthorized ? new Date(auth.dateAuthorized).toLocaleDateString() : 'N/A'}
+                          </p>
+                          <p className="text-sm text-yellow-400 font-medium">
+                            Expires: {new Date(auth.dateExpired!).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                          Expiring Soon
+                        </Badge>
+                      </div>
+                    </Card>
+                  ));
+                })()}
+              </div>
+            </Card>
+
+            {/* All Authorizations (with search and filter) */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">All Authorizations</h3>
+                <Badge variant="secondary">{authorizations.length}</Badge>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="calendar-search">Search by Title</Label>
+                    <Input
+                      id="calendar-search"
+                      type="text"
+                      placeholder="Search authorizations..."
+                      value={calendarSearchTerm}
+                      onChange={(e) => setCalendarSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <div>
+                      <Label htmlFor="start-date">Start Date</Label>
+                      <Input
+                        id="start-date"
+                        type="date"
+                        value={calendarStartDate}
+                        onChange={(e) => setCalendarStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="end-date">End Date</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={calendarEndDate}
+                        onChange={(e) => setCalendarEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {(() => {
+                  let filtered = authorizations;
+
+                  // Apply search filter
+                  if (calendarSearchTerm) {
+                    const searchLower = calendarSearchTerm.toLowerCase();
+                    filtered = filtered.filter(auth =>
+                      auth.name.toLowerCase().includes(searchLower)
+                    );
+                  }
+
+                  // Apply date range filter
+                  if (calendarStartDate || calendarEndDate) {
+                    filtered = filtered.filter(auth => {
+                      if (!auth.dateAuthorized) return false;
+                      const authDate = new Date(auth.dateAuthorized);
+
+                      if (calendarStartDate) {
+                        const startDate = new Date(calendarStartDate);
+                        if (authDate < startDate) return false;
+                      }
+
+                      if (calendarEndDate) {
+                        const endDate = new Date(calendarEndDate);
+                        if (authDate > endDate) return false;
+                      }
+
+                      return true;
+                    });
+                  }
+
+                  if (filtered.length === 0) {
+                    return <p className="text-sm text-slate-400">No authorizations match your search criteria</p>;
+                  }
+
+                  return filtered.map(auth => {
+                    const now = new Date();
+                    const isExpired = auth.dateExpired && new Date(auth.dateExpired) < now;
+                    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+                    const isExpiringSoon = auth.dateExpired && new Date(auth.dateExpired) >= now && new Date(auth.dateExpired) <= ninetyDaysFromNow;
+
+                    return (
+                      <Card key={auth.id} className={`p-4 hover:bg-slate-800/50 cursor-pointer transition-colors ${
+                        isExpired ? 'border-red-500/20' : isExpiringSoon ? 'border-yellow-500/20' : ''
+                      }`} onClick={() => {
+                        setSelectedAuthorization(auth);
+                        setView('view-authorization');
+                        setActiveTab('authorizations');
+                      }}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{auth.name}</h4>
+                            <p className="text-sm text-slate-400 mt-1">
+                              Authorized: {auth.dateAuthorized ? new Date(auth.dateAuthorized).toLocaleDateString() : 'N/A'}
+                            </p>
+                            {auth.dateExpired && (
+                              <p className={`text-sm font-medium ${
+                                isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-slate-400'
+                              }`}>
+                                Expires: {new Date(auth.dateExpired).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          {isExpired && (
+                            <Badge variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400">
+                              Expired
+                            </Badge>
+                          )}
+                          {!isExpired && isExpiringSoon && (
+                            <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                              Expiring Soon
+                            </Badge>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  });
+                })()}
+              </div>
+            </Card>
           </TabsContent>
 
           {/* Templates Tab */}
