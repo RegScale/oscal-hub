@@ -30,15 +30,32 @@ export default function ValidatePage() {
 
   const handleFileSelect = (file: File, content: string) => {
     setSelectedFile(file);
-    setFileContent(content);
     setValidationResult(null);
     setHighlightedLine(undefined);
 
     // Auto-detect format from file extension
     const extension = file.name.split('.').pop()?.toLowerCase();
-    if (extension === 'xml') setFormat('xml');
-    else if (extension === 'json') setFormat('json');
-    else if (extension === 'yaml' || extension === 'yml') setFormat('yaml');
+    let detectedFormat: OscalFormat = 'json';
+    if (extension === 'xml') detectedFormat = 'xml';
+    else if (extension === 'json') detectedFormat = 'json';
+    else if (extension === 'yaml' || extension === 'yml') detectedFormat = 'yaml';
+    setFormat(detectedFormat);
+
+    // Format JSON content properly if it's JSON format
+    if (detectedFormat === 'json') {
+      try {
+        // Try to parse and reformat the JSON
+        const parsed = JSON.parse(content);
+        const formatted = JSON.stringify(parsed, null, 2);
+        setFileContent(formatted);
+      } catch (error) {
+        // If parsing fails, use content as-is
+        console.warn('Could not parse JSON for formatting:', error);
+        setFileContent(content);
+      }
+    } else {
+      setFileContent(content);
+    }
 
     toast.success('File loaded successfully');
   };
@@ -49,13 +66,28 @@ export default function ValidatePage() {
     const virtualFile = new File([blob], file.fileName, { type: 'text/plain' });
 
     setSelectedFile(virtualFile);
-    setFileContent(content);
     setValidationResult(null);
     setHighlightedLine(undefined);
     setFormat(file.format);
 
     if (file.modelType) {
       setModelType(file.modelType);
+    }
+
+    // Format JSON content properly if it's JSON format
+    if (file.format === 'json') {
+      try {
+        // Try to parse and reformat the JSON
+        const parsed = JSON.parse(content);
+        const formatted = JSON.stringify(parsed, null, 2);
+        setFileContent(formatted);
+      } catch (error) {
+        // If parsing fails, use content as-is
+        console.warn('Could not parse JSON for formatting:', error);
+        setFileContent(content);
+      }
+    } else {
+      setFileContent(content);
     }
   };
 

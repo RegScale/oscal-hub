@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { ControlSelector } from '@/components/build/ControlSelector';
-import type { ComponentDefinitionRequest } from '@/types/oscal';
+import type { ComponentDefinitionRequest, ComponentDefinitionResponse } from '@/types/oscal';
 
 interface WizardStep {
   id: number;
@@ -54,6 +54,11 @@ interface ImplementationDetail {
   description: string;
 }
 
+interface ComponentBuilderWizardProps {
+  editingComponent?: ComponentDefinitionResponse | null;
+  onSaveComplete?: () => void;
+}
+
 const WIZARD_STEPS: WizardStep[] = [
   { id: 1, title: 'Metadata', description: 'Basic information' },
   { id: 2, title: 'Select Controls', description: 'Choose catalog and controls' },
@@ -63,12 +68,14 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 6, title: 'Review & Save', description: 'Preview and save your work' },
 ];
 
-export function ComponentBuilderWizard() {
+export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: ComponentBuilderWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showControlSelector, setShowControlSelector] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Step 1: Metadata
   const [metadata, setMetadata] = useState({
@@ -97,6 +104,193 @@ export function ComponentBuilderWizard() {
 
   // Step 5: Implementation Details
   const [implementationDetails, setImplementationDetails] = useState<ImplementationDetail[]>([]);
+
+  // Load component data when editing
+  useEffect(() => {
+    if (editingComponent) {
+      loadComponentForEditing(editingComponent.id);
+    } else {
+      // Reset to defaults when creating new
+      resetWizard();
+    }
+  }, [editingComponent]);
+
+  const resetWizard = () => {
+    setCurrentStep(1);
+    setMetadata({ title: '', version: '1.0.0', oscalVersion: '1.1.3', description: '' });
+    setSelectedCatalog(null);
+    setSelectedControls([]);
+    setComponentsAndCapabilities([]);
+    setControlAssignments([]);
+    setImplementationDetails([]);
+    setSaveError(null);
+    setSaveSuccess(false);
+  };
+
+  const loadComponentForEditing = async (componentId: number) => {
+    setIsLoadingEdit(true);
+    setLoadError(null);
+
+    try {
+      let oscalJson: any = await apiClient.getComponentDefinitionContent(componentId);
+
+      // If we got a string, parse it as JSON
+      if (typeof oscalJson === 'string') {
+        try {
+          oscalJson = JSON.parse(oscalJson);
+        } catch (parseError) {
+          throw new Error('Failed to parse OSCAL JSON from server');
+        }
+      }
+
+      console.log('Loaded OSCAL JSON:', oscalJson);
+
+      // Validate the structure
+      if (!oscalJson) {
+        throw new Error('No OSCAL data returned from server');
+      }
+
+      const compDef = oscalJson['component-definition'];
+
+      if (!compDef) {
+        console.error('OSCAL JSON structure:', Object.keys(oscalJson));
+        throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalJson).join(', ')}`);
+      }
+
+      if (!compDef.metadata) {
+        throw new Error('Invalid OSCAL structure: missing metadata');
+      }
+
+      // Load metadata
+      setMetadata({
+        title: compDef.metadata.title || '',
+        version: compDef.metadata.version || '1.0.0',
+        oscalVersion: compDef.metadata['oscal-version'] || '1.1.3',
+        description: compDef.metadata.description || '',
+      });
+
+      // Load components and capabilities
+      const loadedItems: ComponentOrCapability[] = [];
+      const loadedAssignments: ControlAssignment[] = [];
+      const loadedDetails: ImplementationDetail[] = [];
+      let allControls: Set<string> = new Set();
+      let catalogSource: string | null = null;
+
+      // Process components
+      if (compDef.components && Array.isArray(compDef.components)) {
+        for (const comp of compDef.components) {
+          loadedItems.push({
+            uuid: comp.uuid,
+            type: 'component',
+            componentType: comp.type,
+            title: comp.title,
+            description: comp.description || '',
+          });
+
+          // Extract control implementations
+          if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
+            for (const controlImpl of comp['control-implementations']) {
+              if (!catalogSource) catalogSource = controlImpl.source;
+
+              const controlIds: string[] = [];
+              if (controlImpl['implemented-requirements']) {
+                for (const req of controlImpl['implemented-requirements']) {
+                  const controlId = req['control-id'];
+                  controlIds.push(controlId);
+                  allControls.add(controlId);
+
+                  // Store implementation details
+                  if (req.description) {
+                    loadedDetails.push({
+                      componentUuid: comp.uuid,
+                      controlId,
+                      description: req.description,
+                    });
+                  }
+                }
+              }
+
+              if (controlIds.length > 0) {
+                loadedAssignments.push({
+                  componentUuid: comp.uuid,
+                  controlIds,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Process capabilities
+      if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
+        for (const cap of compDef.capabilities) {
+          loadedItems.push({
+            uuid: cap.uuid,
+            type: 'capability',
+            name: cap.name,
+            title: cap.name || '',
+            description: cap.description || '',
+          });
+
+          // Extract control implementations for capabilities
+          if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
+            for (const controlImpl of cap['control-implementations']) {
+              if (!catalogSource) catalogSource = controlImpl.source;
+
+              const controlIds: string[] = [];
+              if (controlImpl['implemented-requirements']) {
+                for (const req of controlImpl['implemented-requirements']) {
+                  const controlId = req['control-id'];
+                  controlIds.push(controlId);
+                  allControls.add(controlId);
+
+                  if (req.description) {
+                    loadedDetails.push({
+                      componentUuid: cap.uuid,
+                      controlId,
+                      description: req.description,
+                    });
+                  }
+                }
+              }
+
+              if (controlIds.length > 0) {
+                loadedAssignments.push({
+                  componentUuid: cap.uuid,
+                  controlIds,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      setComponentsAndCapabilities(loadedItems);
+      setControlAssignments(loadedAssignments);
+      setImplementationDetails(loadedDetails);
+
+      // Set catalog and controls (simplified - just control IDs)
+      if (catalogSource && allControls.size > 0) {
+        setSelectedCatalog({
+          title: 'Loaded Catalog',
+          source: catalogSource,
+        });
+
+        setSelectedControls(
+          Array.from(allControls).map(id => ({
+            controlId: id,
+            title: id,
+            description: '',
+          }))
+        );
+      }
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to load component for editing');
+      console.error('Error loading component for editing:', error);
+    } finally {
+      setIsLoadingEdit(false);
+    }
+  };
 
   const handleCatalogAndControlSelection = (
     catalog: { title: string; source: string },
@@ -227,9 +421,9 @@ export function ComponentBuilderWizard() {
         const assignment = controlAssignments.find(ca => ca.componentUuid === comp.uuid);
         const compObj: any = {
           uuid: comp.uuid,
-          type: comp.componentType,
+          type: comp.componentType || 'software',
           title: comp.title,
-          description: comp.description,
+          description: comp.description || 'No description provided',
         };
 
         // Add control implementations if controls are assigned
@@ -245,7 +439,9 @@ export function ComponentBuilderWizard() {
               return {
                 uuid: crypto.randomUUID(),
                 'control-id': controlId,
-                description: implDetail?.description || '',
+                description: implDetail?.description && implDetail.description.trim() !== ''
+                  ? implDetail.description
+                  : `Implementation details for ${controlId}`,
               };
             }),
           }];
@@ -263,7 +459,7 @@ export function ComponentBuilderWizard() {
         const capObj: any = {
           uuid: cap.uuid,
           name: cap.name || cap.title,
-          description: cap.description,
+          description: cap.description || 'No description provided',
         };
 
         // Add control implementations if controls are assigned
@@ -279,7 +475,9 @@ export function ComponentBuilderWizard() {
               return {
                 uuid: crypto.randomUUID(),
                 'control-id': controlId,
-                description: implDetail?.description || '',
+                description: implDetail?.description && implDetail.description.trim() !== ''
+                  ? implDetail.description
+                  : `Implementation details for ${controlId}`,
               };
             }),
           }];
@@ -315,8 +513,22 @@ export function ComponentBuilderWizard() {
         controlCount: totalControls,
       };
 
-      await apiClient.createComponentDefinition(request);
+      if (editingComponent) {
+        // Update existing component
+        await apiClient.updateComponentDefinition(editingComponent.id, request);
+      } else {
+        // Create new component
+        await apiClient.createComponentDefinition(request);
+      }
+
       setSaveSuccess(true);
+
+      // Call completion callback after a brief delay
+      setTimeout(() => {
+        if (onSaveComplete) {
+          onSaveComplete();
+        }
+      }, 1500);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Failed to save component definition');
       console.error('Error saving component definition:', error);
@@ -856,8 +1068,46 @@ export function ComponentBuilderWizard() {
     );
   };
 
+  // Show loading indicator while loading edit data
+  if (isLoadingEdit) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading component for editing...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error if loading failed
+  if (loadError) {
+    return (
+      <Card className="border-red-200 bg-red-50 dark:bg-red-950">
+        <CardContent className="pt-6">
+          <p className="text-sm text-red-800 dark:text-red-200 mb-4">{loadError}</p>
+          <Button onClick={() => {
+            if (onSaveComplete) onSaveComplete();
+          }}>
+            Go Back
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
+      {editingComponent && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+            Editing: {editingComponent.title}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-8">
         {renderStepIndicator()}
 
@@ -897,16 +1147,16 @@ export function ComponentBuilderWizard() {
                 disabled={isSaving || saveSuccess}
               >
                 {isSaving ? (
-                  <>Saving...</>
+                  <>{editingComponent ? 'Updating...' : 'Saving...'}</>
                 ) : saveSuccess ? (
                   <>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Saved
+                    {editingComponent ? 'Updated' : 'Saved'}
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Component Definition
+                    {editingComponent ? 'Update Component Definition' : 'Save Component Definition'}
                   </>
                 )}
               </Button>

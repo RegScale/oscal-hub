@@ -27,6 +27,7 @@ export default function BuildPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('components');
+  const [editingComponent, setEditingComponent] = useState<any>(null);
 
   if (isLoading) {
     return (
@@ -96,10 +97,12 @@ export default function BuildPage() {
           {/* My Components Tab */}
           <TabsContent value="components" className="space-y-6">
             <ComponentList
-              onCreateNew={() => setActiveTab('create')}
+              onCreateNew={() => {
+                setEditingComponent(null);
+                setActiveTab('create');
+              }}
               onEdit={(component) => {
-                console.log('Edit component:', component);
-                // TODO: Load component data into wizard and switch to create tab
+                setEditingComponent(component);
                 setActiveTab('create');
               }}
             />
@@ -107,7 +110,13 @@ export default function BuildPage() {
 
           {/* Create New Tab */}
           <TabsContent value="create" className="space-y-6">
-            <ComponentBuilderWizard />
+            <ComponentBuilderWizard
+              editingComponent={editingComponent}
+              onSaveComplete={() => {
+                setEditingComponent(null);
+                setActiveTab('components');
+              }}
+            />
           </TabsContent>
 
           {/* Element Library Tab */}

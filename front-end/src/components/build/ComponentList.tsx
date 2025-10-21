@@ -108,8 +108,15 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
     setLoadingJson(true);
 
     try {
-      const json = await apiClient.getComponentDefinitionContent(component.id);
-      setComponentJson(JSON.stringify(json, null, 2));
+      let json = await apiClient.getComponentDefinitionContent(component.id);
+
+      // If we got a string, it might already be formatted JSON
+      if (typeof json === 'string') {
+        setComponentJson(json);
+      } else {
+        // If it's an object, stringify it with formatting
+        setComponentJson(JSON.stringify(json, null, 2));
+      }
     } catch (err) {
       setComponentJson(`Error loading JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
       console.error('Error loading component JSON:', err);
@@ -120,8 +127,28 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
 
   const handleDownload = async (component: ComponentDefinitionResponse) => {
     try {
-      const json = await apiClient.getComponentDefinitionContent(component.id);
-      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+      let json = await apiClient.getComponentDefinitionContent(component.id);
+
+      // If we got a string, parse it first to handle any escaped characters
+      let jsonObject: any;
+      if (typeof json === 'string') {
+        try {
+          jsonObject = JSON.parse(json);
+        } catch (parseError) {
+          // If parsing fails, the string might already be plain text, use as-is
+          console.warn('Could not parse JSON string, using as-is:', parseError);
+          jsonObject = json;
+        }
+      } else {
+        jsonObject = json;
+      }
+
+      // Now format it properly with indentation
+      const jsonContent = typeof jsonObject === 'string'
+        ? jsonObject
+        : JSON.stringify(jsonObject, null, 2);
+
+      const blob = new Blob([jsonContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
