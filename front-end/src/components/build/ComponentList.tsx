@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,7 @@ interface ComponentListProps {
 }
 
 export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
+  const router = useRouter();
   const [components, setComponents] = useState<ComponentDefinitionResponse[]>([]);
   const [filteredComponents, setFilteredComponents] = useState<ComponentDefinitionResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,12 +166,8 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
   };
 
   const handleEdit = (component: ComponentDefinitionResponse) => {
-    if (onEdit) {
-      onEdit(component);
-    } else {
-      console.log('Edit component:', component);
-      // TODO: Implement edit functionality
-    }
+    // Navigate to the component detail page
+    router.push(`/build/component/${component.id}`);
   };
 
   const handleDeleteClick = (component: ComponentDefinitionResponse) => {

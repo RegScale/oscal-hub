@@ -414,8 +414,7 @@ export default function AuthorizationsPage() {
               <AuthorizationList
                 authorizations={authorizations}
                 onView={(authorization) => {
-                  setSelectedAuthorization(authorization);
-                  setView('view-authorization');
+                  router.push(`/authorizations/authorization/${authorization.id}`);
                 }}
                 onDelete={handleDeleteAuthorization}
                 onCreateNew={() => setView('create-authorization')}
@@ -947,9 +946,7 @@ export default function AuthorizationsPage() {
 
                   return recent.map(auth => (
                     <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors" onClick={() => {
-                      setSelectedAuthorization(auth);
-                      setView('view-authorization');
-                      setActiveTab('authorizations');
+                      router.push(`/authorizations/authorization/${auth.id}`);
                     }}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -1004,9 +1001,7 @@ export default function AuthorizationsPage() {
 
                   return overdue.map(auth => (
                     <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors border-red-500/20" onClick={() => {
-                      setSelectedAuthorization(auth);
-                      setView('view-authorization');
-                      setActiveTab('authorizations');
+                      router.push(`/authorizations/authorization/${auth.id}`);
                     }}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -1061,9 +1056,7 @@ export default function AuthorizationsPage() {
 
                   return expiringSoon.map(auth => (
                     <Card key={auth.id} className="p-4 hover:bg-slate-800/50 cursor-pointer transition-colors border-yellow-500/20" onClick={() => {
-                      setSelectedAuthorization(auth);
-                      setView('view-authorization');
-                      setActiveTab('authorizations');
+                      router.push(`/authorizations/authorization/${auth.id}`);
                     }}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -1175,9 +1168,7 @@ export default function AuthorizationsPage() {
                       <Card key={auth.id} className={`p-4 hover:bg-slate-800/50 cursor-pointer transition-colors ${
                         isExpired ? 'border-red-500/20' : isExpiringSoon ? 'border-yellow-500/20' : ''
                       }`} onClick={() => {
-                        setSelectedAuthorization(auth);
-                        setView('view-authorization');
-                        setActiveTab('authorizations');
+                        router.push(`/authorizations/authorization/${auth.id}`);
                       }}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -1218,12 +1209,10 @@ export default function AuthorizationsPage() {
               <TemplateList
                 templates={templates}
                 onSelectTemplate={(template) => {
-                  setSelectedTemplate(template);
-                  setView('view-template');
+                  router.push(`/authorizations/template/${template.id}`);
                 }}
                 onEditTemplate={(template) => {
-                  setSelectedTemplate(template);
-                  setView('edit-template');
+                  router.push(`/authorizations/template/${template.id}`);
                 }}
                 onDeleteTemplate={handleDeleteTemplate}
                 onCreateNew={() => setView('create-template')}
