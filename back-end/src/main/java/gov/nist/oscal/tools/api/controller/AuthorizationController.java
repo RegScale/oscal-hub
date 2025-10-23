@@ -56,7 +56,8 @@ public class AuthorizationController {
                     request.getSystemOwner(),
                     request.getSecurityManager(),
                     request.getAuthorizingOfficial(),
-                    request.getEditedContent()
+                    request.getEditedContent(),
+                    request.getConditions()
             );
 
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -85,7 +86,14 @@ public class AuthorizationController {
                     id,
                     request.getName(),
                     request.getVariableValues(),
-                    principal.getName()
+                    principal.getName(),
+                    request.getDateAuthorized(),
+                    request.getDateExpired(),
+                    request.getSystemOwner(),
+                    request.getSecurityManager(),
+                    request.getAuthorizingOfficial(),
+                    request.getEditedContent(),
+                    request.getConditions()
             );
 
             return ResponseEntity.ok(new AuthorizationResponse(authorization));

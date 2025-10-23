@@ -28,6 +28,8 @@ public class ComponentDefinitionRequest {
 
     private Integer componentCount;
 
+    private Integer capabilityCount;
+
     private Integer controlCount;
 
     // Constructors
@@ -107,6 +109,14 @@ public class ComponentDefinitionRequest {
 
     public void setComponentCount(Integer componentCount) {
         this.componentCount = componentCount;
+    }
+
+    public Integer getCapabilityCount() {
+        return capabilityCount;
+    }
+
+    public void setCapabilityCount(Integer capabilityCount) {
+        this.capabilityCount = capabilityCount;
     }
 
     public Integer getControlCount() {

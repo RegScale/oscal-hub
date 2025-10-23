@@ -640,6 +640,7 @@ export interface ComponentDefinitionRequest {
   jsonContent: string;
   oscalUuid?: string; // Optional, extracted from JSON if not provided
   componentCount?: number;
+  capabilityCount?: number;
   controlCount?: number;
 }
 
@@ -654,6 +655,7 @@ export interface ComponentDefinitionResponse {
   filename: string;
   fileSize: number;
   componentCount?: number;
+  capabilityCount?: number;
   controlCount?: number;
   createdBy: string;
   createdAt: string; // ISO 8601 date string

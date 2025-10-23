@@ -2,7 +2,9 @@ package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.model.ConditionOfApprovalRequest;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
@@ -47,7 +49,8 @@ public class AuthorizationService {
                                             Map<String, String> variableValues, String username,
                                             String dateAuthorized, String dateExpired,
                                             String systemOwner, String securityManager,
-                                            String authorizingOfficial, String editedContent) {
+                                            String authorizingOfficial, String editedContent,
+                                            List<ConditionOfApprovalRequest> conditionRequests) {
         logger.info("Creating new authorization: {} for SSP: {} SAR: {} by user: {}", name, sspItemId, sarItemId, username);
 
         User user = userRepository.findByUsername(username)
@@ -80,7 +83,26 @@ public class AuthorizationService {
         String completedContent = renderTemplate(contentToRender, variableValues, user);
         authorization.setCompletedContent(completedContent);
 
-        return authorizationRepository.save(authorization);
+        // Save authorization first to get the ID
+        authorization = authorizationRepository.save(authorization);
+
+        // Create conditions of approval if provided
+        if (conditionRequests != null && !conditionRequests.isEmpty()) {
+            for (ConditionOfApprovalRequest conditionRequest : conditionRequests) {
+                ConditionOfApproval condition = new ConditionOfApproval();
+                condition.setAuthorization(authorization);
+                condition.setCondition(conditionRequest.getCondition());
+                condition.setConditionType(conditionRequest.getConditionType());
+                if (conditionRequest.getDueDate() != null && !conditionRequest.getDueDate().isEmpty()) {
+                    condition.setDueDate(LocalDate.parse(conditionRequest.getDueDate()));
+                }
+                authorization.addCondition(condition);
+            }
+            // Save again to persist conditions
+            authorization = authorizationRepository.save(authorization);
+        }
+
+        return authorization;
     }
 
     /**
@@ -88,26 +110,65 @@ public class AuthorizationService {
      */
     @Transactional
     public Authorization updateAuthorization(Long id, String name, Map<String, String> variableValues,
-                                            String username) {
+                                            String username, String dateAuthorized, String dateExpired,
+                                            String systemOwner, String securityManager,
+                                            String authorizingOfficial, String editedContent,
+                                            List<ConditionOfApprovalRequest> conditionRequests) {
         logger.info("Updating authorization: {} by user: {}", id, username);
 
         Authorization authorization = authorizationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
 
+        // Update name
         if (name != null) {
             authorization.setName(name);
         }
 
+        // Update metadata fields
+        if (dateAuthorized != null && !dateAuthorized.isEmpty()) {
+            authorization.setDateAuthorized(LocalDate.parse(dateAuthorized));
+        }
+        if (dateExpired != null && !dateExpired.isEmpty()) {
+            authorization.setDateExpired(LocalDate.parse(dateExpired));
+        }
+        if (systemOwner != null) {
+            authorization.setSystemOwner(systemOwner);
+        }
+        if (securityManager != null) {
+            authorization.setSecurityManager(securityManager);
+        }
+        if (authorizingOfficial != null) {
+            authorization.setAuthorizingOfficial(authorizingOfficial);
+        }
+
+        // Update variable values and re-render content
         if (variableValues != null) {
             authorization.setVariableValues(variableValues);
 
-            // Re-render the template with updated variables
-            String completedContent = renderTemplate(
-                authorization.getTemplate().getContent(),
-                variableValues,
-                authorization.getAuthorizedBy()
-            );
+            // Use editedContent if provided, otherwise use original template content
+            String contentToRender = (editedContent != null && !editedContent.isEmpty())
+                    ? editedContent
+                    : authorization.getTemplate().getContent();
+            String completedContent = renderTemplate(contentToRender, variableValues, authorization.getAuthorizedBy());
             authorization.setCompletedContent(completedContent);
+        }
+
+        // Update conditions of approval if provided
+        if (conditionRequests != null) {
+            // Remove existing conditions
+            authorization.getConditions().clear();
+
+            // Add new conditions
+            for (ConditionOfApprovalRequest conditionRequest : conditionRequests) {
+                ConditionOfApproval condition = new ConditionOfApproval();
+                condition.setAuthorization(authorization);
+                condition.setCondition(conditionRequest.getCondition());
+                condition.setConditionType(conditionRequest.getConditionType());
+                if (conditionRequest.getDueDate() != null && !conditionRequest.getDueDate().isEmpty()) {
+                    condition.setDueDate(LocalDate.parse(conditionRequest.getDueDate()));
+                }
+                authorization.addCondition(condition);
+            }
         }
 
         return authorizationRepository.save(authorization);

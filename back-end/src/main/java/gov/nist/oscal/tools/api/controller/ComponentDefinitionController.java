@@ -54,6 +54,7 @@ public class ComponentDefinitionController {
                     request.getJsonContent(),
                     request.getOscalUuid(),
                     request.getComponentCount(),
+                    request.getCapabilityCount(),
                     request.getControlCount(),
                     principal.getName()
             );
@@ -92,6 +93,7 @@ public class ComponentDefinitionController {
                     request.getVersion(),
                     request.getJsonContent(),
                     request.getComponentCount(),
+                    request.getCapabilityCount(),
                     request.getControlCount(),
                     principal.getName()
             );

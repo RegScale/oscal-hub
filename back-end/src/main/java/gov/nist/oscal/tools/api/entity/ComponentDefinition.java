@@ -42,6 +42,9 @@ public class ComponentDefinition {
     @Column(name = "component_count")
     private Integer componentCount; // Number of components in definition
 
+    @Column(name = "capability_count")
+    private Integer capabilityCount; // Number of capabilities in definition
+
     @Column(name = "control_count")
     private Integer controlCount; // Total number of implemented controls
 
@@ -153,6 +156,14 @@ public class ComponentDefinition {
 
     public void setComponentCount(Integer componentCount) {
         this.componentCount = componentCount;
+    }
+
+    public Integer getCapabilityCount() {
+        return capabilityCount;
+    }
+
+    public void setCapabilityCount(Integer capabilityCount) {
+        this.capabilityCount = capabilityCount;
     }
 
     public Integer getControlCount() {

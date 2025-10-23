@@ -41,7 +41,7 @@ public class ComponentDefinitionService {
     public ComponentDefinition createComponentDefinition(
             String title, String description, String version, String oscalVersion,
             String filename, String jsonContent, String oscalUuid,
-            Integer componentCount, Integer controlCount, String username) {
+            Integer componentCount, Integer capabilityCount, Integer controlCount, String username) {
 
         logger.info("Creating component definition: {} by user: {}", title, username);
 
@@ -78,6 +78,7 @@ public class ComponentDefinitionService {
         component.setFilename(filename);
         component.setFileSize(fileSize);
         component.setComponentCount(componentCount);
+        component.setCapabilityCount(capabilityCount);
         component.setControlCount(controlCount);
         component.setLastUpdatedBy(user);
 
@@ -93,7 +94,7 @@ public class ComponentDefinitionService {
     @Transactional
     public ComponentDefinition updateComponentDefinition(
             Long componentId, String title, String description, String version,
-            String jsonContent, Integer componentCount, Integer controlCount, String username) {
+            String jsonContent, Integer componentCount, Integer capabilityCount, Integer controlCount, String username) {
 
         logger.info("Updating component definition: {} by user: {}", componentId, username);
 
@@ -120,6 +121,9 @@ public class ComponentDefinitionService {
         }
         if (componentCount != null) {
             component.setComponentCount(componentCount);
+        }
+        if (capabilityCount != null) {
+            component.setCapabilityCount(capabilityCount);
         }
         if (controlCount != null) {
             component.setControlCount(controlCount);

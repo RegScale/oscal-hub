@@ -19,6 +19,7 @@ public class ComponentDefinitionResponse {
     private String filename;
     private Long fileSize;
     private Integer componentCount;
+    private Integer capabilityCount;
     private Integer controlCount;
     private String createdBy;
     private LocalDateTime createdAt;
@@ -44,6 +45,7 @@ public class ComponentDefinitionResponse {
         response.setFilename(entity.getFilename());
         response.setFileSize(entity.getFileSize());
         response.setComponentCount(entity.getComponentCount());
+        response.setCapabilityCount(entity.getCapabilityCount());
         response.setControlCount(entity.getControlCount());
         response.setCreatedBy(entity.getCreatedBy().getUsername());
         response.setCreatedAt(entity.getCreatedAt());
@@ -133,6 +135,14 @@ public class ComponentDefinitionResponse {
 
     public void setComponentCount(Integer componentCount) {
         this.componentCount = componentCount;
+    }
+
+    public Integer getCapabilityCount() {
+        return capabilityCount;
+    }
+
+    public void setCapabilityCount(Integer capabilityCount) {
+        this.capabilityCount = capabilityCount;
     }
 
     public Integer getControlCount() {

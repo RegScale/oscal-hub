@@ -310,6 +310,7 @@ export function AuthorizationWizard({
         securityManager,
         authorizingOfficial,
         editedContent, // Pass the user's edited template content
+        conditions, // Include conditions of approval
       });
     }
   };

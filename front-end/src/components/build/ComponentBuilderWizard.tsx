@@ -501,6 +501,8 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
       const filename = `${metadata.title.toLowerCase().replace(/\s+/g, '-')}.json`;
 
       const totalControls = controlAssignments.reduce((sum, ca) => sum + ca.controlIds.length, 0);
+      const componentCount = componentsAndCapabilities.filter(item => item.type === 'component').length;
+      const capabilityCount = componentsAndCapabilities.filter(item => item.type === 'capability').length;
 
       const request: ComponentDefinitionRequest = {
         title: metadata.title,
@@ -509,7 +511,8 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
         oscalVersion: metadata.oscalVersion,
         filename,
         jsonContent,
-        componentCount: componentsAndCapabilities.length,
+        componentCount,
+        capabilityCount,
         controlCount: totalControls,
       };
 

@@ -3,6 +3,8 @@ package gov.nist.oscal.tools.api.model;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,6 +42,9 @@ public class AuthorizationRequest {
 
     // Optional: User-edited template content (if null, uses original template content)
     private String editedContent;
+
+    // Conditions of approval
+    private List<ConditionOfApprovalRequest> conditions = new ArrayList<>();
 
     // Constructors
     public AuthorizationRequest() {
@@ -139,5 +144,13 @@ public class AuthorizationRequest {
 
     public void setEditedContent(String editedContent) {
         this.editedContent = editedContent;
+    }
+
+    public List<ConditionOfApprovalRequest> getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(List<ConditionOfApprovalRequest> conditions) {
+        this.conditions = conditions;
     }
 }

@@ -332,12 +332,19 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
 
               <CardContent className="space-y-4">
                 {/* Stats */}
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-6 text-sm flex-wrap">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Blocks className="h-4 w-4" />
                     <span>
-                      <span className="font-medium text-foreground">{component.componentCount}</span>{' '}
+                      <span className="font-medium text-foreground">{component.componentCount || 0}</span>{' '}
                       {component.componentCount === 1 ? 'Component' : 'Components'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Blocks className="h-4 w-4" />
+                    <span>
+                      <span className="font-medium text-foreground">{component.capabilityCount || 0}</span>{' '}
+                      {component.capabilityCount === 1 ? 'Capability' : 'Capabilities'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -445,7 +452,8 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
                 This will delete:
               </span>
               <ul className="list-disc list-inside mt-1 text-sm">
-                <li>{componentToDelete?.componentCount} component{componentToDelete?.componentCount !== 1 ? 's' : ''}</li>
+                <li>{componentToDelete?.componentCount || 0} component{componentToDelete?.componentCount !== 1 ? 's' : ''}</li>
+                <li>{componentToDelete?.capabilityCount || 0} {componentToDelete?.capabilityCount === 1 ? 'capability' : 'capabilities'}</li>
                 <li>{componentToDelete?.controlCount} control implementation{componentToDelete?.controlCount !== 1 ? 's' : ''}</li>
                 <li>The OSCAL JSON file from storage</li>
               </ul>

@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldCheck, FileText, CheckCircle, ArrowLeft, Download, Eye, Calendar, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, FileText, CheckCircle, ArrowLeft, Download, Eye, Calendar, AlertTriangle, Clock, CheckCircle2, Pencil, Save, X, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { TemplateEditor } from '@/components/template-editor';
 import { TemplateList } from '@/components/template-list';
 import { AuthorizationWizard } from '@/components/authorization-wizard';
@@ -44,6 +46,21 @@ export default function AuthorizationsPage() {
   const [selectedAuthorization, setSelectedAuthorization] = useState<AuthorizationResponse | null>(null);
   const [loadingAuthorizations, setLoadingAuthorizations] = useState(false);
   const [savingAuthorization, setSavingAuthorization] = useState(false);
+  const [isEditingAuthorization, setIsEditingAuthorization] = useState(false);
+
+  // Edit form state
+  const [editName, setEditName] = useState('');
+  const [editDateAuthorized, setEditDateAuthorized] = useState('');
+  const [editDateExpired, setEditDateExpired] = useState('');
+  const [editSystemOwner, setEditSystemOwner] = useState('');
+  const [editSecurityManager, setEditSecurityManager] = useState('');
+  const [editAuthorizingOfficial, setEditAuthorizingOfficial] = useState('');
+  const [editConditions, setEditConditions] = useState<Array<{
+    id?: number;
+    condition: string;
+    conditionType: 'MANDATORY' | 'RECOMMENDED';
+    dueDate?: string;
+  }>>([]);
 
   // SSP and SAR items for authorization creation
   const [sspItems, setSspItems] = useState<LibraryItem[]>([]);
@@ -217,6 +234,11 @@ export default function AuthorizationsPage() {
     securityManager: string;
     authorizingOfficial: string;
     editedContent: string;
+    conditions?: Array<{
+      condition: string;
+      conditionType: 'MANDATORY' | 'RECOMMENDED';
+      dueDate?: string;
+    }>;
   }) => {
     try {
       setSavingAuthorization(true);
@@ -245,6 +267,72 @@ export default function AuthorizationsPage() {
     } catch (err) {
       console.error('Failed to delete authorization:', err);
       toast.error('You do not have permission to delete this authorization. Only the creator can delete it.');
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedAuthorization) return;
+
+    setEditName(selectedAuthorization.name);
+    setEditDateAuthorized(selectedAuthorization.dateAuthorized || '');
+    setEditDateExpired(selectedAuthorization.dateExpired || '');
+    setEditSystemOwner(selectedAuthorization.systemOwner || '');
+    setEditSecurityManager(selectedAuthorization.securityManager || '');
+    setEditAuthorizingOfficial(selectedAuthorization.authorizingOfficial || '');
+    setEditConditions(selectedAuthorization.conditions || []);
+    setIsEditingAuthorization(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingAuthorization(false);
+    setEditName('');
+    setEditDateAuthorized('');
+    setEditDateExpired('');
+    setEditSystemOwner('');
+    setEditSecurityManager('');
+    setEditAuthorizingOfficial('');
+    setEditConditions([]);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedAuthorization) return;
+
+    try {
+      setSavingAuthorization(true);
+
+      // Filter out empty conditions and clean up data
+      const validConditions = editConditions
+        .filter(c => c.condition.trim() !== '') // Only include conditions with text
+        .map(c => ({
+          condition: c.condition,
+          conditionType: c.conditionType,
+          // Only include dueDate if it's not empty
+          ...(c.dueDate && c.dueDate.trim() !== '' ? { dueDate: c.dueDate } : {})
+        }));
+
+      await apiClient.updateAuthorization(selectedAuthorization.id, {
+        name: editName,
+        dateAuthorized: editDateAuthorized,
+        dateExpired: editDateExpired,
+        systemOwner: editSystemOwner,
+        securityManager: editSecurityManager,
+        authorizingOfficial: editAuthorizingOfficial,
+        variableValues: selectedAuthorization.variableValues,
+        conditions: validConditions
+      });
+
+      toast.success('Authorization updated successfully');
+      await loadAuthorizations();
+
+      // Reload the selected authorization to show updated data
+      const updated = await apiClient.getAuthorization(selectedAuthorization.id);
+      setSelectedAuthorization(updated);
+      setIsEditingAuthorization(false);
+    } catch (err) {
+      console.error('Failed to update authorization:', err);
+      toast.error('Failed to update authorization');
+    } finally {
+      setSavingAuthorization(false);
     }
   };
 
@@ -360,15 +448,48 @@ export default function AuthorizationsPage() {
                       {new Date(selectedAuthorization.authorizedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setView('list-authorizations');
-                      setSelectedAuthorization(null);
-                    }}
-                  >
-                    Back
-                  </Button>
+                  <div className="flex gap-2">
+                    {!isEditingAuthorization && (
+                      <Button
+                        variant="outline"
+                        onClick={handleStartEdit}
+                        disabled={selectedAuthorization.authorizedBy !== user?.username}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+                    {isEditingAuthorization ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          disabled={savingAuthorization}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveEdit}
+                          disabled={savingAuthorization}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {savingAuthorization ? 'Saving...' : 'Save'}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setView('list-authorizations');
+                          setSelectedAuthorization(null);
+                          setIsEditingAuthorization(false);
+                        }}
+                      >
+                        Back
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-6">
@@ -376,63 +497,279 @@ export default function AuthorizationsPage() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold border-b pb-2">Authorization Details</h3>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {/* Authorization Dates */}
-                      {(selectedAuthorization.dateAuthorized || selectedAuthorization.dateExpired) && (
-                        <Card className="p-4 bg-slate-800 border-slate-700">
-                          <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
-                          <div className="space-y-2">
-                            {selectedAuthorization.dateAuthorized && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Date Authorized</Label>
-                                <p className="font-medium">{new Date(selectedAuthorization.dateAuthorized).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}</p>
-                              </div>
-                            )}
-                            {selectedAuthorization.dateExpired && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Date Expired</Label>
-                                <p className="font-medium">{new Date(selectedAuthorization.dateExpired).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}</p>
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      )}
+                    {isEditingAuthorization ? (
+                      /* Edit Mode */
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="edit-name">Authorization Name</Label>
+                          <Input
+                            id="edit-name"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Enter authorization name"
+                          />
+                        </div>
 
-                      {/* Stakeholders */}
-                      {(selectedAuthorization.systemOwner || selectedAuthorization.securityManager || selectedAuthorization.authorizingOfficial) && (
-                        <Card className="p-4 bg-slate-800 border-slate-700">
-                          <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
-                          <div className="space-y-2">
-                            {selectedAuthorization.systemOwner && (
-                              <div>
-                                <Label className="text-xs text-slate-400">System Owner</Label>
-                                <p className="font-medium">{selectedAuthorization.systemOwner}</p>
-                              </div>
-                            )}
-                            {selectedAuthorization.securityManager && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Security Manager</Label>
-                                <p className="font-medium">{selectedAuthorization.securityManager}</p>
-                              </div>
-                            )}
-                            {selectedAuthorization.authorizingOfficial && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Authorizing Official</Label>
-                                <p className="font-medium">{selectedAuthorization.authorizingOfficial}</p>
-                              </div>
-                            )}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label htmlFor="edit-date-authorized">Date Authorized</Label>
+                            <Input
+                              id="edit-date-authorized"
+                              type="date"
+                              value={editDateAuthorized}
+                              onChange={(e) => setEditDateAuthorized(e.target.value)}
+                            />
                           </div>
-                        </Card>
+                          <div>
+                            <Label htmlFor="edit-date-expired">Date Expired</Label>
+                            <Input
+                              id="edit-date-expired"
+                              type="date"
+                              value={editDateExpired}
+                              onChange={(e) => setEditDateExpired(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label htmlFor="edit-system-owner">System Owner</Label>
+                            <Input
+                              id="edit-system-owner"
+                              value={editSystemOwner}
+                              onChange={(e) => setEditSystemOwner(e.target.value)}
+                              placeholder="Enter system owner"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-security-manager">Security Manager</Label>
+                            <Input
+                              id="edit-security-manager"
+                              value={editSecurityManager}
+                              onChange={(e) => setEditSecurityManager(e.target.value)}
+                              placeholder="Enter security manager"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-authorizing-official">Authorizing Official</Label>
+                          <Input
+                            id="edit-authorizing-official"
+                            value={editAuthorizingOfficial}
+                            onChange={(e) => setEditAuthorizingOfficial(e.target.value)}
+                            placeholder="Enter authorizing official"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* View Mode */
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {/* Authorization Dates */}
+                        {(selectedAuthorization.dateAuthorized || selectedAuthorization.dateExpired) && (
+                          <Card className="p-4 bg-slate-800 border-slate-700">
+                            <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
+                            <div className="space-y-2">
+                              {selectedAuthorization.dateAuthorized && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Date Authorized</Label>
+                                  <p className="font-medium">{new Date(selectedAuthorization.dateAuthorized).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}</p>
+                                </div>
+                              )}
+                              {selectedAuthorization.dateExpired && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Date Expired</Label>
+                                  <p className="font-medium">{new Date(selectedAuthorization.dateExpired).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )}
+
+                        {/* Stakeholders */}
+                        {(selectedAuthorization.systemOwner || selectedAuthorization.securityManager || selectedAuthorization.authorizingOfficial) && (
+                          <Card className="p-4 bg-slate-800 border-slate-700">
+                            <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
+                            <div className="space-y-2">
+                              {selectedAuthorization.systemOwner && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">System Owner</Label>
+                                  <p className="font-medium">{selectedAuthorization.systemOwner}</p>
+                                </div>
+                              )}
+                              {selectedAuthorization.securityManager && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Security Manager</Label>
+                                  <p className="font-medium">{selectedAuthorization.securityManager}</p>
+                                </div>
+                              )}
+                              {selectedAuthorization.authorizingOfficial && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Authorizing Official</Label>
+                                  <p className="font-medium">{selectedAuthorization.authorizingOfficial}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conditions of Approval */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-lg font-semibold">Conditions of Approval</h3>
+                      {isEditingAuthorization && (
+                        <Button
+                          onClick={() => setEditConditions([...editConditions, {
+                            condition: '',
+                            conditionType: 'MANDATORY',
+                            dueDate: ''
+                          }])}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add New Condition
+                        </Button>
                       )}
                     </div>
+
+                    {isEditingAuthorization ? (
+                      /* Edit Mode - Editable Conditions */
+                      <div className="space-y-3">
+                        {editConditions.length === 0 ? (
+                          <p className="text-sm text-slate-400">No conditions. Click "Add Condition" to add one.</p>
+                        ) : (
+                          editConditions.map((condition, index) => (
+                            <Card
+                              key={index}
+                              className={`p-4 ${
+                                condition.conditionType === 'MANDATORY'
+                                  ? 'bg-red-900/10 border-red-800'
+                                  : 'bg-yellow-900/10 border-yellow-800'
+                              }`}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex gap-2">
+                                  <div className={condition.conditionType === 'MANDATORY' ? 'flex-1' : 'flex-[2]'}>
+                                    <Label htmlFor={`condition-type-${index}`}>Type</Label>
+                                    <Select
+                                      value={condition.conditionType}
+                                      onValueChange={(value: 'MANDATORY' | 'RECOMMENDED') => {
+                                        const updated = [...editConditions];
+                                        updated[index].conditionType = value;
+                                        // Clear due date if changing to RECOMMENDED
+                                        if (value === 'RECOMMENDED') {
+                                          updated[index].dueDate = '';
+                                        }
+                                        setEditConditions(updated);
+                                      }}
+                                    >
+                                      <SelectTrigger id={`condition-type-${index}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="MANDATORY">MANDATORY</SelectItem>
+                                        <SelectItem value="RECOMMENDED">RECOMMENDED</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {condition.conditionType === 'MANDATORY' && (
+                                    <div className="flex-1">
+                                      <Label htmlFor={`condition-due-${index}`}>Due Date</Label>
+                                      <Input
+                                        id={`condition-due-${index}`}
+                                        type="date"
+                                        value={condition.dueDate || ''}
+                                        onChange={(e) => {
+                                          const updated = [...editConditions];
+                                          updated[index].dueDate = e.target.value;
+                                          setEditConditions(updated);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex items-end">
+                                    <Button
+                                      variant="destructive"
+                                      size="icon"
+                                      onClick={() => {
+                                        const updated = editConditions.filter((_, i) => i !== index);
+                                        setEditConditions(updated);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`condition-text-${index}`}>Condition</Label>
+                                  <Textarea
+                                    id={`condition-text-${index}`}
+                                    value={condition.condition}
+                                    onChange={(e) => {
+                                      const updated = [...editConditions];
+                                      updated[index].condition = e.target.value;
+                                      setEditConditions(updated);
+                                    }}
+                                    placeholder="Enter condition details"
+                                    rows={3}
+                                  />
+                                </div>
+                              </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      /* View Mode - Display Only */
+                      selectedAuthorization.conditions && selectedAuthorization.conditions.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedAuthorization.conditions.map((condition, index) => (
+                            <Card
+                              key={condition.id}
+                              className={`p-4 ${
+                                condition.conditionType === 'MANDATORY'
+                                  ? 'bg-red-900/10 border-red-800'
+                                  : 'bg-yellow-900/10 border-yellow-800'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <Badge
+                                  variant={condition.conditionType === 'MANDATORY' ? 'destructive' : 'default'}
+                                  className={
+                                    condition.conditionType === 'MANDATORY'
+                                      ? 'bg-red-600 text-white mt-0.5'
+                                      : 'bg-yellow-600 text-white mt-0.5'
+                                  }
+                                >
+                                  {condition.conditionType}
+                                </Badge>
+                                <div className="flex-1">
+                                  <p className="text-sm">{condition.condition}</p>
+                                  {condition.dueDate && (
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      Due: {new Date(condition.dueDate).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-400">No conditions of approval</p>
+                      )
+                    )}
                   </div>
 
                   {/* System Documents */}
