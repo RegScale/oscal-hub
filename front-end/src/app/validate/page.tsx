@@ -26,12 +26,14 @@ export default function ValidatePage() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | undefined>(undefined);
+  const [savedFileId, setSavedFileId] = useState<string | undefined>(undefined);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
 
   const handleFileSelect = (file: File, content: string) => {
     setSelectedFile(file);
     setValidationResult(null);
     setHighlightedLine(undefined);
+    setSavedFileId(undefined); // Clear saved file ID for new uploads
 
     // Auto-detect format from file extension
     const extension = file.name.split('.').pop()?.toLowerCase();
@@ -69,6 +71,7 @@ export default function ValidatePage() {
     setValidationResult(null);
     setHighlightedLine(undefined);
     setFormat(file.format);
+    setSavedFileId(file.id); // Track the saved file ID
 
     if (file.modelType) {
       setModelType(file.modelType);
@@ -97,6 +100,7 @@ export default function ValidatePage() {
     setValidationResult(null);
     setModelType('');
     setHighlightedLine(undefined);
+    setSavedFileId(undefined); // Clear saved file ID
   };
 
   const handleValidate = async () => {
@@ -112,7 +116,8 @@ export default function ValidatePage() {
         fileContent,
         modelType,
         format,
-        selectedFile?.name
+        selectedFile?.name,
+        savedFileId // Pass the saved file ID to prevent re-saving
       );
       setValidationResult(result);
 
@@ -122,8 +127,10 @@ export default function ValidatePage() {
         toast.error('Validation failed with errors');
       }
 
-      // Refresh saved files list after validation
-      savedFilesRef.current?.refresh();
+      // Refresh saved files list after validation (only if it's a new file)
+      if (!savedFileId) {
+        savedFilesRef.current?.refresh();
+      }
     } catch (error) {
       console.error('Validation error:', error);
       toast.error('Validation failed with errors');

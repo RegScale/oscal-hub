@@ -16,6 +16,8 @@ public class ValidationRequest {
 
     private String fileName;
 
+    private String fileId;  // Optional: ID of already-saved file (to prevent re-saving)
+
     // Constructors
     public ValidationRequest() {}
 
@@ -63,5 +65,13 @@ public class ValidationRequest {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public String getFileId() {
+        return fileId;
+    }
+
+    public void setFileId(String fileId) {
+        this.fileId = fileId;
     }
 }

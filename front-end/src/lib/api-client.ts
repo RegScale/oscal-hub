@@ -370,7 +370,8 @@ class ApiClient {
     content: string,
     modelType: OscalModelType,
     format: OscalFormat,
-    fileName?: string
+    fileName?: string,
+    fileId?: string
   ): Promise<ValidationResult> {
     if (USE_MOCK) {
       return this.mockValidate(content, modelType, format);
@@ -386,7 +387,8 @@ class ApiClient {
             content,
             modelType,
             format: format.toUpperCase(),
-            fileName
+            fileName,
+            fileId
           }),
         },
         10000

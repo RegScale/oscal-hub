@@ -62,13 +62,18 @@ public class ValidationService {
             logger.info("Successfully validated {} document in {} format",
                 request.getModelType().getValue(), request.getFormat());
 
-            // Save the file to storage
-            try {
-                String fileName = request.getFileName() != null ? request.getFileName() : "document" + getFileExtension(format);
-                fileStorageService.saveFile(request.getContent(), fileName, request.getModelType(), request.getFormat(), username);
-            } catch (Exception saveException) {
-                logger.warn("Failed to save file to storage: {}", saveException.getMessage());
-                // Don't fail validation if file saving fails
+            // Save the file to storage only if it's a new file (not already saved)
+            if (request.getFileId() == null || request.getFileId().trim().isEmpty()) {
+                try {
+                    String fileName = request.getFileName() != null ? request.getFileName() : "document" + getFileExtension(format);
+                    fileStorageService.saveFile(request.getContent(), fileName, request.getModelType(), request.getFormat(), username);
+                    logger.info("Saved new file to storage: {}", fileName);
+                } catch (Exception saveException) {
+                    logger.warn("Failed to save file to storage: {}", saveException.getMessage());
+                    // Don't fail validation if file saving fails
+                }
+            } else {
+                logger.info("Skipping file save - document already saved with ID: {}", request.getFileId());
             }
 
         } catch (Exception e) {
