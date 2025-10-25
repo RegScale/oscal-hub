@@ -62,6 +62,10 @@ public class VisualizationService {
                 StringBuilder fields = new StringBuilder();
                 sspNode.fieldNames().forEachRemaining(name -> fields.append(name).append(", "));
                 logger.info("Root node fields: [{}]", fields.toString());
+            } else {
+                result.setSuccess(false);
+                result.setMessage("Failed to parse SSP document");
+                return result;
             }
 
             // For XML, the root element is the document container, so we need to check differently

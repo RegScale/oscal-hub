@@ -50,7 +50,7 @@ public class ValidationService {
                 Files.writeString(tempFile, request.getContent(), StandardCharsets.UTF_8);
 
                 // Attempt to deserialize - this performs validation
-                Object oscalObject = deserializer.deserialize(tempFile);
+                deserializer.deserialize(tempFile);
 
             } finally {
                 // Clean up temporary file

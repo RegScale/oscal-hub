@@ -258,7 +258,7 @@ public class AuthorizationController {
 
         // Extract client certificate from TLS connection
         X509Certificate[] certs = (X509Certificate[])
-                httpRequest.getAttribute("javax.servlet.request.X509Certificate");
+                httpRequest.getAttribute("jakarta.servlet.request.X509Certificate");
 
         if (certs == null || certs.length == 0) {
             logger.warn("No client certificate provided for signing");
@@ -267,7 +267,7 @@ public class AuthorizationController {
         }
 
         X509Certificate clientCert = certs[0];
-        logger.info("Client certificate received: {}", clientCert.getSubjectDN());
+        logger.info("Client certificate received: {}", clientCert.getSubjectX500Principal());
 
         try {
             // Validate certificate first

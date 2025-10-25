@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing authorization templates
@@ -91,7 +92,7 @@ public class AuthorizationTemplateService {
      */
     public List<AuthorizationTemplate> getRecentlyUpdated(int limit) {
         List<AuthorizationTemplate> templates = templateRepository.findRecentlyUpdated();
-        return templates.stream().limit(limit).toList();
+        return templates.stream().limit(limit).collect(Collectors.toList());
     }
 
     /**

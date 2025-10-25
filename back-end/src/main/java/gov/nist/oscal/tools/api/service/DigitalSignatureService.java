@@ -71,7 +71,7 @@ public class DigitalSignatureService {
         auth.setSignerCommonName(certInfo.getCommonName());
         auth.setSignerEmail(certInfo.getEmail());
         auth.setSignerEdipi(certInfo.getEdipi());
-        auth.setCertificateIssuer(certificate.getIssuerDN().getName());
+        auth.setCertificateIssuer(certificate.getIssuerX500Principal().getName());
         auth.setCertificateSerial(certificate.getSerialNumber().toString(16).toUpperCase());
         auth.setCertificateNotBefore(
                 certificate.getNotBefore().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
@@ -149,7 +149,7 @@ public class DigitalSignatureService {
      * @return Parsed certificate information
      */
     public CertificateInfo extractCertificateInfo(X509Certificate certificate) {
-        String subjectDN = certificate.getSubjectDN().getName();
+        String subjectDN = certificate.getSubjectX500Principal().getName();
 
         // Parse DN
         String cn = extractDNField(subjectDN, "CN");
@@ -173,7 +173,7 @@ public class DigitalSignatureService {
                 .email(email)
                 .edipi(edipi)
                 .subjectDN(subjectDN)
-                .issuerDN(certificate.getIssuerDN().getName())
+                .issuerDN(certificate.getIssuerX500Principal().getName())
                 .serialNumber(certificate.getSerialNumber().toString(16).toUpperCase())
                 .notBefore(certificate.getNotBefore())
                 .notAfter(certificate.getNotAfter())
@@ -198,11 +198,11 @@ public class DigitalSignatureService {
         } catch (CertificateExpiredException e) {
             valid = false;
             notes.add("ERROR: Certificate has expired");
-            logger.warn("Certificate has expired: {}", certificate.getSubjectDN());
+            logger.warn("Certificate has expired: {}", certificate.getSubjectX500Principal());
         } catch (CertificateNotYetValidException e) {
             valid = false;
             notes.add("ERROR: Certificate is not yet valid");
-            logger.warn("Certificate not yet valid: {}", certificate.getSubjectDN());
+            logger.warn("Certificate not yet valid: {}", certificate.getSubjectX500Principal());
         }
 
         // 2. Check key usage
@@ -214,14 +214,14 @@ public class DigitalSignatureService {
             } else {
                 valid = false;
                 notes.add("ERROR: Certificate does not have digitalSignature key usage");
-                logger.warn("Certificate missing digitalSignature key usage: {}", certificate.getSubjectDN());
+                logger.warn("Certificate missing digitalSignature key usage: {}", certificate.getSubjectX500Principal());
             }
         } else {
             notes.add("WARNING: No key usage extension found");
         }
 
         // 3. Check issuer (optional - recognizes common DoD/Federal PKI issuers)
-        String issuer = certificate.getIssuerDN().getName();
+        String issuer = certificate.getIssuerX500Principal().getName();
         if (issuer.contains("DOD") || issuer.contains("DoD") ||
                 issuer.contains("U.S. Government") || issuer.contains("Federal")) {
             notes.add("Certificate issued by recognized authority: " + extractDNField(issuer, "CN"));
@@ -230,7 +230,7 @@ public class DigitalSignatureService {
         }
 
         // 4. Check certificate type (CAC/PIV format)
-        String cn = extractDNField(certificate.getSubjectDN().getName(), "CN");
+        String cn = extractDNField(certificate.getSubjectX500Principal().getName(), "CN");
         if (cn != null && cn.matches(".*\\d{10}$")) {
             notes.add("Certificate appears to be CAC/PIV format (EDIPI detected)");
         }

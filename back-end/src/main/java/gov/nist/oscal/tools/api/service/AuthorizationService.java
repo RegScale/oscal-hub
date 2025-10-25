@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing system authorizations
@@ -29,8 +30,6 @@ import java.util.regex.Pattern;
 public class AuthorizationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationService.class);
-    // Pattern to match {{ anything }} - allows any content except closing braces
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*([^}]+?)\\s*\\}\\}");
 
     @Autowired
     private AuthorizationRepository authorizationRepository;
@@ -194,7 +193,7 @@ public class AuthorizationService {
      */
     public List<Authorization> getRecentlyAuthorized(int limit) {
         List<Authorization> authorizations = authorizationRepository.findRecentlyAuthorized();
-        return authorizations.stream().limit(limit).toList();
+        return authorizations.stream().limit(limit).collect(Collectors.toList());
     }
 
     /**

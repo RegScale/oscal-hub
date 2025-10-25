@@ -175,7 +175,7 @@ public class AuthService {
      */
     public java.util.Date generateServiceAccountToken(String username, String tokenName, int expirationDays) {
         // Validate user exists
-        User user = userRepository.findByUsername(username)
+        userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Calculate expiration date
