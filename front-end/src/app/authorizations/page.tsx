@@ -26,6 +26,7 @@ import type {
 import { useAuth } from '@/contexts/AuthContext';
 import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/date-picker';
 
 type View = 'list-templates' | 'create-template' | 'edit-template' | 'view-template' | 'list-authorizations' | 'create-authorization' | 'view-authorization';
 
@@ -512,20 +513,21 @@ export default function AuthorizationsPage() {
                         <div className="grid gap-4 md:grid-cols-2">
                           <div>
                             <Label htmlFor="edit-date-authorized">Date Authorized</Label>
-                            <Input
+                            <DatePicker
                               id="edit-date-authorized"
-                              type="date"
                               value={editDateAuthorized}
-                              onChange={(e) => setEditDateAuthorized(e.target.value)}
+                              onChange={(value) => setEditDateAuthorized(value)}
+                              placeholder="Select authorization date"
                             />
                           </div>
                           <div>
                             <Label htmlFor="edit-date-expired">Date Expired</Label>
-                            <Input
+                            <DatePicker
                               id="edit-date-expired"
-                              type="date"
                               value={editDateExpired}
-                              onChange={(e) => setEditDateExpired(e.target.value)}
+                              onChange={(value) => setEditDateExpired(value)}
+                              placeholder="Select expiration date"
+                              minDate={editDateAuthorized}
                             />
                           </div>
                         </div>
@@ -1102,20 +1104,21 @@ export default function AuthorizationsPage() {
                   <div className="flex gap-4">
                     <div>
                       <Label htmlFor="start-date">Start Date</Label>
-                      <Input
+                      <DatePicker
                         id="start-date"
-                        type="date"
                         value={calendarStartDate}
-                        onChange={(e) => setCalendarStartDate(e.target.value)}
+                        onChange={(value) => setCalendarStartDate(value)}
+                        placeholder="Start date"
                       />
                     </div>
                     <div>
                       <Label htmlFor="end-date">End Date</Label>
-                      <Input
+                      <DatePicker
                         id="end-date"
-                        type="date"
                         value={calendarEndDate}
-                        onChange={(e) => setCalendarEndDate(e.target.value)}
+                        onChange={(value) => setCalendarEndDate(value)}
+                        placeholder="End date"
+                        minDate={calendarStartDate}
                       />
                     </div>
                   </div>

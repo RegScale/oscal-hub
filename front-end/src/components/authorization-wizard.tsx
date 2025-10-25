@@ -16,6 +16,7 @@ import { ConditionsManager, type Condition } from './conditions-manager';
 import type { AuthorizationTemplateResponse, LibraryItem, SspVisualizationData, SarVisualizationData } from '@/types/oscal';
 import type { editor } from 'monaco-editor';
 import { apiClient } from '@/lib/api-client';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface AuthorizationWizardProps {
   templates: AuthorizationTemplateResponse[];
@@ -512,21 +513,21 @@ export function AuthorizationWizard({
                 <h3 className="font-semibold text-lg">Authorization Dates</h3>
                 <div className="space-y-2">
                   <Label htmlFor="date-authorized">Date Authorized</Label>
-                  <Input
+                  <DatePicker
                     id="date-authorized"
-                    type="date"
                     value={dateAuthorized}
-                    onChange={(e) => setDateAuthorized(e.target.value)}
+                    onChange={(value) => setDateAuthorized(value)}
+                    placeholder="Select authorization date"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date-expired">Date Expired *</Label>
-                  <Input
+                  <DatePicker
                     id="date-expired"
-                    type="date"
                     value={dateExpired}
-                    onChange={(e) => setDateExpired(e.target.value)}
-                    min={dateAuthorized}
+                    onChange={(value) => setDateExpired(value)}
+                    placeholder="Select expiration date"
+                    minDate={dateAuthorized}
                   />
                   <p className="text-xs text-slate-400">Authorization expiration date (typically 3 years from authorization)</p>
                 </div>

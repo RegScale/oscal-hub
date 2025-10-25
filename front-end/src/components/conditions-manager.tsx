@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Edit, CheckCircle, X, AlertCircle } from 'lucide-react';
 import type { ConditionType } from '@/types/oscal';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export interface Condition {
   id?: number; // Optional for new conditions not yet saved
@@ -199,11 +200,11 @@ export function ConditionsManager({ conditions, onConditionsChange }: Conditions
               {newCondition.conditionType === 'MANDATORY' && (
                 <div className="space-y-2">
                   <Label htmlFor="due-date">Due Date *</Label>
-                  <Input
+                  <DatePicker
                     id="due-date"
-                    type="date"
                     value={newCondition.dueDate || ''}
-                    onChange={(e) => setNewCondition({ ...newCondition, dueDate: e.target.value })}
+                    onChange={(value) => setNewCondition({ ...newCondition, dueDate: value })}
+                    placeholder="Select due date"
                   />
                   <p className="text-xs text-slate-400">Required for mandatory conditions</p>
                 </div>
