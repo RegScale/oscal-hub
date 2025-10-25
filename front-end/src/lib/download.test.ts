@@ -49,10 +49,10 @@ describe('download utilities', () => {
   });
 
   describe('downloadFile', () => {
-    let createObjectURLSpy: ReturnType<typeof vi.spyOn>;
-    let revokeObjectURLSpy: ReturnType<typeof vi.spyOn>;
-    let appendChildSpy: ReturnType<typeof vi.spyOn>;
-    let removeChildSpy: ReturnType<typeof vi.spyOn>;
+    let createObjectURLSpy: any;
+    let revokeObjectURLSpy: any;
+    let appendChildSpy: any;
+    let removeChildSpy: any;
     let clickSpy: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {

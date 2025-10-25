@@ -36,6 +36,7 @@ interface AuthorizationWizardProps {
     securityManager: string;
     authorizingOfficial: string;
     editedContent: string; // The user's edited template content
+    conditions?: Condition[]; // Conditions of approval
   }) => void;
   onCancel: () => void;
   isSaving?: boolean;
@@ -644,7 +645,7 @@ export function AuthorizationWizard({
             ) : (
               <div className="space-y-6">
                 {/* SSP Visualization */}
-                {sspVisualization && (
+                {sspVisualization && selectedSsp && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Badge variant="default">System Security Plan</Badge>

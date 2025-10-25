@@ -33,7 +33,7 @@ export function MarkdownPreview({ content, variables = [], height = '600px' }: M
 
     // Lists
     processed = processed.replace(/^\* (.*$)/gim, '<li>$1</li>');
-    processed = processed.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    processed = processed.replace(/(<li>[\s\S]*?<\/li>)/, '<ul>$1</ul>');
 
     // Line breaks
     processed = processed.replace(/\n\n/g, '</p><p>');

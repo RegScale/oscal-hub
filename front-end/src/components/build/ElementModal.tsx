@@ -66,7 +66,7 @@ export function ElementModal({ open, onOpenChange, element, onSuccess }: Element
         name: element.name,
         jsonContent: element.jsonContent,
         description: element.description || '',
-        isShared: element.shared || false,
+        isShared: element.isShared || false,
       });
     } else {
       setFormData({

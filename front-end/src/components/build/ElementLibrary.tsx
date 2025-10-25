@@ -334,7 +334,7 @@ export function ElementLibrary() {
                     <div>
                       Used: <span className="font-medium">{element.useCount}</span> times
                     </div>
-                    {element.shared && (
+                    {element.isShared && (
                       <Badge variant="outline" className="text-xs">
                         Shared
                       </Badge>

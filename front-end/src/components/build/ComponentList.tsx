@@ -97,7 +97,7 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
         (comp) =>
           comp.title.toLowerCase().includes(query) ||
           (comp.description && comp.description.toLowerCase().includes(query)) ||
-          comp.version.toLowerCase().includes(query)
+          (comp.version && comp.version.toLowerCase().includes(query))
       );
     }
 

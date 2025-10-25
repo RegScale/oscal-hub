@@ -77,6 +77,9 @@ export function ComponentBuilderWizard() {
     description: '',
   });
 
+  // Component type
+  const [componentType, setComponentType] = useState<string>('software');
+
   // Step 2: Catalog and Control Selection
   const [selectedCatalog, setSelectedCatalog] = useState<{
     title: string;

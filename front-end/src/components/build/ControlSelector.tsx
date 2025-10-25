@@ -382,7 +382,7 @@ export function ControlSelector({ onAddControls, onClose }: ControlSelectorProps
     // Prepare catalog information
     const catalogInfo = selectedCatalog
       ? {
-          title: selectedCatalog.name,
+          title: selectedCatalog.name || selectedCatalog.title,
           source: selectedCatalog.blobUrl || `library:${selectedCatalog.itemId}`,
         }
       : {

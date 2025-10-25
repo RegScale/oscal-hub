@@ -258,6 +258,11 @@ export interface LibraryItem {
   downloadCount: number;
   viewCount: number;
   versionCount: number;
+
+  // Convenience properties (computed or optional)
+  name?: string; // Alias for title
+  blobUrl?: string; // Optional blob storage URL
+  version?: number; // Convenience property for currentVersion?.versionNumber
 }
 
 export interface LibraryItemRequest {
@@ -588,6 +593,7 @@ export interface AuthorizationRequest {
   securityManager?: string;
   authorizingOfficial?: string;
   editedContent?: string; // User-edited template content
+  conditions?: ConditionOfApprovalRequest[]; // Conditions of approval
 }
 
 export interface AuthorizationResponse {
@@ -608,13 +614,29 @@ export interface AuthorizationResponse {
   securityManager?: string;
   authorizingOfficial?: string;
   conditions?: ConditionOfApprovalResponse[]; // Conditions of approval
+
+  // Digital Signature fields
+  digitalSignatureMethod?: string;
+  signerCertificate?: string;
+  signerCommonName?: string;
+  signerEmail?: string;
+  signerEdipi?: string;
+  certificateIssuer?: string;
+  certificateSerial?: string;
+  certificateNotBefore?: string; // ISO 8601 date string
+  certificateNotAfter?: string; // ISO 8601 date string
+  signatureTimestamp?: string; // ISO 8601 date string
+  documentHash?: string;
+  certificateVerified?: boolean;
+  certificateVerificationDate?: string; // ISO 8601 date string
+  certificateVerificationNotes?: string;
 }
 
 // Condition of Approval Types
 export type ConditionType = 'MANDATORY' | 'RECOMMENDED';
 
 export interface ConditionOfApprovalRequest {
-  authorizationId: number;
+  authorizationId?: number; // Optional when creating, assigned by backend
   condition: string;
   conditionType: ConditionType;
   dueDate?: string; // ISO date string, optional for RECOMMENDED, required for MANDATORY
