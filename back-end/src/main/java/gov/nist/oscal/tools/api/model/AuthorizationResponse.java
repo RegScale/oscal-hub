@@ -31,6 +31,22 @@ public class AuthorizationResponse {
     private String authorizingOfficial;
     private List<ConditionOfApprovalResponse> conditions;
 
+    // Digital Signature fields
+    private String digitalSignatureMethod;
+    private String signerCertificate;
+    private String signerCommonName;
+    private String signerEmail;
+    private String signerEdipi;
+    private String certificateIssuer;
+    private String certificateSerial;
+    private LocalDateTime certificateNotBefore;
+    private LocalDateTime certificateNotAfter;
+    private LocalDateTime signatureTimestamp;
+    private String documentHash;
+    private Boolean certificateVerified;
+    private LocalDateTime certificateVerificationDate;
+    private String certificateVerificationNotes;
+
     // Constructors
     public AuthorizationResponse() {
     }
@@ -55,6 +71,22 @@ public class AuthorizationResponse {
         this.conditions = authorization.getConditions().stream()
                 .map(ConditionOfApprovalResponse::new)
                 .collect(Collectors.toList());
+
+        // Digital Signature fields
+        this.digitalSignatureMethod = authorization.getDigitalSignatureMethod();
+        this.signerCertificate = authorization.getSignerCertificate();
+        this.signerCommonName = authorization.getSignerCommonName();
+        this.signerEmail = authorization.getSignerEmail();
+        this.signerEdipi = authorization.getSignerEdipi();
+        this.certificateIssuer = authorization.getCertificateIssuer();
+        this.certificateSerial = authorization.getCertificateSerial();
+        this.certificateNotBefore = authorization.getCertificateNotBefore();
+        this.certificateNotAfter = authorization.getCertificateNotAfter();
+        this.signatureTimestamp = authorization.getSignatureTimestamp();
+        this.documentHash = authorization.getDocumentHash();
+        this.certificateVerified = authorization.getCertificateVerified();
+        this.certificateVerificationDate = authorization.getCertificateVerificationDate();
+        this.certificateVerificationNotes = authorization.getCertificateVerificationNotes();
     }
 
     // Getters and Setters
@@ -192,5 +224,118 @@ public class AuthorizationResponse {
 
     public void setConditions(List<ConditionOfApprovalResponse> conditions) {
         this.conditions = conditions;
+    }
+
+    // Digital Signature Getters and Setters
+    public String getDigitalSignatureMethod() {
+        return digitalSignatureMethod;
+    }
+
+    public void setDigitalSignatureMethod(String digitalSignatureMethod) {
+        this.digitalSignatureMethod = digitalSignatureMethod;
+    }
+
+    public String getSignerCertificate() {
+        return signerCertificate;
+    }
+
+    public void setSignerCertificate(String signerCertificate) {
+        this.signerCertificate = signerCertificate;
+    }
+
+    public String getSignerCommonName() {
+        return signerCommonName;
+    }
+
+    public void setSignerCommonName(String signerCommonName) {
+        this.signerCommonName = signerCommonName;
+    }
+
+    public String getSignerEmail() {
+        return signerEmail;
+    }
+
+    public void setSignerEmail(String signerEmail) {
+        this.signerEmail = signerEmail;
+    }
+
+    public String getSignerEdipi() {
+        return signerEdipi;
+    }
+
+    public void setSignerEdipi(String signerEdipi) {
+        this.signerEdipi = signerEdipi;
+    }
+
+    public String getCertificateIssuer() {
+        return certificateIssuer;
+    }
+
+    public void setCertificateIssuer(String certificateIssuer) {
+        this.certificateIssuer = certificateIssuer;
+    }
+
+    public String getCertificateSerial() {
+        return certificateSerial;
+    }
+
+    public void setCertificateSerial(String certificateSerial) {
+        this.certificateSerial = certificateSerial;
+    }
+
+    public LocalDateTime getCertificateNotBefore() {
+        return certificateNotBefore;
+    }
+
+    public void setCertificateNotBefore(LocalDateTime certificateNotBefore) {
+        this.certificateNotBefore = certificateNotBefore;
+    }
+
+    public LocalDateTime getCertificateNotAfter() {
+        return certificateNotAfter;
+    }
+
+    public void setCertificateNotAfter(LocalDateTime certificateNotAfter) {
+        this.certificateNotAfter = certificateNotAfter;
+    }
+
+    public LocalDateTime getSignatureTimestamp() {
+        return signatureTimestamp;
+    }
+
+    public void setSignatureTimestamp(LocalDateTime signatureTimestamp) {
+        this.signatureTimestamp = signatureTimestamp;
+    }
+
+    public String getDocumentHash() {
+        return documentHash;
+    }
+
+    public void setDocumentHash(String documentHash) {
+        this.documentHash = documentHash;
+    }
+
+    public Boolean getCertificateVerified() {
+        return certificateVerified;
+    }
+
+    public void setCertificateVerified(Boolean certificateVerified) {
+        this.certificateVerified = certificateVerified;
+    }
+
+    public LocalDateTime getCertificateVerificationDate() {
+        return certificateVerificationDate;
+    }
+
+    public void setCertificateVerificationDate(LocalDateTime certificateVerificationDate) {
+        this.certificateVerificationDate = certificateVerificationDate;
+    }
+
+    public String getCertificateVerificationNotes() {
+        return certificateVerificationNotes;
+    }
+
+    public void setCertificateVerificationNotes(String certificateVerificationNotes) {
+        this.certificateVerificationNotes = certificateVerificationNotes;
     }
 }

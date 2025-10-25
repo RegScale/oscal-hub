@@ -243,6 +243,14 @@ public class AuthorizationService {
     }
 
     /**
+     * Save an authorization (used by digital signature service)
+     */
+    @Transactional
+    public Authorization save(Authorization authorization) {
+        return authorizationRepository.save(authorization);
+    }
+
+    /**
      * Render a template with variable values
      * Replaces {{ variable }} with actual values
      * Automatically handles {{ logo }} by injecting the user's logo

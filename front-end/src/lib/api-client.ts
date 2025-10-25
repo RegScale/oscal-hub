@@ -2029,6 +2029,29 @@ class ApiClient {
     }
   }
 
+  /**
+   * Verify digital signature on an authorization
+   */
+  async verifySignature(id: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${id}/verify-signature`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to verify signature: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to verify signature:', error);
+      throw error;
+    }
+  }
+
   // ========================================
   // Reusable Elements API Methods
   // ========================================

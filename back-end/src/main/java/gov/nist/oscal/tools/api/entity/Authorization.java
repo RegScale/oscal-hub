@@ -70,6 +70,49 @@ public class Authorization {
     @OneToMany(mappedBy = "authorization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ConditionOfApproval> conditions = new ArrayList<>();
 
+    // Digital Signature Fields
+    @Column(name = "digital_signature_method", length = 50)
+    private String digitalSignatureMethod; // "TLS_CLIENT_CERT"
+
+    @Column(name = "signer_certificate", columnDefinition = "TEXT")
+    private String signerCertificate; // Base64-encoded X.509 cert
+
+    @Column(name = "signer_common_name", length = 255)
+    private String signerCommonName; // CN from certificate
+
+    @Column(name = "signer_email", length = 255)
+    private String signerEmail; // Email from certificate
+
+    @Column(name = "signer_edipi", length = 10)
+    private String signerEdipi; // EDIPI from certificate (last 10 digits of CN)
+
+    @Column(name = "certificate_issuer", length = 500)
+    private String certificateIssuer; // Certificate issuer DN
+
+    @Column(name = "certificate_serial", length = 100)
+    private String certificateSerial; // Certificate serial number
+
+    @Column(name = "certificate_not_before")
+    private LocalDateTime certificateNotBefore;
+
+    @Column(name = "certificate_not_after")
+    private LocalDateTime certificateNotAfter;
+
+    @Column(name = "signature_timestamp")
+    private LocalDateTime signatureTimestamp;
+
+    @Column(name = "document_hash", length = 64)
+    private String documentHash; // SHA-256 hash of signed content
+
+    @Column(name = "certificate_verified")
+    private Boolean certificateVerified; // Certificate validation result
+
+    @Column(name = "certificate_verification_date")
+    private LocalDateTime certificateVerificationDate;
+
+    @Column(name = "certificate_verification_notes", columnDefinition = "TEXT")
+    private String certificateVerificationNotes; // Any validation warnings
+
     // Constructors
     public Authorization() {
         this.createdAt = LocalDateTime.now();
@@ -225,5 +268,118 @@ public class Authorization {
     public void removeCondition(ConditionOfApproval condition) {
         conditions.remove(condition);
         condition.setAuthorization(null);
+    }
+
+    // Digital Signature Getters and Setters
+    public String getDigitalSignatureMethod() {
+        return digitalSignatureMethod;
+    }
+
+    public void setDigitalSignatureMethod(String digitalSignatureMethod) {
+        this.digitalSignatureMethod = digitalSignatureMethod;
+    }
+
+    public String getSignerCertificate() {
+        return signerCertificate;
+    }
+
+    public void setSignerCertificate(String signerCertificate) {
+        this.signerCertificate = signerCertificate;
+    }
+
+    public String getSignerCommonName() {
+        return signerCommonName;
+    }
+
+    public void setSignerCommonName(String signerCommonName) {
+        this.signerCommonName = signerCommonName;
+    }
+
+    public String getSignerEmail() {
+        return signerEmail;
+    }
+
+    public void setSignerEmail(String signerEmail) {
+        this.signerEmail = signerEmail;
+    }
+
+    public String getSignerEdipi() {
+        return signerEdipi;
+    }
+
+    public void setSignerEdipi(String signerEdipi) {
+        this.signerEdipi = signerEdipi;
+    }
+
+    public String getCertificateIssuer() {
+        return certificateIssuer;
+    }
+
+    public void setCertificateIssuer(String certificateIssuer) {
+        this.certificateIssuer = certificateIssuer;
+    }
+
+    public String getCertificateSerial() {
+        return certificateSerial;
+    }
+
+    public void setCertificateSerial(String certificateSerial) {
+        this.certificateSerial = certificateSerial;
+    }
+
+    public LocalDateTime getCertificateNotBefore() {
+        return certificateNotBefore;
+    }
+
+    public void setCertificateNotBefore(LocalDateTime certificateNotBefore) {
+        this.certificateNotBefore = certificateNotBefore;
+    }
+
+    public LocalDateTime getCertificateNotAfter() {
+        return certificateNotAfter;
+    }
+
+    public void setCertificateNotAfter(LocalDateTime certificateNotAfter) {
+        this.certificateNotAfter = certificateNotAfter;
+    }
+
+    public LocalDateTime getSignatureTimestamp() {
+        return signatureTimestamp;
+    }
+
+    public void setSignatureTimestamp(LocalDateTime signatureTimestamp) {
+        this.signatureTimestamp = signatureTimestamp;
+    }
+
+    public String getDocumentHash() {
+        return documentHash;
+    }
+
+    public void setDocumentHash(String documentHash) {
+        this.documentHash = documentHash;
+    }
+
+    public Boolean getCertificateVerified() {
+        return certificateVerified;
+    }
+
+    public void setCertificateVerified(Boolean certificateVerified) {
+        this.certificateVerified = certificateVerified;
+    }
+
+    public LocalDateTime getCertificateVerificationDate() {
+        return certificateVerificationDate;
+    }
+
+    public void setCertificateVerificationDate(LocalDateTime certificateVerificationDate) {
+        this.certificateVerificationDate = certificateVerificationDate;
+    }
+
+    public String getCertificateVerificationNotes() {
+        return certificateVerificationNotes;
+    }
+
+    public void setCertificateVerificationNotes(String certificateVerificationNotes) {
+        this.certificateVerificationNotes = certificateVerificationNotes;
     }
 }

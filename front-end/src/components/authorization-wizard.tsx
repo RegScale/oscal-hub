@@ -13,10 +13,12 @@ import { MarkdownPreview } from './markdown-preview';
 import { SspVisualization } from './SspVisualization';
 import { SarVisualization } from './SarVisualization';
 import { ConditionsManager, type Condition } from './conditions-manager';
+import { DigitalSignatureStep } from './digital-signature-step';
 import type { AuthorizationTemplateResponse, LibraryItem, SspVisualizationData, SarVisualizationData } from '@/types/oscal';
 import type { editor } from 'monaco-editor';
 import { apiClient } from '@/lib/api-client';
 import { DatePicker } from '@/components/ui/date-picker';
+import { toast } from 'sonner';
 
 interface AuthorizationWizardProps {
   templates: AuthorizationTemplateResponse[];
@@ -39,7 +41,7 @@ interface AuthorizationWizardProps {
   isSaving?: boolean;
 }
 
-type Step = 'select-ssp' | 'select-sar' | 'stakeholder-info' | 'visualize' | 'select-template' | 'fill-variables' | 'conditions' | 'review';
+type Step = 'select-ssp' | 'select-sar' | 'stakeholder-info' | 'visualize' | 'select-template' | 'fill-variables' | 'conditions' | 'review' | 'sign';
 
 export function AuthorizationWizard({
   templates,
@@ -73,6 +75,10 @@ export function AuthorizationWizard({
 
   // Conditions of Approval
   const [conditions, setConditions] = useState<Condition[]>([]);
+
+  // Digital Signature
+  const [draftAuthorizationId, setDraftAuthorizationId] = useState<number | null>(null);
+  const [signatureResult, setSignatureResult] = useState<any>(null);
 
   // Load SSP visualization when SSP is selected
   useEffect(() => {
@@ -219,6 +225,8 @@ export function AuthorizationWizard({
         return true; // Conditions are optional, so always allow proceeding
       case 'review':
         return true;
+      case 'sign':
+        return true; // Digital signature is optional, always allow proceeding
       default:
         return false;
     }
@@ -236,10 +244,54 @@ export function AuthorizationWizard({
     else if (step === 'select-template') setStep('fill-variables');
     else if (step === 'fill-variables') setStep('conditions');
     else if (step === 'conditions') setStep('review');
+    else if (step === 'review') {
+      // Create draft authorization before moving to sign step
+      await createDraftAuthorization();
+      setStep('sign');
+    }
+  };
+
+  // Create draft authorization for signing
+  const createDraftAuthorization = async () => {
+    if (!selectedSsp || !selectedTemplate || !authorizationName) {
+      toast.error('Missing required information');
+      return;
+    }
+
+    try {
+      const authData = {
+        name: authorizationName,
+        sspItemId: selectedSsp.itemId,
+        sarItemId: selectedSar?.itemId,
+        templateId: selectedTemplate.id,
+        variableValues,
+        dateAuthorized,
+        dateExpired,
+        systemOwner,
+        securityManager,
+        authorizingOfficial,
+        editedContent,
+        conditions: conditions.map(c => ({
+          condition: c.condition,
+          conditionType: c.conditionType,
+          dueDate: c.dueDate || ''
+        }))
+      };
+
+      const response = await apiClient.createAuthorization(authData);
+      if (response) {
+        setDraftAuthorizationId(response.id);
+        toast.success('Authorization created - ready for signature');
+      }
+    } catch (error) {
+      console.error('Failed to create draft authorization:', error);
+      toast.error('Failed to create authorization');
+    }
   };
 
   const handleBack = () => {
-    if (step === 'review') setStep('conditions');
+    if (step === 'sign') setStep('review');
+    else if (step === 'review') setStep('conditions');
     else if (step === 'conditions') setStep('fill-variables');
     else if (step === 'fill-variables') setStep('select-template');
     else if (step === 'select-template') setStep('visualize');
@@ -321,8 +373,8 @@ export function AuthorizationWizard({
       {/* Progress Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          {(['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review'] as Step[]).map((s, index) => {
-            const steps: Step[] = ['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review'];
+          {(['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review', 'sign'] as Step[]).map((s, index) => {
+            const steps: Step[] = ['select-ssp', 'select-sar', 'stakeholder-info', 'visualize', 'select-template', 'fill-variables', 'conditions', 'review', 'sign'];
             const currentIndex = steps.indexOf(step);
             const thisIndex = steps.indexOf(s);
 
@@ -338,6 +390,7 @@ export function AuthorizationWizard({
               'fill-variables': 'Variables',
               'conditions': 'Conditions',
               'review': 'Review',
+              'sign': 'Sign',
             };
 
             return (
@@ -381,9 +434,12 @@ export function AuthorizationWizard({
           {step === 'select-ssp' ? 'Cancel' : 'Back'}
         </Button>
 
-        {step === 'review' ? (
-          <Button type="button" onClick={handleSubmit} disabled={!canProceed() || isSaving}>
-            {isSaving ? 'Creating Authorization...' : 'Create Authorization'}
+        {step === 'sign' ? (
+          <Button type="button" onClick={() => {
+            toast.success('Authorization completed successfully');
+            onCancel(); // Close wizard
+          }}>
+            Complete
           </Button>
         ) : (
           <Button type="button" onClick={handleNext} disabled={!canProceed()}>
@@ -825,12 +881,12 @@ export function AuthorizationWizard({
           />
         )}
 
-        {/* Step 5: Review */}
+        {/* Step 8: Review */}
         {step === 'review' && selectedSsp && selectedTemplate && (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-bold mb-2">Review Authorization</h2>
-              <p className="text-gray-600">Review and finalize the authorization</p>
+              <p className="text-gray-600">Review the authorization before signing</p>
             </div>
 
             <div className="space-y-6">
@@ -957,6 +1013,21 @@ export function AuthorizationWizard({
             </div>
           </div>
         )}
+
+        {/* Step 9: Digital Signature */}
+        {step === 'sign' && draftAuthorizationId && (
+          <DigitalSignatureStep
+            authorizationId={draftAuthorizationId}
+            authorizationName={authorizationName}
+            onSignatureComplete={(result) => {
+              setSignatureResult(result);
+              toast.success(`Authorization signed by ${result.signerName || 'Unknown'}`);
+            }}
+            onSkip={() => {
+              toast.info('Digital signature skipped - authorization created without signature');
+            }}
+          />
+        )}
       </Card>
 
       {/* Navigation */}
@@ -965,9 +1036,12 @@ export function AuthorizationWizard({
           {step === 'select-ssp' ? 'Cancel' : 'Back'}
         </Button>
 
-        {step === 'review' ? (
-          <Button type="button" onClick={handleSubmit} disabled={!canProceed() || isSaving}>
-            {isSaving ? 'Creating Authorization...' : 'Create Authorization'}
+        {step === 'sign' ? (
+          <Button type="button" onClick={() => {
+            toast.success('Authorization completed successfully');
+            onCancel(); // Close wizard
+          }}>
+            Complete
           </Button>
         ) : (
           <Button type="button" onClick={handleNext} disabled={!canProceed()}>

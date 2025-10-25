@@ -20,7 +20,11 @@ import {
   Eye,
   Plus,
   Trash2,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  RefreshCcw
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { AuthorizationResponse, LibraryItem } from '@/types/oscal';
@@ -59,6 +63,10 @@ export default function AuthorizationDetailPage() {
     conditionType: 'MANDATORY' | 'RECOMMENDED';
     dueDate?: string;
   }>>([]);
+
+  // Digital signature state
+  const [showCertDetails, setShowCertDetails] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && authorizationId) {
@@ -197,6 +205,22 @@ export default function AuthorizationDetailPage() {
       setEditConditions(authorization.conditions || []);
     }
     setIsEditing(false);
+  };
+
+  const handleVerifySignature = async () => {
+    if (!authorization) return;
+
+    try {
+      setVerifying(true);
+      await apiClient.verifySignature(authorization.id);
+      toast.success('Signature verified successfully');
+      await loadAuthorization(); // Reload to get updated verification status
+    } catch (err) {
+      console.error('Failed to verify signature:', err);
+      toast.error('Signature verification failed');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -436,6 +460,190 @@ export default function AuthorizationDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Digital Signature Section */}
+            {authorization.signerCertificate && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Digital Signature</h3>
+
+                <Card className="p-4 bg-blue-900/10 border-blue-800">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                        <CheckCircle2 className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-lg">Digitally Signed</h4>
+                        {authorization.certificateVerified && (
+                          <Badge className="bg-green-600 text-white">Verified</Badge>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 text-sm">
+                        <div>
+                          <Label className="text-xs text-slate-400">Signer</Label>
+                          <p className="font-medium">{authorization.signerCommonName || 'Unknown'}</p>
+                        </div>
+
+                        {authorization.signerEmail && (
+                          <div>
+                            <Label className="text-xs text-slate-400">Email</Label>
+                            <p className="font-medium">{authorization.signerEmail}</p>
+                          </div>
+                        )}
+
+                        {authorization.signerEdipi && (
+                          <div>
+                            <Label className="text-xs text-slate-400">EDIPI</Label>
+                            <p className="font-medium font-mono">{authorization.signerEdipi}</p>
+                          </div>
+                        )}
+
+                        {authorization.signatureTimestamp && (
+                          <div>
+                            <Label className="text-xs text-slate-400">Signed On</Label>
+                            <p className="font-medium">
+                              {new Date(authorization.signatureTimestamp).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCertDetails(!showCertDetails)}
+                        >
+                          {showCertDetails ? (
+                            <>
+                              <ChevronUp className="h-4 w-4 mr-2" />
+                              Hide Certificate Details
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4 mr-2" />
+                              Show Certificate Details
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleVerifySignature}
+                          disabled={verifying}
+                        >
+                          {verifying ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Verifying...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCcw className="h-4 w-4 mr-2" />
+                              Re-verify
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {showCertDetails && (
+                        <div className="mt-4 p-4 bg-slate-900/50 rounded border border-slate-700">
+                          <h5 className="font-semibold mb-3 text-sm">Certificate Information</h5>
+                          <div className="grid gap-3 text-xs">
+                            {authorization.certificateIssuer && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Issuer</Label>
+                                <p className="font-mono text-xs break-all">{authorization.certificateIssuer}</p>
+                              </div>
+                            )}
+
+                            {authorization.certificateSerial && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Serial Number</Label>
+                                <p className="font-mono text-xs">{authorization.certificateSerial}</p>
+                              </div>
+                            )}
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {authorization.certificateNotBefore && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Valid From</Label>
+                                  <p className="text-xs">
+                                    {new Date(authorization.certificateNotBefore).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+
+                              {authorization.certificateNotAfter && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Valid Until</Label>
+                                  <p className="text-xs">
+                                    {new Date(authorization.certificateNotAfter).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {authorization.certificateVerified !== null && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Verification Status</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {authorization.certificateVerified ? (
+                                    <>
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                      <span className="text-xs text-green-500">Verified</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="h-4 w-4 text-red-500" />
+                                      <span className="text-xs text-red-500">Not Verified</span>
+                                    </>
+                                  )}
+                                  {authorization.certificateVerificationDate && (
+                                    <span className="text-xs text-slate-400 ml-2">
+                                      on {new Date(authorization.certificateVerificationDate).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                                {authorization.certificateVerificationNotes && (
+                                  <p className="text-xs text-slate-400 mt-1">{authorization.certificateVerificationNotes}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {authorization.documentHash && (
+                              <div>
+                                <Label className="text-xs text-slate-400">Document Hash (SHA-256)</Label>
+                                <p className="font-mono text-xs break-all">{authorization.documentHash}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
 
             {/* Conditions of Approval */}
             <div className="space-y-4">
