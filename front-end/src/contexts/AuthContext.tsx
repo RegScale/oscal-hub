@@ -120,8 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       const response = await apiClient.login(username, password);
-      setToken(response.token);
-      setUser({
+      const userData = {
         userId: response.userId,
         username: response.username,
         email: response.email,
@@ -133,7 +132,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organization: response.organization,
         phoneNumber: response.phoneNumber,
         logo: response.logo,
-      });
+      };
+
+      // Save to state
+      setToken(response.token);
+      setUser(userData);
+
+      // Persist to localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+
       updateActivity();
       router.push('/');
     } catch (error) {
@@ -145,8 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (username: string, password: string, email: string) => {
     try {
       const response = await apiClient.register(username, password, email);
-      setToken(response.token);
-      setUser({
+      const userData = {
         userId: response.userId,
         username: response.username,
         email: response.email,
@@ -158,7 +165,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organization: response.organization,
         phoneNumber: response.phoneNumber,
         logo: response.logo,
-      });
+      };
+
+      // Save to state
+      setToken(response.token);
+      setUser(userData);
+
+      // Persist to localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+
       updateActivity();
       router.push('/');
     } catch (error) {
