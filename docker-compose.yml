@@ -140,6 +140,26 @@ services:
         max-file: "3"
         labels: "service=oscal-ux"
 
+  # pgAdmin - Database Management UI (for local development)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: oscal-pgadmin
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@oscal.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+    networks:
+      - oscal-network
+    depends_on:
+      - postgres
+
   # Optional: Nginx reverse proxy (uncomment if needed)
   # nginx:
   #   image: nginx:1.25-alpine  # Use specific version, not 'latest'
@@ -179,4 +199,6 @@ volumes:
   oscal-logs:
     driver: local
   postgres_dev_data:
+    driver: local
+  pgadmin_data:
     driver: local

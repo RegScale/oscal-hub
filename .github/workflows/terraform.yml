@@ -1,0 +1,233 @@
+name: Terraform - Infrastructure Management
+
+on:
+  workflow_dispatch: # Manual trigger only
+    inputs:
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      auto_approve:
+        description: 'Auto-approve apply/destroy (use with caution!)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'oscal-tools-prod' }}
+  LOCATION: ${{ vars.AZURE_LOCATION || 'eastus' }}
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create terraform.tfvars from secrets
+        run: |
+          cat > terraform.tfvars <<EOF
+          # Project Configuration
+          project_name        = "${{ vars.PROJECT_NAME || 'oscal-tools' }}"
+          environment         = "${{ vars.ENVIRONMENT || 'prod' }}"
+          location            = "${{ env.LOCATION }}"
+          resource_group_name = "${{ env.RESOURCE_GROUP }}"
+
+          # Database Configuration
+          db_username = "oscaladmin"
+          db_password = "${{ secrets.DB_PASSWORD }}"
+          db_name     = "oscal_production"
+
+          # Application Security
+          jwt_secret           = "${{ secrets.JWT_SECRET }}"
+          cors_allowed_origins = "${{ secrets.CORS_ALLOWED_ORIGINS }}"
+
+          # Container Configuration
+          container_cpu    = 2
+          container_memory = 4
+
+          # Feature Flags
+          enable_monitoring    = true
+          enable_public_access = true
+
+          # Tags
+          tags = {
+            Project     = "OSCAL Tools"
+            Environment = "Production"
+            ManagedBy   = "Terraform"
+            DeployedBy  = "GitHub Actions"
+          }
+          EOF
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend=false
+          # Note: For production, configure remote backend in providers.tf
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -out=tfplan \
+            -input=false \
+            -var-file=terraform.tfvars
+        continue-on-error: false
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: terraform/tfplan
+          retention-days: 5
+
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: |
+          if [ "${{ github.event.inputs.auto_approve }}" = "true" ]; then
+            terraform apply -auto-approve tfplan
+          else
+            echo "Auto-approve is false. Please run with auto_approve=true to apply."
+            echo "Or apply manually using the uploaded plan artifact."
+            exit 1
+          fi
+
+      - name: Terraform Destroy (DANGER!)
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          if [ "${{ github.event.inputs.auto_approve }}" = "true" ]; then
+            echo "⚠️ WARNING: About to destroy all infrastructure!"
+            terraform destroy \
+              -auto-approve \
+              -var-file=terraform.tfvars
+          else
+            echo "Auto-approve is false. Cannot destroy without explicit approval."
+            echo "Run again with auto_approve=true to destroy (use with extreme caution!)"
+            exit 1
+          fi
+
+      - name: Terraform Output
+        if: github.event.inputs.action == 'apply' && success()
+        run: |
+          echo "========================================="
+          echo "       Terraform Output"
+          echo "========================================="
+          terraform output -json > terraform-output.json
+          terraform output deployment_summary
+
+      - name: Upload Terraform Output
+        if: github.event.inputs.action == 'apply' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-output
+          path: terraform/terraform-output.json
+          retention-days: 30
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f terraform.tfvars
+          rm -f tfplan
+          rm -f terraform-output.json
+
+  validate-infrastructure:
+    name: Validate Infrastructure
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.event.inputs.action == 'apply' && success()
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verify Resource Group
+        run: |
+          az group show --name ${{ env.RESOURCE_GROUP }} --output table
+
+      - name: Verify Container Registry
+        run: |
+          ACR_NAME=$(az acr list \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv)
+
+          if [ -z "$ACR_NAME" ]; then
+            echo "❌ ACR not found!"
+            exit 1
+          fi
+
+          echo "✅ ACR found: $ACR_NAME"
+          az acr show --name $ACR_NAME --output table
+
+      - name: Verify PostgreSQL Database
+        run: |
+          DB_NAME=$(az postgres flexible-server list \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv)
+
+          if [ -z "$DB_NAME" ]; then
+            echo "❌ PostgreSQL server not found!"
+            exit 1
+          fi
+
+          echo "✅ PostgreSQL server found: $DB_NAME"
+          az postgres flexible-server show --resource-group ${{ env.RESOURCE_GROUP }} --name $DB_NAME --output table
+
+      - name: Verify Key Vault
+        run: |
+          KV_NAME=$(az keyvault list \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv)
+
+          if [ -z "$KV_NAME" ]; then
+            echo "❌ Key Vault not found!"
+            exit 1
+          fi
+
+          echo "✅ Key Vault found: $KV_NAME"
+
+          # Verify secrets exist
+          SECRETS=$(az keyvault secret list --vault-name $KV_NAME --query "[].name" -o tsv)
+          echo "Secrets in Key Vault:"
+          echo "$SECRETS"
+
+      - name: Verification Summary
+        run: |
+          echo "========================================="
+          echo "  Infrastructure Verification Complete"
+          echo "========================================="
+          echo "✅ Resource Group: ${{ env.RESOURCE_GROUP }}"
+          echo "✅ All critical resources verified"
+          echo ""
+          echo "Next steps:"
+          echo "1. Build and push Docker image"
+          echo "2. Deploy application to container instance"
+          echo "3. Run smoke tests"

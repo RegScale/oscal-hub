@@ -1,0 +1,281 @@
+name: CD - Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'oscal-tools-prod' }}
+  LOCATION: ${{ vars.AZURE_LOCATION || 'eastus' }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME || 'oscal-tools' }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    outputs:
+      acr_name: ${{ steps.terraform-output.outputs.acr_name }}
+      container_name: ${{ steps.terraform-output.outputs.container_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Terraform outputs
+        id: terraform-output
+        run: |
+          cd terraform
+
+          # Initialize Terraform
+          terraform init -backend=false
+
+          # Get ACR name from state (if exists) or use default pattern
+          ACR_NAME=$(az acr list --resource-group $RESOURCE_GROUP --query "[0].name" -o tsv 2>/dev/null || echo "")
+
+          if [ -z "$ACR_NAME" ]; then
+            echo "Error: ACR not found. Please run terraform apply first."
+            exit 1
+          fi
+
+          echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "container_name=oscal-ux" >> $GITHUB_OUTPUT
+          echo "ACR Name: $ACR_NAME"
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name ${{ steps.terraform-output.outputs.acr_name }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          ACR_NAME="${{ steps.terraform-output.outputs.acr_name }}"
+          IMAGE_TAG="${{ github.sha }}"
+
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag $ACR_NAME.azurecr.io/oscal-ux:latest \
+            --tag $ACR_NAME.azurecr.io/oscal-ux:$IMAGE_TAG \
+            --file Dockerfile \
+            --push \
+            .
+
+      - name: Image scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.terraform-output.outputs.acr_name }}.azurecr.io/oscal-ux:latest
+          format: 'table'
+          exit-code: '0' # Don't fail build, just report
+          severity: 'CRITICAL,HIGH'
+
+  deploy-to-azure:
+    name: Deploy to Azure Container Instance
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout code (for terraform outputs)
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get container group info
+        id: container-info
+        run: |
+          CONTAINER_NAME="${{ needs.build-and-push.outputs.container_name }}"
+
+          # Check if container group exists
+          EXISTS=$(az container show \
+            --resource-group $RESOURCE_GROUP \
+            --name $CONTAINER_NAME \
+            --query "name" -o tsv 2>/dev/null || echo "")
+
+          if [ -n "$EXISTS" ]; then
+            echo "Container group exists, will restart"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Container group does not exist, will create via Terraform"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Restart container instance
+        if: steps.container-info.outputs.exists == 'true'
+        run: |
+          CONTAINER_NAME="${{ needs.build-and-push.outputs.container_name }}"
+
+          echo "Restarting container: $CONTAINER_NAME"
+          az container restart \
+            --resource-group $RESOURCE_GROUP \
+            --name $CONTAINER_NAME
+
+      - name: Wait for container to be ready
+        if: steps.container-info.outputs.exists == 'true'
+        run: |
+          CONTAINER_NAME="${{ needs.build-and-push.outputs.container_name }}"
+
+          echo "Waiting for container to be running..."
+          for i in {1..30}; do
+            STATE=$(az container show \
+              --resource-group $RESOURCE_GROUP \
+              --name $CONTAINER_NAME \
+              --query "instanceView.state" -o tsv)
+
+            echo "Container state: $STATE"
+
+            if [ "$STATE" = "Running" ]; then
+              echo "Container is running!"
+              break
+            fi
+
+            if [ $i -eq 30 ]; then
+              echo "Timeout waiting for container to start"
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+      - name: Get application URL
+        id: get-url
+        run: |
+          CONTAINER_NAME="${{ needs.build-and-push.outputs.container_name }}"
+
+          FQDN=$(az container show \
+            --resource-group $RESOURCE_GROUP \
+            --name $CONTAINER_NAME \
+            --query "ipAddress.fqdn" -o tsv)
+
+          echo "fqdn=$FQDN" >> $GITHUB_OUTPUT
+          echo "Application URL: http://$FQDN:3000"
+
+      - name: Health check - Backend
+        run: |
+          FQDN="${{ steps.get-url.outputs.fqdn }}"
+
+          echo "Waiting for backend health check..."
+          for i in {1..20}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$FQDN:8080/api/health || echo "000")
+            echo "Health check attempt $i: HTTP $HTTP_CODE"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend is healthy!"
+              break
+            fi
+
+            if [ $i -eq 20 ]; then
+              echo "❌ Backend health check failed"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+      - name: Health check - Frontend
+        run: |
+          FQDN="${{ steps.get-url.outputs.fqdn }}"
+
+          echo "Checking frontend..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$FQDN:3000 || echo "000")
+          echo "Frontend check: HTTP $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ Frontend is responding!"
+          else
+            echo "⚠️ Frontend may not be ready yet (HTTP $HTTP_CODE)"
+          fi
+
+      - name: Deployment summary
+        run: |
+          FQDN="${{ steps.get-url.outputs.fqdn }}"
+
+          echo "========================================="
+          echo "       Deployment Successful! 🎉"
+          echo "========================================="
+          echo ""
+          echo "📦 Image: ${{ needs.build-and-push.outputs.acr_name }}.azurecr.io/oscal-ux:latest"
+          echo "🌐 Frontend: http://$FQDN:3000"
+          echo "🔌 Backend API: http://$FQDN:8080"
+          echo "❤️ Health Check: http://$FQDN:8080/api/health"
+          echo ""
+          echo "Next steps:"
+          echo "1. Visit the application URL above"
+          echo "2. Login with your credentials"
+          echo "3. Verify all features work correctly"
+          echo "4. Monitor Application Insights for errors"
+          echo ""
+          echo "========================================="
+
+      - name: Post deployment comment to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fqdn = '${{ steps.get-url.outputs.fqdn }}';
+            const comment = `## 🚀 Deployment Successful!
+
+            Your changes have been deployed to Azure:
+
+            - 🌐 **Frontend**: http://${fqdn}:3000
+            - 🔌 **Backend API**: http://${fqdn}:8080
+            - ❤️ **Health Check**: http://${fqdn}:8080/api/health
+
+            Please verify the deployment and test your changes.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  cleanup-old-images:
+    name: Cleanup Old Container Images
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-to-azure]
+    if: success()
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Cleanup old images (keep last 5)
+        run: |
+          ACR_NAME="${{ needs.build-and-push.outputs.acr_name }}"
+
+          echo "Cleaning up old images from $ACR_NAME..."
+
+          # Get all image tags except 'latest', sorted by creation date
+          OLD_TAGS=$(az acr repository show-tags \
+            --name $ACR_NAME \
+            --repository oscal-ux \
+            --orderby time_desc \
+            --output tsv | grep -v "latest" | tail -n +6)
+
+          if [ -n "$OLD_TAGS" ]; then
+            echo "Deleting old tags:"
+            echo "$OLD_TAGS"
+
+            for TAG in $OLD_TAGS; do
+              az acr repository delete \
+                --name $ACR_NAME \
+                --image oscal-ux:$TAG \
+                --yes
+            done
+
+            echo "✅ Cleanup complete"
+          else
+            echo "No old images to clean up"
+          fi

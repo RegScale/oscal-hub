@@ -1,0 +1,47 @@
+# Terraform Variables - Example Configuration
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to version control!
+
+# Project Configuration
+project_name        = "oscal-tools"
+environment         = "prod"
+location            = "eastus"
+resource_group_name = "oscal-tools-prod"
+
+# Database Configuration
+db_username    = "oscaladmin"
+db_password    = "CHANGE-ME-STRONG-PASSWORD-HERE" # Generate with: openssl rand -base64 32
+db_name        = "oscal_production"
+db_sku         = "B_Standard_B1ms" # Burstable, 1 vCore, 2GB RAM
+db_storage_mb  = 32768             # 32 GB
+
+# Application Security
+jwt_secret           = "CHANGE-ME-JWT-SECRET-HERE" # Generate with: openssl rand -base64 64
+cors_allowed_origins = "https://your-domain.com,https://www.your-domain.com"
+
+# Container Configuration
+container_cpu    = 2  # Number of CPU cores
+container_memory = 4  # Memory in GB
+
+# Azure Container Registry
+acr_sku = "Basic" # Basic, Standard, or Premium
+
+# Feature Flags
+enable_monitoring    = true
+enable_public_access = true
+
+# Network Security
+# Add your IP and GitHub Actions runner IPs
+allowed_ip_addresses = [
+  # "203.0.113.0", # Example: Your office IP
+  # "198.51.100.0" # Example: GitHub Actions runner IP
+]
+
+# Tags
+tags = {
+  Project     = "OSCAL Tools"
+  Environment = "Production"
+  ManagedBy   = "Terraform"
+  CostCenter  = "Engineering"
+  Owner       = "DevOps Team"
+}
