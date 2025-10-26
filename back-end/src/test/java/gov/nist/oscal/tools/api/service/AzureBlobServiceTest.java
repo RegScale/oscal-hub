@@ -648,4 +648,177 @@ class AzureBlobServiceTest {
 
         assertFalse(azureBlobService.isConfigured());
     }
+
+    // ========== Additional Error Handling Tests ==========
+
+    @Test
+    void testDownloadComponent_azureStorage_downloadFails_throwsException() {
+        ReflectionTestUtils.setField(azureBlobService, "useLocalStorage", false);
+        ReflectionTestUtils.setField(azureBlobService, "containerClient", containerClient);
+
+        when(containerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(true);
+        when(blobClient.downloadContent()).thenThrow(new RuntimeException("Download failed"));
+
+        assertThrows(RuntimeException.class, () ->
+                azureBlobService.downloadComponent("build/testuser/test.json")
+        );
+    }
+
+    @Test
+    void testListUserComponents_azureStorage_listFails_throwsException() {
+        ReflectionTestUtils.setField(azureBlobService, "useLocalStorage", false);
+        ReflectionTestUtils.setField(azureBlobService, "containerClient", containerClient);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+
+        when(containerClient.listBlobsByHierarchy(anyString()))
+                .thenThrow(new RuntimeException("List failed"));
+
+        assertThrows(RuntimeException.class, () ->
+                azureBlobService.listUserComponents("testuser")
+        );
+    }
+
+    @Test
+    void testListUserComponents_localStorage_ioException_throwsException() throws IOException {
+        ReflectionTestUtils.setField(azureBlobService, "connectionString", null);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+        ReflectionTestUtils.setField(azureBlobService, "uploadDir", tempDir.toString());
+        azureBlobService.init();
+
+        // Create a directory that will cause an IOException when walking
+        Path userDir = tempDir.resolve("build/problematic-user");
+        Files.createDirectories(userDir);
+        Path subDir = userDir.resolve("subdir");
+        Files.createDirectories(subDir);
+
+        // Create a file in the subdirectory and then make it inaccessible
+        Path problemFile = subDir.resolve("problem.json");
+        Files.writeString(problemFile, "{}");
+
+        // Set permissions to cause an IOException during walk
+        // Note: This might not work on all OS/filesystems, but will cover the error path on Unix-like systems
+        if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+            subDir.toFile().setReadable(false);
+
+            try {
+                assertThrows(RuntimeException.class, () ->
+                        azureBlobService.listUserComponents("problematic-user")
+                );
+            } finally {
+                // Restore permissions for cleanup
+                subDir.toFile().setReadable(true);
+            }
+        }
+    }
+
+    @Test
+    void testGetFromLocalStorage_ioException_throwsException() throws IOException {
+        ReflectionTestUtils.setField(azureBlobService, "connectionString", null);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+        ReflectionTestUtils.setField(azureBlobService, "uploadDir", tempDir.toString());
+        azureBlobService.init();
+
+        // Create a directory where we expect a file
+        Path userDir = tempDir.resolve("build/testuser");
+        Files.createDirectories(userDir);
+        Path dirInsteadOfFile = userDir.resolve("directory-not-file");
+        Files.createDirectories(dirInsteadOfFile);
+
+        // Trying to read a directory as a file should throw an exception
+        assertThrows(RuntimeException.class, () ->
+                azureBlobService.downloadComponent("build/testuser/directory-not-file")
+        );
+    }
+
+    @Test
+    void testUploadComponent_localStorage_withMetadata() {
+        // Initialize with local storage
+        ReflectionTestUtils.setField(azureBlobService, "connectionString", null);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+        ReflectionTestUtils.setField(azureBlobService, "uploadDir", tempDir.toString());
+        azureBlobService.init();
+
+        String jsonContent = "{\"component-definition\": {\"uuid\": \"test-456\"}}";
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("version", "1.0");
+        metadata.put("type", "software");
+
+        // Local storage ignores metadata, but should still work
+        String result = azureBlobService.uploadComponent("testuser2", "component2.json", jsonContent, metadata);
+
+        assertEquals("build/testuser2/component2.json", result);
+        Path expectedPath = tempDir.resolve("build/testuser2/component2.json");
+        assertTrue(Files.exists(expectedPath));
+    }
+
+    @Test
+    void testListUserComponents_azureStorage_withPrefixItems() {
+        ReflectionTestUtils.setField(azureBlobService, "useLocalStorage", false);
+        ReflectionTestUtils.setField(azureBlobService, "containerClient", containerClient);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+
+        // Create mock BlobItems - mix of files and directories (prefixes)
+        BlobItem item1 = mock(BlobItem.class);
+        when(item1.getName()).thenReturn("build/testuser/component1.json");
+        when(item1.isPrefix()).thenReturn(false);
+
+        BlobItem dirItem = mock(BlobItem.class);
+        when(dirItem.getName()).thenReturn("build/testuser/subdirectory/");
+        when(dirItem.isPrefix()).thenReturn(true);  // This is a directory/prefix
+
+        BlobItem item2 = mock(BlobItem.class);
+        when(item2.getName()).thenReturn("build/testuser/component2.json");
+        when(item2.isPrefix()).thenReturn(false);
+
+        // Mock PagedIterable
+        @SuppressWarnings("unchecked")
+        com.azure.core.http.rest.PagedIterable<BlobItem> pagedIterable = mock(com.azure.core.http.rest.PagedIterable.class);
+        when(pagedIterable.iterator()).thenReturn(List.of(item1, dirItem, item2).iterator());
+        when(containerClient.listBlobsByHierarchy(anyString())).thenReturn(pagedIterable);
+
+        List<String> results = azureBlobService.listUserComponents("testuser");
+
+        // Should only include files, not prefixes (directories)
+        assertEquals(2, results.size());
+        assertTrue(results.contains("build/testuser/component1.json"));
+        assertTrue(results.contains("build/testuser/component2.json"));
+    }
+
+    @Test
+    void testUploadComponent_azureStorage_withEmptyMetadata() {
+        ReflectionTestUtils.setField(azureBlobService, "useLocalStorage", false);
+        ReflectionTestUtils.setField(azureBlobService, "containerClient", containerClient);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+
+        when(containerClient.getBlobClient(anyString())).thenReturn(blobClient);
+
+        Map<String, String> emptyMetadata = new HashMap<>();
+        String result = azureBlobService.uploadComponent("testuser", "component.json", "{}", emptyMetadata);
+
+        assertEquals("build/testuser/component.json", result);
+        verify(blobClient).upload(any(ByteArrayInputStream.class), anyLong(), eq(true));
+        verify(blobClient, never()).setMetadata(any());
+    }
+
+    @Test
+    void testDeleteComponent_localStorage_ioException_returnsFalse() throws IOException {
+        ReflectionTestUtils.setField(azureBlobService, "connectionString", null);
+        ReflectionTestUtils.setField(azureBlobService, "buildFolder", "build");
+        ReflectionTestUtils.setField(azureBlobService, "uploadDir", tempDir.toString());
+        azureBlobService.init();
+
+        // Create a directory instead of a file to trigger IOException on delete
+        Path userDir = tempDir.resolve("build/testuser");
+        Files.createDirectories(userDir);
+        Path dirPath = userDir.resolve("directory-cant-delete");
+        Files.createDirectories(dirPath);
+        // Put a file inside to make it non-empty
+        Files.writeString(dirPath.resolve("file-inside.txt"), "content");
+
+        // Trying to delete a non-empty directory as if it were a file should fail
+        boolean result = azureBlobService.deleteComponent("build/testuser/directory-cant-delete");
+
+        assertFalse(result);
+    }
 }

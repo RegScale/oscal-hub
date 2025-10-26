@@ -276,4 +276,275 @@ class ValidationServiceTest {
         assertTrue(result.isValid());
         assertEquals(OscalModelType.SYSTEM_SECURITY_PLAN, result.getModelType());
     }
+
+    @Test
+    void testValidateCatalogYaml() {
+        // Arrange
+        String validCatalogYaml =
+            "---\n" +
+            "catalog:\n" +
+            "  uuid: 74c8ba1e-5cd4-4ad1-bbfd-d888e2f6c724\n" +
+            "  metadata:\n" +
+            "    title: Sample Security Catalog\n" +
+            "    last-modified: 2023-01-01T00:00:00.000Z\n" +
+            "    version: '1.0'\n" +
+            "    oscal-version: 1.0.4\n";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validCatalogYaml);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.YAML);
+        request.setFileName("test-catalog.yaml");
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+        assertEquals(OscalModelType.CATALOG, result.getModelType());
+        assertEquals(OscalFormat.YAML, result.getFormat());
+    }
+
+    @Test
+    void testValidateComponentDefinition() {
+        // Arrange
+        String validComponentDef =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<component-definition xmlns=\"http://csrc.nist.gov/ns/oscal/1.0\" uuid=\"12345678-1234-1234-1234-123456789012\">\n" +
+            "  <metadata>\n" +
+            "    <title>Sample Component Definition</title>\n" +
+            "    <last-modified>2023-01-01T00:00:00.000Z</last-modified>\n" +
+            "    <version>1.0</version>\n" +
+            "    <oscal-version>1.0.4</oscal-version>\n" +
+            "  </metadata>\n" +
+            "</component-definition>";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validComponentDef);
+        request.setModelType(OscalModelType.COMPONENT_DEFINITION);
+        request.setFormat(OscalFormat.XML);
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+        assertEquals(OscalModelType.COMPONENT_DEFINITION, result.getModelType());
+    }
+
+    @Test
+    void testValidateAssessmentPlan() {
+        // Arrange
+        String validAP =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<assessment-plan xmlns=\"http://csrc.nist.gov/ns/oscal/1.0\" uuid=\"12345678-1234-1234-1234-123456789012\">\n" +
+            "  <metadata>\n" +
+            "    <title>Sample Assessment Plan</title>\n" +
+            "    <last-modified>2023-01-01T00:00:00.000Z</last-modified>\n" +
+            "    <version>1.0</version>\n" +
+            "    <oscal-version>1.0.4</oscal-version>\n" +
+            "  </metadata>\n" +
+            "  <import-ssp href=\"ssp.xml\"/>\n" +
+            "</assessment-plan>";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validAP);
+        request.setModelType(OscalModelType.ASSESSMENT_PLAN);
+        request.setFormat(OscalFormat.XML);
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+        assertEquals(OscalModelType.ASSESSMENT_PLAN, result.getModelType());
+    }
+
+    @Test
+    void testValidateAssessmentResults() {
+        // Arrange
+        String validAR =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<assessment-results xmlns=\"http://csrc.nist.gov/ns/oscal/1.0\" uuid=\"12345678-1234-1234-1234-123456789012\">\n" +
+            "  <metadata>\n" +
+            "    <title>Sample Assessment Results</title>\n" +
+            "    <last-modified>2023-01-01T00:00:00.000Z</last-modified>\n" +
+            "    <version>1.0</version>\n" +
+            "    <oscal-version>1.0.4</oscal-version>\n" +
+            "  </metadata>\n" +
+            "  <import-ap href=\"ap.xml\"/>\n" +
+            "</assessment-results>";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validAR);
+        request.setModelType(OscalModelType.ASSESSMENT_RESULTS);
+        request.setFormat(OscalFormat.XML);
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+        assertEquals(OscalModelType.ASSESSMENT_RESULTS, result.getModelType());
+    }
+
+    @Test
+    void testValidatePlanOfActionAndMilestones() {
+        // Arrange
+        String validPOAM =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<plan-of-action-and-milestones xmlns=\"http://csrc.nist.gov/ns/oscal/1.0\" uuid=\"12345678-1234-1234-1234-123456789012\">\n" +
+            "  <metadata>\n" +
+            "    <title>Sample POAM</title>\n" +
+            "    <last-modified>2023-01-01T00:00:00.000Z</last-modified>\n" +
+            "    <version>1.0</version>\n" +
+            "    <oscal-version>1.0.4</oscal-version>\n" +
+            "  </metadata>\n" +
+            "</plan-of-action-and-milestones>";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validPOAM);
+        request.setModelType(OscalModelType.PLAN_OF_ACTION_AND_MILESTONES);
+        request.setFormat(OscalFormat.XML);
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+        assertEquals(OscalModelType.PLAN_OF_ACTION_AND_MILESTONES, result.getModelType());
+    }
+
+    @Test
+    void testValidateWithExistingFileId_SkipsFileSave() {
+        // Arrange
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(VALID_CATALOG_XML);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.XML);
+        request.setFileName("test-catalog.xml");
+        request.setFileId("existing-file-id-123");  // File already saved
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+
+        // Verify file was NOT saved (since fileId is set)
+        verify(fileStorageService, never()).saveFile(anyString(), anyString(), any(), any(), anyString());
+
+        // But history should still be saved
+        verify(historyService, times(1)).saveOperation(any(OperationHistory.class));
+    }
+
+    @Test
+    void testValidateWithEmptyFileId_SavesFile() {
+        // Arrange
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(VALID_CATALOG_XML);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.XML);
+        request.setFileName("test-catalog.xml");
+        request.setFileId("");  // Empty fileId should trigger save
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+
+        // Verify file WAS saved (empty fileId counts as null)
+        verify(fileStorageService, times(1)).saveFile(anyString(), anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void testValidateWithWhitespaceFileId_SavesFile() {
+        // Arrange
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(VALID_CATALOG_XML);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.XML);
+        request.setFileName("test-catalog.xml");
+        request.setFileId("   ");  // Whitespace-only fileId should trigger save
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+
+        // Verify file WAS saved (whitespace fileId counts as empty)
+        verify(fileStorageService, times(1)).saveFile(anyString(), anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void testValidateDefaultFileNameForJson() {
+        // Arrange
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(VALID_CATALOG_JSON);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.JSON);
+        // No fileName set
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+
+        // Verify default filename was used with .json extension
+        verify(fileStorageService, times(1)).saveFile(
+            anyString(),
+            eq("document.json"),
+            any(),
+            any(),
+            anyString()
+        );
+    }
+
+    @Test
+    void testValidateDefaultFileNameForYaml() {
+        // Arrange
+        String validCatalogYaml =
+            "---\n" +
+            "catalog:\n" +
+            "  uuid: 74c8ba1e-5cd4-4ad1-bbfd-d888e2f6c724\n" +
+            "  metadata:\n" +
+            "    title: Sample Catalog\n" +
+            "    last-modified: 2023-01-01T00:00:00.000Z\n" +
+            "    version: '1.0'\n" +
+            "    oscal-version: 1.0.4\n";
+
+        ValidationRequest request = new ValidationRequest();
+        request.setContent(validCatalogYaml);
+        request.setModelType(OscalModelType.CATALOG);
+        request.setFormat(OscalFormat.YAML);
+        // No fileName set
+
+        // Act
+        ValidationResult result = validationService.validate(request, "testuser");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isValid());
+
+        // Verify default filename was used with .yaml extension
+        verify(fileStorageService, times(1)).saveFile(
+            anyString(),
+            eq("document.yaml"),
+            any(),
+            any(),
+            anyString()
+        );
+    }
 }
