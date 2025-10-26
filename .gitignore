@@ -35,3 +35,8 @@ front-end/.env*.local
 # IDE
 .vscode/
 .idea/
+
+# Security scanning
+security-reports/
+tools/trivy
+back-end/sbom-*.json

@@ -106,6 +106,13 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- org.json - Override transitive dependency to fix CVE-2023-5072 -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
+        </dependency>
+
         <!-- XML Support -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
