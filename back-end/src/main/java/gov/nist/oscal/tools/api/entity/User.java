@@ -61,6 +61,22 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String logo; // Base64-encoded logo image (data URL format: data:image/png;base64,...)
 
+    // Account security fields
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "account_locked_until")
+    private LocalDateTime accountLockedUntil;
+
+    @Column(name = "last_failed_login")
+    private LocalDateTime lastFailedLogin;
+
+    @Column(name = "last_failed_login_ip", length = 45)
+    private String lastFailedLoginIp;
+
     // Constructors
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -201,5 +217,45 @@ public class User {
 
     public void setLogo(String logo) {
         this.logo = logo;
+    }
+
+    public LocalDateTime getPasswordChangedAt() {
+        return passwordChangedAt;
+    }
+
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) {
+        this.passwordChangedAt = passwordChangedAt;
+    }
+
+    public Integer getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public LocalDateTime getAccountLockedUntil() {
+        return accountLockedUntil;
+    }
+
+    public void setAccountLockedUntil(LocalDateTime accountLockedUntil) {
+        this.accountLockedUntil = accountLockedUntil;
+    }
+
+    public LocalDateTime getLastFailedLogin() {
+        return lastFailedLogin;
+    }
+
+    public void setLastFailedLogin(LocalDateTime lastFailedLogin) {
+        this.lastFailedLogin = lastFailedLogin;
+    }
+
+    public String getLastFailedLoginIp() {
+        return lastFailedLoginIp;
+    }
+
+    public void setLastFailedLoginIp(String lastFailedLoginIp) {
+        this.lastFailedLoginIp = lastFailedLoginIp;
     }
 }
