@@ -5,32 +5,79 @@ version: '3.8'
 # DO NOT use this directly - copy and customize with your secrets
 
 services:
-  # PostgreSQL Database (production-grade)
+  # PostgreSQL Database (production-grade with security hardening)
   postgres:
     image: postgres:15-alpine
     container_name: oscal-postgres
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+
     environment:
       - POSTGRES_DB=${DB_NAME:-oscal_production}
       - POSTGRES_USER=${DB_USER:-oscal_user}
       - POSTGRES_PASSWORD=${DB_PASSWORD}  # REQUIRED: Set via .env
+      - POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     restart: unless-stopped
     networks:
       - oscal-network
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-oscal_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # OSCAL Tools Application
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+          pids: 100
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # OSCAL Tools Application (security hardened)
   oscal-ux:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: oscal-ux-prod
     image: oscal-ux:production
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: false  # Set to true if app doesn't write to filesystem
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
     ports:
       - "${HTTP_PORT:-8080}:8080"   # HTTP port (use reverse proxy for HTTPS)
       - "${FRONTEND_PORT:-3000}:3000" # Frontend port

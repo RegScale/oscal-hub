@@ -1,12 +1,23 @@
-version: '3.8'
+version: '3.9'
 
 services:
   oscal-ux:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: oscal-ux
-    image: oscal-ux:latest
+      args:
+        - BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    container_name: oscal-ux-dev
+    image: oscal-ux:dev
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true  # Prevent privilege escalation
+    cap_drop:
+      - ALL  # Drop all capabilities
+    cap_add:
+      - NET_BIND_SERVICE  # Only if binding to privileged ports (<1024)
+
     ports:
       - "3000:3000"  # Frontend
       - "8080:8080"  # Backend API
@@ -38,20 +49,49 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    # Resource limits (adjust as needed)
+    # Volumes (for data persistence)
+    volumes:
+      - oscal-data:/app/data
+      - oscal-logs:/app/logs:rw
+      # Mount as read-only where possible
+      - /etc/localtime:/etc/localtime:ro
+
+    # Resource limits
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: '2.0'
           memory: 2G
+          pids: 100  # Limit number of processes (fork bomb protection)
         reservations:
-          cpus: '1'
+          cpus: '1.0'
           memory: 1G
+
+    # Networks
+    networks:
+      - oscal-network
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=oscal-ux"
 
   # Optional: Nginx reverse proxy (uncomment if needed)
   # nginx:
-  #   image: nginx:alpine
+  #   image: nginx:1.25-alpine  # Use specific version, not 'latest'
   #   container_name: oscal-ux-nginx
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   cap_drop:
+  #     - ALL
+  #   cap_add:
+  #     - NET_BIND_SERVICE
+  #     - CHOWN
+  #     - SETGID
+  #     - SETUID
   #   ports:
   #     - "80:80"
   #   volumes:
@@ -59,8 +99,21 @@ services:
   #   depends_on:
   #     - oscal-ux
   #   restart: unless-stopped
+  #   networks:
+  #     - oscal-network
 
-# Optional: Volumes for data persistence
-# volumes:
-#   oscal-data:
-#     driver: local
+# Networks
+networks:
+  oscal-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16
+
+# Volumes for data persistence
+volumes:
+  oscal-data:
+    driver: local
+  oscal-logs:
+    driver: local

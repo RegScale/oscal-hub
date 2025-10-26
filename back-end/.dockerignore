@@ -1,0 +1,129 @@
+# ==============================================================================
+# Docker Ignore File
+# ==============================================================================
+# Prevents unnecessary files from being sent to Docker daemon
+# Reduces build context size and improves build performance
+# Prevents sensitive files from being included in image
+# ==============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+.github
+
+# IDE
+.idea
+.vscode
+.eclipse
+.settings
+.project
+.classpath
+*.iml
+*.swp
+*.swo
+*~
+
+# Build output (will be built inside container)
+target/
+build/
+out/
+bin/
+.gradle/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment files (CRITICAL - contains secrets)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database files (H2)
+*.db
+*.mv.db
+*.trace.db
+data/
+
+# SSL/TLS certificates (if not needed in image)
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+*.truststore
+
+# Documentation
+*.md
+docs/
+README*
+LICENSE
+CONTRIBUTING*
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.travis.yml
+.circleci/
+.gitlab-ci.yml
+Jenkinsfile
+azure-pipelines.yml
+.github/workflows/
+
+# Testing
+src/test/
+test/
+tests/
+**/*Test.java
+**/*Tests.java
+.coverage
+coverage/
+.nyc_output/
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# NPM/Node (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+
+# Security scan results
+trivy-report.json
+grype-report.json
+snyk-report.json
+
+# Backup files
+*.backup
+*.old

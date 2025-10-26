@@ -47,35 +47,67 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # =============================================================================
-# Stage 4: Runtime - Combine both applications
+# Stage 4: Runtime - Combine both applications (SECURITY HARDENED)
 # =============================================================================
 FROM eclipse-temurin:21-jre-jammy
 
-# Install Node.js for Next.js standalone server
+# Add security metadata labels (OCI standard)
+LABEL org.opencontainers.image.title="OSCAL Tools"
+LABEL org.opencontainers.image.description="Secure full-stack OSCAL tools with Spring Boot API and Next.js UI"
+LABEL org.opencontainers.image.vendor="NIST OSCAL Tools"
+LABEL org.opencontainers.image.authors="oscal-tools@example.com"
+LABEL security.non-root="true"
+LABEL security.healthcheck="true"
+LABEL security.read-only-root="recommended"
+
+# Install Node.js for Next.js standalone server + security updates
 RUN apt-get update && \
-    apt-get install -y curl && \
+    # Install security updates
+    apt-get upgrade -y && \
+    apt-get install -y curl ca-certificates tzdata tini && \
+    # Install Node.js
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs && \
+    # Clean up
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Create app directory
+# Create non-root user and group (UID/GID 10001)
+RUN groupadd -g 10001 oscalgroup && \
+    useradd -u 10001 -g oscalgroup -s /bin/false -M oscaluser
+
+# Create app directory with proper ownership
 WORKDIR /app
+RUN mkdir -p /app/data /app/logs /app/backend /app/frontend && \
+    chown -R oscaluser:oscalgroup /app
 
-# Copy backend JAR
-COPY --from=backend-builder /build/back-end/target/*.jar /app/backend.jar
+# Copy backend JAR with proper ownership
+COPY --from=backend-builder --chown=oscaluser:oscalgroup \
+    /build/back-end/target/*.jar /app/backend.jar
 
-# Copy frontend build
-COPY --from=frontend-builder /app/.next/standalone /app/frontend/
-COPY --from=frontend-builder /app/.next/static /app/frontend/.next/static
-COPY --from=frontend-builder /app/public /app/frontend/public
+# Copy frontend build with proper ownership
+COPY --from=frontend-builder --chown=oscaluser:oscalgroup \
+    /app/.next/standalone /app/frontend/
+COPY --from=frontend-builder --chown=oscaluser:oscalgroup \
+    /app/.next/static /app/frontend/.next/static
+COPY --from=frontend-builder --chown=oscaluser:oscalgroup \
+    /app/public /app/frontend/public
 
 # Copy startup script
 COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chown oscaluser:oscalgroup /app/docker-entrypoint.sh
+
+# Switch to non-root user
+USER oscaluser:oscalgroup
 
 # Environment variables
-ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+               -XX:MaxRAMPercentage=50.0 \
+               -XX:+UseG1GC \
+               -XX:+HeapDumpOnOutOfMemoryError \
+               -XX:HeapDumpPath=/app/logs \
+               -Djava.security.egd=file:/dev/./urandom"
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_PUBLIC_API_URL=http://localhost:8080/api
@@ -88,15 +120,23 @@ ENV SPRING_PROFILES_ACTIVE=prod
 ENV SECURITY_HEADERS_ENABLED=true
 ENV SECURITY_REQUIRE_HTTPS=false
 ENV RATE_LIMIT_ENABLED=true
+ENV ACCOUNT_LOCKOUT_ENABLED=true
+ENV AUDIT_LOGGING_ENABLED=true
 
-# Note: Set JWT_SECRET and DB_PASSWORD via docker-compose or runtime
+# Note: CRITICAL - Set these via docker-compose or runtime (NEVER hardcode):
+# - JWT_SECRET
+# - DB_PASSWORD
+# - CORS_ALLOWED_ORIGINS
 
-# Expose ports
+# Expose ports (non-privileged)
 EXPOSE 3000 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health && curl -f http://localhost:3000 || exit 1
+    CMD curl -f http://localhost:8080/actuator/health && curl -f http://localhost:3000 || exit 1
+
+# Use tini as init system (proper signal handling, zombie reaping)
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Start both applications
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["/app/docker-entrypoint.sh"]
