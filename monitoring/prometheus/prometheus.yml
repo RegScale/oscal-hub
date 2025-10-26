@@ -1,0 +1,70 @@
+# Prometheus Configuration for OSCAL Tools
+# This configuration scrapes metrics from the OSCAL Tools application
+
+global:
+  scrape_interval: 15s      # How frequently to scrape targets
+  evaluation_interval: 15s  # How frequently to evaluate rules
+  scrape_timeout: 10s       # Timeout for scraping metrics
+
+  # Attach these labels to any time series or alerts
+  external_labels:
+    cluster: 'oscal-tools-dev'
+    environment: 'development'
+
+# Alertmanager configuration (optional - uncomment when ready)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#             - alertmanager:9093
+
+# Load rules from files
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          application: 'prometheus'
+
+  # OSCAL Tools Back-end API
+  - job_name: 'oscal-tools-api'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+    static_configs:
+      - targets: ['host.docker.internal:8080']  # For Docker Desktop (Mac/Windows)
+        # - targets: ['172.17.0.1:8080']         # For Docker on Linux
+        labels:
+          application: 'oscal-cli-api'
+          environment: 'dev'
+          service: 'backend'
+
+    # Authentication for protected /actuator/prometheus endpoint
+    # You'll need to get a JWT token and update this
+    # For dev, you can temporarily make /actuator/prometheus public
+    # or use basic_auth if you implement it
+
+    # Uncomment and configure when you have auth set up:
+    # bearer_token: 'YOUR_JWT_TOKEN_HERE'
+
+    # Relabeling to clean up metric names
+    metric_relabel_configs:
+      # Add custom labels
+      - source_labels: [__name__]
+        target_label: metric_name
+
+      # Drop metrics you don't need (optional)
+      # - source_labels: [__name__]
+      #   regex: 'jvm_classes_.*'
+      #   action: drop
+
+  # Add more scrape configs as needed
+  # - job_name: 'oscal-tools-frontend'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:3000']

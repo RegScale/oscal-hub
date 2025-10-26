@@ -1,0 +1,807 @@
+{
+  "dashboard": {
+    "title": "OSCAL Tools - Overview",
+    "tags": ["oscal", "monitoring", "api"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Status",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"oscal-tools-api\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                }
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate (req/min)",
+        "type": "stat",
+        "gridPos": {
+          "x": 4,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"oscal-tools-api\"}[5m])) * 60",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqpm",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "blue"
+                },
+                {
+                  "value": 100,
+                  "color": "green"
+                },
+                {
+                  "value": 500,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1000,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Error Rate (%)",
+        "type": "stat",
+        "gridPos": {
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\",job=\"oscal-tools-api\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"oscal-tools-api\"}[5m])) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 5,
+                  "color": "orange"
+                },
+                {
+                  "value": 10,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Time p95 (ms)",
+        "type": "stat",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"oscal-tools-api\"}[5m])) by (le)) * 1000",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 500,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1000,
+                  "color": "orange"
+                },
+                {
+                  "value": 2000,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Active Users (last 5m)",
+        "type": "stat",
+        "gridPos": {
+          "x": 16,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "count(count by (username) (rate(http_server_requests_seconds_count{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[5m]) > 0))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "blue"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Authentication - Login Success Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 0,
+          "y": 4,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/api/auth/login\",status=\"200\",job=\"oscal-tools-api\"}[5m])) * 60",
+            "legendFormat": "Successful Logins",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/api/auth/login\",status=~\"4..\",job=\"oscal-tools-api\"}[5m])) * 60",
+            "legendFormat": "Failed Logins",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqpm",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Successful Logins"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "mode": "fixed",
+                    "fixedColor": "green"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Failed Logins"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "mode": "fixed",
+                    "fixedColor": "red"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "title": "Authentication - Login Failure Rate (%)",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 12,
+          "y": 4,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/api/auth/login\",status=~\"4..\",job=\"oscal-tools-api\"}[5m])) / sum(rate(http_server_requests_seconds_count{uri=\"/api/auth/login\",job=\"oscal-tools-api\"}[5m])) * 100",
+            "legendFormat": "Login Failure Rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 10,
+                  "color": "yellow"
+                },
+                {
+                  "value": 25,
+                  "color": "orange"
+                },
+                {
+                  "value": 50,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "API Usage - Requests by Endpoint (req/min)",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 0,
+          "y": 12,
+          "w": 24,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[5m])) by (uri) * 60",
+            "legendFormat": "{{uri}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqpm",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "stacking": {
+                "mode": "normal"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Top 10 Most Used Endpoints",
+        "type": "bargauge",
+        "gridPos": {
+          "x": 0,
+          "y": 20,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "topk(10, sum(increase(http_server_requests_seconds_count{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[1h])) by (uri))",
+            "legendFormat": "{{uri}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "continuous-GrYlRd"
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Errors by Status Code",
+        "type": "piechart",
+        "gridPos": {
+          "x": 12,
+          "y": 20,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(http_server_requests_seconds_count{status=~\"[45]..\",job=\"oscal-tools-api\"}[1h])) by (status)",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Performance - Response Time by Endpoint (p95)",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 0,
+          "y": 28,
+          "w": 24,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[5m])) by (uri, le)) * 1000",
+            "legendFormat": "{{uri}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 500,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1000,
+                  "color": "orange"
+                },
+                {
+                  "value": 2000,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Slowest Endpoints (Average Response Time - Last Hour)",
+        "type": "table",
+        "gridPos": {
+          "x": 0,
+          "y": 36,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(http_server_requests_seconds_sum{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[1h])) by (uri) / sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\",job=\"oscal-tools-api\"}[1h])) by (uri) * 1000)",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "left"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "uri"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Endpoint"
+                },
+                {
+                  "id": "custom.width",
+                  "value": 400
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Avg Response Time (ms)"
+                },
+                {
+                  "id": "unit",
+                  "value": "ms"
+                },
+                {
+                  "id": "decimals",
+                  "value": 0
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 500,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 1000,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 2000,
+                        "color": "red"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true,
+                "application": true,
+                "environment": true,
+                "instance": true,
+                "job": true
+              },
+              "indexByName": {
+                "uri": 0,
+                "Value": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Response Time Distribution (p50, p75, p95, p99)",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 12,
+          "y": 36,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"oscal-tools-api\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.75, sum(rate(http_server_requests_seconds_bucket{job=\"oscal-tools-api\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p75",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"oscal-tools-api\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p95",
+            "refId": "C"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"oscal-tools-api\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p99",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 5
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "title": "Business Metrics - Validations per Hour",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 0,
+          "y": 44,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/validation.*\",status=\"200\",job=\"oscal-tools-api\"}[5m])) * 3600",
+            "legendFormat": "Validations/hour",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            },
+            "color": {
+              "mode": "fixed",
+              "fixedColor": "blue"
+            }
+          }
+        }
+      },
+      {
+        "id": 15,
+        "title": "Business Metrics - Conversions per Hour",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 12,
+          "y": 44,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/conversion.*\",status=\"200\",job=\"oscal-tools-api\"}[5m])) * 3600",
+            "legendFormat": "Conversions/hour",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            },
+            "color": {
+              "mode": "fixed",
+              "fixedColor": "purple"
+            }
+          }
+        }
+      },
+      {
+        "id": 16,
+        "title": "JVM Memory Usage",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 0,
+          "y": 52,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\",job=\"oscal-tools-api\"} / 1024 / 1024",
+            "legendFormat": "Heap Used (MB)",
+            "refId": "A"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{area=\"heap\",job=\"oscal-tools-api\"} / 1024 / 1024",
+            "legendFormat": "Heap Max (MB)",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "mbytes",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            }
+          }
+        }
+      },
+      {
+        "id": 17,
+        "title": "Database Connection Pool",
+        "type": "timeseries",
+        "gridPos": {
+          "x": 12,
+          "y": 52,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=\"oscal-tools-api\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          },
+          {
+            "expr": "hikaricp_connections_idle{job=\"oscal-tools-api\"}",
+            "legendFormat": "Idle Connections",
+            "refId": "B"
+          },
+          {
+            "expr": "hikaricp_connections_max{job=\"oscal-tools-api\"}",
+            "legendFormat": "Max Connections",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            }
+          }
+        }
+      }
+    ]
+  }
+}

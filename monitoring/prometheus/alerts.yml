@@ -1,0 +1,323 @@
+# Prometheus Alert Rules for OSCAL Tools
+# These alerts will fire when certain conditions are met
+
+groups:
+  - name: oscal_tools_critical
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job="oscal-tools-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: oscal-tools
+        annotations:
+          summary: "OSCAL Tools API is down"
+          description: "The OSCAL Tools API ({{ $labels.instance }}) has been down for more than 1 minute."
+          runbook: "docs/runbooks/SERVICE-DOWN.md"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5..",job="oscal-tools-api"}[5m])) /
+          sum(rate(http_server_requests_seconds_count{job="oscal-tools-api"}[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          service: oscal-tools
+        annotations:
+          summary: "High error rate detected (> 10%)"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          runbook: "docs/runbooks/HIGH-ERROR-RATE.md"
+
+      - alert: DatabaseDown
+        expr: |
+          health_component_status{component="db",job="oscal-tools-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: oscal-tools
+        annotations:
+          summary: "Database connection is down"
+          description: "The database health check is failing."
+          runbook: "docs/runbooks/DATABASE-CONNECTION-ISSUES.md"
+
+  - name: oscal_tools_warning
+    interval: 1m
+    rules:
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{job="oscal-tools-api"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s (threshold: 2s)"
+          runbook: "docs/runbooks/HIGH-RESPONSE-TIME.md"
+
+      - alert: HighMemoryUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap",job="oscal-tools-api"} /
+          jvm_memory_max_bytes{area="heap",job="oscal-tools-api"} > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: oscal-tools
+        annotations:
+          summary: "High JVM heap memory usage"
+          description: "Heap usage is {{ $value | humanizePercentage }} (threshold: 85%)"
+          runbook: "docs/runbooks/HIGH-MEMORY-USAGE.md"
+
+      - alert: HighCPUUsage
+        expr: system_cpu_usage{job="oscal-tools-api"} > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          service: oscal-tools
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+          runbook: "docs/runbooks/HIGH-CPU-USAGE.md"
+
+      - alert: DatabaseConnectionPoolNearlyExhausted
+        expr: |
+          jdbc_connections_active{job="oscal-tools-api"} /
+          jdbc_connections_max{job="oscal-tools-api"} > 0.90
+        for: 2m
+        labels:
+          severity: warning
+          service: oscal-tools
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of database connections are in use (threshold: 90%)"
+          runbook: "docs/runbooks/DATABASE-CONNECTION-POOL.md"
+
+      - alert: FrequentGarbageCollection
+        expr: rate(jvm_gc_pause_seconds_count{job="oscal-tools-api"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+        annotations:
+          summary: "Frequent garbage collection detected"
+          description: "GC is occurring {{ $value }} times per second (threshold: 10)"
+          runbook: "docs/runbooks/FREQUENT-GC.md"
+
+  - name: oscal_tools_info
+    interval: 5m
+    rules:
+      - alert: LowDiskSpace
+        expr: |
+          health_component_diskSpace_details_free{job="oscal-tools-api"} /
+          health_component_diskSpace_details_total{job="oscal-tools-api"} < 0.20
+        for: 10m
+        labels:
+          severity: info
+          service: oscal-tools
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining (threshold: 20%)"
+          runbook: "docs/runbooks/LOW-DISK-SPACE.md"
+
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{job="oscal-tools-api"}[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: info
+          service: oscal-tools
+        annotations:
+          summary: "Response time increasing"
+          description: "95th percentile response time is {{ $value }}s (threshold: 1s)"
+          runbook: "docs/runbooks/SLOW-RESPONSE-TIME.md"
+
+  # Business Metrics & Authentication Alerts
+  - name: oscal_tools_business
+    interval: 1m
+    rules:
+      # Authentication Alerts
+      - alert: HighLoginFailureRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri="/api/auth/login",status=~"4..",job="oscal-tools-api"}[5m])) /
+          sum(rate(http_server_requests_seconds_count{uri="/api/auth/login",job="oscal-tools-api"}[5m])) > 0.50
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: authentication
+        annotations:
+          summary: "High login failure rate detected"
+          description: "{{ $value | humanizePercentage }} of login attempts are failing (threshold: 50%)"
+          runbook: "docs/runbooks/HIGH-LOGIN-FAILURE-RATE.md"
+          impact: "Users may be having authentication issues"
+
+      - alert: AuthenticationFailureSpike
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri="/api/auth/login",status=~"4..",job="oscal-tools-api"}[5m])) >
+          sum(rate(http_server_requests_seconds_count{uri="/api/auth/login",status=~"4..",job="oscal-tools-api"}[5m] offset 1h)) * 3
+        for: 3m
+        labels:
+          severity: critical
+          service: oscal-tools
+          category: authentication
+        annotations:
+          summary: "Sudden spike in authentication failures"
+          description: "Authentication failures are 3x higher than 1 hour ago - possible attack or service issue"
+          runbook: "docs/runbooks/AUTH-FAILURE-SPIKE.md"
+          impact: "Potential security incident or authentication service degradation"
+
+      - alert: NoLoginActivity
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri="/api/auth/login",job="oscal-tools-api"}[30m])) == 0
+        for: 30m
+        labels:
+          severity: info
+          service: oscal-tools
+          category: authentication
+        annotations:
+          summary: "No login activity detected"
+          description: "No login attempts in the last 30 minutes - unusual for business hours"
+          runbook: "docs/runbooks/NO-LOGIN-ACTIVITY.md"
+          impact: "May indicate service unavailability or routing issues"
+
+      # Endpoint-Specific Performance Alerts
+      - alert: SlowValidationEndpoint
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{uri=~"/api/validation.*",job="oscal-tools-api"}[5m])) by (uri, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: performance
+        annotations:
+          summary: "Validation endpoint is slow ({{ $labels.uri }})"
+          description: "95th percentile response time for {{ $labels.uri }} is {{ $value }}s (threshold: 5s)"
+          runbook: "docs/runbooks/HIGH-RESPONSE-TIME.md"
+          impact: "Users experiencing slow validation operations"
+
+      - alert: SlowConversionEndpoint
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{uri=~"/api/conversion.*",job="oscal-tools-api"}[5m])) by (uri, le)
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: performance
+        annotations:
+          summary: "Conversion endpoint is slow ({{ $labels.uri }})"
+          description: "95th percentile response time for {{ $labels.uri }} is {{ $value }}s (threshold: 10s)"
+          runbook: "docs/runbooks/HIGH-RESPONSE-TIME.md"
+          impact: "Users experiencing slow conversion operations"
+
+      - alert: VisualizationEndpointErrors
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/visualization.*",status=~"5..",job="oscal-tools-api"}[5m])) /
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/visualization.*",job="oscal-tools-api"}[5m])) > 0.20
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: errors
+        annotations:
+          summary: "High error rate on visualization endpoints"
+          description: "{{ $value | humanizePercentage }} of visualization requests are failing (threshold: 20%)"
+          runbook: "docs/runbooks/HIGH-ERROR-RATE.md"
+          impact: "Users unable to visualize OSCAL documents"
+
+      # Business Metrics Alerts
+      - alert: LowValidationRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/validation.*",status="200",job="oscal-tools-api"}[1h])) < 10
+        for: 30m
+        labels:
+          severity: info
+          service: oscal-tools
+          category: business
+        annotations:
+          summary: "Low validation activity"
+          description: "Only {{ $value }} validations per hour (expected: >10/hour during business hours)"
+          runbook: "docs/runbooks/LOW-BUSINESS-ACTIVITY.md"
+          impact: "May indicate service issues or low user adoption"
+
+      - alert: HighValidationFailureRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/validation.*",status=~"5..",job="oscal-tools-api"}[10m])) /
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/validation.*",job="oscal-tools-api"}[10m])) > 0.30
+        for: 10m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: business
+        annotations:
+          summary: "High validation failure rate"
+          description: "{{ $value | humanizePercentage }} of validation requests are failing (threshold: 30%)"
+          runbook: "docs/runbooks/HIGH-ERROR-RATE.md"
+          impact: "Users unable to validate OSCAL documents successfully"
+
+      - alert: LowConversionRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/conversion.*",status="200",job="oscal-tools-api"}[1h])) < 5
+        for: 30m
+        labels:
+          severity: info
+          service: oscal-tools
+          category: business
+        annotations:
+          summary: "Low conversion activity"
+          description: "Only {{ $value }} conversions per hour (expected: >5/hour during business hours)"
+          runbook: "docs/runbooks/LOW-BUSINESS-ACTIVITY.md"
+          impact: "May indicate service issues or low user adoption"
+
+      - alert: HighConversionFailureRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/conversion.*",status=~"5..",job="oscal-tools-api"}[10m])) /
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/conversion.*",job="oscal-tools-api"}[10m])) > 0.30
+        for: 10m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: business
+        annotations:
+          summary: "High conversion failure rate"
+          description: "{{ $value | humanizePercentage }} of conversion requests are failing (threshold: 30%)"
+          runbook: "docs/runbooks/HIGH-ERROR-RATE.md"
+          impact: "Users unable to convert OSCAL documents successfully"
+
+      # User Activity Alerts
+      - alert: UnusuallyHighTraffic
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/.*",job="oscal-tools-api"}[5m])) * 60 >
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/.*",job="oscal-tools-api"}[5m] offset 1h)) * 60 * 5
+        for: 5m
+        labels:
+          severity: warning
+          service: oscal-tools
+          category: traffic
+        annotations:
+          summary: "Unusually high traffic detected"
+          description: "Traffic is 5x higher than 1 hour ago - possible load spike or attack"
+          runbook: "docs/runbooks/HIGH-TRAFFIC.md"
+          impact: "May impact performance for all users"
+
+      - alert: NoAPIActivity
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri=~"/api/.*",job="oscal-tools-api"}[30m])) == 0
+        for: 30m
+        labels:
+          severity: critical
+          service: oscal-tools
+          category: traffic
+        annotations:
+          summary: "No API activity detected"
+          description: "No API requests in the last 30 minutes - service may be unreachable"
+          runbook: "docs/runbooks/SERVICE-DOWN.md"
+          impact: "Service likely unavailable to users"

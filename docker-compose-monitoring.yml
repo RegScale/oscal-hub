@@ -1,0 +1,177 @@
+# Docker Compose for OSCAL Tools Monitoring Stack
+# Prometheus + Grafana for metrics visualization and alerting
+#
+# Usage:
+#   docker-compose -f docker-compose-monitoring.yml up -d
+#   Access Grafana: http://localhost:3001 (admin/admin)
+#   Access Prometheus: http://localhost:9090
+
+version: '3.9'
+
+services:
+  # Prometheus - Metrics collection and storage
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: oscal-prometheus
+    restart: unless-stopped
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'  # Keep metrics for 30 days
+      - '--web.enable-lifecycle'  # Allow reload via API
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+
+    networks:
+      - monitoring
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Grafana - Metrics visualization
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: oscal-grafana
+    restart: unless-stopped
+
+    ports:
+      - "3001:3000"  # Use 3001 to avoid conflict with Next.js on 3000
+
+    environment:
+      # Security settings
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+      # Server settings
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+
+      # Anonymous access (disable in production)
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+
+      # Logging
+      - GF_LOG_LEVEL=info
+
+      # Install plugins on startup
+      - GF_INSTALL_PLUGINS=
+
+    volumes:
+      # Provisioning configurations
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+      # Grafana data (dashboards, users, etc.)
+      - grafana_data:/var/lib/grafana
+
+    networks:
+      - monitoring
+
+    depends_on:
+      - prometheus
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    user: "472"  # Grafana user
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Optional: Alertmanager for alert routing and notifications
+  # Uncomment when you're ready to configure alerting
+  # alertmanager:
+  #   image: prom/alertmanager:v0.26.0
+  #   container_name: oscal-alertmanager
+  #   restart: unless-stopped
+  #
+  #   command:
+  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
+  #     - '--storage.path=/alertmanager'
+  #
+  #   ports:
+  #     - "9093:9093"
+  #
+  #   volumes:
+  #     - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  #     - alertmanager_data:/alertmanager
+  #
+  #   networks:
+  #     - monitoring
+  #
+  #   security_opt:
+  #     - no-new-privileges:true
+  #
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  # alertmanager_data:
+  #   driver: local
