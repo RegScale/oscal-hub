@@ -8,3 +8,12 @@
 [INFO] --- dependency-check:11.1.1:check (default-cli) @ oscal-cli-api ---
 [INFO] Lock file found `/Users/travishowerton/Documents/GitHub/oscal-cli/back-end/target/dependency-check-data/odc.update.lock`
 [INFO] Existing update in progress; waiting for update to complete
+[WARNING] Unable to update 1 or more Cached Web DataSource, using local data instead. Results may not include recent vulnerabilities.
+[ERROR] Unable to continue dependency-check analysis.
+[ERROR] Fatal exception(s) analyzing OSCAL CLI Web API
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  40:02 min
+[INFO] Finished at: 2025-10-26T14:58:25-04:00
+[INFO] ------------------------------------------------------------------------
