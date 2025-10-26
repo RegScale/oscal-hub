@@ -4,6 +4,7 @@ import gov.nist.oscal.tools.api.filter.RateLimitFilter;
 import gov.nist.oscal.tools.api.filter.SecurityHeadersFilter;
 import gov.nist.oscal.tools.api.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -41,6 +43,19 @@ public class SecurityConfig {
 
     @Autowired
     private SecurityHeadersFilter securityHeadersFilter;
+
+    // CORS Configuration from application.properties
+    @Value("${cors.allowed-origins}")
+    private List<String> corsAllowedOrigins;
+
+    @Value("${cors.allowed-methods}")
+    private List<String> corsAllowedMethods;
+
+    @Value("${cors.allowed-headers}")
+    private List<String> corsAllowedHeaders;
+
+    @Value("${cors.allow-credentials}")
+    private boolean corsAllowCredentials;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -95,10 +110,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        // Expose rate limit headers to clients
+
+        // Use properties from application.properties (environment-specific)
+        configuration.setAllowedOrigins(corsAllowedOrigins);
+        configuration.setAllowedMethods(corsAllowedMethods);
+        configuration.setAllowedHeaders(corsAllowedHeaders);
+
+        // Expose rate limit headers and authentication headers to clients
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "X-RateLimit-Limit",
@@ -106,8 +124,9 @@ public class SecurityConfig {
                 "X-RateLimit-Reset",
                 "Retry-After"
         ));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+
+        configuration.setAllowCredentials(corsAllowCredentials);
+        configuration.setMaxAge(3600L); // Cache preflight response for 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
