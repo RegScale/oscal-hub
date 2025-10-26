@@ -3,11 +3,7 @@ package gov.nist.oscal.tools.api.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.boot.autoconfigure.h2.H2ConsoleProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 import jakarta.annotation.PostConstruct;
 
@@ -59,17 +55,5 @@ public class H2ConsoleConfig {
         } else {
             logger.info("H2 Console disabled");
         }
-    }
-
-    /**
-     * Configuration bean for H2 Console - only active in development
-     * This ensures H2 console settings are only loaded when appropriate
-     */
-    @Bean
-    @Profile("dev")
-    @ConditionalOnExpression("${spring.h2.console.enabled:false}")
-    public H2ConsoleProperties h2ConsoleProperties() {
-        logger.debug("H2 Console properties configured for development profile");
-        return new H2ConsoleProperties();
     }
 }

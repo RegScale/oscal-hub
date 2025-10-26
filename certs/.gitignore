@@ -1,0 +1,14 @@
+# Ignore all certificate files and keystores
+*.p12
+*.pfx
+*.jks
+*.pem
+*.key
+*.crt
+*.cer
+*.csr
+
+# Keep the README and scripts
+!README.md
+!generate-dev-cert.sh
+!.gitignore
