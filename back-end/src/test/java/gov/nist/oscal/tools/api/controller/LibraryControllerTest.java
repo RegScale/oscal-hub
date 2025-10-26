@@ -463,4 +463,281 @@ class LibraryControllerTest {
         verify(libraryService, never()).createLibraryItem(
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anySet(), anyString());
     }
+
+    // ========== GET VERSION HISTORY TESTS ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetVersionHistory_success_returnsVersions() throws Exception {
+        // Arrange
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+
+        LibraryVersion version1 = new LibraryVersion();
+        version1.setId(1L);
+        version1.setVersionId("v1");
+        version1.setVersionNumber(1);
+        version1.setUploadedBy(mockUser);
+
+        LibraryVersion version2 = new LibraryVersion();
+        version2.setId(2L);
+        version2.setVersionId("v2");
+        version2.setVersionNumber(2);
+        version2.setUploadedBy(mockUser);
+
+        when(libraryService.getVersionHistory("1"))
+                .thenReturn(Arrays.asList(version1, version2));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/1/versions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].versionNumber").value(1))
+                .andExpect(jsonPath("$[1].versionNumber").value(2));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetVersionHistory_notFound_returns404() throws Exception {
+        // Arrange
+        when(libraryService.getVersionHistory("999"))
+                .thenThrow(new RuntimeException("Item not found"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/999/versions"))
+                .andExpect(status().isNotFound());
+    }
+
+    // ========== GET VERSION CONTENT TESTS ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetVersionContent_success_returnsContent() throws Exception {
+        // Arrange
+        String content = "<catalog version=\"2\"></catalog>";
+        when(libraryService.getVersionContent("v2")).thenReturn(content);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/versions/v2/content"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value(content));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetVersionContent_notFound_returns404() throws Exception {
+        // Arrange
+        when(libraryService.getVersionContent("invalid"))
+                .thenThrow(new RuntimeException("Version not found"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/versions/invalid/content"))
+                .andExpect(status().isNotFound());
+    }
+
+    // ========== GET MOST POPULAR TESTS ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetMostPopular_success_returnsItems() throws Exception {
+        // Arrange
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+
+        LibraryItem item1 = new LibraryItem();
+        item1.setId(1L);
+        item1.setItemId("item-1");
+        item1.setTitle("Popular Item");
+        item1.setCreatedBy(mockUser);
+        item1.setTags(new HashSet<>());
+        item1.setVersions(new HashSet<>());
+        item1.setDownloadCount(100L);
+
+        when(libraryService.getMostPopular(10))
+                .thenReturn(Arrays.asList(item1));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/popular").param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetMostPopular_serviceException_returns500() throws Exception {
+        // Arrange
+        when(libraryService.getMostPopular(anyInt()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/popular"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    // ========== GET RECENTLY UPDATED TESTS ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetRecentlyUpdated_success_returnsItems() throws Exception {
+        // Arrange
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+
+        LibraryItem item1 = new LibraryItem();
+        item1.setId(1L);
+        item1.setItemId("item-1");
+        item1.setTitle("Recent Item");
+        item1.setCreatedBy(mockUser);
+        item1.setTags(new HashSet<>());
+        item1.setVersions(new HashSet<>());
+
+        when(libraryService.getRecentlyUpdated(10))
+                .thenReturn(Arrays.asList(item1));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/recent").param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetRecentlyUpdated_serviceException_returns500() throws Exception {
+        // Arrange
+        when(libraryService.getRecentlyUpdated(anyInt()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/recent"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    // ========== GET POPULAR TAGS TESTS ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetPopularTags_success_returnsTags() throws Exception {
+        // Arrange
+        LibraryTag tag1 = new LibraryTag("nist");
+        LibraryTag tag2 = new LibraryTag("security");
+
+        when(libraryService.getPopularTags(10))
+                .thenReturn(Arrays.asList(tag1, tag2));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/tags/popular").param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetPopularTags_serviceException_returns500() throws Exception {
+        // Arrange
+        when(libraryService.getPopularTags(anyInt()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/tags/popular"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    // ========== ADDITIONAL ERROR CASES ==========
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetLibraryItemContent_notFound_returns404() throws Exception {
+        // Arrange
+        when(libraryService.getCurrentVersionContent("999"))
+                .thenThrow(new RuntimeException("Item not found"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/999/content"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testAddVersion_notFound_returns404() throws Exception {
+        // Arrange
+        LibraryVersionRequest request = new LibraryVersionRequest();
+        request.setFileName("test-v2.xml");
+        request.setFormat("XML");
+        request.setFileContent("content v2");
+
+        when(libraryService.addVersion(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("Library item not found"));
+
+        // Act & Assert
+        mockMvc.perform(post("/api/library/999/versions")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testSearchLibrary_byTag_returnsResults() throws Exception {
+        // Arrange
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+
+        LibraryItem item = new LibraryItem();
+        item.setId(1L);
+        item.setItemId("item-1");
+        item.setTitle("Tagged Item");
+        item.setCreatedBy(mockUser);
+        item.setTags(new HashSet<>());
+        item.setVersions(new HashSet<>());
+
+        when(libraryService.searchLibrary(null, null, "nist"))
+                .thenReturn(Arrays.asList(item));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/search").param("tag", "nist"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetAnalytics_serviceException_returns500() throws Exception {
+        // Arrange
+        when(libraryService.getAnalytics())
+                .thenThrow(new RuntimeException("Analytics error"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/analytics"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetAllTags_serviceException_returns500() throws Exception {
+        // Arrange
+        when(libraryService.getAllTags())
+                .thenThrow(new RuntimeException("Tags error"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/library/tags"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testDeleteLibraryItem_notFound_returns404() throws Exception {
+        // Arrange
+        doThrow(new RuntimeException("Item not found"))
+                .when(libraryService).deleteLibraryItem("999", "testuser");
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/library/999")
+                .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
 }

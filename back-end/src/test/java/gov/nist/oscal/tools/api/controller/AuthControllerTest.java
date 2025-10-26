@@ -397,4 +397,104 @@ class AuthControllerTest {
         verify(authService, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
         verify(jwtUtil, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
     }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testUpdateProfile_serviceException() throws Exception {
+        // Given
+        Map<String, String> updates = new HashMap<>();
+        updates.put("email", "invalid-email");
+
+        when(authService.updateProfile(eq("testuser"), any()))
+                .thenThrow(new RuntimeException("Invalid email format"));
+
+        // When & Then
+        mockMvc.perform(put("/api/auth/profile")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updates)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid email format"));
+
+        verify(authService, times(1)).updateProfile(eq("testuser"), any());
+    }
+
+    @Test
+    void testUploadLogo_notAuthenticated() throws Exception {
+        // Given
+        Map<String, String> logoData = new HashMap<>();
+        logoData.put("logo", "data:image/png;base64,iVBORw0KGgoAAAANS");
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/logo")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(logoData)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Not authenticated"));
+
+        verify(authService, never()).updateLogo(anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testUploadLogo_serviceException() throws Exception {
+        // Given
+        Map<String, String> logoData = new HashMap<>();
+        logoData.put("logo", "data:image/png;base64,iVBORw0KGgoAAAANS");
+
+        when(authService.updateLogo(eq("testuser"), anyString()))
+                .thenThrow(new RuntimeException("Failed to save logo"));
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/logo")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(logoData)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Failed to save logo"));
+
+        verify(authService, times(1)).updateLogo(eq("testuser"), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testUploadLogo_nullLogo() throws Exception {
+        // Given
+        Map<String, String> logoData = new HashMap<>();
+        // logo key is missing
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/logo")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(logoData)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Logo data is required"));
+
+        verify(authService, never()).updateLogo(anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGenerateServiceAccountToken_serviceException() throws Exception {
+        // Given
+        ServiceAccountTokenRequest request = new ServiceAccountTokenRequest();
+        request.setTokenName("CI/CD Token");
+        request.setExpirationDays(90);
+
+        when(authService.generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90)))
+                .thenThrow(new RuntimeException("Invalid expiration days"));
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/service-account-token")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid expiration days"));
+
+        verify(authService, times(1)).generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90));
+        verify(jwtUtil, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
+    }
 }
