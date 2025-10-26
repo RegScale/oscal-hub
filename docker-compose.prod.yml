@@ -1,0 +1,182 @@
+version: '3.8'
+
+# Production Docker Compose Configuration
+# This file demonstrates secure production deployment
+# DO NOT use this directly - copy and customize with your secrets
+
+services:
+  # PostgreSQL Database (production-grade)
+  postgres:
+    image: postgres:15-alpine
+    container_name: oscal-postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME:-oscal_production}
+      - POSTGRES_USER=${DB_USER:-oscal_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}  # REQUIRED: Set via .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - oscal-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-oscal_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OSCAL Tools Application
+  oscal-ux:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oscal-ux-prod
+    image: oscal-ux:production
+    ports:
+      - "${HTTP_PORT:-8080}:8080"   # HTTP port (use reverse proxy for HTTPS)
+      - "${FRONTEND_PORT:-3000}:3000" # Frontend port
+    environment:
+      # ========================================================================
+      # PRODUCTION CONFIGURATION
+      # ========================================================================
+
+      # Spring Boot Profile
+      - SPRING_PROFILES_ACTIVE=prod
+
+      # Database Configuration (PostgreSQL)
+      - DB_URL=jdbc:postgresql://postgres:5432/${DB_NAME:-oscal_production}
+      - DB_DRIVER=org.postgresql.Driver
+      - DB_USERNAME=${DB_USER:-oscal_user}
+      - DB_PASSWORD=${DB_PASSWORD}  # REQUIRED
+      - DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
+      # JWT Authentication (REQUIRED)
+      - JWT_SECRET=${JWT_SECRET}  # REQUIRED: Generate with: openssl rand -base64 64
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-3600000}
+
+      # CORS Configuration
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}  # REQUIRED: https://your-domain.com
+
+      # Security Headers (ENABLED)
+      - SECURITY_HEADERS_ENABLED=true
+      - SECURITY_REQUIRE_HTTPS=${SECURITY_REQUIRE_HTTPS:-true}
+      - HSTS_MAX_AGE=31536000
+      - CSP_DEFAULT_SRC='self'
+      - FRAME_OPTIONS_POLICY=DENY
+
+      # Rate Limiting (ENABLED)
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_LOGIN_ATTEMPTS=5
+      - RATE_LIMIT_LOGIN_DURATION=60
+      - RATE_LIMIT_REGISTRATION_ATTEMPTS=3
+      - RATE_LIMIT_REGISTRATION_DURATION=3600
+      - RATE_LIMIT_API_REQUESTS=100
+      - RATE_LIMIT_API_DURATION=60
+
+      # Development Features (DISABLED in production)
+      - H2_CONSOLE_ENABLED=false
+      - SWAGGER_ENABLED=false
+
+      # Logging
+      - LOG_LEVEL_ROOT=WARN
+      - LOG_LEVEL_OSCAL=INFO
+
+      # Azure Storage (optional)
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING:-}
+      - AZURE_STORAGE_CONTAINER_NAME=${AZURE_STORAGE_CONTAINER_NAME:-oscal-files}
+
+      # Java Options
+      - JAVA_OPTS=-Xmx2g -Xms1g -XX:+UseG1GC
+
+      # Frontend Configuration
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - oscal-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # Nginx Reverse Proxy (HTTPS termination)
+  nginx:
+    image: nginx:alpine
+    container_name: oscal-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL certificates
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - oscal-ux
+    restart: unless-stopped
+    networks:
+      - oscal-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  oscal-network:
+    driver: bridge
+
+# ============================================================================
+# PRODUCTION DEPLOYMENT CHECKLIST
+# ============================================================================
+#
+# Before deploying to production, ensure:
+#
+# 1. Set Required Secrets
+#    - JWT_SECRET: openssl rand -base64 64 | tr -d '\n' | head -c 64
+#    - DB_PASSWORD: openssl rand -base64 32 | tr -d '\n'
+#    - DB_USER: Create secure database username
+#
+# 2. Configure Domain
+#    - CORS_ALLOWED_ORIGINS: https://your-domain.com
+#    - NEXT_PUBLIC_API_URL: https://your-domain.com/api
+#
+# 3. SSL/TLS Certificates
+#    - Obtain certificates (Let's Encrypt recommended)
+#    - Place in ./nginx/ssl/ directory
+#    - Update nginx.conf with certificate paths
+#
+# 4. Database Backups
+#    - Configure automated PostgreSQL backups
+#    - Test restore procedures
+#
+# 5. Monitoring
+#    - Set up application monitoring
+#    - Configure log aggregation
+#    - Set up alerts for errors
+#
+# 6. Security Scan
+#    - Run security scanner on deployed application
+#    - Test all security headers present
+#    - Verify rate limiting works
+#
+# Example production deployment:
+#   1. Copy this file: cp docker-compose.prod.yml docker-compose.override.yml
+#   2. Create .env file with all secrets
+#   3. Deploy: docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# ============================================================================

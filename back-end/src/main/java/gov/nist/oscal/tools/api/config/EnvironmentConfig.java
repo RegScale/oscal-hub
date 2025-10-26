@@ -79,55 +79,123 @@ public class EnvironmentConfig {
 
     /**
      * Validates that production environment has appropriate security settings
+     * Counts warnings and errors for summary
      */
     private void validateProductionConfiguration() {
         if ("prod".equalsIgnoreCase(activeProfile) || "production".equalsIgnoreCase(activeProfile)) {
-            logger.info("Validating PRODUCTION environment configuration...");
+            logger.info("================================================================================");
+            logger.info("PRODUCTION ENVIRONMENT - Security Configuration Validation");
+            logger.info("================================================================================");
+
+            int criticalIssues = 0;
+            int warnings = 0;
 
             // Critical production checks
             if (h2ConsoleEnabled) {
-                logger.error("SECURITY WARNING: H2 Console is ENABLED in PRODUCTION. This should be disabled.");
+                logger.error("❌ CRITICAL: H2 Console is ENABLED in PRODUCTION");
+                logger.error("   Risk: Exposes database structure and allows direct SQL execution");
+                logger.error("   Fix: Set spring.h2.console.enabled=false");
+                criticalIssues++;
+            } else {
+                logger.info("✓ H2 Console disabled");
             }
 
             if (swaggerEnabled) {
-                logger.warn("SECURITY WARNING: Swagger UI is ENABLED in PRODUCTION. " +
-                        "Consider disabling or requiring authentication.");
+                logger.warn("⚠ WARNING: Swagger UI is ENABLED in PRODUCTION");
+                logger.warn("   Risk: Exposes API structure and endpoints");
+                logger.warn("   Fix: Set springdoc.swagger-ui.enabled=false or require authentication");
+                warnings++;
+            } else {
+                logger.info("✓ Swagger UI disabled");
             }
 
             if (!securityHeadersEnabled) {
-                logger.warn("SECURITY WARNING: Security headers are DISABLED in PRODUCTION. " +
-                        "Enable security headers for better protection.");
+                logger.warn("⚠ WARNING: Security headers are DISABLED");
+                logger.warn("   Risk: Vulnerable to XSS, clickjacking, MIME sniffing");
+                logger.warn("   Fix: Set security.headers.enabled=true");
+                warnings++;
+            } else {
+                logger.info("✓ Security headers enabled");
             }
 
             if (!httpsRequired) {
-                logger.warn("SECURITY WARNING: HTTPS is not REQUIRED in PRODUCTION. " +
-                        "Enable HTTPS to encrypt data in transit.");
+                logger.warn("⚠ WARNING: HTTPS is not REQUIRED");
+                logger.warn("   Risk: Data transmitted in cleartext, vulnerable to interception");
+                logger.warn("   Fix: Set security.require-https=true and configure SSL");
+                warnings++;
+            } else {
+                logger.info("✓ HTTPS required");
             }
 
             if (!rateLimitEnabled) {
-                logger.warn("SECURITY WARNING: Rate limiting is DISABLED in PRODUCTION. " +
-                        "Enable rate limiting to prevent abuse.");
+                logger.warn("⚠ WARNING: Rate limiting is DISABLED");
+                logger.warn("   Risk: Vulnerable to brute force and DoS attacks");
+                logger.warn("   Fix: Set rate.limit.enabled=true");
+                warnings++;
+            } else {
+                logger.info("✓ Rate limiting enabled");
             }
 
             if (!auditLoggingEnabled) {
-                logger.warn("SECURITY WARNING: Audit logging is DISABLED in PRODUCTION. " +
-                        "Enable audit logging for security monitoring.");
+                logger.warn("⚠ WARNING: Audit logging is DISABLED");
+                logger.warn("   Risk: Cannot detect or investigate security incidents");
+                logger.warn("   Fix: Set audit.logging.enabled=true");
+                warnings++;
+            } else {
+                logger.info("✓ Audit logging enabled");
             }
 
             // Validate database is not H2
             if (databaseUrl.contains("h2")) {
-                logger.error("CRITICAL: H2 database detected in PRODUCTION. " +
-                        "Use PostgreSQL or another production-grade database.");
+                logger.error("❌ CRITICAL: H2 database detected in PRODUCTION");
+                logger.error("   Risk: H2 is not production-grade, lacks enterprise features");
+                logger.error("   Fix: Use PostgreSQL, MySQL, or another production database");
+                criticalIssues++;
+            } else {
+                logger.info("✓ Production-grade database configured");
             }
 
-            logger.info("Production configuration validation complete.");
-        } else if ("staging".equalsIgnoreCase(activeProfile)) {
-            logger.info("Running in STAGING environment");
-            if (h2ConsoleEnabled) {
-                logger.warn("H2 Console is enabled in STAGING environment");
+            logger.info("================================================================================");
+            logger.info("Security Validation Summary:");
+            logger.info("  Critical Issues: {}", criticalIssues);
+            logger.info("  Warnings: {}", warnings);
+
+            if (criticalIssues > 0) {
+                logger.error("❌ PRODUCTION DEPLOYMENT BLOCKED: {} critical security issues found", criticalIssues);
+                logger.error("Fix critical issues before deploying to production");
+                throw new IllegalStateException(
+                        String.format("Production deployment blocked: %d critical security issues", criticalIssues));
+            } else if (warnings > 0) {
+                logger.warn("⚠ Production deployment allowed with {} warnings", warnings);
+                logger.warn("Recommended: Address all warnings before production use");
+            } else {
+                logger.info("✓ Production security configuration validated successfully");
             }
+            logger.info("================================================================================");
+
+        } else if ("staging".equalsIgnoreCase(activeProfile)) {
+            logger.info("================================================================================");
+            logger.info("STAGING ENVIRONMENT");
+            logger.info("================================================================================");
+            if (h2ConsoleEnabled) {
+                logger.warn("⚠ H2 Console enabled in STAGING (use for debugging only)");
+            }
+            if (swaggerEnabled) {
+                logger.info("Swagger UI enabled for API testing");
+            }
+            logger.info("================================================================================");
         } else {
-            logger.info("Running in DEVELOPMENT environment");
+            logger.info("================================================================================");
+            logger.info("DEVELOPMENT ENVIRONMENT");
+            logger.info("================================================================================");
+            logger.info("Running in development mode - security restrictions relaxed");
+            if (h2ConsoleEnabled) {
+                logger.info("H2 Console available at: /h2-console");
+            }
+            if (swaggerEnabled) {
+                logger.info("Swagger UI available at: /swagger-ui.html");
+            }
+            logger.info("================================================================================");
         }
     }
 

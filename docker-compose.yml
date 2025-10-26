@@ -19,6 +19,18 @@ services:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:8080/api
       - NEXT_PUBLIC_USE_MOCK=false
+
+      # Spring Boot profile
+      - SPRING_PROFILES_ACTIVE=dev  # Change to 'prod' for production deployment
+
+      # Security Configuration (override for production)
+      - SECURITY_HEADERS_ENABLED=false
+      - RATE_LIMIT_ENABLED=false
+
+      # IMPORTANT: Set these for production deployment
+      # - JWT_SECRET=your-production-secret-here
+      # - DB_PASSWORD=your-database-password-here
+      # - CORS_ALLOWED_ORIGINS=https://your-domain.com
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]

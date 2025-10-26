@@ -81,6 +81,16 @@ ENV PORT=3000
 ENV NEXT_PUBLIC_API_URL=http://localhost:8080/api
 ENV NEXT_PUBLIC_USE_MOCK=false
 
+# Spring Boot profile (default to production for Docker)
+ENV SPRING_PROFILES_ACTIVE=prod
+
+# Security configuration (required for production)
+ENV SECURITY_HEADERS_ENABLED=true
+ENV SECURITY_REQUIRE_HTTPS=false
+ENV RATE_LIMIT_ENABLED=true
+
+# Note: Set JWT_SECRET and DB_PASSWORD via docker-compose or runtime
+
 # Expose ports
 EXPOSE 3000 8080
 
