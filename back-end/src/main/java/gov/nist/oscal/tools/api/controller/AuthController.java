@@ -8,6 +8,7 @@ import gov.nist.oscal.tools.api.model.ServiceAccountTokenRequest;
 import gov.nist.oscal.tools.api.model.ServiceAccountTokenResponse;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthService;
+import gov.nist.oscal.tools.api.service.FileValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -33,6 +34,9 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private FileValidationService fileValidationService;
 
     @Operation(
         summary = "Register new user",
@@ -243,18 +247,8 @@ public class AuthController {
             String username = authentication.getName();
             String logo = logoData.get("logo");
 
-            if (logo == null || logo.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Logo data is required");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            // Validate that it's a data URL
-            if (!logo.startsWith("data:image/")) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Logo must be a valid data URL (data:image/...)");
-                return ResponseEntity.badRequest().body(error);
-            }
+            // Comprehensive logo validation
+            fileValidationService.validateBase64Logo(logo);
 
             User user = authService.updateLogo(username, logo);
 
@@ -263,10 +257,16 @@ public class AuthController {
             response.put("logo", user.getLogo());
 
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
+            // Validation error - return 400 Bad Request
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            // Other errors - return 500 Internal Server Error
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to upload logo: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 

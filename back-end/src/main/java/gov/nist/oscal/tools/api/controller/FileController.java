@@ -3,6 +3,7 @@ package gov.nist.oscal.tools.api.controller;
 import gov.nist.oscal.tools.api.model.FileUploadRequest;
 import gov.nist.oscal.tools.api.model.SavedFile;
 import gov.nist.oscal.tools.api.service.FileStorageService;
+import gov.nist.oscal.tools.api.service.FileValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,10 +24,12 @@ import java.util.Map;
 public class FileController {
 
     private final FileStorageService fileStorageService;
+    private final FileValidationService fileValidationService;
 
     @Autowired
-    public FileController(FileStorageService fileStorageService) {
+    public FileController(FileStorageService fileStorageService, FileValidationService fileValidationService) {
         this.fileStorageService = fileStorageService;
+        this.fileValidationService = fileValidationService;
     }
 
     @Operation(
@@ -113,9 +117,13 @@ public class FileController {
         @ApiResponse(responseCode = "500", description = "Failed to save file")
     })
     @PostMapping
-    public ResponseEntity<SavedFile> uploadFile(@Valid @RequestBody FileUploadRequest request, Principal principal) {
+    public ResponseEntity<?> uploadFile(@Valid @RequestBody FileUploadRequest request, Principal principal) {
         try {
             String fileName = request.getFileName() != null ? request.getFileName() : "document." + request.getFormat().toString().toLowerCase();
+
+            // Validate file before saving
+            fileValidationService.validateOscalFile(request.getContent(), fileName);
+
             SavedFile savedFile = fileStorageService.saveFile(
                 request.getContent(),
                 fileName,
@@ -124,8 +132,16 @@ public class FileController {
                 principal.getName()
             );
             return ResponseEntity.ok(savedFile);
+        } catch (IllegalArgumentException e) {
+            // Validation error - return 400 Bad Request with detailed message
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            // Other errors - return 500 Internal Server Error
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to upload file: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 }
