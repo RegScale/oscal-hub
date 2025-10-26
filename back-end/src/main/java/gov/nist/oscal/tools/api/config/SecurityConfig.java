@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.config;
 
 import gov.nist.oscal.tools.api.filter.RateLimitFilter;
+import gov.nist.oscal.tools.api.filter.SecurityHeadersFilter;
 import gov.nist.oscal.tools.api.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -37,6 +38,9 @@ public class SecurityConfig {
 
     @Autowired
     private RateLimitFilter rateLimitFilter;
+
+    @Autowired
+    private SecurityHeadersFilter securityHeadersFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -75,7 +79,9 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
-            // Add rate limiting filter first (before authentication)
+            // Add security headers filter first
+            .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
+            // Add rate limiting filter (after headers, before authentication)
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             // Add JWT authentication filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
