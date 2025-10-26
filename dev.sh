@@ -33,6 +33,22 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 
     # Log which environment variables are configured (without showing values)
+    if [ ! -z "$SPRING_PROFILES_ACTIVE" ]; then
+        echo -e "${GREEN}✓ Spring Profile: ${SPRING_PROFILES_ACTIVE}${NC}"
+    else
+        echo -e "${YELLOW}⚠ SPRING_PROFILES_ACTIVE not set, using default: dev${NC}"
+    fi
+
+    if [ ! -z "$JWT_SECRET" ]; then
+        JWT_LENGTH=${#JWT_SECRET}
+        echo -e "${GREEN}✓ JWT_SECRET is configured (length: ${JWT_LENGTH} characters)${NC}"
+        if [ $JWT_LENGTH -lt 32 ]; then
+            echo -e "${RED}  ⚠ WARNING: JWT secret is too short. Minimum 32 characters required.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ JWT_SECRET is not set (will use dev default)${NC}"
+    fi
+
     if [ ! -z "$AZURE_STORAGE_CONNECTION_STRING" ]; then
         echo -e "${GREEN}✓ AZURE_STORAGE_CONNECTION_STRING is set${NC}"
     else
@@ -40,13 +56,13 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     fi
 
     if [ ! -z "$AZURE_STORAGE_CONTAINER_NAME" ]; then
-        echo -e "${GREEN}✓ AZURE_STORAGE_CONTAINER_NAME is set to: ${AZURE_STORAGE_CONTAINER_NAME}${NC}"
+        echo -e "${GREEN}✓ AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME}${NC}"
     fi
 
     echo ""
 else
-    echo -e "${YELLOW}Note: .env file not found. Azure Blob Storage will not be available.${NC}"
-    echo -e "${YELLOW}To enable Azure storage: cp .env.example .env and add your connection string${NC}"
+    echo -e "${YELLOW}Note: .env file not found. Using default configuration.${NC}"
+    echo -e "${YELLOW}To customize: cp .env.example .env and configure your settings${NC}"
     echo ""
 fi
 
