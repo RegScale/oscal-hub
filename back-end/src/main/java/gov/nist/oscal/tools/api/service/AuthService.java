@@ -50,6 +50,9 @@ public class AuthService {
     @Autowired
     private LoginAttemptService loginAttemptService;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Validate password complexity using new PasswordValidationService
@@ -82,6 +85,10 @@ public class AuthService {
         user = userRepository.save(user);
 
         logger.info("New user registered: {} (ID: {})", user.getUsername(), user.getId());
+
+        // Log audit event
+        auditLogService.logEvent(gov.nist.oscal.tools.api.model.AuditEventType.AUTH_REGISTER_SUCCESS,
+            user.getUsername(), user.getId(), "SUCCESS", null, "REGISTER", null);
 
         // Generate token
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
@@ -138,6 +145,9 @@ public class AuthService {
 
             logger.info("Successful login for user: {} from IP: {}", username, ipAddress);
 
+            // Log audit event
+            auditLogService.logAuthSuccess(username, user.getId());
+
             // Generate token
             String token = jwtUtil.generateToken(userDetails);
 
@@ -149,9 +159,8 @@ public class AuthService {
 
             // Update user failed login tracking in database
             userRepository.findByUsername(username).ifPresent(user -> {
-                user.setFailedLoginAttempts(
-                    (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1
-                );
+                int newFailedAttempts = (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1;
+                user.setFailedLoginAttempts(newFailedAttempts);
                 user.setLastFailedLogin(LocalDateTime.now());
                 user.setLastFailedLoginIp(ipAddress);
 
@@ -162,6 +171,8 @@ public class AuthService {
                             loginAttemptService.getRemainingLockoutTime(username)
                         )
                     );
+                    // Log account lockout event
+                    auditLogService.logAccountLockout(username, user.getId(), newFailedAttempts);
                 }
 
                 userRepository.save(user);
@@ -172,6 +183,9 @@ public class AuthService {
 
             logger.warn("Failed login attempt for user: {} from IP: {} (remaining attempts: {})",
                 username, ipAddress, remainingAttempts);
+
+            // Log failed login audit event
+            auditLogService.logAuthFailure(username, "Invalid credentials");
 
             if (remainingAttempts > 0) {
                 throw new RuntimeException(
