@@ -86,6 +86,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
+                // Actuator endpoints - health and info are public (for load balancers), others require auth
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                .requestMatchers("/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").authenticated()
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
