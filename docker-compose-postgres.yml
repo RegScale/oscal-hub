@@ -1,0 +1,134 @@
+# ==============================================================================
+# PostgreSQL for Local Development
+# ==============================================================================
+# This file provides a standalone PostgreSQL instance for local development.
+# Use this instead of H2 database for production-like environment.
+#
+# Usage:
+#   Start:  docker-compose -f docker-compose-postgres.yml up -d
+#   Stop:   docker-compose -f docker-compose-postgres.yml down
+#   Logs:   docker-compose -f docker-compose-postgres.yml logs -f
+#   Clean:  docker-compose -f docker-compose-postgres.yml down -v
+# ==============================================================================
+
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: oscal-postgres-dev
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    ports:
+      - "5432:5432"  # PostgreSQL default port
+
+    environment:
+      # Database configuration
+      - POSTGRES_DB=oscal_dev
+      - POSTGRES_USER=oscal_user
+      - POSTGRES_PASSWORD=oscal_dev_password
+      # Use SCRAM-SHA-256 for better security
+      - POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256
+      # Set timezone
+      - TZ=America/New_York
+
+    volumes:
+      # Persist database data
+      - postgres_dev_data:/var/lib/postgresql/data
+      # Custom initialization scripts (if needed)
+      - ./back-end/src/main/resources/db/init:/docker-entrypoint-initdb.d:ro
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oscal_user -d oscal_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: pgAdmin for database management (web UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: oscal-pgadmin
+
+    ports:
+      - "5050:80"  # Access pgAdmin at http://localhost:5050
+
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@oscal.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# ==============================================================================
+# Connection Information
+# ==============================================================================
+#
+# PostgreSQL Connection Details:
+#   Host:     localhost
+#   Port:     5432
+#   Database: oscal_dev
+#   Username: oscal_user
+#   Password: oscal_dev_password
+#
+# JDBC URL for Spring Boot:
+#   jdbc:postgresql://localhost:5432/oscal_dev
+#
+# pgAdmin Access (optional):
+#   URL:      http://localhost:5050
+#   Email:    admin@oscal.local
+#   Password: admin
+#
+# To connect pgAdmin to PostgreSQL:
+#   1. Open http://localhost:5050
+#   2. Right-click "Servers" → Register → Server
+#   3. General tab: Name = "OSCAL Dev"
+#   4. Connection tab:
+#      - Host: postgres (use container name, not localhost)
+#      - Port: 5432
+#      - Database: oscal_dev
+#      - Username: oscal_user
+#      - Password: oscal_dev_password
+# ==============================================================================

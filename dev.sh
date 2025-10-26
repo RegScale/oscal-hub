@@ -73,8 +73,48 @@ fi
 
 echo -e "${BLUE}Starting OSCAL HUB...${NC}"
 echo ""
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo -e "${RED}✗ Docker is not running!${NC}"
+    echo -e "${YELLOW}Please start Docker Desktop and try again.${NC}"
+    exit 1
+fi
+
+# Check if PostgreSQL is running
+echo -e "${BLUE}Checking PostgreSQL database...${NC}"
+if docker ps --format '{{.Names}}' | grep -q '^oscal-postgres-dev$'; then
+    echo -e "${GREEN}✓ PostgreSQL is already running${NC}"
+else
+    echo -e "${YELLOW}PostgreSQL not running. Starting it now...${NC}"
+    docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" up -d
+
+    # Wait for PostgreSQL to be healthy
+    echo -e "${BLUE}Waiting for PostgreSQL to be ready...${NC}"
+    POSTGRES_READY=0
+    for i in {1..30}; do
+        if docker inspect oscal-postgres-dev --format='{{.State.Health.Status}}' 2>/dev/null | grep -q 'healthy'; then
+            POSTGRES_READY=1
+            break
+        fi
+        echo -n "."
+        sleep 1
+    done
+    echo ""
+
+    if [ $POSTGRES_READY -eq 1 ]; then
+        echo -e "${GREEN}✓ PostgreSQL is ready!${NC}"
+    else
+        echo -e "${RED}✗ PostgreSQL failed to start or is not healthy${NC}"
+        echo -e "${YELLOW}Check logs with: docker logs oscal-postgres-dev${NC}"
+        exit 1
+    fi
+fi
+
+echo ""
 echo "Backend will be available at: http://localhost:8080/api"
 echo "Frontend will be available at: http://localhost:3000"
+echo "pgAdmin will be available at: http://localhost:5050 (if started)"
 echo ""
 echo -e "${GREEN}Building backend...${NC}"
 (cd "$SCRIPT_DIR/back-end" && mvn clean compile)

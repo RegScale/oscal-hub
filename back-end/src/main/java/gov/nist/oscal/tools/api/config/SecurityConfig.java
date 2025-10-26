@@ -71,7 +71,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
@@ -85,7 +84,7 @@ public class SecurityConfig {
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             // Add JWT authentication filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            // Allow H2 console in frames (for development only)
+            // Security headers configuration
             .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.sameOrigin())
             );

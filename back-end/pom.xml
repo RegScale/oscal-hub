@@ -67,10 +67,18 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- PostgreSQL Driver (Production) -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 Database (Testing Only) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <scope>test</scope>
         </dependency>
 
         <!-- OSCAL Libraries -->
@@ -228,6 +236,43 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- OWASP Dependency-Check for security vulnerabilities -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>11.1.1</version>
+                <configuration>
+                    <!-- Fail build if CVSS score >= 8 (High severity) -->
+                    <failBuildOnCVSS>8</failBuildOnCVSS>
+
+                    <!-- Output formats -->
+                    <format>ALL</format>
+
+                    <!-- Suppression file for false positives -->
+                    <suppressionFile>${project.basedir}/dependency-check-suppressions.xml</suppressionFile>
+
+                    <!-- Don't fail if suppression file doesn't exist -->
+                    <failOnError>false</failOnError>
+
+                    <!-- Analyzers to enable -->
+                    <assemblyAnalyzerEnabled>true</assemblyAnalyzerEnabled>
+                    <jarAnalyzerEnabled>true</jarAnalyzerEnabled>
+                    <archiveAnalyzerEnabled>true</archiveAnalyzerEnabled>
+
+                    <!-- Include test dependencies in scan -->
+                    <skipTestScope>false</skipTestScope>
+
+                    <!-- NVD API configuration (optional - set NVD_API_KEY env var for better rate limits) -->
+                    <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+
+                    <!-- Cache location -->
+                    <dataDirectory>${project.build.directory}/dependency-check-data</dataDirectory>
+
+                    <!-- Output directory -->
+                    <outputDirectory>${project.build.directory}/dependency-check-report</outputDirectory>
+                </configuration>
             </plugin>
         </plugins>
     </build>

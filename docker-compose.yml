@@ -1,6 +1,55 @@
 version: '3.9'
 
 services:
+  # PostgreSQL Database (for development)
+  postgres:
+    image: postgres:18-alpine
+    container_name: oscal-postgres-dev
+
+    security_opt:
+      - no-new-privileges:true
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      - POSTGRES_DB=${DB_NAME:-oscal_dev}
+      - POSTGRES_USER=${DB_USERNAME:-oscal_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-oscal_dev_password}
+      - POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256
+      - TZ=America/New_York
+
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-oscal_user} -d ${DB_NAME:-oscal_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - oscal-network
+
+  # Full-stack OSCAL application
   oscal-ux:
     build:
       context: .
@@ -34,6 +83,13 @@ services:
       # Spring Boot profile
       - SPRING_PROFILES_ACTIVE=dev  # Change to 'prod' for production deployment
 
+      # PostgreSQL Database Configuration
+      - DB_URL=jdbc:postgresql://postgres:5432/${DB_NAME:-oscal_dev}
+      - DB_DRIVER=org.postgresql.Driver
+      - DB_USERNAME=${DB_USERNAME:-oscal_user}
+      - DB_PASSWORD=${DB_PASSWORD:-oscal_dev_password}
+      - DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
       # Security Configuration (override for production)
       - SECURITY_HEADERS_ENABLED=false
       - RATE_LIMIT_ENABLED=false
@@ -42,6 +98,11 @@ services:
       # - JWT_SECRET=your-production-secret-here
       # - DB_PASSWORD=your-database-password-here
       # - CORS_ALLOWED_ORIGINS=https://your-domain.com
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
@@ -116,4 +177,6 @@ volumes:
   oscal-data:
     driver: local
   oscal-logs:
+    driver: local
+  postgres_dev_data:
     driver: local
