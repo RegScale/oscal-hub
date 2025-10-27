@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
@@ -246,7 +246,7 @@ export default function Dashboard() {
         </nav>
 
         {/* Resources and Info Grid */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-16" aria-label="Resources and information">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-16" aria-label="Resources and information">
           {/* Getting Started */}
           <Card>
             <CardHeader>
@@ -289,9 +289,54 @@ export default function Dashboard() {
                 </div>
               </div>
               <p className="text-sm pt-2">
-                <span className="text-primary font-medium">Status:</span>{' '}
-                <span className="text-green-500">✓</span> Backend connected and ready
+                <span className="text-primary font-medium">System Health:</span>{' '}
+                <span className="text-green-500">✓</span> All systems operational
               </p>
+            </div>
+          </Card>
+
+          {/* Benefits Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-primary" />
+                Why Use OSCAL?
+              </CardTitle>
+            </CardHeader>
+            <div className="px-6 pb-6 space-y-3">
+              <p className="text-muted-foreground text-sm mb-3">
+                OSCAL transforms security compliance from manual documentation to machine-readable automation
+              </p>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start">
+                  <Shield className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Standardized Compliance</span>
+                    <p className="text-xs text-muted-foreground">Consistent format across all security frameworks and controls</p>
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <RefreshCw className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Automation Ready</span>
+                    <p className="text-xs text-muted-foreground">Machine-readable format enables automated validation and reporting</p>
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <Users className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Collaboration</span>
+                    <p className="text-xs text-muted-foreground">Share and reuse compliance data across teams and organizations</p>
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <Zap className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Faster ATO Process</span>
+                    <p className="text-xs text-muted-foreground">Reduce time to Authority to Operate with streamlined documentation</p>
+                  </div>
+                </li>
+              </ul>
             </div>
           </Card>
 

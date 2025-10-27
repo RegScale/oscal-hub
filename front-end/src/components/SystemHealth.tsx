@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Activity, Database, HardDrive, Cloud, Server, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Activity, Database, HardDrive, Cloud, Server, CheckCircle2, XCircle, AlertCircle, Loader2, BookOpen } from 'lucide-react';
 
 interface HealthComponent {
   status: 'UP' | 'DOWN' | 'UNKNOWN';
@@ -24,6 +24,22 @@ export function SystemHealth() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [apiDocsStatus, setApiDocsStatus] = useState<'UP' | 'DOWN' | 'UNKNOWN'>('UNKNOWN');
+
+  const checkApiDocs = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      // Check if the OpenAPI docs are accessible (more reliable than HEAD request)
+      const response = await fetch(`${apiUrl.replace('/api', '')}/v3/api-docs`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+
+      setApiDocsStatus(response.ok ? 'UP' : 'DOWN');
+    } catch (err) {
+      setApiDocsStatus('DOWN');
+    }
+  };
 
   const fetchHealth = async () => {
     try {
@@ -47,9 +63,13 @@ export function SystemHealth() {
 
   useEffect(() => {
     fetchHealth();
+    checkApiDocs();
 
     // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchHealth, 30000);
+    const interval = setInterval(() => {
+      fetchHealth();
+      checkApiDocs();
+    }, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -202,6 +222,30 @@ export function SystemHealth() {
               </div>
             </div>
           )}
+
+          {/* API Documentation Status */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">API Documentation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {apiDocsStatus === 'UP' && (
+                <a
+                  href="http://localhost:8080/swagger-ui/index.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Open
+                </a>
+              )}
+              {getStatusIcon(apiDocsStatus)}
+              <span className={`font-semibold ${getStatusColor(apiDocsStatus)}`}>
+                {apiDocsStatus}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Last Updated */}

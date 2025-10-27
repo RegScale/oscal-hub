@@ -51,6 +51,15 @@ class AuthServiceTest {
     @Mock
     private UserDetailsService userDetailsService;
 
+    @Mock
+    private PasswordValidationService passwordValidationService;
+
+    @Mock
+    private LoginAttemptService loginAttemptService;
+
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -93,6 +102,10 @@ class AuthServiceTest {
         });
         when(userDetailsService.loadUserByUsername("newuser")).thenReturn(mockUserDetails);
         when(jwtUtil.generateToken(any(UserDetails.class))).thenReturn("jwt-token-123");
+
+        // Mock password validation and audit log
+        doNothing().when(passwordValidationService).validatePassword(anyString(), anyString());
+        doNothing().when(auditLogService).logEvent(any(), anyString(), anyLong(), anyString(), any(), anyString(), any());
 
         // When
         AuthResponse response = authService.register(request);
@@ -155,6 +168,10 @@ class AuthServiceTest {
         request.setEmail("new@example.com");
         request.setPassword("weak"); // Too short, no special chars
 
+        // Mock password validation to throw exception
+        doThrow(new IllegalArgumentException("Password is too weak"))
+                .when(passwordValidationService).validatePassword(anyString(), anyString());
+
         // When & Then
         assertThrows(RuntimeException.class, () -> {
             authService.register(request);
@@ -181,6 +198,12 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(jwtUtil.generateToken(any(UserDetails.class))).thenReturn("jwt-token-456");
 
+        // Mock login attempt service
+        when(loginAttemptService.isAccountLocked(anyString())).thenReturn(false);
+        when(loginAttemptService.isIpLocked(anyString())).thenReturn(false);
+        doNothing().when(loginAttemptService).recordSuccessfulLogin(anyString(), anyString());
+        doNothing().when(auditLogService).logAuthSuccess(anyString(), anyLong());
+
         // When
         AuthResponse response = authService.login(request);
 
@@ -203,6 +226,10 @@ class AuthServiceTest {
 
         Authentication mockAuth = mock(Authentication.class);
         when(mockAuth.getPrincipal()).thenReturn(mockUserDetails);
+
+        // Mock login attempt service
+        when(loginAttemptService.isAccountLocked(anyString())).thenReturn(false);
+        when(loginAttemptService.isIpLocked(anyString())).thenReturn(false);
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(mockAuth);
@@ -307,6 +334,9 @@ class AuthServiceTest {
         when(passwordEncoder.encode("NewValidPassword123!")).thenReturn("newEncodedPassword");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // Mock password validation
+        doNothing().when(passwordValidationService).validatePassword(anyString(), anyString());
+
         // When
         User updatedUser = authService.updateProfile("testuser", updates);
 
@@ -322,6 +352,10 @@ class AuthServiceTest {
         updates.put("password", "weak");
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+
+        // Mock password validation to throw exception
+        doThrow(new IllegalArgumentException("Password is too weak"))
+                .when(passwordValidationService).validatePassword(anyString(), anyString());
 
         // When & Then
         assertThrows(RuntimeException.class, () -> {

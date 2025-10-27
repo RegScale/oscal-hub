@@ -52,8 +52,22 @@ body,
 .swagger-ui .info .title,
 .swagger-ui .info .title small,
 .swagger-ui .info p,
+.swagger-ui .info li,
+.swagger-ui .info ul,
+.swagger-ui .info ol,
+.swagger-ui .info h1,
+.swagger-ui .info h2,
+.swagger-ui .info h3,
+.swagger-ui .info h4,
+.swagger-ui .info .description,
 .swagger-ui .info a {
     color: var(--text-primary) !important;
+}
+
+/* Ensure list items are very visible */
+.swagger-ui .info li {
+    color: #f0f0f0 !important;
+    margin-bottom: 8px !important;
 }
 
 .swagger-ui .info a {
@@ -316,15 +330,29 @@ body,
 
 /* Markdown content */
 .swagger-ui .markdown p,
+.swagger-ui .markdown li,
+.swagger-ui .markdown ul,
+.swagger-ui .markdown ol,
+.swagger-ui .markdown h1,
+.swagger-ui .markdown h2,
+.swagger-ui .markdown h3,
+.swagger-ui .markdown h4,
 .swagger-ui .markdown pre,
 .swagger-ui .markdown code {
-    color: var(--text-secondary) !important;
+    color: #f0f0f0 !important;
 }
 
 .swagger-ui .markdown code {
     background-color: var(--bg-tertiary) !important;
     padding: 2px 6px !important;
     border-radius: 3px !important;
+    color: var(--accent-green) !important;
+}
+
+/* Make sure all description text is bright */
+.swagger-ui .renderedMarkdown p,
+.swagger-ui .renderedMarkdown li {
+    color: #f0f0f0 !important;
 }
 
 /* Version badge */

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen, Zap, Users, RefreshCw, Shield } from 'lucide-react';
 import { SystemHealth } from '@/components/SystemHealth';
 
 export function Hero() {
@@ -107,38 +107,66 @@ export function Hero() {
         </Card>
       </div>
 
-      {/* Why OSCAL Section */}
-      <div className="bg-muted/50 rounded-lg p-8 mb-16">
-        <h2 className="text-3xl font-bold mb-4 text-center">Why OSCAL?</h2>
-        <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-6">
-          OSCAL (Open Security Controls Assessment Language) is a standardized, machine-readable format
-          for security controls, enabling automation of compliance and risk management processes.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-          <div className="text-center">
-            <h3 className="font-semibold mb-2">Standardized</h3>
-            <p className="text-sm text-muted-foreground">
-              NIST-maintained standard for security controls
+      {/* Why OSCAL & System Health Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-16">
+        {/* Benefits Section */}
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center text-2xl">
+              <Zap className="h-6 w-6 mr-2 text-primary" />
+              Why Use OSCAL?
+            </CardTitle>
+          </CardHeader>
+          <div className="px-6 pb-6 space-y-4">
+            <p className="text-muted-foreground text-sm mb-4">
+              OSCAL transforms security compliance from manual documentation to machine-readable automation,
+              enabling faster and more reliable compliance processes.
             </p>
+            <ul className="space-y-4">
+              <li className="flex items-start">
+                <Shield className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-foreground block mb-1">Standardized Compliance</span>
+                  <p className="text-sm text-muted-foreground">
+                    Consistent format across all security frameworks and controls, eliminating inconsistencies
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start">
+                <RefreshCw className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-foreground block mb-1">Automation Ready</span>
+                  <p className="text-sm text-muted-foreground">
+                    Machine-readable format enables automated validation, reporting, and continuous compliance
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start">
+                <Users className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-foreground block mb-1">Team Collaboration</span>
+                  <p className="text-sm text-muted-foreground">
+                    Share and reuse compliance data across teams and organizations with ease
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start">
+                <Zap className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-foreground block mb-1">Faster ATO Process</span>
+                  <p className="text-sm text-muted-foreground">
+                    Reduce time to Authority to Operate with streamlined, automated documentation
+                  </p>
+                </div>
+              </li>
+            </ul>
           </div>
-          <div className="text-center">
-            <h3 className="font-semibold mb-2">Machine-Readable</h3>
-            <p className="text-sm text-muted-foreground">
-              Enables automation and tool integration
-            </p>
-          </div>
-          <div className="text-center">
-            <h3 className="font-semibold mb-2">Comprehensive</h3>
-            <p className="text-sm text-muted-foreground">
-              Covers the full compliance lifecycle
-            </p>
-          </div>
-        </div>
-      </div>
+        </Card>
 
-      {/* System Health Section */}
-      <div className="max-w-2xl mx-auto mb-16">
-        <SystemHealth />
+        {/* System Health Section */}
+        <div className="flex flex-col">
+          <SystemHealth />
+        </div>
       </div>
 
       {/* Deployment Options Section */}
