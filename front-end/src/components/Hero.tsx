@@ -177,17 +177,12 @@ export function Hero() {
                     Includes PostgreSQL and pgAdmin
                   </div>
                 </div>
-                <a
-                  href="https://raw.githubusercontent.com/usnistgov/oscal-cli/main/docs/LOCAL-DEPLOYMENT-GUIDE.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block"
-                >
+                <Link href="/guide/deployment/local" className="inline-block">
                   <Button className="w-full" variant="outline">
                     <BookOpen className="h-4 w-4 mr-2" />
                     View Local Deployment Guide
                   </Button>
-                </a>
+                </Link>
               </div>
             </CardHeader>
           </Card>
@@ -221,17 +216,12 @@ export function Hero() {
                     Auto database migrations on deploy
                   </div>
                 </div>
-                <a
-                  href="https://raw.githubusercontent.com/usnistgov/oscal-cli/main/docs/AZURE-DEPLOYMENT-GUIDE.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block"
-                >
+                <Link href="/guide/deployment/azure" className="inline-block">
                   <Button className="w-full" variant="outline">
                     <BookOpen className="h-4 w-4 mr-2" />
                     View Azure Deployment Guide
                   </Button>
-                </a>
+                </Link>
               </div>
             </CardHeader>
           </Card>

@@ -169,15 +169,15 @@ export function SystemHealth() {
                 <span className="font-medium">Disk Space</span>
               </div>
               <div className="flex items-center gap-2">
+                {(typeof health.components.diskSpace.details?.free === 'number') && (
+                  <span className="text-xs text-muted-foreground">
+                    {Math.round((health.components.diskSpace.details.free as number) / 1024 / 1024 / 1024)}GB free
+                  </span>
+                )}
                 {getStatusIcon(health.components.diskSpace.status)}
                 <span className={`font-semibold ${getStatusColor(health.components.diskSpace.status)}`}>
                   {health.components.diskSpace.status}
                 </span>
-                {(typeof health.components.diskSpace.details?.free === 'number') && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {Math.round((health.components.diskSpace.details.free as number) / 1024 / 1024 / 1024)}GB free
-                  </span>
-                )}
               </div>
             </div>
           )}
@@ -190,15 +190,15 @@ export function SystemHealth() {
                 <span className="font-medium">Cloud Storage</span>
               </div>
               <div className="flex items-center gap-2">
+                {(typeof health.components.azureBlobStorage.details?.storage === 'string') && (
+                  <span className="text-xs text-muted-foreground">
+                    ({health.components.azureBlobStorage.details.storage as string})
+                  </span>
+                )}
                 {getStatusIcon(health.components.azureBlobStorage.status)}
                 <span className={`font-semibold ${getStatusColor(health.components.azureBlobStorage.status)}`}>
                   {health.components.azureBlobStorage.status}
                 </span>
-                {(typeof health.components.azureBlobStorage.details?.storage === 'string') && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({health.components.azureBlobStorage.details.storage as string})
-                  </span>
-                )}
               </div>
             </div>
           )}
