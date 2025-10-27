@@ -1,5 +1,7 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
@@ -7,6 +9,7 @@ import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.LibraryService;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -44,6 +47,15 @@ class LibraryControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     // ========== CREATE LIBRARY ITEM TESTS ==========
 

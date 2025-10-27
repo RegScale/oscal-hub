@@ -3,6 +3,9 @@ package gov.nist.oscal.tools.api.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.service.ValidationRulesService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,15 @@ class ValidationRulesControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     @Test
     @WithMockUser(username = "testuser")

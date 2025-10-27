@@ -1,10 +1,13 @@
 package gov.nist.oscal.tools.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.ReusableElement;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.ReusableElementRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.service.ReusableElementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +47,15 @@ class ReusableElementControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     private User createMockUser(String username) {
         User user = new User();

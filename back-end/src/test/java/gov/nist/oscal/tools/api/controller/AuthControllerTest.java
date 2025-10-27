@@ -6,6 +6,8 @@
 package gov.nist.oscal.tools.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
@@ -13,6 +15,8 @@ import gov.nist.oscal.tools.api.model.RegisterRequest;
 import gov.nist.oscal.tools.api.model.ServiceAccountTokenRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthService;
+import gov.nist.oscal.tools.api.service.FileValidationService;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +55,18 @@ class AuthControllerTest {
 
     @MockBean
     private JwtUtil jwtUtil;
+
+    @MockBean
+    private FileValidationService fileValidationService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     private User testUser;
 
@@ -299,6 +315,8 @@ class AuthControllerTest {
         updatedUser.setUsername("testuser");
         updatedUser.setLogo("data:image/png;base64,iVBORw0KGgoAAAANS");
 
+        // Mock validation to not throw any exception (successful validation)
+        doNothing().when(fileValidationService).validateBase64Logo(anyString());
         when(authService.updateLogo(eq("testuser"), anyString())).thenReturn(updatedUser);
 
         // When & Then
@@ -310,6 +328,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Logo uploaded successfully"))
                 .andExpect(jsonPath("$.logo").value("data:image/png;base64,iVBORw0KGgoAAAANS"));
 
+        verify(fileValidationService, times(1)).validateBase64Logo(anyString());
         verify(authService, times(1)).updateLogo(eq("testuser"), anyString());
     }
 
@@ -320,6 +339,10 @@ class AuthControllerTest {
         Map<String, String> logoData = new HashMap<>();
         logoData.put("logo", "not-a-data-url");
 
+        // Mock validation to throw exception for invalid data URL
+        doThrow(new IllegalArgumentException("Logo must be a valid data URL (data:image/...)"))
+                .when(fileValidationService).validateBase64Logo("not-a-data-url");
+
         // When & Then
         mockMvc.perform(post("/api/auth/logo")
                 .with(csrf())
@@ -328,6 +351,7 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Logo must be a valid data URL (data:image/...)"));
 
+        verify(fileValidationService, times(1)).validateBase64Logo("not-a-data-url");
         verify(authService, never()).updateLogo(anyString(), anyString());
     }
 
@@ -338,6 +362,10 @@ class AuthControllerTest {
         Map<String, String> logoData = new HashMap<>();
         logoData.put("logo", "");
 
+        // Mock validation to throw exception for empty logo
+        doThrow(new IllegalArgumentException("Logo data is required"))
+                .when(fileValidationService).validateBase64Logo("");
+
         // When & Then
         mockMvc.perform(post("/api/auth/logo")
                 .with(csrf())
@@ -346,6 +374,7 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Logo data is required"));
 
+        verify(fileValidationService, times(1)).validateBase64Logo("");
         verify(authService, never()).updateLogo(anyString(), anyString());
     }
 
@@ -443,6 +472,8 @@ class AuthControllerTest {
         Map<String, String> logoData = new HashMap<>();
         logoData.put("logo", "data:image/png;base64,iVBORw0KGgoAAAANS");
 
+        // Mock validation to pass
+        doNothing().when(fileValidationService).validateBase64Logo(anyString());
         when(authService.updateLogo(eq("testuser"), anyString()))
                 .thenThrow(new RuntimeException("Failed to save logo"));
 
@@ -451,9 +482,10 @@ class AuthControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(logoData)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Failed to save logo"));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to upload logo: Failed to save logo"));
 
+        verify(fileValidationService, times(1)).validateBase64Logo(anyString());
         verify(authService, times(1)).updateLogo(eq("testuser"), anyString());
     }
 
@@ -464,6 +496,10 @@ class AuthControllerTest {
         Map<String, String> logoData = new HashMap<>();
         // logo key is missing
 
+        // Mock validation to throw exception for null logo
+        doThrow(new IllegalArgumentException("Logo data is required"))
+                .when(fileValidationService).validateBase64Logo(null);
+
         // When & Then
         mockMvc.perform(post("/api/auth/logo")
                 .with(csrf())
@@ -472,6 +508,7 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Logo data is required"));
 
+        verify(fileValidationService, times(1)).validateBase64Logo(null);
         verify(authService, never()).updateLogo(anyString(), anyString());
     }
 

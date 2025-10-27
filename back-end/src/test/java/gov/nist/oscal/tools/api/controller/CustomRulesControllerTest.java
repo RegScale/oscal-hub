@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.model.CustomRuleRequest;
 import gov.nist.oscal.tools.api.model.CustomRuleResponse;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.service.CustomRulesService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,15 @@ class CustomRulesControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     @Test
     @WithMockUser(username = "testuser")

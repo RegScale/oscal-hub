@@ -1,11 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthorizationTemplateRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthorizationTemplateService;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -43,6 +46,15 @@ class AuthorizationTemplateControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     private User createMockUser(String username) {
         User user = new User();

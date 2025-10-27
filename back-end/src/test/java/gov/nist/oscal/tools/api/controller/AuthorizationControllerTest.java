@@ -1,6 +1,8 @@
 package gov.nist.oscal.tools.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.User;
@@ -8,6 +10,7 @@ import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
 import gov.nist.oscal.tools.api.service.DigitalSignatureService;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +55,15 @@ class AuthorizationControllerTest {
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     private User createMockUser(String username) {
         User user = new User();

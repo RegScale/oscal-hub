@@ -1,11 +1,15 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.config.RateLimitConfig;
+import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.model.FileUploadRequest;
 import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.OscalModelType;
 import gov.nist.oscal.tools.api.model.SavedFile;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.FileStorageService;
+import gov.nist.oscal.tools.api.service.FileValidationService;
+import gov.nist.oscal.tools.api.service.RateLimitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -40,10 +44,22 @@ class FileControllerTest {
     private FileStorageService fileStorageService;
 
     @MockBean
+    private FileValidationService fileValidationService;
+
+    @MockBean
     private JwtUtil jwtUtil;
 
     @MockBean
     private UserDetailsService userDetailsService;
+
+    @MockBean
+    private RateLimitService rateLimitService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
+
+    @MockBean
+    private SecurityHeadersConfig securityHeadersConfig;
 
     // ========== LIST FILES TESTS ==========
 
