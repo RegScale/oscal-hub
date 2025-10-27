@@ -15,7 +15,7 @@ public class ComponentDefinitionResponse {
     private String description;
     private String version;
     private String oscalVersion;
-    private String azureBlobPath;
+    private String storagePath;
     private String filename;
     private Long fileSize;
     private Integer componentCount;
@@ -41,7 +41,7 @@ public class ComponentDefinitionResponse {
         response.setDescription(entity.getDescription());
         response.setVersion(entity.getVersion());
         response.setOscalVersion(entity.getOscalVersion());
-        response.setAzureBlobPath(entity.getAzureBlobPath());
+        response.setStoragePath(entity.getStoragePath());
         response.setFilename(entity.getFilename());
         response.setFileSize(entity.getFileSize());
         response.setComponentCount(entity.getComponentCount());
@@ -105,12 +105,12 @@ public class ComponentDefinitionResponse {
         this.oscalVersion = oscalVersion;
     }
 
-    public String getAzureBlobPath() {
-        return azureBlobPath;
+    public String getStoragePath() {
+        return storagePath;
     }
 
-    public void setAzureBlobPath(String azureBlobPath) {
-        this.azureBlobPath = azureBlobPath;
+    public void setStoragePath(String storagePath) {
+        this.storagePath = storagePath;
     }
 
     public String getFilename() {

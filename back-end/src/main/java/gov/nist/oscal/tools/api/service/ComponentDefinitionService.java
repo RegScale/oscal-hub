@@ -32,7 +32,7 @@ public class ComponentDefinitionService {
     private UserRepository userRepository;
 
     @Autowired
-    private AzureBlobService blobService;
+    private StorageService storageService;
 
     /**
      * Create a new component definition
@@ -58,20 +58,20 @@ public class ComponentDefinitionService {
             throw new RuntimeException("Component definition with UUID " + oscalUuid + " already exists");
         }
 
-        // Upload JSON content to Azure Blob Storage
-        String blobPath = blobService.buildBlobPath(username, filename);
+        // Upload JSON content to cloud storage (Azure or S3)
+        String storagePath = storageService.buildPath(username, filename);
         Map<String, String> metadata = new HashMap<>();
         metadata.put("title", title);
         metadata.put("oscalVersion", oscalVersion);
         metadata.put("uploadedBy", username);
 
-        blobService.uploadComponent(username, filename, jsonContent, metadata);
+        storageService.uploadComponent(username, filename, jsonContent, metadata);
 
         // Get file size
-        long fileSize = blobService.getFileSize(blobPath);
+        long fileSize = storageService.getFileSize(storagePath);
 
         // Create component definition entity
-        ComponentDefinition component = new ComponentDefinition(oscalUuid, title, blobPath, user);
+        ComponentDefinition component = new ComponentDefinition(oscalUuid, title, storagePath, user);
         component.setDescription(description);
         component.setVersion(version);
         component.setOscalVersion(oscalVersion);
@@ -131,8 +131,8 @@ public class ComponentDefinitionService {
 
         // Update JSON content if provided
         if (jsonContent != null) {
-            blobService.uploadComponent(username, component.getFilename(), jsonContent, null);
-            long fileSize = blobService.getFileSize(component.getAzureBlobPath());
+            storageService.uploadComponent(username, component.getFilename(), jsonContent, null);
+            long fileSize = storageService.getFileSize(component.getStoragePath());
             component.setFileSize(fileSize);
         }
 
@@ -164,7 +164,7 @@ public class ComponentDefinitionService {
      */
     public String getComponentContent(Long componentId) {
         ComponentDefinition component = getComponentDefinition(componentId);
-        return blobService.downloadComponent(component.getAzureBlobPath());
+        return storageService.downloadComponent(component.getStoragePath());
     }
 
     /**
@@ -219,8 +219,8 @@ public class ComponentDefinitionService {
             throw new RuntimeException("Only the creator can delete this component definition");
         }
 
-        // Delete from Azure Blob Storage
-        blobService.deleteComponent(component.getAzureBlobPath());
+        // Delete from cloud storage
+        storageService.deleteComponent(component.getStoragePath());
 
         // Delete from database
         componentRepository.delete(component);

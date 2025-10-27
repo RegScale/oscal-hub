@@ -72,7 +72,7 @@ class ComponentDefinitionControllerTest {
         component.setVersion("1.0.0");
         component.setOscalVersion("1.0.0");
         component.setFilename("test.json");
-        component.setAzureBlobPath("build/testuser/test.json");
+        component.setStoragePath("build/testuser/test.json");
         component.setOscalUuid("uuid-123");
         component.setComponentCount(5);
         component.setCapabilityCount(3);

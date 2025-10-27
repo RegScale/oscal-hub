@@ -9,6 +9,7 @@ import com.azure.storage.blob.models.BlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -23,11 +24,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Service for handling Azure Blob Storage operations for component definitions
+ * Azure Blob Storage implementation of StorageService
  * Uses a dedicated build container for OSCAL component builder files
+ *
+ * Activated when: storage.provider=azure (default for local development)
  */
 @Service
-public class AzureBlobService {
+@ConditionalOnProperty(name = "storage.provider", havingValue = "azure", matchIfMissing = true)
+public class AzureBlobService implements StorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureBlobService.class);
 
@@ -50,6 +54,10 @@ public class AzureBlobService {
 
     @PostConstruct
     public void init() {
+        logger.info("=================================================================");
+        logger.info("Storage Provider: Azure Blob Storage (storage.provider=azure)");
+        logger.info("=================================================================");
+
         // Check if Azure Storage is configured
         if (connectionString == null || connectionString.trim().isEmpty()) {
             logger.warn("Azure Blob Storage connection string not configured. Using local file storage for component builder.");
@@ -295,6 +303,16 @@ public class AzureBlobService {
     public String buildBlobPath(String username, String filename) {
         String sanitizedFileName = sanitizeFileName(filename);
         return String.format("%s/%s/%s", buildFolder, username, sanitizedFileName);
+    }
+
+    @Override
+    public String buildPath(String username, String filename) {
+        return buildBlobPath(username, filename);
+    }
+
+    @Override
+    public String getStorageProvider() {
+        return useLocalStorage ? "Local File System (Azure fallback)" : "Azure Blob Storage";
     }
 
     /**

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 /**
  * Represents an OSCAL Component Definition
- * Stores metadata about component definitions, actual JSON stored in Azure Blob Storage
+ * Stores metadata about component definitions, actual JSON stored in cloud storage (Azure/S3/Local)
  */
 @Entity
 @Table(name = "component_definitions")
@@ -30,8 +30,8 @@ public class ComponentDefinition {
     @Column(name = "oscal_version", length = 20)
     private String oscalVersion;
 
-    @Column(name = "azure_blob_path", nullable = false)
-    private String azureBlobPath; // Path in Azure: build/{username}/{filename}
+    @Column(name = "storage_path", nullable = false)
+    private String storagePath; // Path in cloud storage: build/{username}/{filename}
 
     @Column(name = "filename", nullable = false)
     private String filename; // Original filename
@@ -68,11 +68,11 @@ public class ComponentDefinition {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public ComponentDefinition(String oscalUuid, String title, String azureBlobPath, User createdBy) {
+    public ComponentDefinition(String oscalUuid, String title, String storagePath, User createdBy) {
         this();
         this.oscalUuid = oscalUuid;
         this.title = title;
-        this.azureBlobPath = azureBlobPath;
+        this.storagePath = storagePath;
         this.createdBy = createdBy;
         this.lastUpdatedBy = createdBy;
     }
@@ -126,12 +126,12 @@ public class ComponentDefinition {
         this.oscalVersion = oscalVersion;
     }
 
-    public String getAzureBlobPath() {
-        return azureBlobPath;
+    public String getStoragePath() {
+        return storagePath;
     }
 
-    public void setAzureBlobPath(String azureBlobPath) {
-        this.azureBlobPath = azureBlobPath;
+    public void setStoragePath(String storagePath) {
+        this.storagePath = storagePath;
     }
 
     public String getFilename() {

@@ -29,9 +29,9 @@ public interface ComponentDefinitionRepository extends JpaRepository<ComponentDe
     List<ComponentDefinition> findByTitleContainingIgnoreCase(String title);
 
     /**
-     * Find component definitions by Azure blob path
+     * Find component definitions by storage path
      */
-    Optional<ComponentDefinition> findByAzureBlobPath(String azureBlobPath);
+    Optional<ComponentDefinition> findByStoragePath(String storagePath);
 
     /**
      * Find recently created component definitions

@@ -541,9 +541,9 @@ export function Hero() {
       <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg p-8 mb-16">
         <h2 className="text-3xl font-bold mb-6 text-center">Deployment Options</h2>
         <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-8">
-          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Azure for production
+          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Azure/AWS for production
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {/* CLI Deployment */}
           <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
             <CardHeader className="space-y-4">
@@ -655,6 +655,45 @@ export function Hero() {
                   <Button className="w-full" variant="outline">
                     <BookOpen className="h-4 w-4 mr-2" />
                     View Azure Deployment Guide
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* AWS Deployment */}
+          <Card className="border-orange-200 dark:border-orange-800 hover:shadow-lg transition-shadow">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-orange-500/10 w-fit">
+                <Cloud className="h-8 w-8 text-orange-500" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl mb-2">AWS Deployment</CardTitle>
+                <CardDescription className="text-base mb-4">
+                  Deploy to AWS with Elastic Beanstalk, S3, and RDS. Production-ready with auto-scaling and multi-AZ support.
+                </CardDescription>
+                <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    Auto-scaling with Elastic Beanstalk
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    S3 storage with lifecycle policies
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    Multi-AZ RDS PostgreSQL
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    CloudWatch monitoring & alerts
+                  </div>
+                </div>
+                <Link href="/guide/deployment/aws" className="inline-block">
+                  <Button className="w-full" variant="outline">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    View AWS Deployment Guide
                   </Button>
                 </Link>
               </div>
