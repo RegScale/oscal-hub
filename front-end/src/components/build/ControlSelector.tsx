@@ -296,20 +296,27 @@ export function ControlSelector({ onAddControls, onClose }: ControlSelectorProps
     }
   };
 
-  const parseCatalogControls = (catalogData: any) => {
+  const parseCatalogControls = (catalogData: Record<string, unknown>) => {
     // Try to parse OSCAL catalog structure
-    const catalog = catalogData.catalog || catalogData.profile;
-    if (!catalog) return NIST_800_53_CONTROLS;
+    const catalogRaw = catalogData.catalog || catalogData.profile;
+    if (!catalogRaw || typeof catalogRaw !== 'object') return NIST_800_53_CONTROLS;
 
-    const groups = catalog.groups || [];
-    return groups.map((group: any) => ({
-      family: group.id || group.title?.substring(0, 2).toUpperCase() || 'XX',
-      name: group.title || 'Unknown Family',
-      controls: (group.controls || []).map((control: any) => ({
-        id: control.id,
-        title: control.title || control.id,
-      })),
-    })).filter((group: any) => group.controls.length > 0);
+    const catalog = catalogRaw as Record<string, unknown>;
+    const groups = (catalog.groups as unknown[]) || [];
+    return groups.map((groupRaw) => {
+      const group = groupRaw as Record<string, unknown>;
+      return {
+        family: (group.id as string) || (group.title as string)?.substring(0, 2).toUpperCase() || 'XX',
+        name: (group.title as string) || 'Unknown Family',
+        controls: ((group.controls as unknown[]) || []).map((controlRaw) => {
+          const control = controlRaw as Record<string, unknown>;
+          return {
+            id: control.id as string,
+            title: (control.title as string) || (control.id as string),
+          };
+        }),
+      };
+    }).filter((group) => group.controls.length > 0);
   };
 
   const toggleFamily = (family: string) => {

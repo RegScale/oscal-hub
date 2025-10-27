@@ -22,12 +22,13 @@ import { Footer } from '@/components/Footer';
 import { ElementLibrary } from '@/components/build/ElementLibrary';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
 import { ComponentList } from '@/components/build/ComponentList';
+import type { ComponentDefinitionResponse } from '@/types/oscal';
 
 export default function BuildPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('components');
-  const [editingComponent, setEditingComponent] = useState<any>(null);
+  const [editingComponent, setEditingComponent] = useState<ComponentDefinitionResponse | null>(null);
 
   if (isLoading) {
     return (

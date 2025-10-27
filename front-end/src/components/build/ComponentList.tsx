@@ -110,7 +110,7 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
     setLoadingJson(true);
 
     try {
-      let json = await apiClient.getComponentDefinitionContent(component.id);
+      const json = await apiClient.getComponentDefinitionContent(component.id);
 
       // If we got a string, it might already be formatted JSON
       if (typeof json === 'string') {
@@ -129,10 +129,10 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
 
   const handleDownload = async (component: ComponentDefinitionResponse) => {
     try {
-      let json = await apiClient.getComponentDefinitionContent(component.id);
+      const json = await apiClient.getComponentDefinitionContent(component.id);
 
       // If we got a string, parse it first to handle any escaped characters
-      let jsonObject: any;
+      let jsonObject: unknown;
       if (typeof json === 'string') {
         try {
           jsonObject = JSON.parse(json);

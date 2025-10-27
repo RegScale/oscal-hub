@@ -19,11 +19,41 @@ set -e
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Function to kill processes using a specific port
+kill_port() {
+  local port=$1
+  echo -e "${YELLOW}🔍 Checking for processes on port ${port}...${NC}"
+
+  # Find process IDs using the port (macOS and Linux compatible)
+  local pids=$(lsof -ti:$port 2>/dev/null || true)
+
+  if [ -n "$pids" ]; then
+    echo -e "${RED}⚠️  Found processes using port ${port}: $pids${NC}"
+    echo -e "${YELLOW}🔨 Killing processes...${NC}"
+    echo "$pids" | xargs kill -9 2>/dev/null || true
+    sleep 1
+    echo -e "${GREEN}✓ Port ${port} cleared${NC}"
+  else
+    echo -e "${GREEN}✓ Port ${port} is available${NC}"
+  fi
+}
 
 echo -e "${BLUE}=====================================${NC}"
 echo -e "${BLUE}  OSCAL Tools - Start All Services  ${NC}"
 echo -e "${BLUE}=====================================${NC}"
+echo
+
+# Step 0: Clean up ports
+echo -e "${YELLOW}🧹 Cleaning up ports...${NC}"
+kill_port 3000
+kill_port 8080
+kill_port 5432
+kill_port 5050
+kill_port 9090
+kill_port 3001
 echo
 
 # Step 1: Start main application stack

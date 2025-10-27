@@ -72,14 +72,14 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Create non-root user and group (UID/GID 10001)
+# Create non-root user and group (UID/GID 10001) with home directory
 RUN groupadd -g 10001 oscalgroup && \
-    useradd -u 10001 -g oscalgroup -s /bin/false -M oscaluser
+    useradd -u 10001 -g oscalgroup -s /bin/false -m -d /home/oscaluser oscaluser
 
-# Create app directory with proper ownership
+# Create app directory and user directories with proper ownership
 WORKDIR /app
-RUN mkdir -p /app/data /app/logs /app/backend /app/frontend && \
-    chown -R oscaluser:oscalgroup /app
+RUN mkdir -p /app/data /app/logs /app/backend /app/frontend /home/oscaluser/.oscal-hub/files && \
+    chown -R oscaluser:oscalgroup /app /home/oscaluser
 
 # Copy backend JAR with proper ownership
 COPY --from=backend-builder --chown=oscaluser:oscalgroup \

@@ -117,7 +117,7 @@ export function ComponentBuilderWizard() {
     // Create a single component from the metadata
     const componentUuid = crypto.randomUUID();
 
-    const oscalDoc: any = {
+    const oscalDoc: Record<string, unknown> = {
       'component-definition': {
         uuid: crypto.randomUUID(),
         metadata: {
@@ -460,7 +460,7 @@ export function ComponentBuilderWizard() {
             <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-2">No controls selected</p>
             <p className="text-sm text-muted-foreground mb-4 text-center">
-              You haven't selected any controls in Step 2. Control implementations are optional.
+              You haven&apos;t selected any controls in Step 2. Control implementations are optional.
             </p>
             <Button onClick={() => setCurrentStep(2)} variant="outline">
               Go Back to Select Controls

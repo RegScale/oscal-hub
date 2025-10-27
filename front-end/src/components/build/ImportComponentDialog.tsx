@@ -19,7 +19,7 @@ interface ImportComponentDialogProps {
 export function ImportComponentDialog({ open, onOpenChange, onSuccess }: ImportComponentDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [jsonContent, setJsonContent] = useState<any>(null);
+  const [jsonContent, setJsonContent] = useState<Record<string, unknown> | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -68,8 +68,11 @@ export function ImportComponentDialog({ open, onOpenChange, onSuccess }: ImportC
       // Count control implementations
       let controlCount = 0;
       if (compDef['control-implementations']) {
-        compDef['control-implementations'].forEach((ci: any) => {
-          controlCount += ci['implemented-requirements']?.length || 0;
+        compDef['control-implementations'].forEach((ci: Record<string, unknown>) => {
+          const implReqs = ci['implemented-requirements'];
+          if (Array.isArray(implReqs)) {
+            controlCount += implReqs.length;
+          }
         });
       }
 
@@ -147,7 +150,7 @@ export function ImportComponentDialog({ open, onOpenChange, onSuccess }: ImportC
       dataTransfer.items.add(file);
       if (fileInputRef.current) {
         fileInputRef.current.files = dataTransfer.files;
-        handleFileSelect({ target: { files: dataTransfer.files } } as any);
+        handleFileSelect({ target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
       }
     }
   };

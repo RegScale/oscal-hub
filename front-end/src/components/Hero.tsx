@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen } from 'lucide-react';
+import { SystemHealth } from '@/components/SystemHealth';
 
 export function Hero() {
   return (
@@ -133,6 +134,11 @@ export function Hero() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* System Health Section */}
+      <div className="max-w-2xl mx-auto mb-16">
+        <SystemHealth />
       </div>
 
       {/* Deployment Options Section */}

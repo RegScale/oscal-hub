@@ -667,7 +667,7 @@ export default function AuthorizationDetailPage() {
               {isEditing ? (
                 <div className="space-y-3">
                   {editConditions.length === 0 ? (
-                    <p className="text-sm text-slate-400">No conditions. Click "Add Condition" to add one.</p>
+                    <p className="text-sm text-slate-400">No conditions. Click &quot;Add Condition&quot; to add one.</p>
                   ) : (
                     editConditions.map((condition, index) => (
                       <Card

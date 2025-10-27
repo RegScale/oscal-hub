@@ -79,7 +79,7 @@ export function AuthorizationWizard({
 
   // Digital Signature
   const [draftAuthorizationId, setDraftAuthorizationId] = useState<number | null>(null);
-  const [signatureResult, setSignatureResult] = useState<any>(null);
+  const [signatureResult, setSignatureResult] = useState<unknown>(null);
 
   // Load SSP visualization when SSP is selected
   useEffect(() => {

@@ -132,7 +132,7 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     setLoadError(null);
 
     try {
-      let oscalJson: any = await apiClient.getComponentDefinitionContent(componentId);
+      let oscalJson: unknown = await apiClient.getComponentDefinitionContent(componentId);
 
       // If we got a string, parse it as JSON
       if (typeof oscalJson === 'string') {
@@ -146,65 +146,73 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
       console.log('Loaded OSCAL JSON:', oscalJson);
 
       // Validate the structure
-      if (!oscalJson) {
+      if (!oscalJson || typeof oscalJson !== 'object') {
         throw new Error('No OSCAL data returned from server');
       }
 
-      const compDef = oscalJson['component-definition'];
+      const oscalObj = oscalJson as Record<string, unknown>;
+      const compDefRaw = oscalObj['component-definition'];
 
-      if (!compDef) {
-        console.error('OSCAL JSON structure:', Object.keys(oscalJson));
-        throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalJson).join(', ')}`);
+      if (!compDefRaw || typeof compDefRaw !== 'object') {
+        console.error('OSCAL JSON structure:', Object.keys(oscalObj));
+        throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalObj).join(', ')}`);
       }
 
-      if (!compDef.metadata) {
+      const compDef = compDefRaw as Record<string, unknown>;
+
+      if (!compDef.metadata || typeof compDef.metadata !== 'object') {
         throw new Error('Invalid OSCAL structure: missing metadata');
       }
 
+      const metadata = compDef.metadata as Record<string, unknown>;
+
       // Load metadata
       setMetadata({
-        title: compDef.metadata.title || '',
-        version: compDef.metadata.version || '1.0.0',
-        oscalVersion: compDef.metadata['oscal-version'] || '1.1.3',
-        description: compDef.metadata.description || '',
+        title: (metadata.title as string) || '',
+        version: (metadata.version as string) || '1.0.0',
+        oscalVersion: (metadata['oscal-version'] as string) || '1.1.3',
+        description: (metadata.description as string) || '',
       });
 
       // Load components and capabilities
       const loadedItems: ComponentOrCapability[] = [];
       const loadedAssignments: ControlAssignment[] = [];
       const loadedDetails: ImplementationDetail[] = [];
-      let allControls: Set<string> = new Set();
+      const allControls: Set<string> = new Set();
       let catalogSource: string | null = null;
 
       // Process components
       if (compDef.components && Array.isArray(compDef.components)) {
-        for (const comp of compDef.components) {
+        for (const compRaw of compDef.components) {
+          const comp = compRaw as Record<string, unknown>;
           loadedItems.push({
-            uuid: comp.uuid,
+            uuid: comp.uuid as string,
             type: 'component',
-            componentType: comp.type,
-            title: comp.title,
-            description: comp.description || '',
+            componentType: comp.type as string,
+            title: comp.title as string,
+            description: (comp.description as string) || '',
           });
 
           // Extract control implementations
           if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
-            for (const controlImpl of comp['control-implementations']) {
-              if (!catalogSource) catalogSource = controlImpl.source;
+            for (const controlImplRaw of comp['control-implementations']) {
+              const controlImpl = controlImplRaw as Record<string, unknown>;
+              if (!catalogSource) catalogSource = controlImpl.source as string;
 
               const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements']) {
-                for (const req of controlImpl['implemented-requirements']) {
-                  const controlId = req['control-id'];
+              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+                for (const reqRaw of controlImpl['implemented-requirements']) {
+                  const req = reqRaw as Record<string, unknown>;
+                  const controlId = req['control-id'] as string;
                   controlIds.push(controlId);
                   allControls.add(controlId);
 
                   // Store implementation details
                   if (req.description) {
                     loadedDetails.push({
-                      componentUuid: comp.uuid,
+                      componentUuid: comp.uuid as string,
                       controlId,
-                      description: req.description,
+                      description: req.description as string,
                     });
                   }
                 }
@@ -212,7 +220,7 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
 
               if (controlIds.length > 0) {
                 loadedAssignments.push({
-                  componentUuid: comp.uuid,
+                  componentUuid: comp.uuid as string,
                   controlIds,
                 });
               }
@@ -223,32 +231,35 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
 
       // Process capabilities
       if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
-        for (const cap of compDef.capabilities) {
+        for (const capRaw of compDef.capabilities) {
+          const cap = capRaw as Record<string, unknown>;
           loadedItems.push({
-            uuid: cap.uuid,
+            uuid: cap.uuid as string,
             type: 'capability',
-            name: cap.name,
-            title: cap.name || '',
-            description: cap.description || '',
+            name: cap.name as string,
+            title: (cap.name as string) || '',
+            description: (cap.description as string) || '',
           });
 
           // Extract control implementations for capabilities
           if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
-            for (const controlImpl of cap['control-implementations']) {
-              if (!catalogSource) catalogSource = controlImpl.source;
+            for (const controlImplRaw of cap['control-implementations']) {
+              const controlImpl = controlImplRaw as Record<string, unknown>;
+              if (!catalogSource) catalogSource = controlImpl.source as string;
 
               const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements']) {
-                for (const req of controlImpl['implemented-requirements']) {
-                  const controlId = req['control-id'];
+              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+                for (const reqRaw of controlImpl['implemented-requirements']) {
+                  const req = reqRaw as Record<string, unknown>;
+                  const controlId = req['control-id'] as string;
                   controlIds.push(controlId);
                   allControls.add(controlId);
 
                   if (req.description) {
                     loadedDetails.push({
-                      componentUuid: cap.uuid,
+                      componentUuid: cap.uuid as string,
                       controlId,
-                      description: req.description,
+                      description: req.description as string,
                     });
                   }
                 }
@@ -256,7 +267,7 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
 
               if (controlIds.length > 0) {
                 loadedAssignments.push({
-                  componentUuid: cap.uuid,
+                  componentUuid: cap.uuid as string,
                   controlIds,
                 });
               }
@@ -401,25 +412,23 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
   };
 
   const generateOSCALJson = () => {
-    const oscalDoc: any = {
-      'component-definition': {
-        uuid: crypto.randomUUID(),
-        metadata: {
-          title: metadata.title,
-          'last-modified': new Date().toISOString(),
-          version: metadata.version,
-          'oscal-version': metadata.oscalVersion,
-          ...(metadata.description && { description: metadata.description }),
-        },
-      }
+    const compDefObj: Record<string, unknown> = {
+      uuid: crypto.randomUUID(),
+      metadata: {
+        title: metadata.title,
+        'last-modified': new Date().toISOString(),
+        version: metadata.version,
+        'oscal-version': metadata.oscalVersion,
+        ...(metadata.description && { description: metadata.description }),
+      },
     };
 
     // Add components
     const components = componentsAndCapabilities.filter(item => item.type === 'component');
     if (components.length > 0) {
-      oscalDoc['component-definition'].components = components.map(comp => {
+      compDefObj.components = components.map(comp => {
         const assignment = controlAssignments.find(ca => ca.componentUuid === comp.uuid);
-        const compObj: any = {
+        const compObj: Record<string, unknown> = {
           uuid: comp.uuid,
           type: comp.componentType || 'software',
           title: comp.title,
@@ -454,9 +463,9 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     // Add capabilities
     const capabilities = componentsAndCapabilities.filter(item => item.type === 'capability');
     if (capabilities.length > 0) {
-      oscalDoc['component-definition'].capabilities = capabilities.map(cap => {
+      compDefObj.capabilities = capabilities.map(cap => {
         const assignment = controlAssignments.find(ca => ca.componentUuid === cap.uuid);
-        const capObj: any = {
+        const capObj: Record<string, unknown> = {
           uuid: cap.uuid,
           name: cap.name || cap.title,
           description: cap.description || 'No description provided',
@@ -487,7 +496,9 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
       });
     }
 
-    return oscalDoc;
+    return {
+      'component-definition': compDefObj
+    };
   };
 
   const handleSave = async () => {

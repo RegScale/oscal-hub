@@ -496,7 +496,7 @@ catalog:
     it('should throw error for unsupported format', () => {
       const content = 'some content';
 
-      expect(() => analyzeCatalog(content, 'unsupported' as any)).toThrow('Unsupported format');
+      expect(() => analyzeCatalog(content, 'unsupported' as 'xml' | 'json' | 'yaml')).toThrow('Unsupported format');
     });
   });
 

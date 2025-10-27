@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, AlertCircle } from 'lucide-react';
+import { ArrowLeft, BarChart3, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData, ProfileVisualizationData, SarVisualizationData } from '@/types/oscal';
 import { apiClient } from '@/lib/api-client';
 
-export default function VisualizePage() {
+function VisualizePageContent() {
   const searchParams = useSearchParams();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -564,5 +564,20 @@ export default function VisualizePage() {
         </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function VisualizePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading visualization page...</p>
+        </div>
+      </div>
+    }>
+      <VisualizePageContent />
+    </Suspense>
   );
 }
