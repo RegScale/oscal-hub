@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import {
   FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen,
   Zap, Users, RefreshCw, Shield, AlertCircle, Clock, FileX, Mail, CheckCircle2, XCircle,
-  Building2, Briefcase, Code, UserCheck, Play, HelpCircle, ChevronDown, Award, Github, Star
+  Building2, Briefcase, Code, UserCheck, Play, HelpCircle, ChevronDown, Award, Github, Star,
+  Terminal
 } from 'lucide-react';
 import { SystemHealth } from '@/components/SystemHealth';
 import { useState } from 'react';
@@ -23,9 +24,12 @@ export function Hero() {
         <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
           Welcome to OSCAL Hub
         </h1>
-        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+        <p className="text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
           Your comprehensive platform for working with OSCAL (Open Security Controls Assessment Language) documents.
           Validate, convert, and manage security compliance content with ease.
+        </p>
+        <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-8">
+          100% Free & Open Source
         </p>
         <div className="flex gap-4 justify-center">
           <Link href="/login">
@@ -116,8 +120,12 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
+      {/* Features Section */}
+      <div className="mb-16">
+        <h2 className="text-3xl font-bold text-center mb-8">Features</h2>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         <Card className="border-primary/20">
           <CardHeader className="space-y-4">
             <div className="p-3 rounded-lg bg-primary/10 w-fit">
@@ -187,6 +195,7 @@ export function Hero() {
             </div>
           </CardHeader>
         </Card>
+        </div>
       </div>
 
       {/* Before/After Comparison Section */}
@@ -205,7 +214,7 @@ export function Hero() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <XCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">40+ hours writing SSPs in Word</span>
+                  <span className="text-muted-foreground">1000+ hours writing SSPs in Word</span>
                 </li>
                 <li className="flex items-start">
                   <XCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -526,35 +535,54 @@ export function Hero() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">10,000+</div>
-            <div className="text-sm text-muted-foreground">Documents Validated</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">95%</div>
-            <div className="text-sm text-muted-foreground">Error Reduction</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">500+</div>
-            <div className="text-sm text-muted-foreground">Active Users</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">2,000+</div>
-            <div className="text-sm text-muted-foreground">Hours Saved</div>
-          </div>
-        </div>
       </div>
 
       {/* Deployment Options Section */}
       <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg p-8 mb-16">
         <h2 className="text-3xl font-bold mb-6 text-center">Deployment Options</h2>
         <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-8">
-          Choose how you want to run OSCAL Hub - locally on your laptop for testing, or deploy to Azure for production use
+          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Azure for production
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* CLI Deployment */}
+          <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-green-500/10 w-fit">
+                <Terminal className="h-8 w-8 text-green-500" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl mb-2">CLI Mode</CardTitle>
+                <CardDescription className="text-base mb-4">
+                  Standalone command-line tool for automation, scripting, and CI/CD pipelines. No database or web interface required.
+                </CardDescription>
+                <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    Free to use
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    2-minute installation
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    Perfect for CI/CD and batch processing
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✓</span>
+                    Works 100% offline
+                  </div>
+                </div>
+                <Link href="/guide/deployment/cli" className="inline-block">
+                  <Button className="w-full" variant="outline">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    View CLI Deployment Guide
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+          </Card>
+
           {/* Local Deployment */}
           <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
             <CardHeader className="space-y-4">
@@ -635,7 +663,7 @@ export function Hero() {
         </div>
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            Both deployment options include the full feature set of OSCAL Hub
+            All deployment options provide full OSCAL validation, conversion, and resolution capabilities
           </p>
         </div>
       </div>
@@ -726,37 +754,6 @@ export function Hero() {
               </CardContent>
             </Card>
           ))}
-        </div>
-      </div>
-
-      {/* Trust Badges Section */}
-      <div className="bg-muted/30 rounded-lg p-8 mb-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center justify-items-center max-w-5xl mx-auto">
-          <div className="flex flex-col items-center">
-            <Shield className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">NIST OSCAL Project</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <Award className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">NIST 800-53 Rev 5</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <CheckCircle2 className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">FedRAMP Ready</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <Github className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">Open Source</p>
-            <p className="text-xs text-muted-foreground">CC0 License</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <Shield className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">SOC 2 Type II</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <Cloud className="h-12 w-12 text-primary mb-2" />
-            <p className="text-xs font-semibold text-center">Azure Certified</p>
-          </div>
         </div>
       </div>
 

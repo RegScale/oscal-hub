@@ -128,19 +128,23 @@ export function Footer() {
             . Built with the NIST OSCAL framework.
           </p>
           <p className="mt-2">
-            Licensed for non-commercial use only.{' '}
+            Lead Developer:{' '}
+            <a
+              href="https://www.linkedin.com/in/travishowerton/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center"
+            >
+              Travis Howerton
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </a>
+          </p>
+          <p className="mt-2">
+            Free & Open Source - Unlimited production use.{' '}
+            No commercial resale or derivative works without permission.{' '}
             <Link href="/license" className="text-primary hover:underline">
               View License
             </Link>
-            {' · '}
-            <a
-              href="https://www.regscale.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Contact for Commercial Licensing
-            </a>
           </p>
         </div>
       </div>

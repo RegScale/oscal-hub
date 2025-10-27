@@ -779,18 +779,24 @@ npm run dev
 
 ---
 
-## Comparison: Local vs Azure Deployment
+## Comparison: CLI vs Local vs Azure Deployment
 
-| Feature | Local Deployment | Azure Deployment |
-|---------|------------------|------------------|
-| **Setup Time** | 5-10 minutes | 30-60 minutes (one-time) |
-| **Cost** | Free | ~$100/month |
-| **Internet Required** | Only for initial download | Always |
-| **Scalability** | Single machine | Auto-scaling |
-| **Backup** | Manual | Automated (7 days) |
-| **SSL/HTTPS** | Optional (self-signed) | Automatic |
-| **Updates** | Manual (`git pull`) | Automatic CI/CD |
-| **Best For** | Testing, Development, Demos | Production, Teams |
+| Feature | CLI Mode | Local Deployment | Azure Deployment |
+|---------|----------|------------------|------------------|
+| **Setup Time** | 2 minutes | 5-10 minutes | 30-60 minutes (one-time) |
+| **Cost** | Free | Free | ~$100/month |
+| **Interface** | Command-line only | Web + API + CLI | Web + API + CLI |
+| **Database** | None | H2 file-based | PostgreSQL |
+| **Internet Required** | Only for install | Only for initial download | Always |
+| **Scalability** | Single machine | Single machine | Auto-scaling |
+| **Backup** | Manual (scripts) | Manual | Automated (7 days) |
+| **SSL/HTTPS** | N/A | Optional (self-signed) | Automatic |
+| **Updates** | Manual download | Manual (`git pull`) | Automatic CI/CD |
+| **Automation** | ✅ Excellent | ⚠️ Via API | ⚠️ Via API |
+| **CI/CD Integration** | ✅ Perfect | ⚠️ Possible | ✅ Good |
+| **Best For** | Automation, CI/CD, Scripting | Testing, Development, Demos | Production, Teams |
+
+**See also**: [CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md) for detailed command-line deployment documentation
 
 ---
 
@@ -810,8 +816,9 @@ After successful local deployment:
 
 ### Documentation
 
-- **This Guide**: Local deployment
-- **Azure Guide**: `docs/AZURE-DEPLOYMENT-GUIDE.md`
+- **This Guide**: Local deployment with Docker
+- **CLI Guide**: `docs/CLI-DEPLOYMENT-GUIDE.md` - Command-line deployment
+- **Azure Guide**: `docs/AZURE-DEPLOYMENT-GUIDE.md` - Cloud deployment
 - **PostgreSQL Guide**: `docs/POSTGRESQL-MIGRATION.md`
 - **Security Guide**: `docs/SECURITY-HARDENING-SUMMARY.md`
 - **Main README**: `README.md`

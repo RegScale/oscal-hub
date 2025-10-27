@@ -4,6 +4,30 @@ This directory contains comprehensive documentation for the OSCAL Hub project fe
 
 ## Table of Contents
 
+### Deployment Guides
+
+- **[CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md)** - Complete guide for running OSCAL CLI in command-line mode
+  - Quick installation (2 minutes)
+  - Batch processing and automation
+  - CI/CD pipeline integration
+  - Workflow examples and scripts
+  - Troubleshooting CLI-specific issues
+  - Comparison with web and Azure deployments
+
+- **[LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md)** - Deploy the full stack locally with Docker
+  - Web interface + REST API + CLI
+  - Quick start (5 minutes)
+  - Database management
+  - Local development setup
+  - Docker Compose configuration
+
+- **[AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md)** - Production deployment to Azure cloud
+  - Infrastructure as Code (Terraform)
+  - CI/CD with GitHub Actions
+  - Azure Blob Storage integration
+  - PostgreSQL database
+  - Security and monitoring
+
 ### Feature Documentation
 
 #### Authorization System
@@ -73,6 +97,11 @@ When adding new features or making significant changes:
 
 ## Quick Links
 
+### For New Users
+- **Start here**: [CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md) - Quick 2-minute setup for command-line usage
+- **Local testing**: [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md) - Run the full web interface locally
+- **Production**: [AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md) - Deploy to Azure cloud
+
 ### For Developers
 - Start with [AUTHORIZATION-FEATURE-SUMMARY.md](AUTHORIZATION-FEATURE-SUMMARY.md) to understand the full authorization system
 - See [VARIABLE-PATTERN-UPDATE.md](VARIABLE-PATTERN-UPDATE.md) for details on variable naming flexibility
@@ -90,13 +119,50 @@ When adding new features or making significant changes:
 ```
 docs/
 ├── README.md (this file)
-├── AUTHORIZATION-FEATURE-SUMMARY.md
-├── TEMPLATE-EDITOR-FIX.md
-├── VARIABLE-DETECTION-SUMMARY.md
-├── VARIABLE-PATTERN-UPDATE.md
-├── DOCUMENTATION-UPDATES-SUMMARY.md
-├── DOCUMENTATION-ORGANIZATION.md
-└── JAVA_SPRING_UPGRADE_PLAN.md
+│
+├── Deployment Guides/
+│   ├── CLI-DEPLOYMENT-GUIDE.md           # Command-line deployment
+│   ├── LOCAL-DEPLOYMENT-GUIDE.md         # Local Docker deployment
+│   └── AZURE-DEPLOYMENT-GUIDE.md         # Azure cloud deployment
+│
+├── Feature Documentation/
+│   ├── AUTHORIZATION-FEATURE-SUMMARY.md
+│   ├── TEMPLATE-EDITOR-FIX.md
+│   ├── VARIABLE-DETECTION-SUMMARY.md
+│   ├── VARIABLE-PATTERN-UPDATE.md
+│   ├── COMPONENT-BUILDER-GUIDE.md
+│   ├── DIGITAL-SIGNATURE-USER-GUIDE.md
+│   └── USER-LOGO-FEATURE.md
+│
+├── Security & Production/
+│   ├── PRODUCTION-SECURITY-HARDENING-PLAN.md
+│   ├── SECURITY-HARDENING-SUMMARY.md
+│   ├── SECURITY-AUDIT-REPORT.md
+│   ├── SECRETS-MANAGEMENT.md
+│   ├── RATE-LIMITING.md
+│   ├── SECURITY-HEADERS.md
+│   ├── TLS-CONFIGURATION.md
+│   ├── INPUT-VALIDATION-FILE-SECURITY.md
+│   ├── ACCOUNT-SECURITY.md
+│   ├── DOCKER-SECURITY.md
+│   └── CORS-CONFIGURATION.md
+│
+├── Infrastructure & Operations/
+│   ├── POSTGRESQL-MIGRATION.md
+│   ├── MONITORING-GUIDE.md
+│   ├── MONITORING-DASHBOARD-SUMMARY.md
+│   ├── DEPLOYMENT-SCRIPTS-GUIDE.md
+│   ├── DEPLOYMENT-CHECKLIST.md
+│   └── PRODUCTION-READINESS-PLAN.md
+│
+└── Technical Documentation/
+    ├── JAVA_SPRING_UPGRADE_PLAN.md
+    ├── DEPENDENCY-SECURITY.md
+    ├── DEPENDENCY-SCAN-STATUS.md
+    ├── TRIVY-SECURITY-SCANNING.md
+    ├── TRIVY-IMPLEMENTATION-SUMMARY.md
+    ├── TEST-COVERAGE-IMPROVEMENTS.md
+    └── DOCUMENTATION-ORGANIZATION.md
 ```
 
 ## Additional Resources
