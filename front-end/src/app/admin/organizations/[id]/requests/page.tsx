@@ -23,15 +23,26 @@ export default function OrganizationAccessRequestsPage() {
   const params = useParams();
   const router = useRouter();
   const organizationId = params.id as string;
+
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>('');
+
+  // Review modal state
+  const [reviewingRequest, setReviewingRequest] = useState<AccessRequest | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  // Filter state
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
   useEffect(() => {
     loadOrganization();
     loadAccessRequests();
-  }, [organizationId]);
+  }, [organizationId, filterStatus]);
 
   const loadOrganization = async () => {
     try {
@@ -55,15 +66,88 @@ export default function OrganizationAccessRequestsPage() {
       setLoading(true);
       setError(null);
 
-      // TODO: Implement backend endpoint for this
-      // For now, just show a placeholder
-      setRequests([]);
+      const endpoint = filterStatus === 'pending'
+        ? `/api/org-admin/access-requests?organizationId=${organizationId}`
+        : `/api/org-admin/access-requests/all?organizationId=${organizationId}`;
+
+      const response = await fetch(`http://localhost:8080${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load access requests');
+      }
+
+      let data = await response.json();
+
+      // Filter by status if not showing all pending
+      if (filterStatus !== 'pending' && filterStatus !== 'all') {
+        data = data.filter((req: AccessRequest) => req.status === filterStatus.toUpperCase());
+      }
+
+      setRequests(data);
     } catch (err: any) {
       console.error('Failed to load access requests:', err);
       setError(err.message || 'Failed to load access requests');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReviewRequest = (request: AccessRequest, action: 'approve' | 'reject') => {
+    setReviewingRequest(request);
+    setReviewAction(action);
+    setReviewNotes('');
+  };
+
+  const handleConfirmReview = async () => {
+    if (!reviewingRequest || !reviewAction) return;
+
+    try {
+      setProcessing(true);
+      setError(null);
+      setSuccess(null);
+
+      const endpoint = reviewAction === 'approve'
+        ? `/api/org-admin/access-requests/${reviewingRequest.id}/approve`
+        : `/api/org-admin/access-requests/${reviewingRequest.id}/reject`;
+
+      const response = await fetch(`http://localhost:8080${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          notes: reviewNotes.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${reviewAction} request`);
+      }
+
+      setSuccess(`Access request ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully`);
+      setReviewingRequest(null);
+      setReviewAction(null);
+      setReviewNotes('');
+      await loadAccessRequests();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error(`Failed to ${reviewAction} request:`, err);
+      setError(err.message || `Failed to ${reviewAction} request`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancelReview = () => {
+    setReviewingRequest(null);
+    setReviewAction(null);
+    setReviewNotes('');
   };
 
   if (loading) {
@@ -80,6 +164,7 @@ export default function OrganizationAccessRequestsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => router.push('/admin/organizations')}
@@ -101,14 +186,35 @@ export default function OrganizationAccessRequestsPage() {
               {organizationName ? `Manage access requests for ${organizationName}` : `Organization #${organizationId}`}
             </p>
           </div>
+          <div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            >
+              <option value="pending">Pending</option>
+              <option value="all">All Requests</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
         </div>
 
+        {/* Success Message */}
+        {success && (
+          <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <p className="text-green-800 dark:text-green-200">{success}</p>
+          </div>
+        )}
+
+        {/* Error Message */}
         {error && (
           <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <p className="text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
 
+        {/* Requests Table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
@@ -139,7 +245,11 @@ export default function OrganizationAccessRequestsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                       </svg>
                       <p className="text-lg font-medium">No access requests</p>
-                      <p className="mt-1 text-sm">There are currently no pending access requests for this organization.</p>
+                      <p className="mt-1 text-sm">
+                        {filterStatus === 'pending'
+                          ? 'There are currently no pending access requests for this organization.'
+                          : `No ${filterStatus} access requests found.`}
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -152,6 +262,11 @@ export default function OrganizationAccessRequestsPage() {
                       </div>
                       {request.username && (
                         <div className="text-sm text-gray-500 dark:text-gray-400">@{request.username}</div>
+                      )}
+                      {request.message && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">
+                          "{request.message.length > 50 ? request.message.substring(0, 50) + '...' : request.message}"
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -167,17 +282,35 @@ export default function OrganizationAccessRequestsPage() {
                       }`}>
                         {request.status}
                       </span>
+                      {request.notes && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Notes: {request.notes.length > 30 ? request.notes.substring(0, 30) + '...' : request.notes}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(request.requestDate).toLocaleDateString()}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {new Date(request.requestDate).toLocaleDateString()}
+                      </div>
+                      {request.reviewedDate && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Reviewed: {new Date(request.reviewedDate).toLocaleDateString()}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {request.status === 'PENDING' && (
                         <>
-                          <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4">
+                          <button
+                            onClick={() => handleReviewRequest(request, 'approve')}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4"
+                          >
                             Approve
                           </button>
-                          <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                          <button
+                            onClick={() => handleReviewRequest(request, 'reject')}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
                             Reject
                           </button>
                         </>
@@ -189,25 +322,71 @@ export default function OrganizationAccessRequestsPage() {
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+      {/* Review Modal */}
+      {reviewingRequest && reviewAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {reviewAction === 'approve' ? 'Approve' : 'Reject'} Access Request
+              </h2>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                Feature Coming Soon
-              </h3>
-              <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                The access request management system is currently under development. This page will allow you to review and approve/reject user access requests to this organization.
-              </p>
+            <div className="px-6 py-4">
+              <div className="mb-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Requester:</strong> {reviewingRequest.firstName} {reviewingRequest.lastName}
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Email:</strong> {reviewingRequest.email}
+                </p>
+                {reviewingRequest.message && (
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                    <strong>Message:</strong> {reviewingRequest.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  placeholder={reviewAction === 'approve' ? 'Optional notes for the user' : 'Reason for rejection'}
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+              <button
+                onClick={handleCancelReview}
+                disabled={processing}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReview}
+                disabled={processing}
+                className={`px-4 py-2 rounded-md text-white disabled:opacity-50 ${
+                  reviewAction === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {processing
+                  ? 'Processing...'
+                  : reviewAction === 'approve'
+                  ? 'Approve Request'
+                  : 'Reject Request'}
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

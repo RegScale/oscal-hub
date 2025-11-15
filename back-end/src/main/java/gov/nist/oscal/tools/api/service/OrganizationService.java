@@ -297,7 +297,7 @@ public class OrganizationService {
      */
     public List<OrganizationMembership> getOrganizationMembers(Long organizationId) {
         Organization organization = getOrganization(organizationId);
-        return membershipRepository.findByOrganization(organization);
+        return membershipRepository.findByOrganizationWithUser(organization);
     }
 
     /**
@@ -305,6 +305,6 @@ public class OrganizationService {
      */
     public List<OrganizationMembership> getActiveOrganizationMembers(Long organizationId) {
         Organization organization = getOrganization(organizationId);
-        return membershipRepository.findByOrganizationAndStatus(organization, MembershipStatus.ACTIVE);
+        return membershipRepository.findByOrganizationAndStatusWithUser(organization, MembershipStatus.ACTIVE);
     }
 }
