@@ -77,6 +77,17 @@ public class User {
     @Column(name = "last_failed_login_ip", length = 45)
     private String lastFailedLoginIp;
 
+    // Multi-tenant organization fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "global_role", nullable = false, length = 20)
+    private GlobalRole globalRole = GlobalRole.USER;
+
+    @Column(name = "must_change_password", nullable = false)
+    private Boolean mustChangePassword = false;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrganizationMembership> organizationMemberships = new HashSet<>();
+
     // Constructors
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -257,5 +268,37 @@ public class User {
 
     public void setLastFailedLoginIp(String lastFailedLoginIp) {
         this.lastFailedLoginIp = lastFailedLoginIp;
+    }
+
+    public GlobalRole getGlobalRole() {
+        return globalRole;
+    }
+
+    public void setGlobalRole(GlobalRole globalRole) {
+        this.globalRole = globalRole;
+    }
+
+    public Boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
+    public Set<OrganizationMembership> getOrganizationMemberships() {
+        return organizationMemberships;
+    }
+
+    public void setOrganizationMemberships(Set<OrganizationMembership> organizationMemberships) {
+        this.organizationMemberships = organizationMemberships;
+    }
+
+    /**
+     * Platform-level roles
+     */
+    public enum GlobalRole {
+        SUPER_ADMIN,  // Platform administrator with full system access
+        USER          // Standard user (access controlled by organization memberships)
     }
 }

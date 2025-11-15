@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShieldCheck, AlertTriangle, Loader2, Info } from 'lucide-react';
-import { apiClient } from '@/lib/api-client';
 
 interface DigitalSignatureStepProps {
   authorizationId: number;

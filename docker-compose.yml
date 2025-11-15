@@ -114,6 +114,7 @@ services:
     volumes:
       - oscal-data:/app/data
       - oscal-logs:/app/logs:rw
+      - oscal-file-storage:/home/oscaluser/.oscal-hub/files
       # Mount as read-only where possible
       - /etc/localtime:/etc/localtime:ro
 
@@ -197,6 +198,8 @@ volumes:
   oscal-data:
     driver: local
   oscal-logs:
+    driver: local
+  oscal-file-storage:
     driver: local
   postgres_dev_data:
     driver: local

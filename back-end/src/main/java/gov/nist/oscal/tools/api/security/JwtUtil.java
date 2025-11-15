@@ -91,6 +91,26 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> claims.get("userId", Long.class));
+    }
+
+    public String extractGlobalRole(String token) {
+        return extractClaim(token, claims -> claims.get("globalRole", String.class));
+    }
+
+    public Long extractOrganizationId(String token) {
+        return extractClaim(token, claims -> claims.get("organizationId", Long.class));
+    }
+
+    public String extractOrganizationRole(String token) {
+        return extractClaim(token, claims -> claims.get("orgRole", String.class));
+    }
+
+    public Boolean extractMustChangePassword(String token) {
+        return extractClaim(token, claims -> claims.get("mustChangePassword", Boolean.class));
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -111,6 +131,71 @@ public class JwtUtil {
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, userDetails.getUsername());
+    }
+
+    /**
+     * Generate JWT token with organization context
+     * Used after user selects an organization from the NASCAR page
+     *
+     * @param username Username (token subject)
+     * @param userId User ID
+     * @param globalRole Platform-level role (SUPER_ADMIN or USER)
+     * @param organizationId Selected organization ID
+     * @param orgRole Organization-level role (ORG_ADMIN or USER)
+     * @param mustChangePassword Whether user must change password on next login
+     * @return JWT token string
+     */
+    public String generateTokenWithOrgContext(
+            String username,
+            Long userId,
+            String globalRole,
+            Long organizationId,
+            String orgRole,
+            Boolean mustChangePassword) {
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("globalRole", globalRole);
+        claims.put("organizationId", organizationId);
+        claims.put("orgRole", orgRole);
+        claims.put("mustChangePassword", mustChangePassword != null ? mustChangePassword : false);
+
+        return createToken(claims, username);
+    }
+
+    /**
+     * Generate initial authentication token (before organization selection)
+     * Contains minimal user info without organization context
+     *
+     * @param username Username (token subject)
+     * @param userId User ID
+     * @param globalRole Platform-level role
+     * @param mustChangePassword Whether user must change password
+     * @return JWT token string (short-lived, 15 minutes)
+     */
+    public String generatePreOrgSelectionToken(
+            String username,
+            Long userId,
+            String globalRole,
+            Boolean mustChangePassword) {
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("globalRole", globalRole);
+        claims.put("mustChangePassword", mustChangePassword != null ? mustChangePassword : false);
+        claims.put("preOrgSelection", true); // Flag to indicate this is a temporary token
+
+        // Short expiration for pre-org-selection tokens (15 minutes)
+        Date now = new Date();
+        Date expirationDate = new Date(now.getTime() + 900000); // 15 minutes
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setIssuedAt(now)
+                .setExpiration(expirationDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     private String createToken(Map<String, Object> claims, String subject) {

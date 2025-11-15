@@ -13,10 +13,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/files")
@@ -142,6 +150,39 @@ public class FileController {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to upload file: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Serve organization logo",
+        description = "Serve organization logo files (public endpoint, no authentication required)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Logo retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Logo not found")
+    })
+    @GetMapping("/org-logos/{filename}")
+    public ResponseEntity<Resource> serveLogo(@PathVariable String filename) {
+        try {
+            Path logoPath = Paths.get("uploads/org-logos").resolve(filename).normalize();
+            Resource resource = new UrlResource(logoPath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Determine content type
+            String contentType = Files.probeContentType(logoPath);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 }

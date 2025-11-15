@@ -64,7 +64,13 @@ check_database() {
 # Check database connectivity before starting backend
 check_database
 
+# Ensure file storage directory exists with proper permissions
+echo "Ensuring file storage directory exists..."
+mkdir -p /home/oscaluser/.oscal-hub/files
+chmod 755 /home/oscaluser/.oscal-hub/files
+echo "✓ File storage directory ready"
 echo ""
+
 echo "=========================================="
 echo "  Starting Backend (Spring Boot)"
 echo "=========================================="

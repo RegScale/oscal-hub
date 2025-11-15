@@ -172,7 +172,6 @@ export default function TemplateDetailPage() {
           ) : (
             <MarkdownPreview
               content={template.content}
-              variables={template.variables}
               height="600px"
             />
           )}

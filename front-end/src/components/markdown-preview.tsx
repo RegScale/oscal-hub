@@ -4,11 +4,10 @@ import { Card } from '@/components/ui/card';
 
 interface MarkdownPreviewProps {
   content: string;
-  variables?: string[];
   height?: string;
 }
 
-export function MarkdownPreview({ content, variables = [], height = '600px' }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, height = '600px' }: MarkdownPreviewProps) {
   // Process markdown content and highlight variables
   const processContent = (markdown: string): string => {
     let processed = markdown;

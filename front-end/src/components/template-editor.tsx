@@ -222,7 +222,7 @@ export function TemplateEditor({
           <div className="flex items-center justify-between h-9">
             <Label>Preview</Label>
           </div>
-          <MarkdownPreview content={content} variables={variables} height="600px" />
+          <MarkdownPreview content={content} height="600px" />
         </div>
       </div>
 

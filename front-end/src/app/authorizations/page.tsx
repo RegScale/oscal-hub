@@ -1272,7 +1272,6 @@ export default function AuthorizationsPage() {
                 </div>
                 <MarkdownPreview
                   content={selectedTemplate.content}
-                  variables={selectedTemplate.variables}
                   height="600px"
                 />
               </Card>
