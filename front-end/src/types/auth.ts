@@ -2,6 +2,10 @@ export interface User {
   userId: number;
   username: string;
   email: string;
+  globalRole?: string;
+  orgRole?: string;
+  organizationId?: number;
+  organizationName?: string;
   street?: string;
   city?: string;
   state?: string;
@@ -46,4 +50,5 @@ export interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email: string) => Promise<void>;
   logout: () => void;
+  updateUser: () => void;
 }

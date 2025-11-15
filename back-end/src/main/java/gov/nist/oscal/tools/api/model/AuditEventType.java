@@ -84,6 +84,13 @@ public enum AuditEventType {
      */
     AUTH_SERVICE_TOKEN_GENERATED("Authentication", "Service account token generated", "MEDIUM"),
 
+    /**
+     * User selected organization after initial authentication
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: MEDIUM (audit trail)</p>
+     */
+    AUTH_ORG_SELECTION("Authentication", "Organization selected", "LOW"),
+
     // ========================================
     // Authorization Events (AUTHZ_*)
     // ========================================

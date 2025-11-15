@@ -2613,6 +2613,235 @@ class ApiClient {
     }
   }
 
+  // ========================================
+  // Organization Management API Methods
+  // ========================================
+
+  /**
+   * Get all active organizations (public endpoint for NASCAR selector)
+   */
+  async getOrganizations(): Promise<Array<{
+    organizationId: number;
+    name: string;
+    description: string | null;
+    logoUrl: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/organizations`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }, // Public endpoint, no auth
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get organizations: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get organizations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get current user's organizations with membership details
+   */
+  async getMyOrganizations(): Promise<Array<{
+    organizationId: number;
+    name: string;
+    description: string | null;
+    logoUrl: string | null;
+    role: string;
+    joinedAt: string;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/my-organizations`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get my organizations: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get my organizations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Select organization after initial login (generates full JWT with org context)
+   */
+  async selectOrganization(organizationId: number): Promise<{
+    token: string;
+    username: string;
+    email: string;
+    userId: number;
+    organizationId: number;
+    organizationName: string;
+    orgRole: string;
+    globalRole: string;
+    mustChangePassword: boolean;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/select-organization/${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to select organization');
+      }
+
+      const result = await response.json();
+
+      // Update token and user info in localStorage
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify({
+        userId: result.userId,
+        username: result.username,
+        email: result.email,
+        organizationId: result.organizationId,
+        organizationName: result.organizationName,
+        orgRole: result.orgRole,
+        globalRole: result.globalRole,
+        mustChangePassword: result.mustChangePassword,
+      }));
+
+      return result;
+    } catch (error) {
+      console.error('Failed to select organization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Switch to a different organization (re-issues JWT)
+   */
+  async switchOrganization(organizationId: number): Promise<{
+    token: string;
+    username: string;
+    email: string;
+    userId: number;
+    organizationId: number;
+    organizationName: string;
+    orgRole: string;
+    globalRole: string;
+    mustChangePassword: boolean;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/switch-organization/${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to switch organization');
+      }
+
+      const result = await response.json();
+
+      // Update token and user info in localStorage
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify({
+        userId: result.userId,
+        username: result.username,
+        email: result.email,
+        organizationId: result.organizationId,
+        organizationName: result.organizationName,
+        orgRole: result.orgRole,
+        globalRole: result.globalRole,
+        mustChangePassword: result.mustChangePassword,
+      }));
+
+      return result;
+    } catch (error) {
+      console.error('Failed to switch organization:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Request access to an organization (public endpoint)
+   */
+  async requestAccess(request: {
+    organizationId: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    username?: string;
+    message?: string;
+  }): Promise<{ message: string }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/request-access`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, // Public endpoint, no auth
+          body: JSON.stringify(request),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request access');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to request access:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Change user password
+   */
+  async changePassword(oldPassword: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/change-password`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ oldPassword, newPassword }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to change password');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      throw error;
+    }
+  }
+
   // Mock implementations for development without backend
 
   private async mockValidate(

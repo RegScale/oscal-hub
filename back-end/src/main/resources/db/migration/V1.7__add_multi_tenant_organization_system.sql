@@ -2,7 +2,7 @@
 -- Date: 2025-11-15
 -- Description: Adds organization entities, user memberships, and access request management
 --              Migrates existing users to the default organization
---              Seeds default super admin account (username: admin, password: Admin@12345)
+--              Seeds default super admin account (username: admin, password: password)
 
 -- ============================================================================
 -- 1. Create Organizations Table
@@ -96,29 +96,40 @@ VALUES (1, 'Default Organization', 'Default organization for existing users and 
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
--- 6. Seed Super Admin Account
+-- 6. Seed Super Admin Account (only if it doesn't exist)
 -- ============================================================================
--- Password: Admin@12345 (BCrypt hash for 10 rounds)
--- User MUST change this password on first login (must_change_password = true)
-INSERT INTO users (id, username, password, email, global_role, must_change_password, enabled, created_at)
-VALUES (
-    1,
-    'admin',
-    '$2a$10$LQd5LH/PnC3yV5qC8K8aGuGqGz7pxw5FKjGJqZH/TfY6yZ8qV8F7G',  -- Admin@12345
-    'admin@oscal-tools.local',
-    'SUPER_ADMIN',
-    true,  -- Force password change on first login
-    true,
-    CURRENT_TIMESTAMP
-)
-ON CONFLICT (username) DO NOTHING;
+-- Password: password (BCrypt hash for 10 rounds)
+-- User should change this password after first login
+DO $$
+DECLARE
+    admin_user_id BIGINT;
+BEGIN
+    -- Check if admin user exists
+    SELECT id INTO admin_user_id FROM users WHERE username = 'admin';
 
--- ============================================================================
--- 7. Link Super Admin to Default Organization (as ORG_ADMIN)
--- ============================================================================
-INSERT INTO organization_memberships (user_id, organization_id, role, status, joined_at)
-VALUES (1, 1, 'ORG_ADMIN', 'ACTIVE', CURRENT_TIMESTAMP)
-ON CONFLICT (user_id, organization_id) DO NOTHING;
+    IF admin_user_id IS NULL THEN
+        -- Admin doesn't exist, create it
+        INSERT INTO users (username, password, email, global_role, must_change_password, enabled, created_at)
+        VALUES (
+            'admin',
+            '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG',  -- password
+            'admin@oscal-tools.local',
+            'SUPER_ADMIN',
+            false,  -- Allow initial login without forced password change
+            true,
+            CURRENT_TIMESTAMP
+        )
+        RETURNING id INTO admin_user_id;
+    ELSE
+        -- Admin exists, update it to be a super admin
+        UPDATE users SET global_role = 'SUPER_ADMIN' WHERE id = admin_user_id;
+    END IF;
+
+    -- Link admin to default organization (if not already linked)
+    INSERT INTO organization_memberships (user_id, organization_id, role, status, joined_at)
+    VALUES (admin_user_id, 1, 'ORG_ADMIN', 'ACTIVE', CURRENT_TIMESTAMP)
+    ON CONFLICT (user_id, organization_id) DO NOTHING;
+END $$;
 
 -- ============================================================================
 -- 8. Migrate Existing Users to Default Organization
@@ -132,7 +143,7 @@ SELECT
     'ACTIVE',
     CURRENT_TIMESTAMP
 FROM users u
-WHERE u.id > 1  -- Skip super admin (already added)
+WHERE u.username != 'admin'  -- Skip admin (already added)
   AND u.global_role = 'USER'  -- Only migrate regular users
   AND NOT EXISTS (
       SELECT 1 FROM organization_memberships om

@@ -1,0 +1,47 @@
+-- V1.8: Add ORG_SELECTION audit event type
+-- Date: 2025-11-15
+-- Description: Adds ORG_SELECTION to the audit_events_event_type_check constraint
+--              to support organization selection audit logging
+
+-- Drop the existing check constraint
+ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_event_type_check;
+
+-- Recreate the check constraint with ORG_SELECTION added
+ALTER TABLE audit_events ADD CONSTRAINT audit_events_event_type_check
+CHECK (event_type IN (
+    'AUTH_REGISTER_SUCCESS',
+    'AUTH_REGISTER_FAILURE',
+    'AUTH_LOGIN_SUCCESS',
+    'AUTH_LOGIN_FAILURE',
+    'AUTH_LOGOUT',
+    'AUTH_TOKEN_REFRESH',
+    'AUTH_SERVICE_TOKEN_GENERATED',
+    'AUTH_ORG_SELECTION',  -- NEW: Organization selection event
+    'AUTHZ_ACCESS_DENIED',
+    'AUTHZ_ACCESS_GRANTED',
+    'AUTHZ_PERMISSION_CHANGED',
+    'DATA_FILE_UPLOAD',
+    'DATA_FILE_ACCESS',
+    'DATA_FILE_DELETE',
+    'DATA_FILE_MODIFY',
+    'DATA_VALIDATION',
+    'DATA_CONVERSION',
+    'DATA_PROFILE_RESOLVE',
+    'CONFIG_PROFILE_UPDATE',
+    'CONFIG_PASSWORD_CHANGE',
+    'CONFIG_LOGO_UPLOAD',
+    'CONFIG_SYSTEM_CHANGE',
+    'SECURITY_ACCOUNT_LOCKED',
+    'SECURITY_ACCOUNT_UNLOCKED',
+    'SECURITY_IP_BLOCKED',
+    'SECURITY_PASSWORD_RESET_REQUEST',
+    'SECURITY_PASSWORD_RESET_COMPLETE',
+    'SECURITY_SUSPICIOUS_ACTIVITY',
+    'SECURITY_RATE_LIMIT_EXCEEDED',
+    'SECURITY_INVALID_FILE_UPLOAD',
+    'SYSTEM_STARTUP',
+    'SYSTEM_SHUTDOWN',
+    'SYSTEM_ERROR',
+    'SYSTEM_DATABASE_ERROR',
+    'SYSTEM_EXTERNAL_API_ERROR'
+));

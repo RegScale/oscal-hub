@@ -159,7 +159,12 @@ public class User {
     }
 
     public Set<String> getRoles() {
-        return roles;
+        Set<String> allRoles = new HashSet<>(roles);
+        // Add globalRole as a Spring Security authority
+        if (globalRole != null) {
+            allRoles.add("ROLE_" + globalRole.name());
+        }
+        return allRoles;
     }
 
     public void setRoles(Set<String> roles) {

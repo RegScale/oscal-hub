@@ -143,7 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();
-      router.push('/');
+      // Redirect to organization selector for two-step authentication
+      router.push('/select-organization');
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -176,7 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();
-      router.push('/');
+      // Redirect to organization selector for two-step authentication
+      router.push('/select-organization');
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -190,6 +192,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   };
 
+  const updateUser = useCallback(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+      updateActivity();
+    }
+  }, [updateActivity]);
+
   const value: AuthContextType = {
     user,
     token,
@@ -198,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

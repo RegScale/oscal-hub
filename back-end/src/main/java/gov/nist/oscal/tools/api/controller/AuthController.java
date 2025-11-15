@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.controller;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
+import gov.nist.oscal.tools.api.model.ChangePasswordRequest;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
+import gov.nist.oscal.tools.api.model.RequestAccessRequest;
 import gov.nist.oscal.tools.api.model.ServiceAccountTokenRequest;
 import gov.nist.oscal.tools.api.model.ServiceAccountTokenResponse;
 import gov.nist.oscal.tools.api.security.JwtUtil;
@@ -319,6 +321,254 @@ public class AuthController {
             );
 
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    // ========================================================================
+    // Organization Selection (Multi-Tenant)
+    // ========================================================================
+
+    @Operation(
+        summary = "Get active organizations",
+        description = "Get list of all active organizations (public endpoint for NASCAR page)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organizations retrieved successfully")
+    })
+    @GetMapping("/organizations")
+    public ResponseEntity<?> getActiveOrganizations() {
+        try {
+            java.util.List<Map<String, Object>> organizations = authService.getActiveOrganizations();
+            return ResponseEntity.ok(organizations);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Get my organizations",
+        description = "Get organizations the current user has access to (with logos)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organizations retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @GetMapping("/my-organizations")
+    public ResponseEntity<?> getMyOrganizations() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            // Extract userId from JWT token
+            String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest().getHeader("Authorization");
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtUtil.extractUserId(token);
+
+                if (userId == null) {
+                    // Fallback to getting user by username
+                    String username = authentication.getName();
+                    User user = authService.getCurrentUser(username);
+                    userId = user.getId();
+                }
+
+                java.util.List<Map<String, Object>> organizations = authService.getMyOrganizations(userId);
+                return ResponseEntity.ok(organizations);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "No authorization token found");
+                return ResponseEntity.status(401).body(error);
+            }
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Select organization",
+        description = "Select an organization after initial login (generates full JWT with org context)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organization selected successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid organization or no access"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/select-organization/{organizationId}")
+    public ResponseEntity<?> selectOrganization(@PathVariable Long organizationId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            // Extract userId from JWT token
+            String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest().getHeader("Authorization");
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtUtil.extractUserId(token);
+
+                if (userId == null) {
+                    // Fallback to getting user by username
+                    String username = authentication.getName();
+                    User user = authService.getCurrentUser(username);
+                    userId = user.getId();
+                }
+
+                Map<String, Object> response = authService.selectOrganization(userId, organizationId);
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "No authorization token found");
+                return ResponseEntity.status(401).body(error);
+            }
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Switch organization",
+        description = "Switch to a different organization (re-issues JWT with new org context)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organization switched successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid organization or no access"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/switch-organization/{organizationId}")
+    public ResponseEntity<?> switchOrganization(@PathVariable Long organizationId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            // Extract userId from JWT token
+            String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest().getHeader("Authorization");
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtUtil.extractUserId(token);
+
+                if (userId == null) {
+                    // Fallback to getting user by username
+                    String username = authentication.getName();
+                    User user = authService.getCurrentUser(username);
+                    userId = user.getId();
+                }
+
+                Map<String, Object> response = authService.switchOrganization(userId, organizationId);
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "No authorization token found");
+                return ResponseEntity.status(401).body(error);
+            }
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Request access to organization",
+        description = "Submit an access request to join an organization (public endpoint)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Access request submitted successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or organization not found")
+    })
+    @PostMapping("/request-access")
+    public ResponseEntity<?> requestAccess(@Valid @RequestBody RequestAccessRequest request) {
+        try {
+            authService.requestAccess(request);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Access request submitted successfully. An administrator will review your request.");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Change password",
+        description = "Change current user's password (required for forced password changes)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or incorrect old password"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            // Extract userId from JWT token
+            String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest().getHeader("Authorization");
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtUtil.extractUserId(token);
+
+                if (userId == null) {
+                    // Fallback to getting user by username
+                    String username = authentication.getName();
+                    User user = authService.getCurrentUser(username);
+                    userId = user.getId();
+                }
+
+                authService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Password changed successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "No authorization token found");
+                return ResponseEntity.status(401).body(error);
+            }
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

@@ -1,11 +1,23 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.entity.Organization;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
+import gov.nist.oscal.tools.api.model.RequestAccessRequest;
+import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
+import gov.nist.oscal.tools.api.repository.OrganizationRepository;
+import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +64,15 @@ public class AuthService {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private OrganizationMembershipRepository membershipRepository;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    @Autowired
+    private UserAccessRequestRepository accessRequestRepository;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -324,5 +345,279 @@ public class AuthService {
         // Fall back to remote address
         String remoteAddr = request.getRemoteAddr();
         return remoteAddr != null ? remoteAddr : "unknown";
+    }
+
+    /**
+     * Select organization after initial authentication
+     * Validates user has active membership and generates full JWT with org context
+     *
+     * @param userId User ID from pre-org-selection token
+     * @param organizationId Organization to select
+     * @return Map containing token, username, email, userId, organizationId, orgRole
+     */
+    @Transactional
+    public Map<String, Object> selectOrganization(Long userId, Long organizationId) {
+        // Load user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Validate organization exists and is active
+        Organization organization = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new RuntimeException("Organization not found"));
+
+        if (!organization.getActive()) {
+            throw new RuntimeException("Organization is not active");
+        }
+
+        // Find membership
+        OrganizationMembership membership = membershipRepository
+                .findByUserIdAndOrganizationId(userId, organizationId)
+                .orElseThrow(() -> new RuntimeException("You do not have access to this organization"));
+
+        // Check membership status
+        if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+            throw new RuntimeException("Your membership in this organization has been deactivated");
+        }
+
+        if (membership.getStatus() == MembershipStatus.LOCKED) {
+            throw new RuntimeException("Your account in this organization is locked");
+        }
+
+        // Generate full JWT with organization context
+        String token = jwtUtil.generateTokenWithOrgContext(
+                user.getUsername(),
+                user.getId(),
+                user.getGlobalRole().toString(),
+                organization.getId(),
+                membership.getRole().toString(),
+                user.getMustChangePassword()
+        );
+
+        logger.info("User {} selected organization {} (role: {})",
+                user.getUsername(), organization.getName(), membership.getRole());
+
+        // Log audit event
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("organizationId", organizationId);
+        metadata.put("organizationName", organization.getName());
+        metadata.put("role", membership.getRole().toString());
+
+        auditLogService.logEvent(
+                gov.nist.oscal.tools.api.model.AuditEventType.AUTH_ORG_SELECTION,
+                user.getUsername(),
+                user.getId(),
+                "SUCCESS",
+                "organization:" + organizationId,
+                "ORG_SELECTION",
+                metadata
+        );
+
+        // Build response
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("username", user.getUsername());
+        response.put("email", user.getEmail());
+        response.put("userId", user.getId());
+        response.put("organizationId", organization.getId());
+        response.put("organizationName", organization.getName());
+        response.put("orgRole", membership.getRole().toString());
+        response.put("globalRole", user.getGlobalRole().toString());
+        response.put("mustChangePassword", user.getMustChangePassword());
+
+        return response;
+    }
+
+    /**
+     * Switch to a different organization (re-issue JWT)
+     * Used when user wants to switch org context without re-login
+     *
+     * @param userId Current user ID
+     * @param organizationId Organization to switch to
+     * @return Map containing new token and org details
+     */
+    @Transactional
+    public Map<String, Object> switchOrganization(Long userId, Long organizationId) {
+        // Reuse selectOrganization logic - it already does all the validation we need
+        return selectOrganization(userId, organizationId);
+    }
+
+    /**
+     * Get all organizations the user has access to (for NASCAR page)
+     * Returns organization info including logos
+     *
+     * @param userId User ID
+     * @return List of organizations with membership details
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getMyOrganizations(Long userId) {
+        // Load user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Get all active memberships
+        List<OrganizationMembership> memberships = membershipRepository
+                .findByUserId(userId).stream()
+                .filter(m -> m.getStatus() == MembershipStatus.ACTIVE)
+                .collect(Collectors.toList());
+
+        // Build response list
+        return memberships.stream()
+                .filter(m -> m.getOrganization().getActive())
+                .map(m -> {
+                    Organization org = m.getOrganization();
+                    Map<String, Object> orgData = new HashMap<>();
+                    orgData.put("organizationId", org.getId());
+                    orgData.put("name", org.getName());
+                    orgData.put("description", org.getDescription());
+                    orgData.put("logoUrl", org.getLogoUrl());
+                    orgData.put("role", m.getRole().toString());
+                    orgData.put("joinedAt", m.getJoinedAt());
+                    return orgData;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Change password (for forced password change or user-initiated change)
+     * Validates old password and updates to new password
+     *
+     * @param userId User ID
+     * @param oldPassword Current password
+     * @param newPassword New password to set
+     */
+    @Transactional
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        // Load user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Validate old password
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            logger.warn("Failed password change attempt for user: {} - incorrect old password", user.getUsername());
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        // Validate new password complexity
+        try {
+            passwordValidationService.validatePassword(newPassword, user.getUsername());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+
+        // Check password is different from old password
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new RuntimeException("New password must be different from current password");
+        }
+
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setMustChangePassword(false); // Clear forced password change flag
+        userRepository.save(user);
+
+        logger.info("Password changed successfully for user: {}", user.getUsername());
+
+        // Log audit event
+        auditLogService.logEvent(
+                gov.nist.oscal.tools.api.model.AuditEventType.CONFIG_PASSWORD_CHANGE,
+                user.getUsername(),
+                user.getId(),
+                "SUCCESS",
+                "user:" + userId,
+                "PASSWORD_CHANGE",
+                null
+        );
+    }
+
+    /**
+     * Get all active organizations (for public NASCAR page)
+     *
+     * @return List of active organizations with basic info and logos
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getActiveOrganizations() {
+        List<Organization> organizations = organizationRepository.findByActiveTrue();
+
+        return organizations.stream()
+                .map(org -> {
+                    Map<String, Object> orgData = new HashMap<>();
+                    orgData.put("organizationId", org.getId());
+                    orgData.put("name", org.getName());
+                    orgData.put("description", org.getDescription());
+                    orgData.put("logoUrl", org.getLogoUrl());
+                    return orgData;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Submit an access request to join an organization
+     * Creates a UserAccessRequest that org admins can approve/reject
+     *
+     * @param request Access request details
+     */
+    @Transactional
+    public void requestAccess(RequestAccessRequest request) {
+        // Validate organization exists and is active
+        Organization organization = organizationRepository.findById(request.getOrganizationId())
+                .orElseThrow(() -> new RuntimeException("Organization not found"));
+
+        if (!organization.getActive()) {
+            throw new RuntimeException("Organization is not active");
+        }
+
+        // Check if user already exists
+        User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+
+        // Check if there's already an existing membership
+        if (existingUser != null) {
+            membershipRepository.findByUserIdAndOrganizationId(
+                    existingUser.getId(),
+                    request.getOrganizationId()
+            ).ifPresent(membership -> {
+                if (membership.getStatus() == MembershipStatus.ACTIVE) {
+                    throw new RuntimeException("You already have access to this organization");
+                } else if (membership.getStatus() == MembershipStatus.LOCKED) {
+                    throw new RuntimeException("Your access to this organization is locked. Please contact an administrator.");
+                } else if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+                    throw new RuntimeException("Your access to this organization has been deactivated. Please contact an administrator.");
+                }
+            });
+        }
+
+        // Check if there's already a pending request
+        if (existingUser != null) {
+            accessRequestRepository.findPendingRequestByUserAndOrganization(
+                    existingUser.getId(),
+                    request.getOrganizationId()
+            ).ifPresent(existing -> {
+                throw new RuntimeException("You already have a pending access request for this organization");
+            });
+        } else {
+            // Check for pending request by email for new users
+            accessRequestRepository.findPendingRequestByEmailAndOrganization(
+                    request.getEmail(),
+                    request.getOrganizationId()
+            ).ifPresent(existing -> {
+                throw new RuntimeException("An access request with this email already exists for this organization");
+            });
+        }
+
+        // Create access request
+        UserAccessRequest accessRequest = new UserAccessRequest();
+        accessRequest.setUser(existingUser);
+        accessRequest.setOrganization(organization);
+        accessRequest.setEmail(request.getEmail());
+        accessRequest.setFirstName(request.getFirstName());
+        accessRequest.setLastName(request.getLastName());
+        accessRequest.setUsername(request.getUsername());
+        accessRequest.setMessage(request.getMessage());
+        accessRequest.setStatus(UserAccessRequest.RequestStatus.PENDING);
+        accessRequest.setRequestDate(LocalDateTime.now());
+
+        accessRequestRepository.save(accessRequest);
+
+        logger.info("Access request created for {} to organization {} (ID: {})",
+                request.getEmail(), organization.getName(), organization.getId());
     }
 }

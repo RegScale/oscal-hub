@@ -27,7 +27,8 @@ public class OrganizationResponse {
         this.active = organization.getActive();
         this.createdAt = organization.getCreatedAt();
         this.updatedAt = organization.getUpdatedAt();
-        this.memberCount = organization.getMemberships() != null ? organization.getMemberships().size() : 0;
+        // Don't access lazy-loaded memberships - calculate memberCount separately if needed
+        this.memberCount = 0;
     }
 
     public OrganizationResponse(Long id, String name, String description, String logoUrl,

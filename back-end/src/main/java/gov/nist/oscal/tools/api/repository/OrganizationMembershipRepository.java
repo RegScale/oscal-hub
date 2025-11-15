@@ -39,5 +39,8 @@ public interface OrganizationMembershipRepository extends JpaRepository<Organiza
         @Param("status") MembershipStatus status
     );
 
+    @Query("SELECT m FROM OrganizationMembership m WHERE m.user.id = :userId")
+    List<OrganizationMembership> findByUserId(@Param("userId") Long userId);
+
     boolean existsByUserAndOrganization(User user, Organization organization);
 }

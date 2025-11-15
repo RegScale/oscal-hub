@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserAccessRequestRepository extends JpaRepository<UserAccessRequest, Long> {
@@ -28,6 +29,18 @@ public interface UserAccessRequestRepository extends JpaRepository<UserAccessReq
 
     @Query("SELECT r FROM UserAccessRequest r WHERE r.email = :email AND r.organization.id = :orgId AND r.status = 'PENDING'")
     List<UserAccessRequest> findPendingByEmailAndOrganization(
+        @Param("email") String email,
+        @Param("orgId") Long orgId
+    );
+
+    @Query("SELECT r FROM UserAccessRequest r WHERE r.user.id = :userId AND r.organization.id = :orgId AND r.status = 'PENDING'")
+    Optional<UserAccessRequest> findPendingRequestByUserAndOrganization(
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId
+    );
+
+    @Query("SELECT r FROM UserAccessRequest r WHERE r.email = :email AND r.organization.id = :orgId AND r.status = 'PENDING'")
+    Optional<UserAccessRequest> findPendingRequestByEmailAndOrganization(
         @Param("email") String email,
         @Param("orgId") Long orgId
     );
