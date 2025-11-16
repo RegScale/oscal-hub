@@ -43,6 +43,9 @@ public class OrganizationController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     @Operation(
         summary = "Get all users",
         description = "Retrieve all users in the system. Super Admin only."
@@ -61,10 +64,90 @@ public class OrganizationController {
                     user.put("id", u.getId());
                     user.put("username", u.getUsername());
                     user.put("email", u.getEmail());
+                    user.put("globalRole", u.getGlobalRole().toString());
                     return user;
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "Create new user",
+        description = "Create a new user with specified global role. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or username/email already exists"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users")
+    public ResponseEntity<?> createUser(@Valid @RequestBody Map<String, String> request) {
+        try {
+            String username = request.get("username");
+            String email = request.get("email");
+            String password = request.get("password");
+            String globalRoleStr = request.getOrDefault("globalRole", "USER");
+
+            // Validate required fields
+            if (username == null || username.trim().isEmpty()) {
+                throw new IllegalArgumentException("Username is required");
+            }
+            if (email == null || email.trim().isEmpty()) {
+                throw new IllegalArgumentException("Email is required");
+            }
+            if (password == null || password.trim().isEmpty()) {
+                throw new IllegalArgumentException("Password is required");
+            }
+
+            // Check if username already exists
+            if (userRepository.existsByUsername(username)) {
+                throw new RuntimeException("Username already exists");
+            }
+
+            // Check if email already exists
+            if (userRepository.existsByEmail(email)) {
+                throw new RuntimeException("Email already exists");
+            }
+
+            // Parse global role
+            User.GlobalRole globalRole;
+            try {
+                globalRole = User.GlobalRole.valueOf(globalRoleStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid global role. Must be 'USER' or 'SUPER_ADMIN'");
+            }
+
+            // Create new user
+            User user = new User();
+            user.setUsername(username.trim());
+            user.setEmail(email.trim());
+            user.setPassword(passwordEncoder.encode(password));
+            user.setEnabled(true);
+            user.setGlobalRole(globalRole);
+            user.setPasswordChangedAt(java.time.LocalDateTime.now());
+            user.setFailedLoginAttempts(0);
+
+            // Save user
+            user = userRepository.save(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User created successfully");
+            response.put("id", user.getId());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("globalRole", user.getGlobalRole().toString());
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     @Operation(

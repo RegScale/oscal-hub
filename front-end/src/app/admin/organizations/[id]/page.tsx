@@ -62,6 +62,13 @@ export default function ManageOrganizationPage() {
   const [newMemberRole, setNewMemberRole] = useState<'USER' | 'ORG_ADMIN'>('USER');
   const [addingMember, setAddingMember] = useState(false);
 
+  // Create new user state
+  const [createNewUser, setCreateNewUser] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserGlobalRole, setNewUserGlobalRole] = useState<'USER' | 'SUPER_ADMIN'>('USER');
+
   // Edit member role state
   const [editingMembershipId, setEditingMembershipId] = useState<number | null>(null);
   const [editingMemberRole, setEditingMemberRole] = useState<string>('');
@@ -219,45 +226,121 @@ export default function ManageOrganizationPage() {
   };
 
   const handleAddMember = async () => {
-    if (!newMemberUserId) {
-      setError('Please select a user');
-      return;
-    }
-
-    try {
-      setAddingMember(true);
-      setError(null);
-      setSuccess(null);
-
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          userId: parseInt(newMemberUserId),
-          role: newMemberRole,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to add member');
+    if (createNewUser) {
+      // Create new user first, then add to organization
+      if (!newUsername || !newUserEmail || !newUserPassword) {
+        setError('Please fill in all required fields');
+        return;
       }
 
-      setShowAddMemberModal(false);
-      setNewMemberUserId('');
-      setNewMemberRole('USER');
-      await loadMembers();
-      setSuccess('Member added successfully');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      console.error('Failed to add member:', err);
-      setError(err.message || 'Failed to add member');
-    } finally {
-      setAddingMember(false);
+      try {
+        setAddingMember(true);
+        setError(null);
+        setSuccess(null);
+
+        // Create user
+        const createUserResponse = await fetch(`http://localhost:8080/api/admin/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            username: newUsername,
+            email: newUserEmail,
+            password: newUserPassword,
+            globalRole: newUserGlobalRole,
+          }),
+        });
+
+        if (!createUserResponse.ok) {
+          const error = await createUserResponse.json();
+          throw new Error(error.error || 'Failed to create user');
+        }
+
+        const createdUser = await createUserResponse.json();
+
+        // Add user to organization
+        const addMemberResponse = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            userId: createdUser.id,
+            role: newMemberRole,
+          }),
+        });
+
+        if (!addMemberResponse.ok) {
+          const error = await addMemberResponse.json();
+          throw new Error(error.error || 'Failed to add member to organization');
+        }
+
+        setShowAddMemberModal(false);
+        resetAddMemberForm();
+        await loadMembers();
+        await loadAllUsers(); // Refresh user list
+        setSuccess(`User ${createdUser.username} created and added to organization successfully`);
+        setTimeout(() => setSuccess(null), 3000);
+      } catch (err: any) {
+        console.error('Failed to create user and add to organization:', err);
+        setError(err.message || 'Failed to create user and add to organization');
+      } finally {
+        setAddingMember(false);
+      }
+    } else {
+      // Add existing user
+      if (!newMemberUserId) {
+        setError('Please select a user');
+        return;
+      }
+
+      try {
+        setAddingMember(true);
+        setError(null);
+        setSuccess(null);
+
+        const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            userId: parseInt(newMemberUserId),
+            role: newMemberRole,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to add member');
+        }
+
+        setShowAddMemberModal(false);
+        resetAddMemberForm();
+        await loadMembers();
+        setSuccess('Member added successfully');
+        setTimeout(() => setSuccess(null), 3000);
+      } catch (err: any) {
+        console.error('Failed to add member:', err);
+        setError(err.message || 'Failed to add member');
+      } finally {
+        setAddingMember(false);
+      }
     }
+  };
+
+  const resetAddMemberForm = () => {
+    setNewMemberUserId('');
+    setNewMemberRole('USER');
+    setCreateNewUser(false);
+    setNewUsername('');
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserGlobalRole('USER');
   };
 
   const handleUpdateMemberRole = async (membershipId: number, newRole: string) => {
@@ -847,34 +930,123 @@ export default function ManageOrganizationPage() {
       {/* Add Member Modal */}
       {showAddMemberModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Add Member to Organization
               </h2>
             </div>
             <div className="px-6 py-4">
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select User *
-                  </label>
-                  <select
-                    value={newMemberUserId}
-                    onChange={(e) => setNewMemberUserId(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                {/* Toggle between Select and Create */}
+                <div className="flex items-center space-x-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setCreateNewUser(false)}
+                    className={`px-4 py-2 rounded-md ${
+                      !createNewUser
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
                   >
-                    <option value="">-- Select a user --</option>
-                    {availableUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username} ({user.email})
-                      </option>
-                    ))}
-                  </select>
+                    Select Existing User
+                  </button>
+                  <button
+                    onClick={() => setCreateNewUser(true)}
+                    className={`px-4 py-2 rounded-md ${
+                      createNewUser
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Create New User
+                  </button>
                 </div>
+
+                {!createNewUser ? (
+                  /* Select existing user */
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Select User *
+                    </label>
+                    <select
+                      value={newMemberUserId}
+                      onChange={(e) => setNewMemberUserId(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    >
+                      <option value="">-- Select a user --</option>
+                      {availableUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.username} ({user.email})
+                        </option>
+                      ))}
+                    </select>
+                    {availableUsers.length === 0 && (
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        No users available. All users are already members or you can create a new user.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* Create new user */
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Username *
+                      </label>
+                      <input
+                        type="text"
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        placeholder="Enter username"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        placeholder="Enter email"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={newUserPassword}
+                        onChange={(e) => setNewUserPassword(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        placeholder="Enter password"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Global Role *
+                      </label>
+                      <select
+                        value={newUserGlobalRole}
+                        onChange={(e) => setNewUserGlobalRole(e.target.value as 'USER' | 'SUPER_ADMIN')}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      >
+                        <option value="USER">User</option>
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Super Admins have full system access across all organizations
+                      </p>
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Role *
+                    Organization Role *
                   </label>
                   <select
                     value={newMemberRole}
@@ -882,17 +1054,19 @@ export default function ManageOrganizationPage() {
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                   >
                     <option value="USER">User</option>
-                    <option value="ORG_ADMIN">Admin</option>
+                    <option value="ORG_ADMIN">Organization Admin</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Organization Admins can manage users within this organization
+                  </p>
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3 sticky bottom-0 bg-white dark:bg-gray-800">
               <button
                 onClick={() => {
                   setShowAddMemberModal(false);
-                  setNewMemberUserId('');
-                  setNewMemberRole('USER');
+                  resetAddMemberForm();
                 }}
                 disabled={addingMember}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
@@ -901,10 +1075,14 @@ export default function ManageOrganizationPage() {
               </button>
               <button
                 onClick={handleAddMember}
-                disabled={addingMember || !newMemberUserId}
+                disabled={
+                  addingMember ||
+                  (!createNewUser && !newMemberUserId) ||
+                  (createNewUser && (!newUsername || !newUserEmail || !newUserPassword))
+                }
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
-                {addingMember ? 'Adding...' : 'Add Member'}
+                {addingMember ? (createNewUser ? 'Creating...' : 'Adding...') : (createNewUser ? 'Create & Add' : 'Add Member')}
               </button>
             </div>
           </div>

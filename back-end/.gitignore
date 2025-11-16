@@ -1,0 +1,6 @@
+
+# User uploads (logos, etc.)
+uploads/*
+!uploads/README.md
+!uploads/org-logos/
+uploads/org-logos/*
