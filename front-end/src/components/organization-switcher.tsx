@@ -103,29 +103,64 @@ export function OrganizationSwitcher() {
     }
   };
 
+  const handleSelectOrganization = async (orgId: number) => {
+    try {
+      setSwitching(true);
+      setIsOpen(false);
+      const result = await apiClient.selectOrganization(orgId);
+
+      // Update local state
+      setCurrentOrg(result.organizationName);
+      setCurrentOrgId(result.organizationId);
+
+      // Sync the AuthContext with the new user data from localStorage
+      updateUser();
+
+      // Check if password change is required
+      if (result.mustChangePassword) {
+        router.push('/change-password');
+        return;
+      }
+
+      // Reload the current page to refresh data with new organization context
+      router.refresh();
+    } catch (error: any) {
+      console.error('Failed to select organization:', error);
+      alert(error.message || 'Failed to select organization');
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   const handleRequestAccess = () => {
     setIsOpen(false);
     router.push('/request-access');
   };
-
-  if (!currentOrg) {
-    return null;
-  }
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={switching}
-        className="flex items-center space-x-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-between"
+        className={`flex items-center space-x-2 px-3 py-2 text-sm border rounded-md disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-between ${
+          !currentOrg
+            ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+            : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+        }`}
       >
         <div className="flex items-center space-x-2">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          <svg className={`h-4 w-4 ${!currentOrg ? 'text-yellow-600 dark:text-yellow-400' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {!currentOrg ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            )}
           </svg>
-          <span className="font-medium truncate max-w-[150px]">{currentOrg}</span>
+          <span className={`font-medium truncate max-w-[150px] ${!currentOrg ? 'text-yellow-700 dark:text-yellow-300' : ''}`}>
+            {currentOrg || 'Select Organization'}
+          </span>
         </div>
-        <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''} ${!currentOrg ? 'text-yellow-600 dark:text-yellow-400' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -133,7 +168,7 @@ export function OrganizationSwitcher() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-[250px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50">
           <div className="px-3 py-2 text-sm font-semibold border-b border-gray-200 dark:border-gray-700">
-            Switch Organization
+            {currentOrg ? 'Switch Organization' : 'Select Organization'}
           </div>
 
           <div className="py-1 max-h-[300px] overflow-y-auto">
@@ -149,14 +184,20 @@ export function OrganizationSwitcher() {
               organizations.map((org) => (
                 <button
                   key={org.organizationId}
-                  onClick={() => handleSwitchOrganization(org.organizationId, org.name)}
+                  onClick={() => {
+                    if (currentOrg) {
+                      handleSwitchOrganization(org.organizationId, org.name);
+                    } else {
+                      handleSelectOrganization(org.organizationId);
+                    }
+                  }}
                   className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                 >
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
                       {org.logoUrl ? (
                         <img
-                          src={org.logoUrl}
+                          src={`http://localhost:8080${org.logoUrl}`}
                           alt={org.name}
                           className="h-5 w-5 object-contain rounded"
                         />

@@ -105,6 +105,8 @@ public class AuthController {
         response.put("userId", user.getId());
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
+        response.put("firstName", user.getFirstName());
+        response.put("lastName", user.getLastName());
         response.put("street", user.getStreet());
         response.put("city", user.getCity());
         response.put("state", user.getState());
@@ -210,6 +212,8 @@ public class AuthController {
             response.put("message", "Profile updated successfully");
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+            response.put("firstName", user.getFirstName());
+            response.put("lastName", user.getLastName());
             response.put("street", user.getStreet());
             response.put("city", user.getCity());
             response.put("state", user.getState());

@@ -261,6 +261,12 @@ public class AuthService {
         }
 
         // Update profile metadata fields if provided
+        if (updates.containsKey("firstName")) {
+            user.setFirstName(updates.get("firstName"));
+        }
+        if (updates.containsKey("lastName")) {
+            user.setLastName(updates.get("lastName"));
+        }
         if (updates.containsKey("street")) {
             user.setStreet(updates.get("street"));
         }

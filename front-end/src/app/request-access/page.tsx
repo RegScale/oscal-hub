@@ -48,8 +48,27 @@ export default function RequestAccessPage() {
     try {
       setLoading(true);
       setError(null);
-      const orgs = await apiClient.getOrganizations();
-      setOrganizations(orgs);
+
+      // Get all organizations
+      const allOrgs = await apiClient.getOrganizations();
+
+      // Get user's current organizations to filter them out
+      const token = localStorage.getItem('token');
+      let myOrgIds: number[] = [];
+
+      if (token) {
+        try {
+          const myOrgs = await apiClient.getMyOrganizations();
+          myOrgIds = myOrgs.map(org => org.organizationId);
+        } catch (err) {
+          // User might not be authenticated, continue anyway
+          console.log('Could not load user organizations:', err);
+        }
+      }
+
+      // Filter out organizations the user is already a member of
+      const availableOrgs = allOrgs.filter(org => !myOrgIds.includes(org.organizationId));
+      setOrganizations(availableOrgs);
     } catch (err) {
       console.error('Failed to load organizations:', err);
       setError('Failed to load organizations. Please try again.');
@@ -191,7 +210,7 @@ export default function RequestAccessPage() {
                     <div className="flex flex-col items-center text-center">
                       {org.logoUrl ? (
                         <img
-                          src={org.logoUrl}
+                          src={`http://localhost:8080${org.logoUrl}`}
                           alt={org.name}
                           className="h-12 w-12 object-contain mb-2"
                         />

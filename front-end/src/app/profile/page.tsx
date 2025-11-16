@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [street, setStreet] = useState('');
@@ -39,6 +41,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setEmail(user.email || '');
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
       setStreet(user.street || '');
       setCity(user.city || '');
       setState(user.state || '');
@@ -74,6 +78,14 @@ export default function ProfilePage() {
 
       if (email && email !== user?.email) {
         updates.email = email;
+      }
+
+      if (firstName !== user?.firstName) {
+        updates.firstName = firstName;
+      }
+
+      if (lastName !== user?.lastName) {
+        updates.lastName = lastName;
       }
 
       if (newPassword) {
@@ -333,6 +345,32 @@ export default function ProfilePage() {
                     <User className="h-4 w-4" />
                     Profile Information
                   </Label>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="e.g., John"
+                        disabled={isUpdating}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="e.g., Doe"
+                        disabled={isUpdating}
+                      />
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
