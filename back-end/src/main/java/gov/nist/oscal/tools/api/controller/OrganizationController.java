@@ -2,9 +2,14 @@ package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
+import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.model.AddMemberRequest;
 import gov.nist.oscal.tools.api.model.AssignAdminRequest;
 import gov.nist.oscal.tools.api.model.OrganizationRequest;
 import gov.nist.oscal.tools.api.model.OrganizationResponse;
+import gov.nist.oscal.tools.api.model.UpdateMemberRoleRequest;
+import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrganizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,12 +33,39 @@ import java.util.stream.Collectors;
  * Provides CRUD operations for organizations and admin assignment
  */
 @RestController
-@RequestMapping("/api/admin/organizations")
+@RequestMapping("/api/admin")
 @Tag(name = "Organization Management", description = "Super Admin APIs for managing organizations")
 public class OrganizationController {
 
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Operation(
+        summary = "Get all users",
+        description = "Retrieve all users in the system. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        List<Map<String, Object>> response = users.stream()
+                .map(u -> {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("id", u.getId());
+                    user.put("username", u.getUsername());
+                    user.put("email", u.getEmail());
+                    return user;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
 
     @Operation(
         summary = "Get all organizations",
@@ -44,7 +76,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @GetMapping
+    @GetMapping("/organizations")
     public ResponseEntity<List<OrganizationResponse>> getAllOrganizations() {
         List<Organization> organizations = organizationService.getAllOrganizations();
         List<OrganizationResponse> response = organizations.stream()
@@ -63,7 +95,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @GetMapping("/{id}")
+    @GetMapping("/organizations/{id}")
     public ResponseEntity<?> getOrganization(@PathVariable Long id) {
         try {
             Organization organization = organizationService.getOrganization(id);
@@ -86,7 +118,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PostMapping
+    @PostMapping("/organizations")
     public ResponseEntity<?> createOrganization(@Valid @RequestBody OrganizationRequest request) {
         try {
             Organization organization = organizationService.createOrganization(
@@ -114,7 +146,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PutMapping("/{id}")
+    @PutMapping("/organizations/{id}")
     public ResponseEntity<?> updateOrganization(
             @PathVariable Long id,
             @Valid @RequestBody OrganizationRequest request) {
@@ -144,7 +176,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/organizations/{id}")
     public ResponseEntity<?> deactivateOrganization(@PathVariable Long id) {
         try {
             Organization organization = organizationService.deactivateOrganization(id);
@@ -170,7 +202,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PostMapping("/{id}/logo")
+    @PostMapping("/organizations/{id}/logo")
     public ResponseEntity<?> uploadLogo(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
@@ -205,7 +237,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @DeleteMapping("/{id}/logo")
+    @DeleteMapping("/organizations/{id}/logo")
     public ResponseEntity<?> deleteLogo(@PathVariable Long id) {
         try {
             organizationService.deleteLogo(id);
@@ -230,7 +262,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PostMapping("/{id}/admins")
+    @PostMapping("/organizations/{id}/admins")
     public ResponseEntity<?> assignOrganizationAdmin(
             @PathVariable Long id,
             @Valid @RequestBody AssignAdminRequest request) {
@@ -263,7 +295,7 @@ public class OrganizationController {
         @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @GetMapping("/{id}/members")
+    @GetMapping("/organizations/{id}/members")
     public ResponseEntity<?> getOrganizationMembers(@PathVariable Long id) {
         try {
             List<OrganizationMembership> memberships = organizationService.getOrganizationMembers(id);
@@ -282,6 +314,108 @@ public class OrganizationController {
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(members);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(404).body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Add member to organization",
+        description = "Add a new member to the organization with specified role. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Member added successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or user already a member"),
+        @ApiResponse(responseCode = "404", description = "Organization or user not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/organizations/{id}/members")
+    public ResponseEntity<?> addMember(
+            @PathVariable Long id,
+            @Valid @RequestBody AddMemberRequest request) {
+        try {
+            OrganizationRole role = OrganizationRole.valueOf(request.getRole().toUpperCase());
+            OrganizationMembership membership = organizationService.addUserToOrganization(
+                    id,
+                    request.getUserId(),
+                    role
+            );
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Member added successfully");
+            response.put("membershipId", membership.getId());
+            response.put("userId", membership.getUser().getId());
+            response.put("username", membership.getUser().getUsername());
+            response.put("role", membership.getRole().toString());
+            response.put("status", membership.getStatus().toString());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid role. Must be 'USER' or 'ORG_ADMIN'");
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Update member role",
+        description = "Update a member's role in the organization. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Member role updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid role"),
+        @ApiResponse(responseCode = "404", description = "Membership not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PutMapping("/organizations/{id}/members/{membershipId}")
+    public ResponseEntity<?> updateMemberRole(
+            @PathVariable Long id,
+            @PathVariable Long membershipId,
+            @Valid @RequestBody UpdateMemberRoleRequest request) {
+        try {
+            OrganizationRole role = OrganizationRole.valueOf(request.getRole().toUpperCase());
+            OrganizationMembership membership = organizationService.updateMemberRole(membershipId, role);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Member role updated successfully");
+            response.put("membershipId", membership.getId());
+            response.put("role", membership.getRole().toString());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid role. Must be 'USER' or 'ORG_ADMIN'");
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(404).body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Remove member from organization",
+        description = "Remove a member from the organization. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Member removed successfully"),
+        @ApiResponse(responseCode = "404", description = "Membership not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @DeleteMapping("/organizations/{id}/members/{membershipId}")
+    public ResponseEntity<?> removeMember(
+            @PathVariable Long id,
+            @PathVariable Long membershipId) {
+        try {
+            organizationService.removeMember(membershipId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Member removed successfully");
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

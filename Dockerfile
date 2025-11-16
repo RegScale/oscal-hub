@@ -78,7 +78,7 @@ RUN groupadd -g 10001 oscalgroup && \
 
 # Create app directory and user directories with proper ownership
 WORKDIR /app
-RUN mkdir -p /app/data /app/logs /app/backend /app/frontend /home/oscaluser/.oscal-hub/files && \
+RUN mkdir -p /app/data /app/logs /app/backend /app/frontend /app/uploads/org-logos /home/oscaluser/.oscal-hub/files && \
     chown -R oscaluser:oscalgroup /app /home/oscaluser
 
 # Copy backend JAR with proper ownership

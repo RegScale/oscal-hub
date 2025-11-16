@@ -307,4 +307,36 @@ public class OrganizationService {
         Organization organization = getOrganization(organizationId);
         return membershipRepository.findByOrganizationAndStatusWithUser(organization, MembershipStatus.ACTIVE);
     }
+
+    /**
+     * Update member role in an organization
+     */
+    @Transactional
+    public OrganizationMembership updateMemberRole(Long membershipId, OrganizationRole newRole) {
+        logger.info("Updating membership {} to role {}", membershipId, newRole);
+
+        OrganizationMembership membership = membershipRepository.findById(membershipId)
+                .orElseThrow(() -> new RuntimeException("Membership not found: " + membershipId));
+
+        membership.setRole(newRole);
+        membership.setUpdatedAt(LocalDateTime.now());
+        membership = membershipRepository.save(membership);
+
+        logger.info("Updated membership {} to role {}", membershipId, newRole);
+        return membership;
+    }
+
+    /**
+     * Remove a member from an organization
+     */
+    @Transactional
+    public void removeMember(Long membershipId) {
+        logger.info("Removing membership {}", membershipId);
+
+        OrganizationMembership membership = membershipRepository.findById(membershipId)
+                .orElseThrow(() -> new RuntimeException("Membership not found: " + membershipId));
+
+        membershipRepository.delete(membership);
+        logger.info("Removed membership {}", membershipId);
+    }
 }

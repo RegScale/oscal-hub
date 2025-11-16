@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Organization {
   id: number;
@@ -23,13 +23,21 @@ interface Member {
   joinedAt: string;
 }
 
+interface User {
+  id: number;
+  username: string;
+  email: string;
+}
+
 export default function ManageOrganizationPage() {
   const params = useParams();
   const router = useRouter();
   const organizationId = params.id as string;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -41,12 +49,30 @@ export default function ManageOrganizationPage() {
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Logo upload state
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [deletingLogo, setDeletingLogo] = useState(false);
+
   // Members tab state
   const [activeTab, setActiveTab] = useState<'details' | 'members'>('details');
+
+  // Add member state
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [newMemberUserId, setNewMemberUserId] = useState<string>('');
+  const [newMemberRole, setNewMemberRole] = useState<'USER' | 'ORG_ADMIN'>('USER');
+  const [addingMember, setAddingMember] = useState(false);
+
+  // Edit member role state
+  const [editingMembershipId, setEditingMembershipId] = useState<number | null>(null);
+  const [editingMemberRole, setEditingMemberRole] = useState<string>('');
+
+  // Remove member state
+  const [removingMembershipId, setRemovingMembershipId] = useState<number | null>(null);
 
   useEffect(() => {
     loadOrganization();
     loadMembers();
+    loadAllUsers();
   }, [organizationId]);
 
   const loadOrganization = async () => {
@@ -90,6 +116,207 @@ export default function ManageOrganizationPage() {
       }
     } catch (err) {
       console.error('Failed to load members:', err);
+    }
+  };
+
+  const loadAllUsers = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAllUsers(data);
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'].includes(file.type)) {
+      setError('Invalid file type. Please upload PNG, JPG, or SVG');
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('File size must be less than 2MB');
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      setError(null);
+      setSuccess(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/logo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload logo');
+      }
+
+      await loadOrganization();
+      setSuccess('Logo uploaded successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to upload logo:', err);
+      setError(err.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!confirm('Are you sure you want to delete the logo?')) return;
+
+    try {
+      setDeletingLogo(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/logo`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete logo');
+      }
+
+      await loadOrganization();
+      setSuccess('Logo deleted successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to delete logo:', err);
+      setError(err.message || 'Failed to delete logo');
+    } finally {
+      setDeletingLogo(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!newMemberUserId) {
+      setError('Please select a user');
+      return;
+    }
+
+    try {
+      setAddingMember(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          userId: parseInt(newMemberUserId),
+          role: newMemberRole,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add member');
+      }
+
+      setShowAddMemberModal(false);
+      setNewMemberUserId('');
+      setNewMemberRole('USER');
+      await loadMembers();
+      setSuccess('Member added successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to add member:', err);
+      setError(err.message || 'Failed to add member');
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleUpdateMemberRole = async (membershipId: number, newRole: string) => {
+    try {
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members/${membershipId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update member role');
+      }
+
+      setEditingMembershipId(null);
+      await loadMembers();
+      setSuccess('Member role updated successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to update member role:', err);
+      setError(err.message || 'Failed to update member role');
+    }
+  };
+
+  const handleRemoveMember = async (membershipId: number) => {
+    if (!confirm('Are you sure you want to remove this member from the organization?')) return;
+
+    try {
+      setRemovingMembershipId(membershipId);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members/${membershipId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove member');
+      }
+
+      await loadMembers();
+      setSuccess('Member removed successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to remove member:', err);
+      setError(err.message || 'Failed to remove member');
+    } finally {
+      setRemovingMembershipId(null);
     }
   };
 
@@ -249,6 +476,11 @@ export default function ManageOrganizationPage() {
     );
   }
 
+  // Filter out users who are already members
+  const availableUsers = allUsers.filter(user =>
+    !members.some(member => member.userId === user.id)
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -311,7 +543,7 @@ export default function ManageOrganizationPage() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 {organization.logoUrl ? (
-                  <img src={organization.logoUrl} alt={organization.name} className="h-16 w-16 rounded object-contain mr-4" />
+                  <img src={`http://localhost:8080${organization.logoUrl}`} alt={organization.name} className="h-16 w-16 rounded object-contain mr-4" />
                 ) : (
                   <div className="h-16 w-16 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-4">
                     <span className="text-white text-2xl font-bold">{organization.name.charAt(0).toUpperCase()}</span>
@@ -395,6 +627,39 @@ export default function ManageOrganizationPage() {
                   </label>
                 </div>
 
+                {/* Logo Management */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Organization Logo</h3>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingLogo}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {uploadingLogo ? 'Uploading...' : organization.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                    </button>
+                    {organization.logoUrl && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteLogo}
+                        disabled={deletingLogo}
+                        className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                      >
+                        {deletingLogo ? 'Deleting...' : 'Delete Logo'}
+                      </button>
+                    )}
+                    <span className="text-sm text-gray-500 dark:text-gray-400">PNG, JPG, or SVG (max 2MB)</span>
+                  </div>
+                </div>
+
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -447,8 +712,14 @@ export default function ManageOrganizationPage() {
         {/* Members Tab */}
         {activeTab === 'members' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Organization Members</h2>
+              <button
+                onClick={() => setShowAddMemberModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Add Member
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -469,13 +740,16 @@ export default function ManageOrganizationPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Joined
                     </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                        No members found
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                        No members found. Click "Add Member" to get started.
                       </td>
                     </tr>
                   ) : (
@@ -490,13 +764,24 @@ export default function ManageOrganizationPage() {
                           <div className="text-sm text-gray-500 dark:text-gray-400">{member.email}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            member.role === 'ORG_ADMIN'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                          }`}>
-                            {member.role === 'ORG_ADMIN' ? 'Admin' : 'User'}
-                          </span>
+                          {editingMembershipId === member.membershipId ? (
+                            <select
+                              value={editingMemberRole}
+                              onChange={(e) => setEditingMemberRole(e.target.value)}
+                              className="text-sm border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            >
+                              <option value="USER">User</option>
+                              <option value="ORG_ADMIN">Admin</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              member.role === 'ORG_ADMIN'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                            }`}>
+                              {member.role === 'ORG_ADMIN' ? 'Admin' : 'User'}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -512,6 +797,43 @@ export default function ManageOrganizationPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {new Date(member.joinedAt).toLocaleDateString()}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {editingMembershipId === member.membershipId ? (
+                            <>
+                              <button
+                                onClick={() => handleUpdateMemberRole(member.membershipId, editingMemberRole)}
+                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingMembershipId(null)}
+                                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingMembershipId(member.membershipId);
+                                  setEditingMemberRole(member.role);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4"
+                              >
+                                Edit Role
+                              </button>
+                              <button
+                                onClick={() => handleRemoveMember(member.membershipId)}
+                                disabled={removingMembershipId === member.membershipId}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                              >
+                                {removingMembershipId === member.membershipId ? 'Removing...' : 'Remove'}
+                              </button>
+                            </>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -521,6 +843,73 @@ export default function ManageOrganizationPage() {
           </div>
         )}
       </div>
+
+      {/* Add Member Modal */}
+      {showAddMemberModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Add Member to Organization
+              </h2>
+            </div>
+            <div className="px-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select User *
+                  </label>
+                  <select
+                    value={newMemberUserId}
+                    onChange={(e) => setNewMemberUserId(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  >
+                    <option value="">-- Select a user --</option>
+                    {availableUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.username} ({user.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Role *
+                  </label>
+                  <select
+                    value={newMemberRole}
+                    onChange={(e) => setNewMemberRole(e.target.value as 'USER' | 'ORG_ADMIN')}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  >
+                    <option value="USER">User</option>
+                    <option value="ORG_ADMIN">Admin</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAddMemberModal(false);
+                  setNewMemberUserId('');
+                  setNewMemberRole('USER');
+                }}
+                disabled={addingMember}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddMember}
+                disabled={addingMember || !newMemberUserId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {addingMember ? 'Adding...' : 'Add Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
