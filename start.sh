@@ -114,11 +114,69 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and SIGTERM
 trap cleanup SIGINT SIGTERM
 
+# Function to start Docker daemon
+start_docker() {
+    local os_type=$(uname -s)
+
+    case "$os_type" in
+        Darwin)
+            # macOS - start Docker Desktop
+            echo -e "${YELLOW}Starting Docker Desktop...${NC}"
+            open -a Docker
+            ;;
+        Linux)
+            # Linux - try to start Docker daemon with systemd or service
+            echo -e "${YELLOW}Starting Docker daemon...${NC}"
+            if command -v systemctl &> /dev/null; then
+                sudo systemctl start docker
+            elif command -v service &> /dev/null; then
+                sudo service docker start
+            else
+                echo -e "${RED}✗ Unable to start Docker automatically${NC}"
+                echo -e "${YELLOW}Please start Docker manually and try again.${NC}"
+                return 1
+            fi
+            ;;
+        *)
+            echo -e "${RED}✗ Unsupported operating system: $os_type${NC}"
+            echo -e "${YELLOW}Please start Docker manually and try again.${NC}"
+            return 1
+            ;;
+    esac
+    return 0
+}
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo -e "${RED}✗ Docker is not running!${NC}"
-    echo -e "${YELLOW}Please start Docker Desktop and try again.${NC}"
-    exit 1
+
+    # Try to start Docker
+    if ! start_docker; then
+        exit 1
+    fi
+
+    # Wait for Docker to be ready
+    echo -e "${BLUE}Waiting for Docker to be ready...${NC}"
+    DOCKER_READY=0
+    for i in {1..60}; do
+        if docker info > /dev/null 2>&1; then
+            DOCKER_READY=1
+            break
+        fi
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+
+    if [ $DOCKER_READY -eq 1 ]; then
+        echo -e "${GREEN}✓ Docker is ready!${NC}"
+    else
+        echo -e "${RED}✗ Docker failed to start${NC}"
+        echo -e "${YELLOW}Please start Docker manually and try again.${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✓ Docker is already running${NC}"
 fi
 
 # Check if PostgreSQL is running
