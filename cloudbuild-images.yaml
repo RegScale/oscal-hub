@@ -1,0 +1,65 @@
+# ============================================================================#
+# Cloud Build Configuration - Single Container Build
+# ============================================================================#
+# This file builds a single OSCAL Tools container with backend + frontend
+# Deployment is handled separately by Terraform
+#
+# Usage:
+#   gcloud builds submit --config=cloudbuild-images.yaml
+# ============================================================================#
+
+steps:
+  # ============================================================================
+  # Build OSCAL Tools Container (Backend + Frontend)
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-oscal-tools'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-tools:${_TAG}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-tools:latest'
+      - '.'
+    timeout: '1800s'  # 30 minutes for full build
+
+  # ============================================================================
+  # Push Image to Artifact Registry
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-oscal-tools'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-tools'
+    waitFor: ['build-oscal-tools']
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+  substitutionOption: 'ALLOW_LOOSE'
+
+timeout: '2000s'  # 33 minutes total
+
+# ============================================================================
+# Substitution Variables
+# ============================================================================
+
+substitutions:
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY_REPO: 'oscal-tools'
+  _TAG: 'latest'
+
+# ============================================================================
+# Images Output
+# ============================================================================
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-tools:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-tools:latest'

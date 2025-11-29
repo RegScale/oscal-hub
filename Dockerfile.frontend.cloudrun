@@ -1,0 +1,92 @@
+# syntax=docker/dockerfile:1
+# OSCAL Tools Frontend - Cloud Run Optimized Dockerfile
+# Builds Next.js frontend for deployment to Google Cloud Run
+
+# =============================================================================
+# Stage 1: Install Dependencies
+# =============================================================================
+FROM node:18-alpine AS frontend-deps
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copy package files
+COPY front-end/package.json front-end/package-lock.json* ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps
+
+# =============================================================================
+# Stage 2: Build Next.js Application
+# =============================================================================
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=frontend-deps /app/node_modules ./node_modules
+COPY front-end/ .
+
+# Set backend API URL (will be overridden by Cloud Run env var)
+# This is used during build for static pages
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+ENV NEXT_PUBLIC_USE_MOCK=false
+
+# Disable telemetry during build
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the Next.js application (standalone output)
+RUN npm run build
+
+# =============================================================================
+# Stage 3: Runtime - Production Image for Cloud Run
+# =============================================================================
+FROM node:18-alpine AS runner
+
+# Add OCI metadata labels
+LABEL org.opencontainers.image.title="OSCAL Tools Frontend"
+LABEL org.opencontainers.image.description="OSCAL web interface for Google Cloud Run"
+LABEL org.opencontainers.image.vendor="NIST OSCAL Tools"
+LABEL security.non-root="true"
+
+# Install security updates
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache curl tini && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 10001 nodejs && \
+    adduser --system --uid 10001 nextjs
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Cloud Run automatically sets PORT (defaults to 8080)
+ENV PORT=3000
+
+# Copy built application from builder stage
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/public ./public
+
+# Switch to non-root user
+USER nextjs:nodejs
+
+# Expose port (Cloud Run will override this)
+EXPOSE 3000
+
+# Health check for Cloud Run
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT} || exit 1
+
+# Use tini as init system
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start Next.js server
+# Cloud Run will set PORT environment variable
+CMD ["node", "server.js"]

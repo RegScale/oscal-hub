@@ -1,0 +1,205 @@
+# ============================================================================#
+# Cloud Build Configuration for OSCAL Tools
+# ============================================================================#
+# This file defines the CI/CD pipeline for building and deploying to Cloud Run
+#
+# Trigger this build with:
+#   gcloud builds submit --config=cloudbuild.yaml
+#
+# Or set up automatic triggers in Cloud Build console
+# ============================================================================#
+
+steps:
+  # ============================================================================
+  # Step 1: Build Backend Container Image
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-backend'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.backend.cloudrun'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend:latest'
+      - '.'
+    timeout: '1200s'
+
+  # ============================================================================
+  # Step 2: Build Frontend Container Image
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-frontend'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.frontend.cloudrun'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=https://oscal-backend-${_ENVIRONMENT}-${_REGION_SUFFIX}.run.app/api'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend:latest'
+      - '.'
+    timeout: '1200s'
+
+  # ============================================================================
+  # Step 3: Push Backend Image to Artifact Registry
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-backend'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend'
+    waitFor: ['build-backend']
+
+  # ============================================================================
+  # Step 4: Push Frontend Image to Artifact Registry
+  # ============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-frontend'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend'
+    waitFor: ['build-frontend']
+
+  # ============================================================================
+  # Step 5: Deploy Backend to Cloud Run
+  # ============================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-backend'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'oscal-backend-${_ENVIRONMENT}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'SPRING_PROFILES_ACTIVE=gcp,GCP_PROJECT_ID=${PROJECT_ID}'
+      - '--max-instances'
+      - '${_BACKEND_MAX_INSTANCES}'
+      - '--min-instances'
+      - '${_BACKEND_MIN_INSTANCES}'
+      - '--cpu'
+      - '${_BACKEND_CPU}'
+      - '--memory'
+      - '${_BACKEND_MEMORY}'
+      - '--timeout'
+      - '300s'
+      - '--concurrency'
+      - '80'
+    waitFor: ['push-backend']
+
+  # ============================================================================
+  # Step 6: Deploy Frontend to Cloud Run
+  # ============================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-frontend'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'oscal-frontend-${_ENVIRONMENT}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,NEXT_PUBLIC_API_URL=https://oscal-backend-${_ENVIRONMENT}-${_REGION_SUFFIX}.run.app/api'
+      - '--max-instances'
+      - '${_FRONTEND_MAX_INSTANCES}'
+      - '--min-instances'
+      - '${_FRONTEND_MIN_INSTANCES}'
+      - '--cpu'
+      - '${_FRONTEND_CPU}'
+      - '--memory'
+      - '${_FRONTEND_MEMORY}'
+      - '--timeout'
+      - '60s'
+      - '--concurrency'
+      - '80'
+    waitFor: ['push-frontend', 'deploy-backend']
+
+  # ============================================================================
+  # Step 7: Run Database Migrations (Optional)
+  # ============================================================================
+  # Uncomment to run Flyway migrations after deployment
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   id: 'run-migrations'
+  #   entrypoint: 'bash'
+  #   args:
+  #     - '-c'
+  #     - |
+  #       gcloud run jobs execute oscal-db-migrate-${_ENVIRONMENT} \
+  #         --region ${_REGION} \
+  #         --wait
+  #   waitFor: ['deploy-backend']
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+
+# Use a larger machine type for faster builds
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+  substitutionOption: 'ALLOW_LOOSE'
+
+# Build timeout (20 minutes)
+timeout: '1200s'
+
+# ============================================================================
+# Substitution Variables
+# ============================================================================
+# These can be overridden when triggering the build
+
+substitutions:
+  _REGION: 'us-central1'
+  _REGION_SUFFIX: 'uc.a'  # Cloud Run URL suffix varies by region
+  _ENVIRONMENT: 'prod'
+  _ARTIFACT_REGISTRY_REPO: 'oscal-tools'
+
+  # Backend configuration
+  _BACKEND_CPU: '1000m'
+  _BACKEND_MEMORY: '2Gi'
+  _BACKEND_MIN_INSTANCES: '0'
+  _BACKEND_MAX_INSTANCES: '10'
+
+  # Frontend configuration
+  _FRONTEND_CPU: '1000m'
+  _FRONTEND_MEMORY: '512Mi'
+  _FRONTEND_MIN_INSTANCES: '0'
+  _FRONTEND_MAX_INSTANCES: '10'
+
+# ============================================================================
+# Images to be pushed to Artifact Registry
+# ============================================================================
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-backend:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/oscal-frontend:latest'
+
+# ============================================================================
+# Service Account
+# ============================================================================
+# Cloud Build uses the default Cloud Build service account
+# Ensure it has the following roles:
+#   - Cloud Run Admin
+#   - Service Account User
+#   - Artifact Registry Writer
+#   - Cloud SQL Client (if running migrations)
+# ============================================================================

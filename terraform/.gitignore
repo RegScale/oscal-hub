@@ -16,6 +16,11 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
+# GCP service account keys
+*-key.json
+*.json
+!*.tf.json
+
 # Ignore override files
 override.tf
 override.tf.json

@@ -128,9 +128,12 @@ CHANGELOG*
 # ==============================================================================
 # DOCKER FILES (not needed in image)
 # ==============================================================================
-Dockerfile*
+# Note: Dockerfile itself IS needed for Cloud Build
+# Only exclude these specific files:
 docker-compose*.yml
 .dockerignore
+Dockerfile.backend.cloudrun
+Dockerfile.frontend.cloudrun
 
 # Docker volumes and data
 postgres_data/
@@ -167,9 +170,10 @@ desktop.ini
 *.lnk
 
 # ==============================================================================
-# DEPENDENCY LOCK FILES (dependencies resolved in Dockerfile)
+# DEPENDENCY LOCK FILES
 # ==============================================================================
-package-lock.json
+# Keep package-lock.json for npm ci (deterministic builds)
+# !package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

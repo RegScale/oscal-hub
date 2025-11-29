@@ -10,6 +10,7 @@ target/
 pom.xml.releaseBackup
 release.properties
 .factorypath
+terraform-key.json
 
 # Web interface logs
 backend.log
@@ -22,6 +23,7 @@ data/
 
 # Environment variables (contains secrets)
 .env
+.env.*
 
 # Frontend dependencies and build
 front-end/node_modules/
