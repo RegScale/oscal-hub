@@ -114,6 +114,26 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and SIGTERM
 trap cleanup SIGINT SIGTERM
 
+# Function to kill processes using a specific port
+kill_port() {
+  local port=$1
+  local description=$2
+  echo -e "${YELLOW}🔍 Checking for processes on port ${port} (${description})...${NC}"
+
+  # Find process IDs using the port (macOS and Linux compatible)
+  local pids=$(lsof -ti:$port 2>/dev/null || true)
+
+  if [ -n "$pids" ]; then
+    echo -e "${RED}⚠️  Found processes using port ${port}: $pids${NC}"
+    echo -e "${YELLOW}🔨 Killing processes...${NC}"
+    echo "$pids" | xargs kill -9 2>/dev/null || true
+    sleep 1
+    echo -e "${GREEN}✓ Port ${port} cleared${NC}"
+  else
+    echo -e "${GREEN}✓ Port ${port} is available${NC}"
+  fi
+}
+
 # Function to start Docker daemon
 start_docker() {
     local os_type=$(uname -s)
@@ -208,6 +228,12 @@ else
         exit 1
     fi
 fi
+echo ""
+
+# Clean up ports before starting
+echo -e "${YELLOW}🧹 Cleaning up ports...${NC}"
+kill_port 8080 "Backend"
+kill_port 3000 "Frontend"
 echo ""
 
 # Build backend
