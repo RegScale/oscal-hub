@@ -157,7 +157,7 @@ export default function SelectOrganizationPage() {
                   <div className="aspect-square w-full flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800">
                     {org.logoUrl ? (
                       <img
-                        src={`http://localhost:8080${org.logoUrl}`}
+                        src={`${org.logoUrl}`}
                         alt={`${org.name} logo`}
                         className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-200"
                       />

@@ -34,7 +34,7 @@ export default function AdminOrganizationsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('http://localhost:8080/api/admin/organizations', {
+      const response = await fetch('/api/admin/organizations', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -65,7 +65,7 @@ export default function AdminOrganizationsPage() {
       setCreating(true);
       setError(null);
 
-      const response = await fetch('http://localhost:8080/api/admin/organizations', {
+      const response = await fetch('/api/admin/organizations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export default function AdminOrganizationsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {org.logoUrl ? (
-                          <img src={`http://localhost:8080${org.logoUrl}`} alt={org.name} className="h-10 w-10 rounded object-contain mr-3" />
+                          <img src={org.logoUrl} alt={org.name} className="h-10 w-10 rounded object-contain mr-3" />
                         ) : (
                           <div className="h-10 w-10 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
                             <span className="text-white text-lg font-bold">{org.name.charAt(0).toUpperCase()}</span>

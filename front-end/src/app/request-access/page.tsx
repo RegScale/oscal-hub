@@ -210,7 +210,7 @@ export default function RequestAccessPage() {
                     <div className="flex flex-col items-center text-center">
                       {org.logoUrl ? (
                         <img
-                          src={`http://localhost:8080${org.logoUrl}`}
+                          src={`${org.logoUrl}`}
                           alt={org.name}
                           className="h-12 w-12 object-contain mb-2"
                         />

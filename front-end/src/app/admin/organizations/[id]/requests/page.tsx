@@ -46,7 +46,7 @@ export default function OrganizationAccessRequestsPage() {
 
   const loadOrganization = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -70,7 +70,7 @@ export default function OrganizationAccessRequestsPage() {
         ? `/api/org-admin/access-requests?organizationId=${organizationId}`
         : `/api/org-admin/access-requests/all?organizationId=${organizationId}`;
 
-      const response = await fetch(`http://localhost:8080${endpoint}`, {
+      const response = await fetch(`${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -114,7 +114,7 @@ export default function OrganizationAccessRequestsPage() {
         ? `/api/org-admin/access-requests/${reviewingRequest.id}/approve`
         : `/api/org-admin/access-requests/${reviewingRequest.id}/reject`;
 
-      const response = await fetch(`http://localhost:8080${endpoint}`, {
+      const response = await fetch(`${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
