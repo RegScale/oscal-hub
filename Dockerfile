@@ -119,6 +119,7 @@ RUN chmod +x /app/docker-entrypoint.sh
 USER oscaluser:oscalgroup
 
 # Environment variables (single layer for efficiency)
+# Note: SPRING_PROFILES_ACTIVE will be overridden by Cloud Run env var to 'gcp'
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
                -XX:MaxRAMPercentage=50.0 \
                -XX:+UseG1GC \
@@ -126,7 +127,6 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
                -XX:HeapDumpPath=/app/logs \
                -Djava.security.egd=file:/dev/./urandom" \
     NODE_ENV=production \
-    SPRING_PROFILES_ACTIVE=prod \
     SECURITY_HEADERS_ENABLED=true \
     SECURITY_REQUIRE_HTTPS=false \
     RATE_LIMIT_ENABLED=true \
