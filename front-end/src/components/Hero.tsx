@@ -125,7 +125,7 @@ export function Hero() {
         <h2 className="text-3xl font-bold text-center mb-8">Features</h2>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="border-primary/20">
           <CardHeader className="space-y-4">
             <div className="p-3 rounded-lg bg-primary/10 w-fit">
@@ -543,7 +543,7 @@ export function Hero() {
         <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-8">
           Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Google Cloud, Azure, or AWS for production
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 max-w-[1600px] mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {/* CLI Deployment */}
           <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
             <CardHeader className="space-y-4">

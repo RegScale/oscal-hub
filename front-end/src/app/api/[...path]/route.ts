@@ -58,13 +58,14 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
     const url = new URL(request.url);
     const backendUrl = `${BACKEND_URL}/api/${path}${url.search}`;
 
-    console.log(`[API Proxy] ${request.method} ${backendUrl}`);
+    // console.log(`[API Proxy] ${request.method} ${backendUrl}`);
 
     // Get request body if present
+    // IMPORTANT: Use blob() instead of text() to preserve binary data (multipart/form-data uploads)
     let body = null;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
-        body = await request.text();
+        body = await request.blob();
       } catch (e) {
         // No body or already consumed
       }
@@ -86,8 +87,20 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
       body,
     });
 
-    // Get response body
-    const responseBody = await backendResponse.text();
+    // Get content type to determine how to handle response body
+    const contentType = backendResponse.headers.get('content-type') || '';
+    const isBinary = contentType.startsWith('image/') ||
+                     contentType.startsWith('application/octet-stream') ||
+                     contentType.startsWith('application/pdf') ||
+                     contentType.includes('binary');
+
+    // Get response body - use arrayBuffer for binary data, text for everything else
+    let responseBody;
+    if (isBinary) {
+      responseBody = await backendResponse.arrayBuffer();
+    } else {
+      responseBody = await backendResponse.text();
+    }
 
     // Create response with same status and headers
     const response = new NextResponse(responseBody, {
