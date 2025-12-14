@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Skip ESLint errors during build
   },
+
+  // Note: API proxying is now handled by Next.js API routes in src/app/api/[...path]/route.ts
+  // This is more reliable than rewrites for POST requests with bodies in standalone mode
 };
 
 export default nextConfig;

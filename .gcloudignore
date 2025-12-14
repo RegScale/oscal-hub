@@ -1,0 +1,67 @@
+# gcloudignore - Files to exclude from Cloud Build context
+# This is more permissive than .dockerignore to ensure build works
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs (will be regenerated)
+target/
+back-end/target/
+cli/target/
+node_modules/
+front-end/node_modules/
+front-end/.next/
+front-end/out/
+
+# Logs
+*.log
+logs/
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Test files
+**/__tests__/
+**/*.test.js
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+
+# Documentation (not needed for build)
+docs/
+*.md
+!README.md
+
+# Terraform
+terraform/
+*.tfvars
+*.tfstate
+.terraform/
+
+# Docker files (but keep Dockerfile and docker-entrypoint.sh!)
+docker-compose*.yml
+
+# Certificates
+*.pem
+*.key
+*.crt
+certs/
+
+# Deployment scripts (not needed in build)
+deploy-gcp.sh
+test-build.sh
+dev.sh
+start.sh
+stop.sh

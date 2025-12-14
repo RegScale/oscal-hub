@@ -1,0 +1,101 @@
+# syntax=docker/dockerfile:1
+# OSCAL Tools Backend - Cloud Run Optimized Dockerfile
+# Builds Spring Boot backend for deployment to Google Cloud Run
+
+# =============================================================================
+# Stage 1: Build Backend with Maven
+# =============================================================================
+FROM maven:3.9-eclipse-temurin-21 AS backend-builder
+
+WORKDIR /build
+
+# Copy backend source
+COPY back-end/pom.xml ./back-end/
+COPY back-end/src ./back-end/src/
+
+# Build backend (skip tests for faster builds)
+WORKDIR /build/back-end
+RUN mvn clean package -DskipTests
+
+# =============================================================================
+# Stage 2: Runtime - Security Hardened for Cloud Run
+# =============================================================================
+FROM eclipse-temurin:21-jre-jammy
+
+# Add OCI metadata labels
+LABEL org.opencontainers.image.title="OSCAL Tools Backend"
+LABEL org.opencontainers.image.description="OSCAL REST API for Google Cloud Run"
+LABEL org.opencontainers.image.vendor="NIST OSCAL Tools"
+LABEL security.non-root="true"
+LABEL security.healthcheck="true"
+
+# Install curl for health checks and security updates
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y curl ca-certificates tzdata tini && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create non-root user (UID/GID 10001)
+RUN groupadd -g 10001 oscalgroup && \
+    useradd -u 10001 -g oscalgroup -s /bin/false -m -d /home/oscaluser oscaluser
+
+# Create app directory with proper ownership
+WORKDIR /app
+RUN mkdir -p /app/data /app/logs /tmp/oscal-uploads && \
+    chown -R oscaluser:oscalgroup /app /tmp/oscal-uploads
+
+# Copy backend JAR with proper ownership
+COPY --from=backend-builder --chown=oscaluser:oscalgroup \
+    /build/back-end/target/*.jar /app/backend.jar
+
+# Switch to non-root user
+USER oscaluser:oscalgroup
+
+# Cloud Run specific environment variables
+# PORT is automatically set by Cloud Run (defaults to 8080)
+ENV PORT=8080
+
+# Java options optimized for Cloud Run
+# - UseContainerSupport: Respect container memory limits
+# - MaxRAMPercentage: Use up to 75% of container memory for heap
+# - UseG1GC: G1 garbage collector for better pause times
+# - HeapDumpOnOutOfMemoryError: Generate heap dump for debugging
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+               -XX:MaxRAMPercentage=75.0 \
+               -XX:+UseG1GC \
+               -XX:+HeapDumpOnOutOfMemoryError \
+               -XX:HeapDumpPath=/app/logs \
+               -Djava.security.egd=file:/dev/./urandom"
+
+# Spring Boot profile for GCP
+ENV SPRING_PROFILES_ACTIVE=gcp
+
+# Security configuration (required for production)
+ENV SECURITY_HEADERS_ENABLED=true
+ENV SECURITY_REQUIRE_HTTPS=false
+ENV RATE_LIMIT_ENABLED=true
+ENV ACCOUNT_LOCKOUT_ENABLED=true
+ENV AUDIT_LOGGING_ENABLED=true
+
+# Note: CRITICAL - Set these via Cloud Run environment variables or Secret Manager:
+# - GCP_PROJECT_ID
+# - DB_URL (Cloud SQL connection string)
+# - DB_USERNAME
+# - DB_PASSWORD (from Secret Manager)
+# - JWT_SECRET (from Secret Manager)
+# - CORS_ALLOWED_ORIGINS (frontend Cloud Run URL)
+
+# Expose port (Cloud Run will override this with PORT env var)
+EXPOSE 8080
+
+# Health check for Cloud Run
+# Cloud Run uses /actuator/health for readiness probes
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/actuator/health || exit 1
+
+# Use tini as init system (proper signal handling, zombie reaping)
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Start Spring Boot application
+CMD ["sh", "-c", "java ${JAVA_OPTS} -jar /app/backend.jar"]

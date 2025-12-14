@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import {
   FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen,
   Zap, Users, RefreshCw, Shield, AlertCircle, Clock, FileX, Mail, CheckCircle2, XCircle,
@@ -125,76 +125,76 @@ export function Hero() {
         <h2 className="text-3xl font-bold text-center mb-8">Features</h2>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        <Card className="border-primary/20">
-          <CardHeader className="space-y-4">
-            <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <FileCheck className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl mb-2">Validate</CardTitle>
-              <CardDescription>
-                Ensure your OSCAL documents comply with schema constraints and validation rules
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="border-primary/20">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <FileCheck className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl mb-2">Validate</CardTitle>
+                <CardDescription>
+                  Ensure your OSCAL documents comply with schema constraints and validation rules
+                </CardDescription>
+              </div>
+            </CardHeader>
+          </Card>
 
-        <Card className="border-primary/20">
-          <CardHeader className="space-y-4">
-            <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <ArrowRightLeft className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl mb-2">Convert</CardTitle>
-              <CardDescription>
-                Seamlessly convert between XML, JSON, and YAML formats with side-by-side preview
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+          <Card className="border-primary/20">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <ArrowRightLeft className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl mb-2">Convert</CardTitle>
+                <CardDescription>
+                  Seamlessly convert between XML, JSON, and YAML formats with side-by-side preview
+                </CardDescription>
+              </div>
+            </CardHeader>
+          </Card>
 
-        <Card className="border-primary/20">
-          <CardHeader className="space-y-4">
-            <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <Library className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl mb-2">Library</CardTitle>
-              <CardDescription>
-                Browse, share, and download example OSCAL documents from the community
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+          <Card className="border-primary/20">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <Library className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl mb-2">Library</CardTitle>
+                <CardDescription>
+                  Browse, share, and download example OSCAL documents from the community
+                </CardDescription>
+              </div>
+            </CardHeader>
+          </Card>
 
-        <Card className="border-primary/20">
-          <CardHeader className="space-y-4">
-            <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <BarChart3 className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl mb-2">Visualize</CardTitle>
-              <CardDescription>
-                Explore and understand OSCAL documents through interactive data visualizations
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+          <Card className="border-primary/20">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <BarChart3 className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl mb-2">Visualize</CardTitle>
+                <CardDescription>
+                  Explore and understand OSCAL documents through interactive data visualizations
+                </CardDescription>
+              </div>
+            </CardHeader>
+          </Card>
 
-        <Card className="border-primary/20">
-          <CardHeader className="space-y-4">
-            <div className="p-3 rounded-lg bg-primary/10 w-fit">
-              <ShieldCheck className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-xl mb-2">Authorizations</CardTitle>
-              <CardDescription>
-                Create and manage system authorization documents with customizable templates
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+          <Card className="border-primary/20">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <ShieldCheck className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl mb-2">Authorizations</CardTitle>
+                <CardDescription>
+                  Create and manage system authorization documents with customizable templates
+                </CardDescription>
+              </div>
+            </CardHeader>
+          </Card>
         </div>
       </div>
 
@@ -541,163 +541,222 @@ export function Hero() {
       <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg p-8 mb-16">
         <h2 className="text-3xl font-bold mb-6 text-center">Deployment Options</h2>
         <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-8">
-          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Azure/AWS for production
+          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Google Cloud, Azure, or AWS for production
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {/* CLI Deployment */}
-          <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
+          <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader className="space-y-4">
               <div className="p-3 rounded-lg bg-green-500/10 w-fit">
                 <Terminal className="h-8 w-8 text-green-500" />
               </div>
               <div>
                 <CardTitle className="text-2xl mb-2">CLI Mode</CardTitle>
-                <CardDescription className="text-base mb-4">
+                <CardDescription className="text-base">
                   Standalone command-line tool for automation, scripting, and CI/CD pipelines. No database or web interface required.
                 </CardDescription>
-                <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Free to use
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    2-minute installation
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Perfect for CI/CD and batch processing
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Works 100% offline
-                  </div>
-                </div>
-                <Link href="/guide/deployment/cli" className="inline-block">
-                  <Button className="w-full" variant="outline">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View CLI Deployment Guide
-                  </Button>
-                </Link>
               </div>
             </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Free to use
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  2-minute installation
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Perfect for CI/CD and batch processing
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Works 100% offline
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/guide/deployment/cli" className="w-full">
+                <Button className="w-full" variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View CLI Deployment Guide
+                </Button>
+              </Link>
+            </CardFooter>
           </Card>
 
           {/* Local Deployment */}
-          <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
+          <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-500/10 w-fit">
                 <Download className="h-8 w-8 text-blue-500" />
               </div>
               <div>
                 <CardTitle className="text-2xl mb-2">Local Deployment</CardTitle>
-                <CardDescription className="text-base mb-4">
+                <CardDescription className="text-base">
                   Run OSCAL Hub on your local machine or VM in minutes. Perfect for testing, development, and offline use.
                 </CardDescription>
-                <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Free to use
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    5-minute setup with automated script
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Works offline after initial download
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Includes PostgreSQL and pgAdmin
-                  </div>
-                </div>
-                <Link href="/guide/deployment/local" className="inline-block">
-                  <Button className="w-full" variant="outline">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View Local Deployment Guide
-                  </Button>
-                </Link>
               </div>
             </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Free to use
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  5-minute setup with automated script
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Works offline after initial download
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Includes PostgreSQL and pgAdmin
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/guide/deployment/local" className="w-full">
+                <Button className="w-full" variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View Local Deployment Guide
+                </Button>
+              </Link>
+            </CardFooter>
           </Card>
 
           {/* Azure Deployment */}
-          <Card className="border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
+          <Card className="border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader className="space-y-4">
               <div className="p-3 rounded-lg bg-purple-500/10 w-fit">
                 <Cloud className="h-8 w-8 text-purple-500" />
               </div>
               <div>
                 <CardTitle className="text-2xl mb-2">Azure Deployment</CardTitle>
-                <CardDescription className="text-base mb-4">
+                <CardDescription className="text-base">
                   Deploy to Azure with automated CI/CD, Terraform, and secure Key Vault integration for production environments.
                 </CardDescription>
-                <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Automated CI/CD with GitHub Actions
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Infrastructure as Code (Terraform)
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Secure secrets with Azure Key Vault
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Auto database migrations on deploy
-                  </div>
-                </div>
-                <Link href="/guide/deployment/azure" className="inline-block">
-                  <Button className="w-full" variant="outline">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View Azure Deployment Guide
-                  </Button>
-                </Link>
               </div>
             </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Automated CI/CD with GitHub Actions
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Infrastructure as Code (Terraform)
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Secure secrets with Azure Key Vault
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Auto database migrations on deploy
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/guide/deployment/azure" className="w-full">
+                <Button className="w-full" variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View Azure Deployment Guide
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
+
+          {/* Google Cloud Deployment */}
+          <Card className="border-red-200 dark:border-red-800 hover:shadow-lg transition-shadow h-full flex flex-col">
+            <CardHeader className="space-y-4">
+              <div className="p-3 rounded-lg bg-red-500/10 w-fit">
+                <Cloud className="h-8 w-8 text-red-500" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl mb-2">Google Cloud Deployment</CardTitle>
+                <CardDescription className="text-base">
+                  Deploy to Google Cloud with Cloud Run, Cloud SQL, and Cloud Storage. Serverless, auto-scaling, and cost-effective.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Serverless with Cloud Run
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Managed PostgreSQL (Cloud SQL)
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Cloud Storage with versioning
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Infrastructure as Code (Terraform)
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/guide/deployment/gcp" className="w-full">
+                <Button className="w-full" variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View GCP Deployment Guide
+                </Button>
+              </Link>
+            </CardFooter>
           </Card>
 
           {/* AWS Deployment */}
-          <Card className="border-orange-200 dark:border-orange-800 hover:shadow-lg transition-shadow">
+          <Card className="border-orange-200 dark:border-orange-800 hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader className="space-y-4">
               <div className="p-3 rounded-lg bg-orange-500/10 w-fit">
                 <Cloud className="h-8 w-8 text-orange-500" />
               </div>
               <div>
                 <CardTitle className="text-2xl mb-2">AWS Deployment</CardTitle>
-                <CardDescription className="text-base mb-4">
+                <CardDescription className="text-base">
                   Deploy to AWS with Elastic Beanstalk, S3, and RDS. Production-ready with auto-scaling and multi-AZ support.
                 </CardDescription>
-                <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Auto-scaling with Elastic Beanstalk
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    S3 storage with lifecycle policies
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    Multi-AZ RDS PostgreSQL
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-green-500 mr-2">✓</span>
-                    CloudWatch monitoring & alerts
-                  </div>
-                </div>
-                <Link href="/guide/deployment/aws" className="inline-block">
-                  <Button className="w-full" variant="outline">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View AWS Deployment Guide
-                  </Button>
-                </Link>
               </div>
             </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Auto-scaling with Elastic Beanstalk
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  S3 storage with lifecycle policies
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  Multi-AZ RDS PostgreSQL
+                </div>
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✓</span>
+                  CloudWatch monitoring & alerts
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/guide/deployment/aws" className="w-full">
+                <Button className="w-full" variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View AWS Deployment Guide
+                </Button>
+              </Link>
+            </CardFooter>
           </Card>
         </div>
         <div className="text-center mt-8">
@@ -780,9 +839,8 @@ export function Hero() {
                     {faq.q}
                   </h3>
                   <ChevronDown
-                    className={`h-5 w-5 text-muted-foreground transition-transform ${
-                      openFaq === index ? 'transform rotate-180' : ''
-                    }`}
+                    className={`h-5 w-5 text-muted-foreground transition-transform ${openFaq === index ? 'transform rotate-180' : ''
+                      }`}
                   />
                 </div>
                 {openFaq === index && (

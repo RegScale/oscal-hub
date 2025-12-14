@@ -18,7 +18,7 @@
     </metadata>
     <!-- 
         The wrapper group can be removed from this example once a code fix is released for the issue below.
-        https://github.com/usnistgov/oscal-cli/issues/200
+        https://github.com/RegScale/oscal-hub/issues/200
     -->
     <group id="eg1">
         <title>Example Group 1</title>

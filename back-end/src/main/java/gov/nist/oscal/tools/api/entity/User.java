@@ -19,7 +19,7 @@ public class User {
     @Column(nullable = false, length = 255)
     private String password; // BCrypt hashed password
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String email;
 
     @Column(name = "created_at", nullable = false)

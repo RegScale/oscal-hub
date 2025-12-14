@@ -197,7 +197,7 @@ export function OrganizationSwitcher() {
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
                       {org.logoUrl ? (
                         <img
-                          src={`http://localhost:8080${org.logoUrl}`}
+                          src={`${org.logoUrl}`}
                           alt={org.name}
                           className="h-5 w-5 object-contain rounded"
                         />

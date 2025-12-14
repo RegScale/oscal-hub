@@ -393,7 +393,7 @@ For issues or questions about the organization management feature:
 1. Check this guide first
 2. Review backend logs: `back-end/logs/spring.log`
 3. Check database state with SQL queries
-4. File an issue: https://github.com/usnistgov/oscal-cli/issues
+4. File an issue: https://github.com/RegScale/oscal-hub/issues
 
 ---
 

@@ -517,7 +517,7 @@ mvn org.owasp:dependency-check-maven:check \
 ## Security Contacts
 
 For security vulnerabilities in OSCAL Tools itself:
-- Create a security advisory: https://github.com/usnistgov/oscal-cli/security/advisories
+- Create a security advisory: https://github.com/RegScale/oscal-hub/security/advisories
 - Email: NIST OSCAL Team (see README for contact)
 
 For questions about dependency vulnerabilities:

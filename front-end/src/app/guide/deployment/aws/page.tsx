@@ -358,7 +358,7 @@ aws configure
 # Enter your Access Key ID, Secret Access Key, and region (us-east-1)
 
 # 2. Clone repository (if not already)
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 3. Deploy backend to Elastic Beanstalk
@@ -716,7 +716,7 @@ aws iam attach-role-policy \\
                   <li>Security best practices</li>
                 </ul>
                 <a
-                  href="https://github.com/usnistgov/oscal-cli/blob/main/docs/AWS-DEPLOYMENT-GUIDE.md"
+                  href="https://github.com/RegScale/oscal-hub/blob/main/docs/AWS-DEPLOYMENT-GUIDE.md"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-primary hover:underline font-medium"

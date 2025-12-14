@@ -2,6 +2,8 @@ export interface User {
   userId: number;
   username: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
   globalRole?: string;
   orgRole?: string;
   organizationId?: number;
@@ -21,6 +23,8 @@ export interface AuthResponse {
   username: string;
   email: string;
   userId: number;
+  firstName?: string;
+  lastName?: string;
   street?: string;
   city?: string;
   state?: string;

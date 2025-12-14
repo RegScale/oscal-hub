@@ -88,11 +88,6 @@ public class AuthService {
             throw new RuntimeException("Username already exists");
         }
 
-        // Check if email already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
-        }
-
         // Create new user
         User user = new User();
         user.setUsername(request.getUsername());
@@ -237,12 +232,6 @@ public class AuthService {
         // Update email if provided
         if (updates.containsKey("email") && updates.get("email") != null && !updates.get("email").isEmpty()) {
             String newEmail = updates.get("email");
-            // Check if email is already taken by another user
-            userRepository.findByEmail(newEmail).ifPresent(existingUser -> {
-                if (!existingUser.getId().equals(user.getId())) {
-                    throw new RuntimeException("Email already in use");
-                }
-            });
             user.setEmail(newEmail);
         }
 
@@ -557,6 +546,37 @@ public class AuthService {
     }
 
     /**
+     * Get all pending access requests for a user
+     *
+     * @param userId User ID
+     * @return List of pending access requests with organization details
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getMyPendingRequests(Long userId) {
+        // Load user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Get all pending requests for this user
+        List<UserAccessRequest> pendingRequests = accessRequestRepository
+                .findByUserAndStatus(user, UserAccessRequest.RequestStatus.PENDING);
+
+        // Build response list
+        return pendingRequests.stream()
+                .map(request -> {
+                    Map<String, Object> requestData = new HashMap<>();
+                    requestData.put("requestId", request.getId());
+                    requestData.put("organizationId", request.getOrganization().getId());
+                    requestData.put("organizationName", request.getOrganization().getName());
+                    requestData.put("requestDate", request.getRequestDate());
+                    requestData.put("status", request.getStatus().toString());
+                    requestData.put("message", request.getMessage());
+                    return requestData;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Submit an access request to join an organization
      * Creates a UserAccessRequest that org admins can approve/reject
      *
@@ -572,46 +592,18 @@ public class AuthService {
             throw new RuntimeException("Organization is not active");
         }
 
-        // Check if user already exists
-        User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
-
-        // Check if there's already an existing membership
-        if (existingUser != null) {
-            membershipRepository.findByUserIdAndOrganizationId(
-                    existingUser.getId(),
-                    request.getOrganizationId()
-            ).ifPresent(membership -> {
-                if (membership.getStatus() == MembershipStatus.ACTIVE) {
-                    throw new RuntimeException("You already have access to this organization");
-                } else if (membership.getStatus() == MembershipStatus.LOCKED) {
-                    throw new RuntimeException("Your access to this organization is locked. Please contact an administrator.");
-                } else if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
-                    throw new RuntimeException("Your access to this organization has been deactivated. Please contact an administrator.");
-                }
-            });
+        // Check for existing pending requests by email (use List version to handle duplicates)
+        List<UserAccessRequest> existingRequests = accessRequestRepository.findPendingByEmailAndOrganization(
+                request.getEmail(),
+                request.getOrganizationId()
+        );
+        if (!existingRequests.isEmpty()) {
+            throw new RuntimeException("An access request with this email already exists for this organization");
         }
 
-        // Check if there's already a pending request
-        if (existingUser != null) {
-            accessRequestRepository.findPendingRequestByUserAndOrganization(
-                    existingUser.getId(),
-                    request.getOrganizationId()
-            ).ifPresent(existing -> {
-                throw new RuntimeException("You already have a pending access request for this organization");
-            });
-        } else {
-            // Check for pending request by email for new users
-            accessRequestRepository.findPendingRequestByEmailAndOrganization(
-                    request.getEmail(),
-                    request.getOrganizationId()
-            ).ifPresent(existing -> {
-                throw new RuntimeException("An access request with this email already exists for this organization");
-            });
-        }
-
-        // Create access request
+        // Create access request (user will be null for new users who haven't registered yet)
         UserAccessRequest accessRequest = new UserAccessRequest();
-        accessRequest.setUser(existingUser);
+        accessRequest.setUser(null);
         accessRequest.setOrganization(organization);
         accessRequest.setEmail(request.getEmail());
         accessRequest.setFirstName(request.getFirstName());

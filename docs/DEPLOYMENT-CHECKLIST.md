@@ -227,7 +227,7 @@ MAIL_PASSWORD=<MAIL_PASSWORD>
 - [ ] **Clone repository** to production server:
   ```bash
   cd /opt
-  git clone https://github.com/usnistgov/oscal-cli.git
+  git clone https://github.com/RegScale/oscal-hub.git
   cd oscal-cli
   git checkout main  # or specific release tag
   ```
@@ -820,7 +820,7 @@ MAIL_PASSWORD=<MAIL_PASSWORD>
 - **Documentation**: `/docs` directory
 - **Runbook**: `docs/RUNBOOK.md`
 - **Security Audit**: `docs/SECURITY-AUDIT-REPORT.md`
-- **GitHub Issues**: https://github.com/usnistgov/oscal-cli/issues
+- **GitHub Issues**: https://github.com/RegScale/oscal-hub/issues
 
 ---
 

@@ -397,28 +397,50 @@ export function AuthorizationWizard({
             return (
               <div key={s} className="flex items-center">
                 {index > 0 && (
-                  <ChevronRight className={`h-5 w-5 mx-2 ${
-                    isCompleted ? 'text-green-600' : 'text-gray-300'
+                  <div className={`h-0.5 w-12 mx-2 transition-all duration-500 ${
+                    isCompleted
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                      : 'bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600'
                   }`} />
                 )}
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
-                      isCompleted
-                        ? 'border-green-600 bg-green-600 text-white'
-                        : isActive
-                        ? 'border-blue-600 bg-blue-600 text-white'
-                        : 'border-gray-300 bg-white text-gray-400'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <span className="font-semibold">{index + 1}</span>
+                <div className="flex flex-col items-center group">
+                  <div className="relative">
+                    {/* Glow effect for active/completed steps */}
+                    {(isActive || isCompleted) && (
+                      <div className={`absolute inset-0 rounded-full blur-md transition-all duration-500 ${
+                        isCompleted
+                          ? 'bg-gradient-to-br from-emerald-400 to-teal-500 opacity-40'
+                          : 'bg-gradient-to-br from-blue-400 to-indigo-500 opacity-50 animate-pulse'
+                      }`} />
                     )}
+
+                    <div
+                      className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-500 transform group-hover:scale-110 ${
+                        isCompleted
+                          ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/50'
+                          : isActive
+                          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/50 ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-900'
+                          : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 text-gray-400 dark:text-gray-500 shadow-md'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-6 w-6 animate-in zoom-in duration-300" />
+                      ) : (
+                        <span className={`font-bold text-lg ${
+                          isActive ? 'animate-in zoom-in duration-200' : ''
+                        }`}>
+                          {index + 1}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${
-                    isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
+
+                  <span className={`text-xs mt-2 font-semibold transition-all duration-300 ${
+                    isActive
+                      ? 'text-blue-500 dark:text-blue-400 scale-105'
+                      : isCompleted
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-gray-500 dark:text-gray-400'
                   }`}>
                     {stepLabels[s]}
                   </span>

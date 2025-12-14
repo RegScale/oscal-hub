@@ -113,7 +113,7 @@ export default function LocalDeploymentGuidePage() {
                 <h3 className="text-lg font-semibold mb-3">Option 1: Automated Script (Easiest)</h3>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# 1. Clone the repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Run the deployment script
@@ -150,7 +150,7 @@ open http://localhost:3000`}
                 <h3 className="text-lg font-semibold mb-3">Option 2: Manual Docker Compose</h3>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# 1. Clone and build
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Build backend
@@ -176,7 +176,7 @@ open http://localhost:3000`}
                 <h3 className="text-lg font-semibold mb-3">Option 3: Development Mode (No Docker)</h3>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# 1. Clone repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Start PostgreSQL (Docker only for database)

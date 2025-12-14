@@ -589,8 +589,8 @@ docs/
 
 ### Support Resources
 
-- **GitHub Issues**: https://github.com/usnistgov/oscal-cli/issues
-- **Security Advisories**: https://github.com/usnistgov/oscal-cli/security/advisories
+- **GitHub Issues**: https://github.com/RegScale/oscal-hub/issues
+- **Security Advisories**: https://github.com/RegScale/oscal-hub/security/advisories
 - **Documentation**: `/docs` directory in repository
 - **OWASP Resources**: Linked throughout documentation
 
@@ -648,7 +648,7 @@ After this initiative, the team now has:
 
 - **Security Audit Report**: `docs/SECURITY-AUDIT-REPORT.md`
 - **Deployment Support**: `docs/DEPLOYMENT-CHECKLIST.md`
-- **GitHub Security Advisories**: https://github.com/usnistgov/oscal-cli/security/advisories
+- **GitHub Security Advisories**: https://github.com/RegScale/oscal-hub/security/advisories
 
 ### Escalation
 

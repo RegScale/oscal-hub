@@ -154,7 +154,7 @@ export default function CLIDeploymentGuidePage() {
                 <h3 className="text-lg font-semibold mb-3">Mac/Linux</h3>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# 1. Download and run the installer
-curl -fsSL https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh | bash
 
 # 2. Add to PATH (if not already done)
 export PATH="$PATH:$HOME/.oscal-cli/bin"
@@ -174,7 +174,7 @@ oscal-cli catalog validate examples/catalog.json`}
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # 2. Download and run installer
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.ps1 -OutFile install.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.ps1 -OutFile install.ps1
 .\\install.ps1
 
 # 3. Add to PATH or use full path
@@ -261,10 +261,10 @@ java -version
                 </p>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# Mac/Linux
-curl -fsSL https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh | bash
 
 # Or download first, then run
-curl -O https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh
+curl -O https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh
 chmod +x install.sh
 ./install.sh
 
@@ -302,7 +302,7 @@ source ~/.bashrc`}
                 </p>
                 <code className="block bg-muted p-4 rounded text-sm font-mono whitespace-pre overflow-x-auto">
 {`# Clone repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # Build with Maven
@@ -483,7 +483,7 @@ jobs:
 
       - name: Install OSCAL CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh | bash
           echo "$HOME/.oscal-cli/bin" >> $GITHUB_PATH
 
       - name: Validate OSCAL files
@@ -504,7 +504,7 @@ jobs:
 
 validate_oscal:
   script:
-    - curl -fsSL https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh | bash
+    - curl -fsSL https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh | bash
     - export PATH="$PATH:$HOME/.oscal-cli/bin"
     - for file in oscal/**/*.xml; do oscal-cli catalog validate "$file"; done`}
                 </code>
@@ -634,7 +634,7 @@ export JAVA_OPTS="-Xmx8g"`}
               </a>
 
               <a
-                href="https://github.com/usnistgov/oscal-cli"
+                href="https://github.com/RegScale/oscal-hub"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center text-primary hover:underline"

@@ -86,7 +86,7 @@ export default function ManageOrganizationPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -111,7 +111,7 @@ export default function ManageOrganizationPage() {
 
   const loadMembers = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}/members`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -128,7 +128,7 @@ export default function ManageOrganizationPage() {
 
   const loadAllUsers = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/users`, {
+      const response = await fetch(`/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -167,7 +167,7 @@ export default function ManageOrganizationPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/logo`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}/logo`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -202,7 +202,7 @@ export default function ManageOrganizationPage() {
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/logo`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}/logo`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -239,7 +239,7 @@ export default function ManageOrganizationPage() {
         setSuccess(null);
 
         // Create user
-        const createUserResponse = await fetch(`http://localhost:8080/api/admin/users`, {
+        const createUserResponse = await fetch(`/api/admin/users`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -261,7 +261,7 @@ export default function ManageOrganizationPage() {
         const createdUser = await createUserResponse.json();
 
         // Add user to organization
-        const addMemberResponse = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+        const addMemberResponse = await fetch(`/api/admin/organizations/${organizationId}/members`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -302,7 +302,7 @@ export default function ManageOrganizationPage() {
         setError(null);
         setSuccess(null);
 
-        const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members`, {
+        const response = await fetch(`/api/admin/organizations/${organizationId}/members`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ export default function ManageOrganizationPage() {
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members/${membershipId}`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}/members/${membershipId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ export default function ManageOrganizationPage() {
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}/members/${membershipId}`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}/members/${membershipId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -414,7 +414,7 @@ export default function ManageOrganizationPage() {
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}`, {
+      const response = await fetch(`/api/admin/organizations/${organizationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -473,7 +473,7 @@ export default function ManageOrganizationPage() {
 
       if (organization.active) {
         // Deactivate
-        const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}`, {
+        const response = await fetch(`/api/admin/organizations/${organizationId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -485,7 +485,7 @@ export default function ManageOrganizationPage() {
         }
       } else {
         // Reactivate
-        const response = await fetch(`http://localhost:8080/api/admin/organizations/${organizationId}`, {
+        const response = await fetch(`/api/admin/organizations/${organizationId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -626,7 +626,7 @@ export default function ManageOrganizationPage() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 {organization.logoUrl ? (
-                  <img src={`http://localhost:8080${organization.logoUrl}`} alt={organization.name} className="h-16 w-16 rounded object-contain mr-4" />
+                  <img src={`${organization.logoUrl}`} alt={organization.name} className="h-16 w-16 rounded object-contain mr-4" />
                 ) : (
                   <div className="h-16 w-16 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-4">
                     <span className="text-white text-2xl font-bold">{organization.name.charAt(0).toUpperCase()}</span>

@@ -49,7 +49,7 @@ All running in Docker containers for easy setup and isolation.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Run the deployment script
@@ -73,7 +73,7 @@ That's it! The script will:
 
 ```bash
 # 1. Clone and build
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Build backend
@@ -172,7 +172,7 @@ The `local-deploy.sh` script automates everything:
 
 ```bash
 # Clone repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # Make script executable (if needed)
@@ -234,7 +234,7 @@ If you already have Java and Node.js installed:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Build backend
@@ -264,7 +264,7 @@ For active development without Docker:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/usnistgov/oscal-cli.git
+git clone https://github.com/RegScale/oscal-hub.git
 cd oscal-cli
 
 # 2. Start PostgreSQL (Docker only for database)
@@ -825,8 +825,8 @@ After successful local deployment:
 
 ### Getting Help
 
-- **Issues**: https://github.com/usnistgov/oscal-cli/issues
-- **Discussions**: https://github.com/usnistgov/oscal-cli/discussions
+- **Issues**: https://github.com/RegScale/oscal-hub/issues
+- **Discussions**: https://github.com/RegScale/oscal-hub/discussions
 - **OSCAL Documentation**: https://pages.nist.gov/OSCAL/
 
 ### Common Resources

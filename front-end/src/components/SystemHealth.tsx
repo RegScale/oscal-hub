@@ -28,11 +28,9 @@ export function SystemHealth() {
 
   const checkApiDocs = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-      // Check if the OpenAPI docs are accessible (more reliable than HEAD request)
-      const response = await fetch(`${apiUrl.replace('/api', '')}/v3/api-docs`, {
-        method: 'GET',
-        mode: 'cors'
+      // Use relative URL for same-origin requests
+      const response = await fetch('/v3/api-docs', {
+        method: 'GET'
       });
 
       setApiDocsStatus(response.ok ? 'UP' : 'DOWN');
@@ -43,7 +41,8 @@ export function SystemHealth() {
 
   const fetchHealth = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/actuator/health`.replace('/api/actuator', '/actuator'));
+      // Use relative URL for same-origin requests
+      const response = await fetch('/actuator/health');
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -232,7 +231,7 @@ export function SystemHealth() {
             <div className="flex items-center gap-2">
               {apiDocsStatus === 'UP' && (
                 <a
-                  href="http://localhost:8080/swagger-ui/index.html"
+                  href="/swagger-ui/index.html"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"

@@ -580,7 +580,7 @@ If processing large OSCAL files is slow:
 
 If you encounter issues not covered here:
 
-1. Check the [OSCAL CLI GitHub Issues](https://github.com/usnistgov/oscal-cli/issues)
+1. Check the [OSCAL CLI GitHub Issues](https://github.com/RegScale/oscal-hub/issues)
 2. Review [OSCAL documentation](https://pages.nist.gov/OSCAL/)
 3. Ask questions on [OSCAL Gitter](https://gitter.im/usnistgov-OSCAL/Lobby)
 4. Email: [oscal@nist.gov](mailto:oscal@nist.gov)
@@ -593,7 +593,7 @@ For detailed error information, check the console output. OSCAL CLI provides det
 
 - **OSCAL Website:** https://pages.nist.gov/OSCAL/
 - **OSCAL GitHub:** https://github.com/usnistgov/OSCAL
-- **OSCAL CLI GitHub:** https://github.com/usnistgov/oscal-cli
+- **OSCAL CLI GitHub:** https://github.com/RegScale/oscal-hub
 - **Metaschema:** https://github.com/usnistgov/metaschema
 - **NIST SP 800-53:** https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final
 

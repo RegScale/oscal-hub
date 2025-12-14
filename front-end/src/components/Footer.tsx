@@ -140,11 +140,11 @@ export function Footer() {
             </a>
           </p>
           <p className="mt-2">
-            Free & Open Source - Unlimited production use.{' '}
-            No commercial resale or derivative works without permission.{' '}
+            Licensed under the{' '}
             <Link href="/license" className="text-primary hover:underline">
-              View License
+              MIT Open Source License
             </Link>
+            {' '}- Free to use, modify, and distribute.
           </p>
         </div>
       </div>

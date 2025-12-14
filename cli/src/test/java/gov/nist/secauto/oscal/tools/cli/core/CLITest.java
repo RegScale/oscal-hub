@@ -76,7 +76,7 @@ public class CLITest {
     List<Arguments> values = new ArrayList<>();
 
     values.add(Arguments.of(new String[] { "--version" }, ExitCode.OK, null));
-    // TODO: Test all data formats once usnistgov/oscal-cli#216 fix merged.
+    // TODO: Test all data formats once RegScale/oscal-hub#216 fix merged.
     Path path = Paths.get("src/test/resources/cli/example_profile_invalid" + Format.XML.getDefaultExtension());
     values.add(
         Arguments.of(new String[] { "profile", "resolve", "--to=" + Format.XML.name().toLowerCase(), path.toString() },
@@ -84,7 +84,7 @@ public class CLITest {
 
     for (String cmd : commands) {
       values.add(Arguments.of(new String[] { cmd, "validate", "-h" }, ExitCode.OK, null));
-      // TODO: Update when usnistgov/oscal-cli#210 fix merged.
+      // TODO: Update when RegScale/oscal-hub#210 fix merged.
       values.add(Arguments.of(new String[] { cmd, "convert", "-h" }, ExitCode.INVALID_COMMAND, null));
 
       for (Format format : Format.values()) {

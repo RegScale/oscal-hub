@@ -53,11 +53,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
             if (jwtUtil.validateToken(jwt, userDetails)) {
-                // Extract globalRole from JWT token and add to authorities
+                // Extract globalRole and orgRole from JWT token and add to authorities
                 Collection<GrantedAuthority> authorities = new ArrayList<>(userDetails.getAuthorities());
+
+                // Add global role (SUPER_ADMIN or USER)
                 String globalRole = jwtUtil.extractGlobalRole(jwt);
                 if (globalRole != null && !globalRole.isEmpty()) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_" + globalRole));
+                }
+
+                // Add organization role (ORG_ADMIN or USER)
+                String orgRole = jwtUtil.extractOrganizationRole(jwt);
+                if (orgRole != null && !orgRole.isEmpty()) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + orgRole));
                 }
 
                 UsernamePasswordAuthenticationToken authenticationToken =

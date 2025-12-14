@@ -117,10 +117,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Use properties from application.properties (environment-specific)
-        configuration.setAllowedOrigins(corsAllowedOrigins);
+        // Single-container deployment: all requests come through Next.js proxy
+        // Allow all origins since requests appear as same-origin from localhost
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(corsAllowedMethods);
-        configuration.setAllowedHeaders(corsAllowedHeaders);
+        configuration.setAllowedHeaders(Arrays.asList("*"));
 
         // Expose rate limit headers and authentication headers to clients
         configuration.setExposedHeaders(Arrays.asList(
@@ -131,6 +132,8 @@ public class SecurityConfig {
                 "Retry-After"
         ));
 
+        // Use the corsAllowCredentials value from application.properties
+        // When using wildcard origin patterns, allowCredentials must be false
         configuration.setAllowCredentials(corsAllowCredentials);
         configuration.setMaxAge(3600L); // Cache preflight response for 1 hour
 
