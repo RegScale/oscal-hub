@@ -15,13 +15,27 @@ import java.util.Optional;
 @Repository
 public interface UserAccessRequestRepository extends JpaRepository<UserAccessRequest, Long> {
 
-    List<UserAccessRequest> findByOrganizationAndStatus(Organization organization, RequestStatus status);
+    @Query("SELECT r FROM UserAccessRequest r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.organization " +
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE r.organization = :organization AND r.status = :status")
+    List<UserAccessRequest> findByOrganizationAndStatus(@Param("organization") Organization organization, @Param("status") RequestStatus status);
 
-    List<UserAccessRequest> findByOrganization(Organization organization);
+    @Query("SELECT r FROM UserAccessRequest r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.organization " +
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE r.organization = :organization")
+    List<UserAccessRequest> findByOrganization(@Param("organization") Organization organization);
 
     List<UserAccessRequest> findByUserAndStatus(User user, RequestStatus status);
 
-    @Query("SELECT r FROM UserAccessRequest r WHERE r.organization.id = :orgId AND r.status = 'PENDING'")
+    @Query("SELECT r FROM UserAccessRequest r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.organization " +
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE r.organization.id = :orgId AND r.status = 'PENDING'")
     List<UserAccessRequest> findPendingByOrganizationId(@Param("orgId") Long orgId);
 
     @Query("SELECT COUNT(r) FROM UserAccessRequest r WHERE r.organization.id = :orgId AND r.status = 'PENDING'")
@@ -44,4 +58,11 @@ public interface UserAccessRequestRepository extends JpaRepository<UserAccessReq
         @Param("email") String email,
         @Param("orgId") Long orgId
     );
+
+    @Query("SELECT r FROM UserAccessRequest r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.organization " +
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE r.id = :id")
+    Optional<UserAccessRequest> findByIdWithRelations(@Param("id") Long id);
 }

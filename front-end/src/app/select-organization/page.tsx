@@ -24,6 +24,7 @@ export default function SelectOrganizationPage() {
   const [selecting, setSelecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('my-orgs');
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
   useEffect(() => {
     loadOrganizations();
@@ -42,10 +43,11 @@ export default function SelectOrganizationPage() {
         return;
       }
 
-      // Get ALL organizations and user's memberships
-      const [allOrgs, myOrgs] = await Promise.all([
+      // Get ALL organizations, user's memberships, and pending requests
+      const [allOrgs, myOrgs, pendingRequests] = await Promise.all([
         apiClient.getOrganizations(),
-        apiClient.getMyOrganizations()
+        apiClient.getMyOrganizations(),
+        apiClient.getMyPendingRequests()
       ]);
 
       // Create a map of user's organization memberships
@@ -62,6 +64,7 @@ export default function SelectOrganizationPage() {
       });
 
       setOrganizations(mergedOrgs);
+      setHasPendingRequests(pendingRequests.length > 0);
 
       // Set default tab based on whether user has organizations
       const hasOrganizations = mergedOrgs.some(org => org.role);
@@ -162,6 +165,32 @@ export default function SelectOrganizationPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               There are no organizations available at this time.
             </p>
+          </div>
+        ) : myOrganizations.length === 0 && hasPendingRequests ? (
+          <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+            <svg
+              className="mx-auto h-16 w-16 text-yellow-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Access Request Pending
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Your access request is pending approval from the organization administrator.
+              You will be notified via email once your request has been reviewed.
+            </p>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Please check back later or contact your organization administrator for more information.
+            </div>
           </div>
         ) : (
           <>

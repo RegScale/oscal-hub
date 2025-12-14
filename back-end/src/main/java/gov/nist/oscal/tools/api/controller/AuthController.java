@@ -528,6 +528,55 @@ public class AuthController {
     }
 
     @Operation(
+        summary = "Get my pending access requests",
+        description = "Get all pending access requests for the current user"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Pending requests retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @GetMapping("/my-pending-requests")
+    public ResponseEntity<?> getMyPendingRequests() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            // Extract userId from JWT token
+            String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest().getHeader("Authorization");
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtUtil.extractUserId(token);
+
+                if (userId == null) {
+                    // Fallback to getting user by username
+                    String username = authentication.getName();
+                    User user = authService.getCurrentUser(username);
+                    userId = user.getId();
+                }
+
+                java.util.List<Map<String, Object>> requests = authService.getMyPendingRequests(userId);
+                return ResponseEntity.ok(requests);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "No authorization token found");
+                return ResponseEntity.status(401).body(error);
+            }
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
         summary = "Change password",
         description = "Change current user's password (required for forced password changes)"
     )

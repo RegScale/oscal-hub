@@ -1,303 +1,184 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, Check, X, Briefcase } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLink, Check } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LicensePage() {
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">OSCAL UX License</h1>
-        <p className="text-muted-foreground">Version 1.0 - October 2025</p>
-      </div>
+    <main id="main-content" className="min-h-screen bg-background">
+      <div className="container mx-auto py-12 px-4 max-w-4xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">MIT Open Source License</h1>
+          <p className="text-muted-foreground">OSCAL Hub is released under the MIT License</p>
+        </div>
 
-      {/* Free & Open Source Notice */}
-      <Card className="mb-6 border-green-500/50 bg-green-500/5">
-        <CardHeader>
-          <CardTitle>Free & Open Source License</CardTitle>
-          <CardDescription>
-            Copyright © 2025 RegScale, Inc. Licensed for unlimited production use.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      {/* Grant of Rights */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Grant of Rights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-            associated documentation files (the &quot;Software&quot;), to use the Software for <strong>unlimited production use</strong>,
-            including commercial production environments, subject to the restrictions below.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Quick Summary */}
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
-        {/* Permitted Uses */}
-        <Card className="border-green-500/30">
+        {/* Free & Open Source Notice */}
+        <Card className="mb-6 border-green-500/50 bg-green-500/5">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <Check className="h-5 w-5 mr-2 text-green-500" />
-              You CAN
-            </CardTitle>
+            <CardTitle>Free & Open Source Software</CardTitle>
+            <CardDescription>
+              Copyright © 2025 RegScale. Free to use, modify, and distribute.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        {/* MIT License Text */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>MIT License</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="prose dark:prose-invert max-w-none">
+              <p className="text-sm text-muted-foreground mb-6">
+                Copyright (c) 2025 RegScale
+              </p>
+
+              <div className="bg-muted p-6 rounded-lg space-y-4 text-sm">
+                <p>
+                  Permission is hereby granted, free of charge, to any person obtaining a copy
+                  of this software and associated documentation files (the &quot;Software&quot;), to deal
+                  in the Software without restriction, including without limitation the rights
+                  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                  copies of the Software, and to permit persons to whom the Software is
+                  furnished to do so, subject to the following conditions:
+                </p>
+
+                <p>
+                  The above copyright notice and this permission notice shall be included in all
+                  copies or substantial portions of the Software.
+                </p>
+
+                <p className="font-semibold pt-4 border-t border-border">
+                  THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+                  SOFTWARE.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* What does this mean */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>What does this mean?</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm space-y-2 text-muted-foreground">
+            <ul className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Use for personal projects
+                <Check className="h-5 w-5 mr-2 text-green-500 mt-0.5" />
+                <span>You can use this software for any purpose, including commercial applications</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Use for education and learning
+                <Check className="h-5 w-5 mr-2 text-green-500 mt-0.5" />
+                <span>You can modify the software to suit your needs</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Use for research purposes
+                <Check className="h-5 w-5 mr-2 text-green-500 mt-0.5" />
+                <span>You can distribute copies of the software</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <strong>Use in production environments</strong>
+                <Check className="h-5 w-5 mr-2 text-green-500 mt-0.5" />
+                <span>You can sublicense and sell copies of the software</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <strong>Use in commercial production</strong>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Study the source code
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Use in non-profit organizations
+                <Check className="h-5 w-5 mr-2 text-green-500 mt-0.5" />
+                <span>The only requirement is to include the copyright notice and license in any copies</span>
               </li>
             </ul>
           </CardContent>
         </Card>
 
-        {/* Restrictions */}
-        <Card className="border-red-500/30">
+        {/* Source Code */}
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <X className="h-5 w-5 mr-2 text-red-500" />
-              You CANNOT
-            </CardTitle>
+            <CardTitle>Source Code</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm space-y-2 text-muted-foreground">
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <strong>Resell the software commercially</strong>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <strong>Create derivative works</strong>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Sell or monetize the software itself
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Create modified versions without permission
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Redistribute without permission
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                Remove RegScale attribution
-              </li>
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              The source code for OSCAL Hub is available on{' '}
+              <a
+                href="https://github.com/RegScale/oscal-hub"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center"
+              >
+                GitHub
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </a>
+              . Contributions are welcome!
+            </p>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Detailed Terms */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Permitted Uses (Including Production)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <h4 className="font-semibold text-sm mb-1">You may:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-              <li>• <strong>Use</strong> the Software for personal, educational, research, or non-profit purposes</li>
-              <li>• <strong>Use</strong> the Software in production environments, including commercial production</li>
-              <li>• <strong>View and study</strong> the source code for learning purposes</li>
-              <li>• <strong>Run</strong> the Software in any environment</li>
-              <li>• <strong>Deploy</strong> the Software for internal use within your organization</li>
-              <li>• <strong>Deploy</strong> the Software for production workloads without limitation</li>
+        {/* Third-Party Dependencies */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Third-Party Dependencies</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              This project uses various open source libraries and components. Each dependency has its own license:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
+              <li>Next.js - MIT License</li>
+              <li>React - MIT License</li>
+              <li>Spring Boot - Apache License 2.0</li>
+              <li>Metaschema Java Tools - NIST Public Domain</li>
+              <li>OSCAL Java Library - NIST Public Domain</li>
             </ul>
-          </div>
-        </CardContent>
-      </Card>
+            <p className="text-muted-foreground mt-4 text-sm">
+              See the project&apos;s package.json and pom.xml files for a complete list of dependencies.
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Restrictions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <h4 className="font-semibold text-sm mb-1">You may NOT:</h4>
-            <ul className="text-sm text-muted-foreground space-y-2 ml-4">
-              <li>
-                • <strong>Resell commercially</strong>: Sell, resell, or monetize the Software itself, including but not limited to:
-                <ul className="ml-6 mt-1 space-y-1">
-                  <li>- Selling the Software as a standalone product</li>
-                  <li>- Offering the Software for sale or resale</li>
-                  <li>- Licensing the Software to others for a fee</li>
-                </ul>
-                <p className="mt-2 text-xs italic">Note: Using the Software in production to support your business is permitted.</p>
-              </li>
-              <li>• <strong>Create derivatives</strong>: Create, modify, adapt, or prepare derivative works based on the Software without explicit permission</li>
-              <li>• <strong>Redistribute modified versions</strong>: Distribute modified or derivative versions of the Software</li>
-              <li>• <strong>Remove attribution</strong>: Remove or alter any copyright notices, license information, or attribution to RegScale</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Attribution Requirements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-2">
-            All copies or substantial portions of the Software must include:
-          </p>
-          <ol className="text-sm text-muted-foreground space-y-1 ml-4">
-            <li>1. This license notice</li>
-            <li>2. Copyright notice: &quot;OSCAL UX © 2025 RegScale, Inc.&quot;</li>
-            <li>3. Link to the original source repository</li>
-            <li>4. Acknowledgment that this is a contribution from RegScale</li>
-          </ol>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Creating Derivative Works</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            If you wish to create derivative works or modified versions of the Software, please contact RegScale for permission:
-          </p>
-          <ul className="text-sm space-y-1">
-            <li>
-              Website:{' '}
+        {/* Built with OSCAL */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Built with OSCAL</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              OSCAL Hub is built on top of the{' '}
+              <a
+                href="https://pages.nist.gov/OSCAL/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center"
+              >
+                NIST OSCAL framework
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </a>
+              , an open standard for security compliance content.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              An open source contribution from{' '}
               <a
                 href="https://www.regscale.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline inline-flex items-center"
               >
-                https://www.regscale.com
+                RegScale
                 <ExternalLink className="h-3 w-3 ml-1" />
               </a>
-            </li>
-            <li>
-              Email:{' '}
-              <a href="mailto:info@regscale.com" className="text-primary hover:underline">
-                info@regscale.com
-              </a>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+              .
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Contributions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-2">
-            Contributions to this project are welcome under the following terms:
-          </p>
-          <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-            <li>• All contributions become the property of RegScale, Inc.</li>
-            <li>• Contributors agree to license their contributions under this same license</li>
-            <li>• Contributors certify they have the right to make their contribution</li>
-          </ul>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Disclaimer of Warranty</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-            INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-            PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-            FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-            ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Termination</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This license automatically terminates if you violate any of its terms. Upon termination,
-            you must cease all use of the Software and destroy all copies in your possession.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Governing Law</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This license shall be governed by and construed in accordance with the laws of the
-            United States and the State of Delaware, without regard to its conflict of law provisions.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Footer */}
-      <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
-        <p className="mb-2">
-          <strong>RegScale, Inc.</strong>
-        </p>
-        <p className="mb-1">
-          Website:{' '}
-          <a
-            href="https://www.regscale.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center"
-          >
-            https://www.regscale.com
-            <ExternalLink className="h-3 w-3 ml-1" />
-          </a>
-        </p>
-        <p className="mb-4">
-          Email:{' '}
-          <a href="mailto:info@regscale.com" className="text-primary hover:underline">
-            info@regscale.com
-          </a>
-        </p>
-        <p className="text-xs italic">
-          Built with NIST OSCAL framework and standards.
-        </p>
-        <div className="mt-4">
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t text-center">
           <Link href="/" className="text-primary hover:underline">
             ← Back to Home
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

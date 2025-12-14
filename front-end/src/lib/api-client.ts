@@ -2680,6 +2680,38 @@ class ApiClient {
   }
 
   /**
+   * Get current user's pending access requests
+   */
+  async getMyPendingRequests(): Promise<Array<{
+    requestId: number;
+    organizationId: number;
+    organizationName: string;
+    requestDate: string;
+    status: string;
+    message: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/my-pending-requests`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get pending requests: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get pending requests:', error);
+      return [];
+    }
+  }
+
+  /**
    * Select organization after initial login (generates full JWT with org context)
    */
   async selectOrganization(organizationId: number): Promise<{

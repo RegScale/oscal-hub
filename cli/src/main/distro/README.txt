@@ -12,7 +12,7 @@ content supporting the following operations:
 - Validating a Metaschema model definition to ensure it is well-formed and valid.
 - Generating XML and JSON Schemas from a Metaschema model definition.
 
-More information can be found at: https://github.com/usnistgov/oscal-cli
+More information can be found at: https://github.com/RegScale/oscal-hub
 
 Requirements:
 -------------
@@ -32,7 +32,7 @@ Feedback:
 ---------
 
 Please post issues about tool defects, enhancement requests, and any other related
-comments in the tool's GitHub repository at https://github.com/usnistgov/oscal-cli.
+comments in the tool's GitHub repository at https://github.com/RegScale/oscal-hub.
 
 Change Log:
 ----------

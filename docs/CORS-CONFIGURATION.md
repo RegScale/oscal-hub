@@ -603,7 +603,7 @@ For CORS-related issues:
 2. Enable DEBUG logging for CORS
 3. Test with `curl` to isolate browser vs server issues
 4. Review SecurityConfig.java and application.properties
-5. Create issue at: https://github.com/usnistgov/oscal-cli/issues
+5. Create issue at: https://github.com/RegScale/oscal-hub/issues
 
 ---
 

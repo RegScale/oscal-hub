@@ -1139,7 +1139,7 @@ securityContext:
 ### Reporting Security Issues
 
 **GitHub Security Advisories**:
-https://github.com/usnistgov/oscal-cli/security/advisories
+https://github.com/RegScale/oscal-hub/security/advisories
 
 **Email**:
 NIST OSCAL Team (see README for contact)

@@ -10,10 +10,10 @@ The easiest way to install OSCAL CLI on Mac or Linux is using the provided insta
 
 ```bash
 # Download and run the installer
-curl -fsSL https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh | bash
 
 # Or download and run separately
-curl -O https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.sh
+curl -O https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -58,7 +58,7 @@ Use PowerShell to run the Windows installer:
 3. **Download and run the installer**:
    ```powershell
    # Download the installer
-   Invoke-WebRequest -Uri https://raw.githubusercontent.com/usnistgov/oscal-cli/main/installer/install.ps1 -OutFile install.ps1
+   Invoke-WebRequest -Uri https://raw.githubusercontent.com/RegScale/oscal-hub/main/installer/install.ps1 -OutFile install.ps1
 
    # Run the installer
    .\install.ps1
@@ -327,7 +327,7 @@ Current latest version: **1.0.3**
 
 If you encounter issues not covered here:
 
-- **GitHub Issues:** https://github.com/usnistgov/oscal-cli/issues
+- **GitHub Issues:** https://github.com/RegScale/oscal-hub/issues
 - **OSCAL Documentation:** https://pages.nist.gov/OSCAL/
 - **OSCAL Gitter Chat:** https://gitter.im/usnistgov-OSCAL/Lobby
 - **Email:** oscal@nist.gov

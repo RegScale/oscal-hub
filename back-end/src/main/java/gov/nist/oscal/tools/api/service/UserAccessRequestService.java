@@ -149,7 +149,7 @@ public class UserAccessRequestService {
     public UserAccessRequest approveRequest(Long requestId, Long reviewerId, String notes) {
         logger.info("Approving access request: {} by reviewer: {}", requestId, reviewerId);
 
-        UserAccessRequest request = accessRequestRepository.findById(requestId)
+        UserAccessRequest request = accessRequestRepository.findByIdWithRelations(requestId)
                 .orElseThrow(() -> new RuntimeException("Access request not found: " + requestId));
 
         User reviewer = userRepository.findById(reviewerId)
@@ -161,9 +161,17 @@ public class UserAccessRequestService {
 
         User user = request.getUser();
 
-        // If user doesn't exist, create new account
+        // If user doesn't exist in the request, check if they registered separately
         if (user == null) {
-            user = createUserFromRequest(request);
+            // Try to find existing user by username
+            user = userRepository.findByUsername(request.getUsername()).orElse(null);
+
+            // If user still not found, create new account
+            if (user == null) {
+                user = createUserFromRequest(request);
+            } else {
+                logger.info("Found existing user {} for access request", user.getUsername());
+            }
         }
 
         // Create organization membership
@@ -192,7 +200,7 @@ public class UserAccessRequestService {
     public UserAccessRequest rejectRequest(Long requestId, Long reviewerId, String notes) {
         logger.info("Rejecting access request: {} by reviewer: {}", requestId, reviewerId);
 
-        UserAccessRequest request = accessRequestRepository.findById(requestId)
+        UserAccessRequest request = accessRequestRepository.findByIdWithRelations(requestId)
                 .orElseThrow(() -> new RuntimeException("Access request not found: " + requestId));
 
         User reviewer = userRepository.findById(reviewerId)

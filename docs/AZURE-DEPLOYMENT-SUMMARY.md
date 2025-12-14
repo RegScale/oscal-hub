@@ -567,7 +567,7 @@ oscal-cli/
 - [GitHub Actions](https://docs.github.com/en/actions)
 
 ### Getting Help
-- GitHub Issues: https://github.com/usnistgov/oscal-cli/issues
+- GitHub Issues: https://github.com/RegScale/oscal-hub/issues
 - Azure Support: https://azure.microsoft.com/support/
 
 ---

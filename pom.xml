@@ -12,7 +12,7 @@
 
     <name>OSCAL Tools Parent</name>
     <description>Parent aggregator for OSCAL CLI, Web API, and UI</description>
-    <url>https://github.com/usnistgov/oscal-cli</url>
+    <url>https://github.com/RegScale/oscal-hub</url>
 
     <organization>
         <name>National Institute of Standards and Technology</name>
@@ -21,22 +21,22 @@
 
     <licenses>
         <license>
-            <name>NIST License</name>
-            <url>https://www.nist.gov/director/licensing</url>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
             <distribution>repo</distribution>
-            <comments>NIST software License</comments>
+            <comments>MIT Open Source License</comments>
         </license>
     </licenses>
 
     <scm>
-        <url>https://github.com/usnistgov/oscal-cli/tree/main</url>
-        <connection>scm:git:git@github.com/usnistgov/oscal-cli.git</connection>
-        <developerConnection>scm:git:git@github.com:usnistgov/oscal-cli.git</developerConnection>
+        <url>https://github.com/RegScale/oscal-hub/tree/main</url>
+        <connection>scm:git:git@github.com/RegScale/oscal-hub.git</connection>
+        <developerConnection>scm:git:git@github.com:RegScale/oscal-hub.git</developerConnection>
         <tag>v1.0.3</tag>
     </scm>
 
     <issueManagement>
-        <url>https://github.com/usnistgov/oscal-cli/issues</url>
+        <url>https://github.com/RegScale/oscal-hub/issues</url>
         <system>GitHub Issues</system>
     </issueManagement>
 

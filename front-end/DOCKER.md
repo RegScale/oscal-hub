@@ -541,7 +541,7 @@ To reduce further:
 ## Support
 
 For issues or questions:
-- **GitHub**: https://github.com/usnistgov/oscal-cli/issues
+- **GitHub**: https://github.com/RegScale/oscal-hub/issues
 - **RegScale**: https://www.regscale.com
 - **Email**: support@regscale.com
 

@@ -34,7 +34,7 @@ The following instructions can be used to clone and build this project.
 1. Clone the GitHub repository.
 
 ```bash
-git clone --recurse-submodules https://github.com/usnistgov/oscal-cli.git 
+git clone --recurse-submodules https://github.com/RegScale/oscal-hub.git 
 ```
 
 2. Build the project with Maven

@@ -36,8 +36,11 @@ Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-
 
 ### Web Interface Features
 
-- **User Authentication** - Secure login with JWT tokens and password complexity requirements
-- **File Management** - Upload, store, and manage OSCAL documents per user
+- **User Authentication** - Secure login with JWT tokens and password complexity requirements (10+ characters)
+- **Organization Management** - Multi-tenant support with organization-based access control
+- **Role-Based Access** - Super Admin, Org Admin, and User roles with granular permissions
+- **Component Library** - Centralized repository for reusable OSCAL components with versioning
+- **File Management** - Upload, store, and manage OSCAL documents per organization
 - **Interactive Validation** - Real-time validation feedback with detailed error messages
 - **Operation History** - Track and review past operations
 - **Drag-and-Drop Upload** - Easy file upload with format auto-detection
@@ -90,6 +93,18 @@ Once started, access:
 - **API Documentation**: http://localhost:8080/swagger-ui.html
 - **Backend API**: http://localhost:8080/api
 - **Health Check**: http://localhost:8080/api/health
+
+### First-Time Login
+
+On first startup, a default admin account is automatically created:
+
+- **Username**: `admin`
+- **Password**: `password`
+- **Email**: `admin@oscal-tools.local`
+
+**⚠️ IMPORTANT**: Change the admin password immediately after first login!
+
+You can also register a new user account at http://localhost:3000/register
 
 ### Stopping the Servers
 
@@ -169,176 +184,141 @@ Build and run with Docker Compose:
 docker-compose up --build
 ```
 
-This starts both backend and frontend services in containers.
+This starts:
+- **Frontend** - Next.js application (port 3000)
+- **Backend** - Spring Boot API (port 8080)
+- **PostgreSQL Database** - Production-grade database (port 5432)
+- **pgAdmin** - Database management UI (port 5050)
 
-## Azure Deployment
+For detailed local deployment instructions, see [docs/LOCAL-DEPLOYMENT-GUIDE.md](docs/LOCAL-DEPLOYMENT-GUIDE.md).
 
-OSCAL Hub is designed for deployment on Azure with integrated Azure Blob Storage for persistent file storage.
+## Cloud Deployment
 
-### Prerequisites
+OSCAL Hub supports deployment to multiple cloud platforms with integrated cloud storage.
 
-1. **Azure Storage Account** - For storing OSCAL files
-2. **Azure App Service** or **Azure Container Instances** - For hosting the application
-3. **Azure Database for PostgreSQL** (optional) - For production database (default uses H2)
+### Supported Cloud Platforms
 
-### Setting Up Azure Blob Storage
+- **Azure** - Azure App Service or Container Instances with Azure Blob Storage
+- **AWS** - Elastic Beanstalk or ECS with Amazon S3
+- **GCP** - Cloud Run with Google Cloud Storage
 
-1. **Create a Storage Account**:
-   - Navigate to Azure Portal → Storage Accounts → Create
-   - Choose a unique storage account name
-   - Select appropriate region and performance tier
-   - Create the storage account
+### Prerequisites (All Platforms)
 
-2. **Create a Blob Container**:
-   - In your Storage Account, go to "Containers"
-   - Click "+ Container"
-   - Name it `oscal-files` (or your preferred name)
-   - Set access level to "Private"
+1. **Cloud Storage** - For storing OSCAL files (Azure Blob Storage, AWS S3, or GCS)
+2. **Compute Service** - For hosting the application
+3. **PostgreSQL Database** - For production data storage
 
-3. **Get Connection String**:
-   - In Storage Account, go to "Access keys" under Security + networking
-   - Copy the "Connection string" from key1 or key2
-   - Format: `DefaultEndpointsProtocol=https;AccountName=ACCOUNT_NAME;AccountKey=ACCOUNT_KEY;EndpointSuffix=core.windows.net`
+### Cloud Storage Configuration
+
+The application automatically configures cloud storage based on environment variables:
+
+**Azure Blob Storage:**
+```bash
+STORAGE_PROVIDER=azure
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
+AZURE_STORAGE_CONTAINER_NAME=oscal-files
+```
+
+**AWS S3:**
+```bash
+STORAGE_PROVIDER=s3
+AWS_REGION=us-east-1
+AWS_S3_BUCKET_BUILD=oscal-tools-build
+# Uses IAM roles (no access keys needed on EC2/ECS)
+```
+
+**Google Cloud Storage:**
+```bash
+STORAGE_PROVIDER=gcs
+GCP_PROJECT_ID=your-project-id
+GCS_BUCKET_BUILD=oscal-tools-build
+# Uses Application Default Credentials
+```
 
 ### Required Environment Variables
 
-Configure these environment variables in your Azure App Service Configuration:
+Configure these environment variables in your cloud platform:
 
 ```bash
-# Azure Blob Storage (REQUIRED)
-AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net
-AZURE_STORAGE_CONTAINER_NAME=oscal-files
-
-# JWT Configuration (REQUIRED - change in production!)
+# JWT Authentication (REQUIRED)
 JWT_SECRET=your-secure-secret-key-minimum-256-bits
 
-# Database (optional - defaults to H2 file-based)
-SPRING_DATASOURCE_URL=jdbc:postgresql://your-db.postgres.database.azure.com:5432/oscaldb
-SPRING_DATASOURCE_USERNAME=your-db-user
-SPRING_DATASOURCE_PASSWORD=your-db-password
+# Database Configuration (REQUIRED for production)
+DB_URL=jdbc:postgresql://your-db-host:5432/oscal_production
+DB_USERNAME=oscal_user
+DB_PASSWORD=your-secure-database-password
 
-# Server Configuration (optional)
+# Cloud Storage (choose one provider - see above)
+STORAGE_PROVIDER=azure  # or 's3' or 'gcs'
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS=https://your-domain.com
+
+# Server Configuration
 SERVER_PORT=8080
-CORS_ALLOWED_ORIGINS=https://your-frontend-url.azurewebsites.net
+SPRING_PROFILES_ACTIVE=prod  # or 'gcp' for GCP deployments
 ```
 
-### Deploying to Azure App Service
+### Deployment Guides
 
-#### Option 1: Deploy via Azure CLI
+Detailed deployment guides are available for each cloud platform:
+
+- **[Local Deployment Guide](docs/LOCAL-DEPLOYMENT-GUIDE.md)** - Deploy locally with Docker for testing and development
+- **[Azure Deployment Guide](docs/AZURE-DEPLOYMENT-GUIDE.md)** - Deploy to Azure App Service or Container Instances
+- **[AWS Deployment Guide](docs/AWS-DEPLOYMENT-GUIDE.md)** - Deploy to AWS Elastic Beanstalk or ECS
+- **[GCP Deployment Guide](docs/GCP-DEPLOYMENT-GUIDE.md)** - Deploy to Google Cloud Run
+- **[CLI Deployment Guide](docs/CLI-DEPLOYMENT-GUIDE.md)** - Use the CLI tool for automation and CI/CD
+
+### Quick Deploy Examples
+
+**Azure (using Terraform):**
+```bash
+cd terraform
+terraform init
+terraform apply -var-file="azure.tfvars"
+```
+
+**AWS (using Elastic Beanstalk):**
+```bash
+./deploy-backend-aws.sh
+```
+
+**GCP (using Cloud Run):**
+```bash
+cd terraform/gcp
+terraform init
+terraform apply
+```
+
+### Local Development with Cloud Storage
+
+For local development, you can configure cloud storage using a `.env` file:
 
 ```bash
-# Login to Azure
-az login
+# Copy the template
+cp .env.example .env
 
-# Create resource group
-az group create --name oscal-hub-rg --location eastus
+# Edit .env with your cloud provider credentials
+# For Azure:
+export STORAGE_PROVIDER=azure
+export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;..."
+export AZURE_STORAGE_CONTAINER_NAME="oscal-files"
 
-# Create App Service plan
-az appservice plan create --name oscal-hub-plan --resource-group oscal-hub-rg --sku B1 --is-linux
+# For AWS:
+export STORAGE_PROVIDER=s3
+export AWS_REGION=us-east-1
+export AWS_S3_BUCKET_BUILD=oscal-tools-build
 
-# Create backend web app (Java 21)
-az webapp create --resource-group oscal-hub-rg --plan oscal-hub-plan --name oscal-hub-backend --runtime "JAVA:21-java21"
+# For GCP:
+export STORAGE_PROVIDER=gcs
+export GCP_PROJECT_ID=your-project-id
+export GCS_BUCKET_BUILD=oscal-tools-build
 
-# Configure environment variables
-az webapp config appsettings set --resource-group oscal-hub-rg --name oscal-hub-backend --settings \
-  AZURE_STORAGE_CONNECTION_STRING="your-connection-string" \
-  AZURE_STORAGE_CONTAINER_NAME="oscal-files" \
-  JWT_SECRET="your-secure-secret-key"
-
-# Deploy backend JAR
-cd back-end
-mvn clean package -DskipTests
-az webapp deploy --resource-group oscal-hub-rg --name oscal-hub-backend --src-path target/oscal-cli-api-1.0.0-SNAPSHOT.jar --type jar
-
-# Create frontend web app (Node 18)
-az webapp create --resource-group oscal-hub-rg --plan oscal-hub-plan --name oscal-hub-frontend --runtime "NODE:18-lts"
-
-# Configure frontend environment variables
-az webapp config appsettings set --resource-group oscal-hub-rg --name oscal-hub-frontend --settings \
-  NEXT_PUBLIC_API_URL="https://oscal-hub-backend.azurewebsites.net/api"
-
-# Deploy frontend
-cd ../front-end
-npm ci
-npm run build
-az webapp deploy --resource-group oscal-hub-rg --name oscal-hub-frontend --src-path .next --type zip
+# Start the application
+./dev.sh
 ```
 
-#### Option 2: Deploy via GitHub Actions
-
-Create `.github/workflows/azure-deploy.yml`:
-
-```yaml
-name: Deploy to Azure
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Java 21
-        uses: actions/setup-java@v3
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Build with Maven
-        run: cd back-end && mvn clean package -DskipTests
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'oscal-hub-backend'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: back-end/target/*.jar
-
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Install and build
-        run: cd front-end && npm ci && npm run build
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'oscal-hub-frontend'
-          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
-          package: front-end
-```
-
-### Local Development with Azure Storage
-
-For local development with Azure Blob Storage:
-
-1. Copy the environment template file:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and add your Azure connection string from Azure Portal:
-   ```bash
-   export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net"
-   export AZURE_STORAGE_CONTAINER_NAME="oscal-files"
-   ```
-
-3. Start the application:
-   ```bash
-   ./start.sh  # or ./dev.sh
-   ```
-
-The `.env` file is gitignored and won't be committed. The startup scripts automatically load environment variables from this file before starting the backend.
-
-### Monitoring and Logs
-
-- **Application Logs**: Available in Azure Portal → App Service → Log stream
-- **Storage Metrics**: Available in Azure Portal → Storage Account → Monitoring
-- **Health Check**: Access `/api/health` endpoint to verify backend status
+The `.env` file is gitignored and won't be committed. The startup scripts automatically load environment variables from this file.
 
 ## API Documentation
 
@@ -349,13 +329,33 @@ Interactive API documentation is available via Swagger UI when the backend is ru
 
 ### Key API Endpoints
 
+**Authentication & Users:**
 - `POST /api/auth/login` - User authentication
 - `POST /api/auth/register` - User registration
+
+**Organizations:**
+- `GET /api/organizations` - List user's organizations
+- `POST /api/organizations` - Create new organization (Super Admin only)
+- `GET /api/organizations/{id}/members` - List organization members
+- `POST /api/organizations/{id}/members` - Add member to organization
+
+**OSCAL Operations:**
 - `POST /api/validate` - Validate OSCAL document
 - `POST /api/convert` - Convert between formats
 - `POST /api/profile/resolve` - Resolve OSCAL Profile
+
+**File Management:**
 - `GET /api/files` - List saved files
 - `GET /api/history` - Operation history
+
+**Component Library:**
+- `GET /api/library` - List all library items
+- `POST /api/library` - Create new library item
+- `GET /api/library/{id}` - Get library item details
+- `GET /api/library/{id}/versions` - List item versions
+- `GET /api/library/search` - Search library items
+
+**System Authorizations:**
 - `POST /api/authorization-templates` - Create authorization template
 - `GET /api/authorization-templates` - List all templates
 - `POST /api/authorizations` - Create system authorization
@@ -379,9 +379,12 @@ cli/target/appassembler/bin/oscal-cli catalog validate --file=catalog.json
 
 ### Backend Configuration
 
-#### Azure Blob Storage (Required for Production)
+#### Cloud Storage (Required for Production)
 
-For production deployments, configure Azure Blob Storage for persistent file storage.
+For production deployments, configure cloud storage for persistent file storage. The application supports:
+- **Azure Blob Storage**
+- **AWS S3**
+- **Google Cloud Storage**
 
 **For Local Development: Use .env File**
 
@@ -391,25 +394,34 @@ Create a `.env` file in the project root:
 # Copy the template
 cp .env.example .env
 
-# Edit .env and add your Azure credentials from Azure Portal
-export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net"
-export AZURE_STORAGE_CONTAINER_NAME="oscal-files"
+# Edit .env with your cloud provider credentials (see Cloud Deployment section above)
 ```
 
-The `.env` file is gitignored and won't be committed. The startup scripts (`./start.sh` and `./dev.sh`) automatically load variables from this file.
+The `.env` file is gitignored and won't be committed. The startup scripts (`./dev.sh` and `./start.sh`) automatically load variables from this file.
 
-**For Production/Azure Deployments: Use Environment Variables**
+**Local Filesystem Fallback:**
 
-Set these environment variables in your Azure App Service Configuration:
+If no cloud storage is configured, the application falls back to local filesystem storage in `./uploads/`. This is suitable for local development and testing only.
 
-```bash
-AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net
-AZURE_STORAGE_CONTAINER_NAME=oscal-files
-```
+#### Database Configuration
 
-#### Other Backend Settings
+**Development (default):**
+- Uses **PostgreSQL** running in Docker container
+- Started automatically with `docker-compose up`
+- Connection string: `jdbc:postgresql://localhost:5432/oscal_dev`
 
-Edit `back-end/src/main/resources/application.properties`:
+**Production:**
+- Requires PostgreSQL database (managed or self-hosted)
+- Configure via environment variables:
+  ```bash
+  DB_URL=jdbc:postgresql://your-db-host:5432/oscal_production
+  DB_USERNAME=oscal_user
+  DB_PASSWORD=your-secure-password
+  ```
+
+#### Application Properties
+
+Key settings in `back-end/src/main/resources/application.properties`:
 
 ```properties
 # Server port
@@ -419,16 +431,21 @@ server.port=8080
 cors.allowed-origins=http://localhost:3000
 cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
 
-# Database (H2 file-based by default)
-spring.datasource.url=jdbc:h2:file:./data/oscal-history
+# Database (PostgreSQL)
+spring.datasource.url=jdbc:postgresql://localhost:5432/oscal_production
+spring.datasource.username=oscal_user
+spring.datasource.password=${DB_PASSWORD}
 
 # JWT Configuration (CHANGE IN PRODUCTION!)
-jwt.secret=oscal-hub-secret-key-change-this-in-production-minimum-256-bits-required-for-security
+jwt.secret=${JWT_SECRET}
 jwt.expiration=3600000
 
 # File Upload Limits
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=10MB
+
+# Password Security
+account.security.password-min-length=10
 ```
 
 ### Frontend Configuration
@@ -446,11 +463,18 @@ NEXT_PUBLIC_API_URL=https://your-backend.azurewebsites.net/api
 
 ## Security Features
 
-- **JWT Authentication** - Token-based user authentication
-- **Password Requirements** - 8+ characters, uppercase, lowercase, number, special character
-- **User Isolation** - Files are stored per-user with access controls
-- **CORS Protection** - Configured for allowed origins
+- **JWT Authentication** - Token-based user authentication with configurable expiration
+- **Strong Password Requirements** - 10+ characters minimum, uppercase, lowercase, digit, and special character required
+- **Role-Based Access Control** - Three-tier permission system:
+  - **Super Admin** - Full system access
+  - **Org Admin** - Manage organization members and resources
+  - **User** - Standard organization member access
+- **Multi-Tenancy** - Organization-based data isolation
 - **Password Hashing** - BCrypt encryption for stored passwords
+- **CORS Protection** - Configurable allowed origins
+- **Rate Limiting** - Protection against brute force attacks (configurable)
+- **Account Lockout** - Automatic lockout after failed login attempts (configurable)
+- **Audit Logging** - Comprehensive activity logging for security monitoring
 
 ## Development
 
@@ -501,36 +525,41 @@ Common issues:
 ### Authentication issues
 
 - Clear browser localStorage and re-login
-- Check JWT token hasn't expired
+- Check JWT token hasn't expired (default: 24 hours)
 - Verify backend is running and accessible
+- Check default admin credentials: username `admin`, password `password`
 
-### Azure Storage issues
+### Cloud Storage issues
 
 **Connection errors on startup:**
 ```
-Failed to initialize Azure Blob Storage: The specified connection string is invalid
+Failed to initialize storage: Connection failed
 ```
-- Verify `AZURE_STORAGE_CONNECTION_STRING` is set correctly
-- Check the connection string format matches Azure Portal output
-- Ensure no extra quotes or spaces in the environment variable
+- Verify your storage provider environment variables are set correctly
+- **Azure**: Check `AZURE_STORAGE_CONNECTION_STRING` format
+- **AWS**: Verify IAM role permissions or AWS credentials
+- **GCP**: Ensure `gcloud auth application-default login` was run
 
-**Container not found errors:**
+**Container/Bucket not found errors:**
 ```
-The specified container does not exist
+The specified container/bucket does not exist
 ```
-- Verify the container name matches in both Azure Portal and configuration
-- Check that `AZURE_STORAGE_CONTAINER_NAME` is set (defaults to "oscal-files")
-- Ensure your Azure credentials have permission to create containers
+- Verify the container/bucket name in your configuration
+- Check that your credentials have permission to create containers/buckets
+- **Azure**: `AZURE_STORAGE_CONTAINER_NAME` defaults to "oscal-files"
+- **AWS**: `AWS_S3_BUCKET_BUILD` must exist or be creatable
+- **GCP**: `GCS_BUCKET_BUILD` must exist or be creatable
 
 **File operations failing:**
-- Check Azure Storage Account firewall rules allow your IP/service
-- Verify the Storage Account access keys haven't been rotated
-- Check Azure Storage Account is in the same region for optimal performance
-- Review Azure Portal → Storage Account → Monitoring for detailed error logs
+- Check cloud provider firewall rules allow your IP/service
+- Verify credentials haven't expired or been rotated
+- Review cloud provider logs for detailed error messages
+- Check bucket/container region configuration
 
-**Local development without Azure:**
-- Set an empty connection string to skip Azure initialization: `AZURE_STORAGE_CONNECTION_STRING=""`
-- Note: File operations will fail without Azure Storage configured
+**Local development without cloud storage:**
+- Leave storage provider unconfigured to use local filesystem
+- Files will be stored in `./uploads/` directory
+- Note: Local storage is suitable for development only
 
 ## Contributing
 
@@ -553,4 +582,4 @@ This project builds upon the NIST OSCAL CLI tool. See [LICENSE.md](LICENSE.md) f
 
 ## Acknowledgments
 
-Based on the [OSCAL CLI](https://github.com/usnistgov/oscal-cli) project by NIST.
+Based on the [OSCAL CLI](https://github.com/RegScale/oscal-hub) project by NIST.

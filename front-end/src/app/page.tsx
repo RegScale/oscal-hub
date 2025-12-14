@@ -8,7 +8,7 @@ import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   // Show loading state
   if (isLoading) {
@@ -28,6 +28,47 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <div id="main-content">
           <Hero />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Check if user has organization access
+  const hasOrganizationAccess = user?.organizationId != null;
+
+  // Show pending message for authenticated users without organization access
+  if (!hasOrganizationAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-12 px-4" id="main-content">
+          <div className="max-w-2xl mx-auto">
+            <Card className="text-center p-8">
+              <div className="mb-6">
+                <svg
+                  className="mx-auto h-16 w-16 text-yellow-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <CardTitle className="text-2xl mb-4">Access Request Pending</CardTitle>
+              <CardDescription className="text-base mb-6">
+                Your access request is pending approval from the organization administrator.
+                You will be notified via email once your request has been reviewed.
+              </CardDescription>
+              <div className="text-sm text-muted-foreground">
+                Please check back later or contact your organization administrator for more information.
+              </div>
+            </Card>
+          </div>
         </div>
         <Footer />
       </div>

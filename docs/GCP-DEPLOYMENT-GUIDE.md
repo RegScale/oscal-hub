@@ -713,14 +713,14 @@ gcloud secrets versions access latest --secret=SECRET_NAME
 - [Cloud SQL Documentation](https://cloud.google.com/sql/docs)
 - [Cloud Storage Documentation](https://cloud.google.com/storage/docs)
 - [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [OSCAL Tools GitHub Repository](https://github.com/usnistgov/oscal-cli)
+- [OSCAL Tools GitHub Repository](https://github.com/RegScale/oscal-hub)
 
 ---
 
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/usnistgov/oscal-cli/issues
+- GitHub Issues: https://github.com/RegScale/oscal-hub/issues
 - OSCAL Gitter: https://gitter.im/usnistgov-OSCAL/Lobby
 - Google Cloud Support: https://cloud.google.com/support
 
