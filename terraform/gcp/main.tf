@@ -208,8 +208,11 @@ module "oscal_app" {
   cpu_limit     = var.app_cpu
   memory_limit  = var.app_memory
 
+
   # Health check on frontend port (which is the main entrypoint)
   health_check_path = "/"
+
+  custom_domain = var.custom_domain
 
   depends_on = [
     google_project_service.apis,

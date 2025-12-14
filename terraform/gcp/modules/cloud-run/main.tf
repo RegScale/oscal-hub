@@ -146,3 +146,39 @@ resource "google_service_account" "service_account" {
 # }
 
 # TODO: For private access, implement Cloud Armor or load balancer with IP restrictions
+
+# ============================================================================#
+# Custom Domain Mapping
+# ============================================================================#
+
+resource "google_cloud_run_domain_mapping" "custom_domain" {
+  count = var.custom_domain != "" ? 1 : 0
+
+  location = var.region
+  name     = var.custom_domain
+  project  = var.project_id
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = "${var.service_name}-${var.environment}"
+  }
+}
+
+resource "google_cloud_run_domain_mapping" "www_custom_domain" {
+  count = var.custom_domain != "" && !startswith(var.custom_domain, "www.") ? 1 : 0
+
+  location = var.region
+  name     = "www.${var.custom_domain}"
+  project  = var.project_id
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = "${var.service_name}-${var.environment}"
+  }
+}

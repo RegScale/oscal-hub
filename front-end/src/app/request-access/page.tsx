@@ -31,6 +31,7 @@ export default function RequestAccessPage() {
 
   useEffect(() => {
     loadOrganizations();
+
     // Pre-fill user info if authenticated
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -40,6 +41,16 @@ export default function RequestAccessPage() {
         setUsername(user.username || '');
       } catch (err) {
         console.error('Failed to parse user data:', err);
+      }
+    }
+
+    // Pre-select organization from URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const orgIdParam = urlParams.get('org');
+    if (orgIdParam) {
+      const orgId = parseInt(orgIdParam, 10);
+      if (!isNaN(orgId)) {
+        setSelectedOrgId(orgId);
       }
     }
   }, []);

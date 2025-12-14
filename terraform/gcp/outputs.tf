@@ -27,6 +27,21 @@ output "backend_url" {
   value       = "${module.oscal_app.service_url}/api"
 }
 
+output "verified_domain_name" {
+  description = "Domain name that was mapped"
+  value       = module.oscal_app.verified_domain_name
+}
+
+output "dns_records" {
+  description = "DNS records to be added to the DNS provider"
+  value       = module.oscal_app.dns_records
+}
+
+output "www_dns_records" {
+  description = "DNS records for the www subdomain"
+  value       = module.oscal_app.www_dns_records
+}
+
 # ----------------------------------------------------------------------------
 # Database Outputs
 # ----------------------------------------------------------------------------

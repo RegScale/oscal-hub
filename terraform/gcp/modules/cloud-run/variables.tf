@@ -105,8 +105,15 @@ variable "request_timeout_seconds" {
   default     = 300
 }
 
+
 variable "allowed_ingress_cidrs" {
   description = "Allowed ingress CIDR ranges (empty = public)"
   type        = list(string)
   default     = []
+}
+
+variable "custom_domain" {
+  description = "Custom domain to map to the Cloud Run service (e.g. example.com)"
+  type        = string
+  default     = ""
 }

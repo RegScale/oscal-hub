@@ -30,7 +30,9 @@ echo ""
 # Load environment variables from .env file if it exists
 if [ -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${BLUE}Loading environment variables from .env...${NC}"
+    set -a # Automatically export all variables
     source "$SCRIPT_DIR/.env"
+    set +a
 
     # Log which environment variables are configured (without showing values)
     if [ ! -z "$SPRING_PROFILES_ACTIVE" ]; then
