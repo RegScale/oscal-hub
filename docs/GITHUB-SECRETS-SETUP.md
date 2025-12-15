@@ -4,22 +4,41 @@
 
 Since you already have your GCP service account set up, you just need to configure GitHub secrets to enable automatic deployment.
 
-## Step 1: Get Your Service Account Key
+## Quick Copy Commands
 
-You need the JSON key file for your service account. If you don't have it saved, create a new one:
+Run these from your project root to get the values you need:
 
 ```bash
-# Replace with your actual project ID and service account name
-export GCP_PROJECT_ID="your-project-id"
-export SERVICE_ACCOUNT="github-actions"
+# 1. Copy service account key to clipboard (macOS)
+cat terraform/gcp/terraform-key.json | pbcopy
 
-# Create a new key
-gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account=${SERVICE_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com
-
-# Display the key (you'll copy this)
-cat github-actions-key.json
+# 2. Get your project ID
+echo "oscal-hub"
 ```
+
+Then add these to GitHub:
+- Secret `GCP_SA_KEY`: Paste from clipboard (Step 1)
+- Secret `GCP_PROJECT_ID`: `oscal-hub`
+
+---
+
+## Step 1: Get Your Service Account Key
+
+Your service account key is already on your machine. Here's where to find it:
+
+**Location**: `terraform/gcp/terraform-key.json` (in your project root)
+
+**To view the key**:
+
+```bash
+# From your project root
+cat terraform/gcp/terraform-key.json
+```
+
+**Your Configuration**:
+- **Project ID**: `oscal-hub`
+- **Service Account**: `terraform-sa@oscal-hub.iam.gserviceaccount.com`
+- **Key File**: `terraform/gcp/terraform-key.json`
 
 ## Step 2: Add Secrets to GitHub
 
@@ -37,30 +56,27 @@ Click **New repository secret** and add each of these:
 #### Secret 1: `GCP_SA_KEY`
 
 - **Name**: `GCP_SA_KEY`
-- **Value**: Paste the **entire contents** of `github-actions-key.json`
+- **Value**: Paste the **entire contents** of `terraform/gcp/terraform-key.json`
   - It should start with `{` and end with `}`
   - Should be about 2,400 characters
   - Include all the JSON structure
 
-**To copy on macOS**:
-```bash
-cat github-actions-key.json | pbcopy
-```
+**To copy the key** (run from project root):
 
-**To copy on Linux**:
 ```bash
-cat github-actions-key.json | xclip -selection clipboard
+# Copy to clipboard (macOS)
+cat terraform/gcp/terraform-key.json | pbcopy
+
+# Or display it to copy manually
+cat terraform/gcp/terraform-key.json
 ```
 
 #### Secret 2: `GCP_PROJECT_ID`
 
 - **Name**: `GCP_PROJECT_ID`
-- **Value**: Your GCP project ID (e.g., `my-oscal-project-123456`)
+- **Value**: `oscal-hub`
 
-**To get your project ID**:
-```bash
-gcloud config get-value project
-```
+This is your GCP project ID that's already configured in gcloud.
 
 ### Optional: Add Variables (Recommended)
 
@@ -122,9 +138,9 @@ Merge any PR to `main` branch. The workflow will automatically trigger and deplo
 **Solution**:
 Verify your service account has these roles:
 ```bash
-gcloud projects get-iam-policy $GCP_PROJECT_ID \
+gcloud projects get-iam-policy oscal-hub \
   --flatten="bindings[].members" \
-  --filter="bindings.members:serviceAccount:github-actions@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+  --filter="bindings.members:serviceAccount:terraform-sa@oscal-hub.iam.gserviceaccount.com"
 ```
 
 Should show:
@@ -132,6 +148,14 @@ Should show:
 - `roles/iam.serviceAccountUser`
 - `roles/artifactregistry.admin`
 - `roles/storage.admin`
+
+**To add missing roles** (if needed):
+```bash
+# Example: Add Cloud Run Admin role
+gcloud projects add-iam-policy-binding oscal-hub \
+  --member="serviceAccount:terraform-sa@oscal-hub.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+```
 
 ### Error: "API not enabled"
 
@@ -146,11 +170,12 @@ gcloud services enable cloudbuild.googleapis.com
 
 ## Security Notes
 
-- ✅ **Never commit** `github-actions-key.json` to Git
-- ✅ **Delete the key file** after adding to GitHub secrets:
-  ```bash
-  rm github-actions-key.json
-  ```
+- ✅ **Never commit** `terraform/gcp/terraform-key.json` to Git
+  - This file should already be in `.gitignore`
+  - Verify with: `git check-ignore terraform/gcp/terraform-key.json`
+- ✅ **Keep the key file secure** on your local machine
+  - It's needed for local Terraform deployments
+  - Only share via GitHub secrets for CI/CD
 - ✅ **Rotate keys regularly** (every 90 days recommended)
 - ✅ **Use least-privilege** roles for service account
 
