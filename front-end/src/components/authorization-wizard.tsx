@@ -80,6 +80,7 @@ export function AuthorizationWizard({
   // Digital Signature
   const [draftAuthorizationId, setDraftAuthorizationId] = useState<number | null>(null);
   const [signatureResult, setSignatureResult] = useState<unknown>(null);
+  const [authorizationCreated, setAuthorizationCreated] = useState(false);
 
   // Load SSP visualization when SSP is selected
   useEffect(() => {
@@ -282,6 +283,7 @@ export function AuthorizationWizard({
       const response = await apiClient.createAuthorization(authData);
       if (response) {
         setDraftAuthorizationId(response.id);
+        setAuthorizationCreated(true);
         toast.success('Authorization created - ready for signature');
       }
     } catch (error) {
@@ -460,7 +462,8 @@ export function AuthorizationWizard({
         {step === 'sign' ? (
           <Button type="button" onClick={() => {
             toast.success('Authorization completed successfully');
-            onCancel(); // Close wizard
+            // Close wizard - parent will refresh the list via onCancel
+            onCancel();
           }}>
             Complete
           </Button>
@@ -1062,7 +1065,8 @@ export function AuthorizationWizard({
         {step === 'sign' ? (
           <Button type="button" onClick={() => {
             toast.success('Authorization completed successfully');
-            onCancel(); // Close wizard
+            // Close wizard - parent will refresh the list via onCancel
+            onCancel();
           }}>
             Complete
           </Button>

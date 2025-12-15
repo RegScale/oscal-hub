@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -52,6 +53,7 @@ public class LibraryItem {
     private Set<LibraryTag> tags = new HashSet<>();
 
     @OneToMany(mappedBy = "libraryItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<LibraryVersion> versions = new HashSet<>();
 
     @Column(nullable = false)

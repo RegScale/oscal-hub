@@ -10,27 +10,34 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import gov.nist.oscal.tools.api.model.OscalFormat;
+import gov.nist.oscal.tools.api.model.OscalModelType;
+import gov.nist.oscal.tools.api.model.SavedFile;
+import gov.nist.oscal.tools.api.service.FileStorageService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Controller for serving uploaded files (logos, etc.)
+ * Controller for serving uploaded files (logos, etc.) and managing saved OSCAL files
  * Supports local filesystem, Azure Blob Storage, Google Cloud Storage, and AWS S3
  */
 @RestController
@@ -39,6 +46,9 @@ public class FileController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileController.class);
     private static final String UPLOAD_DIR = "uploads";
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Value("${storage.provider:azure}")
     private String storageProvider;
@@ -302,5 +312,147 @@ public class FileController {
             return "image/gif";
         }
         return "application/octet-stream";
+    }
+
+    // ========================================
+    // Saved Files Management Endpoints
+    // ========================================
+
+    /**
+     * Get all saved files for the current user
+     */
+    @GetMapping
+    public ResponseEntity<List<SavedFile>> getSavedFiles() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            List<SavedFile> files = fileStorageService.listFiles(username);
+            return ResponseEntity.ok(files);
+        } catch (Exception e) {
+            logger.error("Failed to get saved files", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get a saved file by ID
+     */
+    @GetMapping("/{fileId}")
+    public ResponseEntity<SavedFile> getSavedFile(@PathVariable String fileId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            SavedFile file = fileStorageService.getFile(fileId, username);
+            return ResponseEntity.ok(file);
+        } catch (Exception e) {
+            logger.error("Failed to get saved file: {}", fileId, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Get file content by ID
+     */
+    @GetMapping("/{fileId}/content")
+    public ResponseEntity<Map<String, String>> getFileContent(@PathVariable String fileId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            String content = fileStorageService.getFileContent(fileId, username);
+            return ResponseEntity.ok(Map.of("content", content));
+        } catch (Exception e) {
+            logger.error("Failed to get file content: {}", fileId, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Delete a saved file by ID
+     */
+    @DeleteMapping("/{fileId}")
+    public ResponseEntity<Void> deleteSavedFile(@PathVariable String fileId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            boolean deleted = fileStorageService.deleteFile(fileId, username);
+            if (deleted) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        } catch (Exception e) {
+            logger.error("Failed to delete saved file: {}", fileId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Save a new file
+     */
+    @PostMapping
+    public ResponseEntity<SavedFile> saveFile(@RequestBody SaveFileRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            SavedFile savedFile = fileStorageService.saveFile(
+                request.getContent(),
+                request.getFileName(),
+                request.getModelType(),
+                request.getFormat(),
+                username
+            );
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedFile);
+        } catch (Exception e) {
+            logger.error("Failed to save file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Request DTO for saving files
+     */
+    public static class SaveFileRequest {
+        private String content;
+        private String fileName;
+        private OscalModelType modelType;
+        private OscalFormat format;
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        public OscalModelType getModelType() {
+            return modelType;
+        }
+
+        public void setModelType(OscalModelType modelType) {
+            this.modelType = modelType;
+        }
+
+        public OscalFormat getFormat() {
+            return format;
+        }
+
+        public void setFormat(OscalFormat format) {
+            this.format = format;
+        }
     }
 }

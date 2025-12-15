@@ -304,6 +304,70 @@ public class AuthorizationController {
     }
 
     @Operation(
+        summary = "Sign authorization with electronic signature",
+        description = "Save an electronic signature (drawn with mouse/touchscreen) for an authorization"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Electronic signature saved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request - missing signature data or signer name"),
+        @ApiResponse(responseCode = "404", description = "Authorization not found")
+    })
+    @PostMapping("/sign-electronically")
+    public ResponseEntity<SignatureResult> signElectronically(
+            @RequestBody ElectronicSignatureRequest request) {
+
+        logger.info("Electronic signature request for authorization {}", request.getAuthorizationId());
+
+        // Validate required fields
+        if (request.getSignerName() == null || request.getSignerName().trim().isEmpty()) {
+            logger.warn("Signer name is required for electronic signature");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new SignatureResult(false, "Signer name is required"));
+        }
+
+        if (request.getSignatureImageData() == null || request.getSignatureImageData().trim().isEmpty()) {
+            logger.warn("Signature image data is required");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new SignatureResult(false, "Signature image is required"));
+        }
+
+        try {
+            // Get the authorization
+            Authorization auth = authorizationService.getAuthorization(request.getAuthorizationId());
+
+            // Save electronic signature
+            auth.setDigitalSignatureMethod("ELECTRONIC");
+            auth.setElectronicSignatureImage(request.getSignatureImageData());
+            auth.setSignerCommonName(request.getSignerName());
+            if (request.getSignerTitle() != null && !request.getSignerTitle().trim().isEmpty()) {
+                auth.setSignerEmail(request.getSignerTitle()); // Reuse email field for title
+            }
+            auth.setSignatureTimestamp(LocalDateTime.now());
+
+            authorizationService.save(auth);
+
+            logger.info("Authorization {} signed electronically by {}",
+                    request.getAuthorizationId(), request.getSignerName());
+
+            SignatureResult result = new SignatureResult(true, "Electronic signature saved successfully");
+            result.setSignerName(request.getSignerName());
+            result.setSignerEmail(request.getSignerTitle());
+            result.setSignatureTimestamp(LocalDateTime.now());
+
+            return ResponseEntity.ok(result);
+
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            logger.error("Authorization not found: {}", request.getAuthorizationId());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new SignatureResult(false, "Authorization not found"));
+        } catch (Exception e) {
+            logger.error("Electronic signing failed for authorization {}", request.getAuthorizationId(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new SignatureResult(false, "Electronic signing failed: " + e.getMessage()));
+        }
+    }
+
+    @Operation(
         summary = "Get signature details",
         description = "Get digital signature information for an authorization"
     )

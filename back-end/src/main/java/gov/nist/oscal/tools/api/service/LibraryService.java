@@ -296,6 +296,7 @@ public class LibraryService {
     /**
      * Get library analytics
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getAnalytics() {
         Map<String, Object> analytics = new HashMap<>();
 
@@ -313,13 +314,13 @@ public class LibraryService {
         analytics.put("itemsByType", typeCountMap);
 
         // Most popular tags
-        List<LibraryTag> popularTags = libraryTagRepository.findMostPopular();
-        List<Map<String, Object>> tagStats = popularTags.stream()
+        List<Object[]> popularTagsData = libraryTagRepository.findMostPopularWithCounts();
+        List<Map<String, Object>> tagStats = popularTagsData.stream()
                 .limit(10)
-                .map(tag -> {
+                .map(row -> {
                     Map<String, Object> tagMap = new HashMap<>();
-                    tagMap.put("name", tag.getName());
-                    tagMap.put("count", tag.getUsageCount());
+                    tagMap.put("name", row[1]); // name is at index 1
+                    tagMap.put("count", row[3]); // usageCount is at index 3
                     return tagMap;
                 })
                 .collect(Collectors.toList());
@@ -360,17 +361,35 @@ public class LibraryService {
     }
 
     /**
-     * Get all tags
+     * Get all tags with usage counts
      */
-    public List<LibraryTag> getAllTags() {
-        return libraryTagRepository.findAllByOrderByNameAsc();
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllTags() {
+        List<Object[]> tagsData = libraryTagRepository.findAllWithCountsOrderByNameAsc();
+        return tagsData.stream()
+                .map(row -> {
+                    Map<String, Object> tagMap = new HashMap<>();
+                    tagMap.put("name", row[1]); // name is at index 1
+                    tagMap.put("usageCount", row[3]); // usageCount is at index 3
+                    return tagMap;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
-     * Get popular tags
+     * Get popular tags with usage counts
      */
-    public List<LibraryTag> getPopularTags(int limit) {
-        List<LibraryTag> tags = libraryTagRepository.findMostPopular();
-        return tags.stream().limit(limit).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getPopularTags(int limit) {
+        List<Object[]> tagsData = libraryTagRepository.findMostPopularWithCounts();
+        return tagsData.stream()
+                .limit(limit)
+                .map(row -> {
+                    Map<String, Object> tagMap = new HashMap<>();
+                    tagMap.put("name", row[1]); // name is at index 1
+                    tagMap.put("usageCount", row[3]); // usageCount is at index 3
+                    return tagMap;
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -1,7 +1,6 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.LibraryItem;
-import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.service.LibraryService;
@@ -355,14 +354,8 @@ public class LibraryController {
     @GetMapping("/tags")
     public ResponseEntity<List<Map<String, Object>>> getAllTags() {
         try {
-            List<LibraryTag> tags = libraryService.getAllTags();
-            List<Map<String, Object>> tagResponses = tags.stream()
-                    .map(tag -> Map.of(
-                            "name", (Object) tag.getName(),
-                            "usageCount", tag.getUsageCount()
-                    ))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(tagResponses);
+            List<Map<String, Object>> tags = libraryService.getAllTags();
+            return ResponseEntity.ok(tags);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -379,14 +372,8 @@ public class LibraryController {
     public ResponseEntity<List<Map<String, Object>>> getPopularTags(
             @RequestParam(defaultValue = "10") int limit) {
         try {
-            List<LibraryTag> tags = libraryService.getPopularTags(limit);
-            List<Map<String, Object>> tagResponses = tags.stream()
-                    .map(tag -> Map.of(
-                            "name", (Object) tag.getName(),
-                            "usageCount", tag.getUsageCount()
-                    ))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(tagResponses);
+            List<Map<String, Object>> tags = libraryService.getPopularTags(limit);
+            return ResponseEntity.ok(tags);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

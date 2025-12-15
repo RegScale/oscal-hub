@@ -432,7 +432,11 @@ export default function AuthorizationsPage() {
                   sspItems={sspItems}
                   sarItems={sarItems}
                   onSave={handleCreateAuthorization}
-                  onCancel={() => setView('list-authorizations')}
+                  onCancel={async () => {
+                    // Refresh authorizations when closing wizard in case one was created
+                    await loadAuthorizations();
+                    setView('list-authorizations');
+                  }}
                   isSaving={savingAuthorization}
                 />
               </Card>
