@@ -18,7 +18,8 @@ echo ""
 
 # Stop Spring Boot backend
 echo -e "${YELLOW}Stopping backend...${NC}"
-pkill -f 'spring-boot:run' 2>/dev/null
+# Try both patterns: JAR execution and mvn spring-boot:run
+pkill -f 'oscal-cli-api.*\.jar' 2>/dev/null || pkill -f 'spring-boot:run' 2>/dev/null
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Backend stopped${NC}"
 else
@@ -35,11 +36,26 @@ else
     echo -e "${BLUE}ℹ Frontend was not running${NC}"
 fi
 
-# Force kill processes by port
+# Force kill processes by port (cross-platform)
 echo -e "${YELLOW}Cleaning up ports...${NC}"
-lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null && echo -e "${GREEN}✓ Port 8080 cleared${NC}"
-lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null && echo -e "${GREEN}✓ Port 3000 cleared${NC}"
-lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null && echo -e "${GREEN}✓ Port 3001 cleared${NC}"
+
+kill_port() {
+    local port=$1
+    # Try lsof first (macOS/Linux)
+    if command -v lsof &> /dev/null; then
+        lsof -ti:$port 2>/dev/null | xargs kill -9 2>/dev/null && echo -e "${GREEN}✓ Port $port cleared${NC}" && return
+    fi
+    # Try netstat + taskkill for Windows (Git Bash)
+    local pid=$(netstat -ano 2>/dev/null | grep ":$port " | grep "LISTENING" | awk '{print $5}' | head -1)
+    if [ -n "$pid" ] && [ "$pid" != "0" ]; then
+        taskkill //F //PID $pid 2>/dev/null && echo -e "${GREEN}✓ Port $port cleared (PID $pid)${NC}" && return
+    fi
+    echo -e "${BLUE}ℹ Port $port was not in use${NC}"
+}
+
+kill_port 8080
+kill_port 3000
+kill_port 3001
 
 # Stop Docker containers
 echo ""
@@ -75,14 +91,22 @@ else
         echo -e "${GREEN}✓ OSCAL UX containers stopped${NC}"
     fi
 
-    # Verify port 5432 is freed
+    # Verify port 5432 is freed (cross-platform)
     echo ""
     echo -e "${YELLOW}Verifying PostgreSQL port (5432) is freed...${NC}"
-    if lsof -ti:5432 2>/dev/null | grep -q .; then
+    port_in_use() {
+        local port=$1
+        if command -v lsof &> /dev/null; then
+            lsof -ti:$port 2>/dev/null | grep -q .
+        else
+            netstat -ano 2>/dev/null | grep ":$port " | grep -q "LISTENING"
+        fi
+    }
+    if port_in_use 5432; then
         echo -e "${RED}⚠ Port 5432 is still in use. Force killing...${NC}"
-        lsof -ti:5432 | xargs kill -9 2>/dev/null
+        kill_port 5432
         sleep 1
-        if ! lsof -ti:5432 2>/dev/null | grep -q .; then
+        if ! port_in_use 5432; then
             echo -e "${GREEN}✓ Port 5432 is now free${NC}"
         else
             echo -e "${RED}✗ Port 5432 is still in use. Manual intervention may be required.${NC}"
