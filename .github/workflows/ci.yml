@@ -15,10 +15,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version-file: '.tool-versions'
           distribution: 'temurin'
           cache: 'maven'
 
@@ -82,10 +82,10 @@ jobs:
           sarif_file: 'trivy-results.sarif'
         continue-on-error: true
 
-      - name: Set up JDK 21 for dependency check
+      - name: Set up JDK for dependency check
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version-file: '.tool-versions'
           distribution: 'temurin'
           cache: 'maven'
 
