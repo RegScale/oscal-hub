@@ -14,7 +14,6 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,11 +55,10 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8080/api
           NEXT_PUBLIC_USE_MOCK: 'false'
 
-      - name: Run frontend tests (if any)
+      - name: Run frontend tests
         run: |
           cd front-end
           npm test -- --passWithNoTests
-        continue-on-error: true
 
   security-scan:
     name: Security Scan

@@ -51,8 +51,8 @@ jobs:
       - name: Run unit tests
         id: unit-tests
         run: |
-          npm test -- --reporter=json --outputFile=test-results.json || true
-          npm test 2>&1 | tee unit-test-output.txt
+          set -o pipefail
+          npm test -- --reporter=default --reporter=json --outputFile=test-results.json 2>&1 | tee unit-test-output.txt
         continue-on-error: true
 
       - name: Install Playwright browsers (Chromium only for PRs)
@@ -66,6 +66,7 @@ jobs:
       - name: Run E2E tests
         id: e2e-tests
         run: |
+          set -o pipefail
           npm run test:e2e 2>&1 | tee e2e-test-output.txt
         continue-on-error: true
         env:
