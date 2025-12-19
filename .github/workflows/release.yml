@@ -4,6 +4,9 @@ on:
     - "v*"
   workflow_dispatch:
 name: Deploy Tagged Release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   deploy-to-nexus:
     name: Build and Publish Java Artifacts

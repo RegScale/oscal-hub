@@ -46,8 +46,7 @@ public class LibraryItemResponse {
         }
         response.setDownloadCount(item.getDownloadCount());
         response.setViewCount(item.getViewCount());
-        // Version count will be set separately by the service layer if needed
-        response.setVersionCount(0);
+        response.setVersionCount(item.getVersions() != null ? item.getVersions().size() : 0);
         return response;
     }
 

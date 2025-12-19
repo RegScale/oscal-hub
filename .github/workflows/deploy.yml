@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch: # Allow manual trigger
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'oscal-tools-prod' }}
   LOCATION: ${{ vars.AZURE_LOCATION || 'eastus' }}
