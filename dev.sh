@@ -146,6 +146,23 @@ else
     echo -e "${GREEN}✓ Using Java $JAVA_VER${NC}"
 fi
 
+# Check if git submodules are initialized
+echo ""
+echo -e "${BLUE}Checking git submodules...${NC}"
+if [ -d "$SCRIPT_DIR/cli" ] && [ -n "$(ls -A "$SCRIPT_DIR/cli" 2>/dev/null)" ]; then
+    echo -e "${GREEN}✓ Git submodules are initialized${NC}"
+else
+    echo -e "${YELLOW}Git submodules not initialized. Initializing now...${NC}"
+    (cd "$SCRIPT_DIR" && git submodule update --init --recursive)
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Git submodules initialized successfully${NC}"
+    else
+        echo -e "${RED}✗ Failed to initialize git submodules${NC}"
+        echo -e "${YELLOW}Try running manually: git submodule update --init --recursive${NC}"
+        exit 1
+    fi
+fi
+
 echo -e "${BLUE}Starting OSCAL HUB...${NC}"
 echo ""
 
