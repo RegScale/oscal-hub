@@ -162,9 +162,10 @@ jobs:
           path: oscal-ux-image.tar.gz
           retention-days: 1
 
-  # Job 3: PR Comment with Test Results
+  # Job 3: PR Test Results Summary
+  # Always writes to job summary; PR comments only work for non-fork PRs
   comment-pr:
-    name: Comment Test Results on PR
+    name: Test Results Summary
     runs-on: ubuntu-latest
     needs: [test, build]
     if: always() && github.event_name == 'pull_request'
@@ -178,7 +179,7 @@ jobs:
           name: test-results
           path: test-results
 
-      - name: Parse test results
+      - name: Parse and display test results
         id: parse-results
         run: |
           # Count test results
@@ -187,19 +188,58 @@ jobs:
           UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt || echo "0")
           E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt || echo "0")
 
+          # Determine overall status
+          if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
+            OVERALL_STATUS="✅ All tests passed"
+          else
+            OVERALL_STATUS="❌ Some tests failed"
+          fi
+
+          # Write to job summary (works for all PRs including forks)
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🧪 Test Results
+
+          **Overall Status:** $OVERALL_STATUS
+
+          ### Unit Tests
+          - ✅ Passed: $UNIT_TESTS_PASSED
+          - ❌ Failed: $UNIT_TESTS_FAILED
+
+          ### E2E Tests
+          - ✅ Passed: $E2E_TESTS_PASSED
+          - ❌ Failed: $E2E_TESTS_FAILED
+
+          ### Docker Build
+          - Status: ${{ needs.build.result == 'success' && '✅ Success' || '❌ Failed' }}
+
+          <details>
+          <summary>📝 Unit Test Details (last 50 lines)</summary>
+
+          \`\`\`
+          $(tail -50 test-results/unit-test-output.txt 2>/dev/null || echo "No output available")
+          \`\`\`
+
+          </details>
+
+          <details>
+          <summary>📝 E2E Test Details (last 50 lines)</summary>
+
+          \`\`\`
+          $(tail -50 test-results/e2e-test-output.txt 2>/dev/null || echo "No output available")
+          \`\`\`
+
+          </details>
+          EOF
+
+          # Save outputs for PR comment step
           echo "unit_passed=$UNIT_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "unit_failed=$UNIT_TESTS_FAILED" >> $GITHUB_OUTPUT
           echo "e2e_passed=$E2E_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "e2e_failed=$E2E_TESTS_FAILED" >> $GITHUB_OUTPUT
+          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
 
-          # Determine overall status
-          if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
-            echo "overall_status=✅ All tests passed" >> $GITHUB_OUTPUT
-          else
-            echo "overall_status=❌ Some tests failed" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Comment PR
+      - name: Comment on PR (non-fork only)
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -374,8 +414,22 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Comment Claude Review on PR
+      - name: Write Claude Review to Summary
         if: steps.changed-files.outputs.has_changes == 'true'
+        run: |
+          echo "## 🤖 Claude AI Code Review" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f claude_review.md ]; then
+            cat claude_review.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Claude code review could not be completed. Please check the workflow logs." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*AI-powered review by Claude*" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment Claude Review on PR (non-fork only)
+        if: steps.changed-files.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
