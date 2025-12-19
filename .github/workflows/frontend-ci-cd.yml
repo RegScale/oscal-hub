@@ -357,7 +357,7 @@ jobs:
           echo "has_changes=$([ -s frontend_changed_files.txt ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Run Claude Code Review
-        if: steps.changed-files.outputs.has_changes == 'true'
+        if: steps.changed-files.outputs.has_changes == 'true' && env.ANTHROPIC_API_KEY != ''
         id: claude-review
         run: |
           # Prepare the diff for review
@@ -386,7 +386,7 @@ jobs:
 
           # Call Claude API (requires ANTHROPIC_API_KEY secret)
           REVIEW_RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" \
             -d '{
@@ -399,16 +399,19 @@ jobs:
             }')
 
           # Extract review content
-          REVIEW_CONTENT=$(echo "$REVIEW_RESPONSE" | jq -r '.content[0].text')
+          REVIEW_CONTENT=$(echo "$REVIEW_RESPONSE" | jq -r '.content[0].text // empty')
 
-          # Save review to file
-          echo "$REVIEW_CONTENT" > claude_review.md
-
-          # Check if Claude found any issues
-          if echo "$REVIEW_CONTENT" | grep -qiE "(issue|warning|vulnerability|problem|concern)"; then
-            echo "issues_found=true" >> $GITHUB_OUTPUT
+          # Check if we got valid content
+          if [ -n "$REVIEW_CONTENT" ] && [ "$REVIEW_CONTENT" != "null" ]; then
+            echo "$REVIEW_CONTENT" > claude_review.md
+            echo "review_completed=true" >> $GITHUB_OUTPUT
           else
-            echo "issues_found=false" >> $GITHUB_OUTPUT
+            # Check for error message in response
+            ERROR_MSG=$(echo "$REVIEW_RESPONSE" | jq -r '.error.message // empty')
+            if [ -n "$ERROR_MSG" ]; then
+              echo "API Error: $ERROR_MSG" > claude_review.md
+            fi
+            echo "review_completed=false" >> $GITHUB_OUTPUT
           fi
         continue-on-error: true
         env:
@@ -419,11 +422,17 @@ jobs:
         run: |
           echo "## 🤖 Claude AI Code Review" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f claude_review.md ]; then
+
+          if [ ! -f claude_review.md ]; then
+            echo "ℹ️ Claude code review was skipped (ANTHROPIC_API_KEY not configured)." >> $GITHUB_STEP_SUMMARY
+          elif grep -q "^null$" claude_review.md 2>/dev/null; then
+            echo "⚠️ Claude code review could not be completed. API returned no content." >> $GITHUB_STEP_SUMMARY
+          elif grep -q "^API Error:" claude_review.md 2>/dev/null; then
             cat claude_review.md >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Claude code review could not be completed. Please check the workflow logs." >> $GITHUB_STEP_SUMMARY
+            cat claude_review.md >> $GITHUB_STEP_SUMMARY
           fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "*AI-powered review by Claude*" >> $GITHUB_STEP_SUMMARY
@@ -436,12 +445,17 @@ jobs:
           script: |
             const fs = require('fs');
 
-            let reviewContent = '✅ No issues found by Claude AI code review.';
+            let reviewContent = 'ℹ️ Claude code review was skipped (ANTHROPIC_API_KEY not configured).';
 
             try {
-              reviewContent = fs.readFileSync('claude_review.md', 'utf8');
+              const content = fs.readFileSync('claude_review.md', 'utf8').trim();
+              if (content && content !== 'null') {
+                reviewContent = content;
+              } else {
+                reviewContent = '⚠️ Claude code review could not be completed. API returned no content.';
+              }
             } catch (e) {
-              reviewContent = '⚠️ Claude code review could not be completed. Please check the workflow logs.';
+              // File doesn't exist - API key not configured
             }
 
             const comment = `## 🤖 Claude AI Code Review
