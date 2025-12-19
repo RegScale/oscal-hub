@@ -73,6 +73,79 @@ if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
     source "$HOME/.sdkman/bin/sdkman-init.sh"
 fi
 
+# Ensure Java 21 is used (project requirement)
+REQUIRED_JAVA_VERSION=21
+
+get_java_version() {
+    local java_cmd="${1:-java}"
+    if [ -x "$java_cmd" ] || command -v "$java_cmd" &> /dev/null; then
+        "$java_cmd" -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1
+    fi
+}
+
+# If JAVA_HOME is set, use it (allows override)
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+    JAVA_VER=$(get_java_version "$JAVA_HOME/bin/java")
+    if [ "$JAVA_VER" = "$REQUIRED_JAVA_VERSION" ]; then
+        echo -e "${GREEN}✓ Using JAVA_HOME: $JAVA_HOME (Java $JAVA_VER)${NC}"
+    else
+        echo -e "${YELLOW}⚠ JAVA_HOME points to Java $JAVA_VER (project requires $REQUIRED_JAVA_VERSION)${NC}"
+    fi
+else
+    # Auto-detect Java 21
+    JAVA_VER=$(get_java_version)
+    if [ "$JAVA_VER" != "$REQUIRED_JAVA_VERSION" ]; then
+        echo -e "${YELLOW}Looking for Java $REQUIRED_JAVA_VERSION...${NC}"
+        # Windows: Check Eclipse Adoptium installation
+        if [ -d "/c/Program Files/Eclipse Adoptium" ]; then
+            JAVA21_PATH=$(ls -d "/c/Program Files/Eclipse Adoptium/jdk-21"* 2>/dev/null | head -1)
+            if [ -n "$JAVA21_PATH" ]; then
+                export JAVA_HOME="$JAVA21_PATH"
+                export PATH="$JAVA_HOME/bin:$PATH"
+                echo -e "${GREEN}✓ Found Java 21: $JAVA_HOME${NC}"
+            fi
+        fi
+        # macOS: Check common locations
+        if [ -d "/Library/Java/JavaVirtualMachines" ]; then
+            JAVA21_PATH=$(ls -d /Library/Java/JavaVirtualMachines/temurin-21* 2>/dev/null | head -1)
+            if [ -n "$JAVA21_PATH" ]; then
+                export JAVA_HOME="$JAVA21_PATH/Contents/Home"
+                export PATH="$JAVA_HOME/bin:$PATH"
+                echo -e "${GREEN}✓ Found Java 21: $JAVA_HOME${NC}"
+            fi
+        fi
+    fi
+fi
+
+# Verify Java is available
+JAVA_VER=$(get_java_version)
+if [ -z "$JAVA_VER" ]; then
+    echo -e "${RED}✗ Java not found${NC}"
+    echo ""
+    echo -e "${YELLOW}Please either:${NC}"
+    echo -e "  1. Install Java $REQUIRED_JAVA_VERSION+ (Eclipse Temurin recommended)"
+    echo -e "     https://adoptium.net/"
+    echo ""
+    echo -e "  2. Set JAVA_HOME to an existing Java $REQUIRED_JAVA_VERSION+ installation:"
+    echo -e "     export JAVA_HOME=\"/path/to/jdk-$REQUIRED_JAVA_VERSION\""
+    echo -e "     ./dev.sh"
+    exit 1
+elif [ "$JAVA_VER" -lt "$REQUIRED_JAVA_VERSION" ] 2>/dev/null; then
+    echo -e "${RED}✗ Java $JAVA_VER found, but Java $REQUIRED_JAVA_VERSION+ is required${NC}"
+    echo ""
+    echo -e "${YELLOW}Please either:${NC}"
+    echo -e "  1. Install Java $REQUIRED_JAVA_VERSION+ (Eclipse Temurin recommended)"
+    echo -e "     https://adoptium.net/"
+    echo ""
+    echo -e "  2. Set JAVA_HOME to an existing Java $REQUIRED_JAVA_VERSION+ installation:"
+    echo -e "     export JAVA_HOME=\"/path/to/jdk-$REQUIRED_JAVA_VERSION\""
+    echo -e "     ./dev.sh"
+    exit 1
+else
+    echo -e "${GREEN}✓ Using Java $JAVA_VER${NC}"
+fi
+
 echo -e "${BLUE}Starting OSCAL HUB...${NC}"
 echo ""
 
@@ -177,19 +250,32 @@ echo "Frontend will be available at: http://localhost:3000"
 echo "pgAdmin will be available at: http://localhost:5050 (if started)"
 echo ""
 
-# Function to kill processes using a specific port
+# Function to kill processes using a specific port (cross-platform)
 kill_port() {
   local port=$1
   local description=$2
-  echo -e "${YELLOW}🔍 Checking for processes on port ${port} (${description})...${NC}"
+  echo -e "${YELLOW}Checking for processes on port ${port} (${description})...${NC}"
 
-  # Find process IDs using the port (macOS and Linux compatible)
-  local pids=$(lsof -ti:$port 2>/dev/null || true)
+  local pids=""
+  # Try lsof first (macOS/Linux)
+  if command -v lsof &> /dev/null; then
+    pids=$(lsof -ti:$port 2>/dev/null || true)
+  else
+    # Windows (Git Bash) - use netstat
+    pids=$(netstat -ano 2>/dev/null | grep ":$port " | grep "LISTENING" | awk '{print $5}' | head -1)
+  fi
 
-  if [ -n "$pids" ]; then
-    echo -e "${RED}⚠️  Found processes using port ${port}: $pids${NC}"
-    echo -e "${YELLOW}🔨 Killing processes...${NC}"
-    echo "$pids" | xargs kill -9 2>/dev/null || true
+  if [ -n "$pids" ] && [ "$pids" != "0" ]; then
+    echo -e "${RED}Found processes using port ${port}: $pids${NC}"
+    echo -e "${YELLOW}Killing processes...${NC}"
+    if command -v lsof &> /dev/null; then
+      echo "$pids" | xargs kill -9 2>/dev/null || true
+    else
+      # Windows - use taskkill
+      for pid in $pids; do
+        taskkill //F //PID $pid 2>/dev/null || true
+      done
+    fi
     sleep 1
     echo -e "${GREEN}✓ Port ${port} cleared${NC}"
   else
@@ -204,17 +290,32 @@ kill_port 3000 "Frontend"
 echo ""
 
 echo -e "${GREEN}Building backend...${NC}"
-(cd "$SCRIPT_DIR/back-end" && mvn clean compile)
+(cd "$SCRIPT_DIR/back-end" && mvn package -DskipTests -q)
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ Backend build failed. Exiting.${NC}"
     exit 1
 fi
 echo ""
 echo -e "${GREEN}Starting backend...${NC}"
-(cd "$SCRIPT_DIR/back-end" && mvn spring-boot:run) &
+# Run JAR directly instead of mvn spring-boot:run to avoid Maven wrapper noise on shutdown
+BACKEND_JAR=$(ls "$SCRIPT_DIR/back-end/target"/*.jar 2>/dev/null | grep -v sources | head -1)
+if [ -z "$BACKEND_JAR" ]; then
+    echo -e "${RED}✗ Backend JAR not found. Build may have failed.${NC}"
+    exit 1
+fi
+(cd "$SCRIPT_DIR/back-end" && java -jar "$BACKEND_JAR") &
 BACKEND_PID=$!
 
 echo -e "${GREEN}Starting frontend...${NC}"
+# Check if node_modules exists, install dependencies if not
+if [ ! -d "$SCRIPT_DIR/front-end/node_modules" ]; then
+    echo -e "${YELLOW}Installing frontend dependencies...${NC}"
+    (cd "$SCRIPT_DIR/front-end" && npm install)
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Frontend dependency installation failed. Exiting.${NC}"
+        exit 1
+    fi
+fi
 (cd "$SCRIPT_DIR/front-end" && npm run dev) &
 FRONTEND_PID=$!
 
