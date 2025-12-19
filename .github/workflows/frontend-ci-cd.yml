@@ -113,9 +113,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: always()
-    defaults:
-      run:
-        working-directory: front-end
 
     steps:
       - name: Checkout code
@@ -127,8 +124,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./front-end
-          file: ./front-end/Dockerfile
+          context: .
+          file: ./Dockerfile.frontend.cloudrun
           push: false
           tags: ${{ env.IMAGE_NAME }}:test
           cache-from: type=gha
@@ -162,7 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: front-end/oscal-ux-image.tar.gz
+          path: oscal-ux-image.tar.gz
           retention-days: 1
 
   # Job 3: PR Comment with Test Results
@@ -464,8 +461,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./front-end
-          file: ./front-end/Dockerfile
+          context: .
+          file: ./Dockerfile.frontend.cloudrun
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
