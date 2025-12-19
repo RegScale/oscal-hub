@@ -72,20 +72,6 @@
                     </configuration>
                 </plugin>
 
-                <!-- Override CLI submodule's toolchain to use Java 21 -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-toolchains-plugin</artifactId>
-                    <configuration>
-                        <toolchains>
-                            <jdk>
-                                <version>21</version>
-                                <vendor>temurin</vendor>
-                            </jdk>
-                        </toolchains>
-                    </configuration>
-                </plugin>
-
                 <!-- OWASP Dependency-Check Maven Plugin -->
                 <plugin>
                     <groupId>org.owasp</groupId>
