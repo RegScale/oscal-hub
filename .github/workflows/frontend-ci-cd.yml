@@ -59,8 +59,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx playwright install chromium --with-deps
 
-      - name: Install Playwright browsers (all browsers for develop)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+      - name: Install Playwright browsers (all browsers for branch pushes)
+        if: github.event_name == 'push'
         run: npx playwright install --with-deps
 
       - name: Run E2E tests
