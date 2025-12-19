@@ -53,7 +53,8 @@
     </properties>
 
     <modules>
-        <module>cli</module>
+        <!-- CLI is now an external submodule from https://github.com/metaschema-framework/oscal-cli -->
+        <!-- Build it separately if needed: cd cli && mvn install -->
         <module>back-end</module>
     </modules>
 
