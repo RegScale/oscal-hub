@@ -39,7 +39,9 @@ export default function RootLayout({
             Skip to main content
           </a>
           <Navigation />
-          {children}
+          <main id="main-content">
+            {children}
+          </main>
           <Footer />
           <Toaster />
         </AuthProvider>
