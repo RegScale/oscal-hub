@@ -55,7 +55,12 @@ jobs:
           npm test 2>&1 | tee unit-test-output.txt
         continue-on-error: true
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (Chromium only for PRs)
+        if: github.event_name == 'pull_request'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright browsers (all browsers for develop)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: npx playwright install --with-deps
 
       - name: Run E2E tests
@@ -63,6 +68,8 @@ jobs:
         run: |
           npm run test:e2e 2>&1 | tee e2e-test-output.txt
         continue-on-error: true
+        env:
+          BROWSER_SCOPE: ${{ github.event_name == 'pull_request' && 'chromium' || 'all' }}
 
       - name: Upload test results
         if: always()
