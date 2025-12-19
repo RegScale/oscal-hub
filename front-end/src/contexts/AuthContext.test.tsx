@@ -151,7 +151,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('username').textContent).toBe('testuser');
       expect(apiClient.login).toHaveBeenCalledWith('testuser', 'password');
       expect(localStorageMock.getItem('token')).toBe('new-token');
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockPush).toHaveBeenCalledWith('/select-organization');
     });
 
     it('should store user data in localStorage on login', async () => {
@@ -241,7 +241,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('is-authenticated').textContent).toBe('true');
       expect(screen.getByTestId('username').textContent).toBe('newuser');
       expect(apiClient.register).toHaveBeenCalledWith('newuser', 'password', 'new@example.com');
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockPush).toHaveBeenCalledWith('/select-organization');
     });
 
     it('should handle registration errors without crashing', async () => {
