@@ -51,18 +51,26 @@ jobs:
       - name: Run unit tests
         id: unit-tests
         run: |
-          npm test -- --reporter=json --outputFile=test-results.json || true
-          npm test 2>&1 | tee unit-test-output.txt
+          set -o pipefail
+          npm test -- --reporter=default --reporter=json --outputFile=test-results.json 2>&1 | tee unit-test-output.txt
         continue-on-error: true
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (Chromium only for PRs)
+        if: github.event_name == 'pull_request'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright browsers (all browsers for branch pushes)
+        if: github.event_name == 'push'
         run: npx playwright install --with-deps
 
       - name: Run E2E tests
         id: e2e-tests
         run: |
+          set -o pipefail
           npm run test:e2e 2>&1 | tee e2e-test-output.txt
         continue-on-error: true
+        env:
+          BROWSER_SCOPE: ${{ github.event_name == 'pull_request' && 'chromium' || 'all' }}
 
       - name: Upload test results
         if: always()
@@ -106,9 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: always()
-    defaults:
-      run:
-        working-directory: front-end
 
     steps:
       - name: Checkout code
@@ -120,8 +125,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./front-end
-          file: ./front-end/Dockerfile
+          context: .
+          file: ./Dockerfile.frontend.cloudrun
           push: false
           tags: ${{ env.IMAGE_NAME }}:test
           cache-from: type=gha
@@ -155,12 +160,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: front-end/oscal-ux-image.tar.gz
+          path: oscal-ux-image.tar.gz
           retention-days: 1
 
-  # Job 3: PR Comment with Test Results
+  # Job 3: PR Test Results Summary
+  # Always writes to job summary; PR comments only work for non-fork PRs
   comment-pr:
-    name: Comment Test Results on PR
+    name: Test Results Summary
     runs-on: ubuntu-latest
     needs: [test, build]
     if: always() && github.event_name == 'pull_request'
@@ -174,7 +180,7 @@ jobs:
           name: test-results
           path: test-results
 
-      - name: Parse test results
+      - name: Parse and display test results
         id: parse-results
         run: |
           # Count test results
@@ -183,19 +189,58 @@ jobs:
           UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt || echo "0")
           E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt || echo "0")
 
+          # Determine overall status
+          if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
+            OVERALL_STATUS="✅ All tests passed"
+          else
+            OVERALL_STATUS="❌ Some tests failed"
+          fi
+
+          # Write to job summary (works for all PRs including forks)
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🧪 Test Results
+
+          **Overall Status:** $OVERALL_STATUS
+
+          ### Unit Tests
+          - ✅ Passed: $UNIT_TESTS_PASSED
+          - ❌ Failed: $UNIT_TESTS_FAILED
+
+          ### E2E Tests
+          - ✅ Passed: $E2E_TESTS_PASSED
+          - ❌ Failed: $E2E_TESTS_FAILED
+
+          ### Docker Build
+          - Status: ${{ needs.build.result == 'success' && '✅ Success' || '❌ Failed' }}
+
+          <details>
+          <summary>📝 Unit Test Details (last 50 lines)</summary>
+
+          \`\`\`
+          $(tail -50 test-results/unit-test-output.txt 2>/dev/null || echo "No output available")
+          \`\`\`
+
+          </details>
+
+          <details>
+          <summary>📝 E2E Test Details (last 50 lines)</summary>
+
+          \`\`\`
+          $(tail -50 test-results/e2e-test-output.txt 2>/dev/null || echo "No output available")
+          \`\`\`
+
+          </details>
+          EOF
+
+          # Save outputs for PR comment step
           echo "unit_passed=$UNIT_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "unit_failed=$UNIT_TESTS_FAILED" >> $GITHUB_OUTPUT
           echo "e2e_passed=$E2E_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "e2e_failed=$E2E_TESTS_FAILED" >> $GITHUB_OUTPUT
+          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
 
-          # Determine overall status
-          if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
-            echo "overall_status=✅ All tests passed" >> $GITHUB_OUTPUT
-          else
-            echo "overall_status=❌ Some tests failed" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Comment PR
+      - name: Comment on PR (non-fork only)
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -313,7 +358,7 @@ jobs:
           echo "has_changes=$([ -s frontend_changed_files.txt ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Run Claude Code Review
-        if: steps.changed-files.outputs.has_changes == 'true'
+        if: steps.changed-files.outputs.has_changes == 'true' && env.ANTHROPIC_API_KEY != ''
         id: claude-review
         run: |
           # Prepare the diff for review
@@ -342,7 +387,7 @@ jobs:
 
           # Call Claude API (requires ANTHROPIC_API_KEY secret)
           REVIEW_RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" \
             -d '{
@@ -355,35 +400,63 @@ jobs:
             }')
 
           # Extract review content
-          REVIEW_CONTENT=$(echo "$REVIEW_RESPONSE" | jq -r '.content[0].text')
+          REVIEW_CONTENT=$(echo "$REVIEW_RESPONSE" | jq -r '.content[0].text // empty')
 
-          # Save review to file
-          echo "$REVIEW_CONTENT" > claude_review.md
-
-          # Check if Claude found any issues
-          if echo "$REVIEW_CONTENT" | grep -qiE "(issue|warning|vulnerability|problem|concern)"; then
-            echo "issues_found=true" >> $GITHUB_OUTPUT
+          # Check if we got valid content
+          if [ -n "$REVIEW_CONTENT" ] && [ "$REVIEW_CONTENT" != "null" ]; then
+            echo "$REVIEW_CONTENT" > claude_review.md
+            echo "review_completed=true" >> $GITHUB_OUTPUT
           else
-            echo "issues_found=false" >> $GITHUB_OUTPUT
+            # Check for error message in response
+            ERROR_MSG=$(echo "$REVIEW_RESPONSE" | jq -r '.error.message // empty')
+            if [ -n "$ERROR_MSG" ]; then
+              echo "API Error: $ERROR_MSG" > claude_review.md
+            fi
+            echo "review_completed=false" >> $GITHUB_OUTPUT
           fi
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Comment Claude Review on PR
+      - name: Write Claude Review to Summary
         if: steps.changed-files.outputs.has_changes == 'true'
+        run: |
+          echo "## 🤖 Claude AI Code Review" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ ! -f claude_review.md ]; then
+            echo "ℹ️ Claude code review was skipped (ANTHROPIC_API_KEY not configured)." >> $GITHUB_STEP_SUMMARY
+          elif grep -q "^null$" claude_review.md 2>/dev/null; then
+            echo "⚠️ Claude code review could not be completed. API returned no content." >> $GITHUB_STEP_SUMMARY
+          elif grep -q "^API Error:" claude_review.md 2>/dev/null; then
+            cat claude_review.md >> $GITHUB_STEP_SUMMARY
+          else
+            cat claude_review.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*AI-powered review by Claude*" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment Claude Review on PR (non-fork only)
+        if: steps.changed-files.outputs.has_changes == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
-            let reviewContent = '✅ No issues found by Claude AI code review.';
+            let reviewContent = 'ℹ️ Claude code review was skipped (ANTHROPIC_API_KEY not configured).';
 
             try {
-              reviewContent = fs.readFileSync('claude_review.md', 'utf8');
+              const content = fs.readFileSync('claude_review.md', 'utf8').trim();
+              if (content && content !== 'null') {
+                reviewContent = content;
+              } else {
+                reviewContent = '⚠️ Claude code review could not be completed. API returned no content.';
+              }
             } catch (e) {
-              reviewContent = '⚠️ Claude code review could not be completed. Please check the workflow logs.';
+              // File doesn't exist - API key not configured
             }
 
             const comment = `## 🤖 Claude AI Code Review
@@ -457,8 +530,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./front-end
-          file: ./front-end/Dockerfile
+          context: .
+          file: ./Dockerfile.frontend.cloudrun
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
