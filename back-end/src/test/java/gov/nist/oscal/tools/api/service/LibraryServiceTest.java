@@ -563,9 +563,10 @@ class LibraryServiceTest {
         Object[] typeCount2 = {"profile", 3L};
         when(libraryItemRepository.countByOscalType()).thenReturn(Arrays.asList(typeCount1, typeCount2));
 
-        LibraryTag tag1 = new LibraryTag("security");
-        // Note: getUsageCount() returns libraryItems.size(), so we don't set it directly
-        when(libraryTagRepository.findMostPopular()).thenReturn(Arrays.asList(tag1));
+        Object[] tagData1 = {1L, "security", "Security tag", 5L}; // id, name, description, usageCount
+        List<Object[]> tagsList = new ArrayList<>();
+        tagsList.add(tagData1);
+        when(libraryTagRepository.findMostPopularWithCounts()).thenReturn(tagsList);
 
         when(libraryItemRepository.findMostDownloaded()).thenReturn(Arrays.asList(testItem));
 
@@ -594,32 +595,38 @@ class LibraryServiceTest {
     @Test
     void testGetAllTags() {
         // Given
-        List<LibraryTag> tags = Arrays.asList(testTag);
-        when(libraryTagRepository.findAllByOrderByNameAsc()).thenReturn(tags);
+        Object[] tagData = {1L, "security", "Security tag", 1L}; // id, name, description, usageCount
+        List<Object[]> tagsList = new ArrayList<>();
+        tagsList.add(tagData);
+        when(libraryTagRepository.findAllWithCountsOrderByNameAsc()).thenReturn(tagsList);
 
         // When
-        List<LibraryTag> result = libraryService.getAllTags();
+        List<Map<String, Object>> result = libraryService.getAllTags();
 
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
-        verify(libraryTagRepository).findAllByOrderByNameAsc();
+        assertEquals("security", result.get(0).get("name"));
+        assertEquals(1L, result.get(0).get("usageCount"));
+        verify(libraryTagRepository).findAllWithCountsOrderByNameAsc();
     }
 
     @Test
     void testGetPopularTags() {
         // Given
-        List<LibraryTag> tags = Arrays.asList(
-                new LibraryTag("security"),
-                new LibraryTag("nist"),
-                new LibraryTag("compliance")
-        );
-        when(libraryTagRepository.findMostPopular()).thenReturn(tags);
+        Object[] tagData1 = {1L, "security", "Security tag", 10L};
+        Object[] tagData2 = {2L, "nist", "NIST tag", 8L};
+        Object[] tagData3 = {3L, "compliance", "Compliance tag", 5L};
+        when(libraryTagRepository.findMostPopularWithCounts()).thenReturn(Arrays.asList(tagData1, tagData2, tagData3));
 
         // When
-        List<LibraryTag> result = libraryService.getPopularTags(2);
+        List<Map<String, Object>> result = libraryService.getPopularTags(2);
 
         // Then
         assertEquals(2, result.size()); // Limited to 2
+        assertEquals("security", result.get(0).get("name"));
+        assertEquals(10L, result.get(0).get("usageCount"));
+        assertEquals("nist", result.get(1).get("name"));
+        assertEquals(8L, result.get(1).get("usageCount"));
     }
 }

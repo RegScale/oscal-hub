@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield } from 'lucide-react';
-import { Footer } from '@/components/Footer';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,7 +28,6 @@ export default function Dashboard() {
         <div id="main-content">
           <Hero />
         </div>
-        <Footer />
       </div>
     );
   }
@@ -70,7 +68,6 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -447,9 +444,6 @@ export default function Dashboard() {
           </Card>
         </section>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

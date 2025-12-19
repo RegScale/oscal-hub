@@ -462,9 +462,11 @@ export default function AuthorizationDetailPage() {
             </div>
 
             {/* Digital Signature Section */}
-            {authorization.signerCertificate && (
+            {(authorization.signerCertificate || authorization.electronicSignatureImage) && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Digital Signature</h3>
+                <h3 className="text-lg font-semibold border-b pb-2">
+                  {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronic Signature' : 'Digital Signature'}
+                </h3>
 
                 <Card className="p-4 bg-blue-900/10 border-blue-800">
                   <div className="flex items-start gap-4">
@@ -476,11 +478,26 @@ export default function AuthorizationDetailPage() {
 
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">Digitally Signed</h4>
+                        <h4 className="font-semibold text-lg">
+                          {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronically Signed' : 'Digitally Signed'}
+                        </h4>
                         {authorization.certificateVerified && (
                           <Badge className="bg-green-600 text-white">Verified</Badge>
                         )}
                       </div>
+
+                      {/* Electronic Signature Image */}
+                      {authorization.electronicSignatureImage && authorization.digitalSignatureMethod === 'ELECTRONIC' && (
+                        <div className="mb-4 p-4 bg-white rounded border-2 border-dashed border-gray-300">
+                          <Label className="text-xs text-slate-600 mb-2 block">Signature</Label>
+                          <img
+                            src={authorization.electronicSignatureImage}
+                            alt="Electronic Signature"
+                            className="max-w-full h-auto"
+                            style={{ maxHeight: '150px' }}
+                          />
+                        </div>
+                      )}
 
                       <div className="grid gap-3 md:grid-cols-2 text-sm">
                         <div>

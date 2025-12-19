@@ -1,0 +1,391 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  ARTIFACT_REGISTRY_REPO: oscal-tools
+
+jobs:
+  # Job 1: Build and Test
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'front-end/package-lock.json'
+
+      - name: Build Backend
+        run: |
+          cd back-end
+          mvn clean package -DskipTests
+
+      - name: Build Frontend
+        run: |
+          cd front-end
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: Run Backend Tests
+        run: |
+          cd back-end
+          mvn test
+
+  # Job 2: Build and Push Docker Images to Artifact Registry
+  build-and-push:
+    name: Build and Push Container Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    outputs:
+      backend-image: ${{ steps.image-tags.outputs.backend-image }}
+      frontend-image: ${{ steps.image-tags.outputs.frontend-image }}
+      environment: ${{ steps.env.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker to use gcloud as credential helper
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create Artifact Registry repository if not exists
+        run: |
+          gcloud artifacts repositories describe ${{ env.ARTIFACT_REGISTRY_REPO }} \
+            --location=${{ env.REGION }} 2>/dev/null || \
+          gcloud artifacts repositories create ${{ env.ARTIFACT_REGISTRY_REPO }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="OSCAL Tools container images"
+
+      - name: Get backend URL for frontend build
+        id: get-backend-url
+        run: |
+          # For new deployments, use a predictable URL pattern
+          BACKEND_URL="https://oscal-backend-${{ steps.env.outputs.environment }}-$(echo ${{ env.REGION }} | sed 's/-//g').a.run.app/api"
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend.cloudrun
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ steps.env.outputs.environment }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend.cloudrun
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.get-backend-url.outputs.backend-url }}
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ steps.env.outputs.environment }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set image tags output
+        id: image-tags
+        run: |
+          echo "backend-image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "frontend-image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  # Job 3: Deploy to Cloud Run
+  deploy-to-gcp:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    outputs:
+      backend-url: ${{ steps.deploy-backend.outputs.url }}
+      frontend-url: ${{ steps.deploy-frontend.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy backend to Cloud Run
+        id: deploy-backend
+        run: |
+          SERVICE_NAME="oscal-backend-${{ needs.build-and-push.outputs.environment }}"
+
+          gcloud run deploy $SERVICE_NAME \
+            --image ${{ needs.build-and-push.outputs.backend-image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "SPRING_PROFILES_ACTIVE=gcp,GCP_PROJECT_ID=${{ env.PROJECT_ID }}" \
+            --max-instances 10 \
+            --min-instances 0 \
+            --cpu 1 \
+            --memory 2Gi \
+            --timeout 300s \
+            --concurrency 80 \
+            --port 8080
+
+          # Get the URL of the deployed service
+          BACKEND_URL=$(gcloud run services describe $SERVICE_NAME \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+
+          echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "Backend deployed to: $BACKEND_URL"
+
+      - name: Deploy frontend to Cloud Run
+        id: deploy-frontend
+        run: |
+          SERVICE_NAME="oscal-frontend-${{ needs.build-and-push.outputs.environment }}"
+
+          gcloud run deploy $SERVICE_NAME \
+            --image ${{ needs.build-and-push.outputs.frontend-image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NODE_ENV=production,NEXT_PUBLIC_API_URL=${{ steps.deploy-backend.outputs.url }}/api" \
+            --max-instances 10 \
+            --min-instances 0 \
+            --cpu 1 \
+            --memory 512Mi \
+            --timeout 60s \
+            --concurrency 80 \
+            --port 3000
+
+          # Get the URL of the deployed service
+          FRONTEND_URL=$(gcloud run services describe $SERVICE_NAME \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+
+          echo "url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "Frontend deployed to: $FRONTEND_URL"
+
+      - name: Display Deployment Info
+        run: |
+          echo "### Deployment Complete! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.build-and-push.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${{ steps.deploy-frontend.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend API URL:** ${{ steps.deploy-backend.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend Image:** ${{ needs.build-and-push.outputs.backend-image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Image:** ${{ needs.build-and-push.outputs.frontend-image }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Health Checks
+  health-checks:
+    name: Run Health Checks
+    runs-on: ubuntu-latest
+    needs: deploy-to-gcp
+
+    steps:
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+
+      - name: Health check - Backend
+        run: |
+          BACKEND_URL="${{ needs.deploy-to-gcp.outputs.backend-url }}"
+
+          echo "Checking backend health at: $BACKEND_URL/actuator/health"
+
+          for i in {1..20}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/actuator/health || echo "000")
+            echo "Health check attempt $i: HTTP $HTTP_CODE"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend is healthy!"
+              break
+            fi
+
+            if [ $i -eq 20 ]; then
+              echo "❌ Backend health check failed after 20 attempts"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+      - name: Health check - Frontend
+        run: |
+          FRONTEND_URL="${{ needs.deploy-to-gcp.outputs.frontend-url }}"
+
+          echo "Checking frontend at: $FRONTEND_URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $FRONTEND_URL || echo "000")
+          echo "Frontend check: HTTP $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ Frontend is responding!"
+          else
+            echo "⚠️ Frontend returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Test API endpoint
+        run: |
+          BACKEND_URL="${{ needs.deploy-to-gcp.outputs.backend-url }}"
+
+          echo "Testing API health endpoint..."
+          RESPONSE=$(curl -s $BACKEND_URL/api/health)
+          echo "Response: $RESPONSE"
+
+      - name: Deployment Summary
+        run: |
+          echo "========================================="
+          echo "       Deployment Successful! 🎉"
+          echo "========================================="
+          echo ""
+          echo "🌐 Frontend: ${{ needs.deploy-to-gcp.outputs.frontend-url }}"
+          echo "🔌 Backend API: ${{ needs.deploy-to-gcp.outputs.backend-url }}"
+          echo "❤️ Health Check: ${{ needs.deploy-to-gcp.outputs.backend-url }}/actuator/health"
+          echo ""
+          echo "Next steps:"
+          echo "1. Visit the application URL above"
+          echo "2. Login with your credentials"
+          echo "3. Verify all features work correctly"
+          echo "4. Monitor Cloud Run logs for any errors"
+          echo ""
+          echo "View logs: gcloud logging read 'resource.type=cloud_run_revision' --limit 50"
+          echo "Monitor: https://console.cloud.google.com/run?project=${{ env.PROJECT_ID }}"
+          echo ""
+          echo "========================================="
+
+      - name: Post summary to GitHub
+        run: |
+          echo "### Health Checks Complete :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${{ needs.deploy-to-gcp.outputs.frontend-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** ${{ needs.deploy-to-gcp.outputs.backend-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All services are healthy and responding correctly." >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Cleanup Old Images (Optional)
+  cleanup-old-images:
+    name: Cleanup Old Container Images
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-to-gcp, health-checks]
+    if: success()
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Cleanup old backend images (keep last 5)
+        run: |
+          echo "Cleaning up old backend images..."
+
+          # List all tags except latest, dev, staging, prod (environment tags)
+          gcloud artifacts docker tags list \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend \
+            --format="get(tag)" \
+            --filter="tag!~^(latest|dev|staging|prod)$" \
+            --sort-by="~CREATE_TIME" \
+            --limit=999 | tail -n +6 | while read tag; do
+              if [ -n "$tag" ]; then
+                echo "Deleting old tag: $tag"
+                gcloud artifacts docker images delete \
+                  ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:$tag \
+                  --quiet || echo "Failed to delete $tag"
+              fi
+            done
+
+          echo "✅ Backend cleanup complete"
+
+      - name: Cleanup old frontend images (keep last 5)
+        run: |
+          echo "Cleaning up old frontend images..."
+
+          # List all tags except latest, dev, staging, prod (environment tags)
+          gcloud artifacts docker tags list \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend \
+            --format="get(tag)" \
+            --filter="tag!~^(latest|dev|staging|prod)$" \
+            --sort-by="~CREATE_TIME" \
+            --limit=999 | tail -n +6 | while read tag; do
+              if [ -n "$tag" ]; then
+                echo "Deleting old tag: $tag"
+                gcloud artifacts docker images delete \
+                  ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:$tag \
+                  --quiet || echo "Failed to delete $tag"
+              fi
+            done
+
+          echo "✅ Frontend cleanup complete"

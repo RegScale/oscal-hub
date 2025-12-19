@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,6 +24,7 @@ public class LibraryTag {
     private String description;
 
     @ManyToMany(mappedBy = "tags")
+    @JsonIgnore
     private Set<LibraryItem> libraryItems = new HashSet<>();
 
     // Constructors

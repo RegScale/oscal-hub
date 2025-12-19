@@ -3,7 +3,6 @@ package gov.nist.oscal.tools.api.controller;
 import gov.nist.oscal.tools.api.config.RateLimitConfig;
 import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.LibraryItem;
-import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
@@ -76,16 +75,13 @@ class LibraryControllerTest {
         mockUser.setId(1L);
         mockUser.setUsername("testuser");
 
-        LibraryTag tag1 = new LibraryTag("test");
-        LibraryTag tag2 = new LibraryTag("catalog");
-
         LibraryItem mockItem = new LibraryItem();
         mockItem.setId(1L);
         mockItem.setItemId("item-1");
         mockItem.setTitle("Test Catalog");
         mockItem.setOscalType("catalog");
         mockItem.setCreatedBy(mockUser);
-        mockItem.setTags(new HashSet<>(Arrays.asList(tag1, tag2)));
+        mockItem.setTags(new HashSet<>());
         mockItem.setVersions(new HashSet<>());
 
         when(libraryService.createLibraryItem(
@@ -142,15 +138,12 @@ class LibraryControllerTest {
         mockUser.setId(1L);
         mockUser.setUsername("testuser");
 
-        LibraryTag tag1 = new LibraryTag("updated");
-        LibraryTag tag2 = new LibraryTag("test");
-
         LibraryItem mockItem = new LibraryItem();
         mockItem.setId(1L);
         mockItem.setItemId("1");
         mockItem.setTitle("Updated Title");
         mockItem.setCreatedBy(mockUser);
-        mockItem.setTags(new HashSet<>(Arrays.asList(tag1, tag2)));
+        mockItem.setTags(new HashSet<>());
         mockItem.setVersions(new HashSet<>());
 
         when(libraryService.updateLibraryItem(anyString(), anyString(), anyString(), anySet(), eq("testuser")))
@@ -439,8 +432,13 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetAllTags_success_returnsTags() throws Exception {
         // Arrange
-        LibraryTag tag1 = new LibraryTag("nist");
-        LibraryTag tag2 = new LibraryTag("security");
+        Map<String, Object> tag1 = new HashMap<>();
+        tag1.put("name", "nist");
+        tag1.put("usageCount", 5L);
+
+        Map<String, Object> tag2 = new HashMap<>();
+        tag2.put("name", "security");
+        tag2.put("usageCount", 3L);
 
         when(libraryService.getAllTags())
                 .thenReturn(Arrays.asList(tag1, tag2));
@@ -633,8 +631,13 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetPopularTags_success_returnsTags() throws Exception {
         // Arrange
-        LibraryTag tag1 = new LibraryTag("nist");
-        LibraryTag tag2 = new LibraryTag("security");
+        Map<String, Object> tag1 = new HashMap<>();
+        tag1.put("name", "nist");
+        tag1.put("usageCount", 10L);
+
+        Map<String, Object> tag2 = new HashMap<>();
+        tag2.put("name", "security");
+        tag2.put("usageCount", 8L);
 
         when(libraryService.getPopularTags(10))
                 .thenReturn(Arrays.asList(tag1, tag2));

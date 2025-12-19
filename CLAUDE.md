@@ -37,6 +37,31 @@ oscal-cli/
 └── stop.sh             # Stop all servers
 ```
 
+## Build and Deployment Policy
+
+**CRITICAL: DO NOT BUILD THE APPLICATION**
+
+The user handles all builds, compilations, and deployments. Your role is to:
+
+✅ **DO**:
+- Make code changes to source files
+- Fix compilation errors by editing code
+- Update test files to match new signatures
+- Suggest what needs to be built (e.g., "The backend needs to be rebuilt")
+- Inform the user when changes require a rebuild
+
+❌ **DO NOT**:
+- Run `mvn clean install` or any Maven build commands
+- Run `npm run build` or any frontend build commands
+- Run `./dev.sh`, `./start.sh`, or any startup scripts
+- Execute any build-related Bash commands
+- Attempt to compile or package the application
+
+**Your workflow**:
+1. Make necessary code changes
+2. Inform the user: "Changes complete. Please rebuild the backend/frontend."
+3. Let the user handle the build process
+
 ## Documentation Guidelines
 
 **IMPORTANT**: All documentation files created during development should be placed in the `docs/` directory.
@@ -57,6 +82,8 @@ oscal-cli/
 
 The `docs/` directory contains:
 - **AUTHORIZATION-FEATURE-SUMMARY.md** - Complete guide to the authorization feature
+- **GCP-DEPLOYMENT-SETUP.md** - Complete guide for setting up GCP deployment with GitHub Actions
+- **GITHUB-SECRETS-SETUP.md** - Quick reference for configuring GitHub secrets for GCP deployment
 - **TEMPLATE-EDITOR-FIX.md** - Technical details on template editor fixes
 - **VARIABLE-DETECTION-SUMMARY.md** - User guide for variable detection
 - **VARIABLE-PATTERN-UPDATE.md** - Pattern matching updates for variables
@@ -324,6 +351,92 @@ The repository includes simplified installation scripts for end users in the `in
   - Examples for each OSCAL model type (catalog, profile, ssp, etc.)
   - Advanced usage (batch processing, CI/CD integration)
   - Usage troubleshooting and best practices
+
+## CI/CD and Deployment
+
+The project uses GitHub Actions for continuous integration and deployment.
+
+### GCP Deployment (Current)
+
+**Workflow**: `.github/workflows/gcp-deploy.yml`
+
+The application automatically deploys to Google Cloud Platform (Cloud Run) when a PR is merged to the `main` branch:
+
+1. **Build and Test**: Compiles backend (Maven) and frontend (npm), runs all tests
+2. **Build and Push**: Creates Docker images and pushes to GCP Artifact Registry
+3. **Deploy**: Deploys backend and frontend as separate Cloud Run services
+4. **Health Checks**: Verifies deployment health via API endpoints
+5. **Cleanup**: Removes old container images (keeps last 5 versions)
+
+**Environments**:
+- **prod**: Automatically deployed on push to `main`
+- **staging/dev**: Manual deployment via workflow dispatch
+
+**Required GitHub Secrets**:
+- `GCP_SA_KEY`: Service account key JSON for authentication
+- `GCP_PROJECT_ID`: Your GCP project ID (can also be a variable)
+
+**Optional GitHub Variables**:
+- `GCP_REGION`: Deployment region (default: `us-central1`)
+
+**Deployment Outputs**:
+- Backend URL: `https://oscal-backend-{environment}-{region}.a.run.app`
+- Frontend URL: `https://oscal-frontend-{environment}-{region}.a.run.app`
+
+**Complete Setup Guide**: See `docs/GCP-DEPLOYMENT-SETUP.md` for detailed instructions on:
+- Creating GCP service account
+- Enabling required APIs
+- Configuring GitHub secrets
+- Troubleshooting deployment issues
+- Cost optimization tips
+- Custom domain setup
+
+### Azure Deployment (Legacy)
+
+**Workflow**: `.github/workflows/azure-deploy.yml` (deprecated)
+
+The Azure deployment workflow is retained for reference but should be disabled when using GCP deployment. To disable:
+
+```bash
+# Rename the file to prevent it from running
+mv .github/workflows/azure-deploy.yml .github/workflows/azure-deploy.yml.disabled
+```
+
+### Manual Deployment
+
+For manual deployments to GCP, use the local deployment script:
+
+```bash
+# Deploy to GCP (requires gcloud CLI and Terraform)
+./deploy-gcp.sh --project-id YOUR_PROJECT_ID --region us-central1 --environment prod
+```
+
+See the script's `--help` option for all available flags.
+
+### Monitoring Deployments
+
+**View Cloud Run services**:
+```bash
+gcloud run services list --platform managed --region us-central1
+```
+
+**View deployment logs**:
+```bash
+# Backend logs
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=oscal-backend-prod" --limit 50
+
+# Frontend logs
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=oscal-frontend-prod" --limit 50
+```
+
+**Check deployment status**:
+```bash
+# Get backend URL
+gcloud run services describe oscal-backend-prod --region us-central1 --format 'value(status.url)'
+
+# Get frontend URL
+gcloud run services describe oscal-frontend-prod --region us-central1 --format 'value(status.url)'
+```
 
 ## Code Architecture
 

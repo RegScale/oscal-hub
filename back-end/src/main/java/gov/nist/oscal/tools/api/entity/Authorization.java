@@ -72,10 +72,13 @@ public class Authorization {
 
     // Digital Signature Fields
     @Column(name = "digital_signature_method", length = 50)
-    private String digitalSignatureMethod; // "TLS_CLIENT_CERT"
+    private String digitalSignatureMethod; // "TLS_CLIENT_CERT" or "ELECTRONIC"
 
     @Column(name = "signer_certificate", columnDefinition = "TEXT")
-    private String signerCertificate; // Base64-encoded X.509 cert
+    private String signerCertificate; // Base64-encoded X.509 cert (for CAC/PIV)
+
+    @Column(name = "electronic_signature_image", columnDefinition = "TEXT")
+    private String electronicSignatureImage; // Base64-encoded PNG (for electronic signature)
 
     @Column(name = "signer_common_name", length = 255)
     private String signerCommonName; // CN from certificate
@@ -285,6 +288,14 @@ public class Authorization {
 
     public void setSignerCertificate(String signerCertificate) {
         this.signerCertificate = signerCertificate;
+    }
+
+    public String getElectronicSignatureImage() {
+        return electronicSignatureImage;
+    }
+
+    public void setElectronicSignatureImage(String electronicSignatureImage) {
+        this.electronicSignatureImage = electronicSignatureImage;
     }
 
     public String getSignerCommonName() {

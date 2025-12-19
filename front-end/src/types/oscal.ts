@@ -618,6 +618,7 @@ export interface AuthorizationResponse {
   // Digital Signature fields
   digitalSignatureMethod?: string;
   signerCertificate?: string;
+  electronicSignatureImage?: string; // Base64-encoded PNG for electronic signatures
   signerCommonName?: string;
   signerEmail?: string;
   signerEdipi?: string;

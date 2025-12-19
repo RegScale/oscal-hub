@@ -34,6 +34,7 @@ public class AuthorizationResponse {
     // Digital Signature fields
     private String digitalSignatureMethod;
     private String signerCertificate;
+    private String electronicSignatureImage;
     private String signerCommonName;
     private String signerEmail;
     private String signerEdipi;
@@ -75,6 +76,7 @@ public class AuthorizationResponse {
         // Digital Signature fields
         this.digitalSignatureMethod = authorization.getDigitalSignatureMethod();
         this.signerCertificate = authorization.getSignerCertificate();
+        this.electronicSignatureImage = authorization.getElectronicSignatureImage();
         this.signerCommonName = authorization.getSignerCommonName();
         this.signerEmail = authorization.getSignerEmail();
         this.signerEdipi = authorization.getSignerEdipi();
@@ -241,6 +243,14 @@ public class AuthorizationResponse {
 
     public void setSignerCertificate(String signerCertificate) {
         this.signerCertificate = signerCertificate;
+    }
+
+    public String getElectronicSignatureImage() {
+        return electronicSignatureImage;
+    }
+
+    public void setElectronicSignatureImage(String electronicSignatureImage) {
+        this.electronicSignatureImage = electronicSignatureImage;
     }
 
     public String getSignerCommonName() {
