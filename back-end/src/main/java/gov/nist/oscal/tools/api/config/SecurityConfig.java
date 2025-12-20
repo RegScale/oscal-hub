@@ -82,6 +82,7 @@ public class SecurityConfig {
             // CSRF protection disabled intentionally - this is a stateless REST API using JWT tokens
             // sent via Authorization header (not cookies). CSRF attacks exploit cookie-based auth
             // where browsers auto-send credentials. JWT header-based auth is immune to CSRF.
+            // lgtm[java/spring-disabled-csrf-protection] - False positive: stateless JWT API
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints - allow without authentication
