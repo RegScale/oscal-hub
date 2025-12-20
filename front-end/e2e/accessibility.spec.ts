@@ -1,6 +1,49 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+// Debug test to verify authentication is working
+test.describe('Authentication Verification', () => {
+  test('should have auth token in localStorage from storage state', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Check localStorage values
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    const user = await page.evaluate(() => localStorage.getItem('user'));
+
+    console.log('Auth token:', token ? 'present' : 'missing');
+    console.log('User data:', user ? 'present' : 'missing');
+
+    // Verify auth state is set
+    expect(token).toBeTruthy();
+    expect(user).toBeTruthy();
+
+    // Parse and verify user data
+    if (user) {
+      const userData = JSON.parse(user);
+      expect(userData.username).toBe('testuser');
+      expect(userData.organizationId).toBe(1);
+    }
+  });
+
+  test('should show authenticated dashboard content', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for React to hydrate and read localStorage
+    await page.waitForTimeout(1000);
+
+    // Check if we're seeing authenticated content (dashboard) or unauthenticated (hero)
+    const validateCard = page.getByRole('link', { name: /navigate to validate/i });
+    const isAuthenticated = await validateCard.isVisible({ timeout: 5000 }).catch(() => false);
+
+    console.log('Is authenticated:', isAuthenticated);
+
+    // This test documents the current state - should show authenticated dashboard
+    expect(isAuthenticated).toBe(true);
+  });
+});
+
 test.describe('Accessibility Tests', () => {
   test('Dashboard page should not have any automatically detectable accessibility issues', async ({
     page,

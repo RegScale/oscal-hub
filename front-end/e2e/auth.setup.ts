@@ -1,7 +1,9 @@
-import { test as setup } from '@playwright/test';
+import { test as setup, expect } from '@playwright/test';
 import path from 'path';
+import fs from 'fs';
 
-const authFile = path.join(__dirname, '.auth/user.json');
+const authDir = path.join(__dirname, '.auth');
+const authFile = path.join(authDir, 'user.json');
 
 /**
  * Global setup to establish authenticated state for E2E tests.
@@ -9,6 +11,11 @@ const authFile = path.join(__dirname, '.auth/user.json');
  * that can be reused across all tests requiring authentication.
  */
 setup('authenticate', async ({ page }) => {
+  // Ensure auth directory exists
+  if (!fs.existsSync(authDir)) {
+    fs.mkdirSync(authDir, { recursive: true });
+  }
+
   // Navigate to the app to establish the browser context
   await page.goto('/');
 
@@ -33,4 +40,13 @@ setup('authenticate', async ({ page }) => {
 
   // Save the authenticated state
   await page.context().storageState({ path: authFile });
+
+  // Verify localStorage was set correctly
+  const storedToken = await page.evaluate(() => localStorage.getItem('token'));
+  const storedUser = await page.evaluate(() => localStorage.getItem('user'));
+  expect(storedToken).toBe('mock-e2e-test-token-12345');
+  expect(storedUser).toContain('testuser');
+
+  // Log success for debugging
+  console.log('Auth setup complete - localStorage set and storage state saved');
 });
