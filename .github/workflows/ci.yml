@@ -95,11 +95,19 @@ jobs:
           category: trivy
         continue-on-error: true
 
+      - name: Set up JDK 17 (for toolchain)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          mvn-toolchain-vendor: 'temurin'
+
       - name: Set up JDK 21 (for Snyk Maven)
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          mvn-toolchain-vendor: 'temurin'
 
       - name: Run Snyk for Maven
         id: snyk-maven
