@@ -19,6 +19,7 @@ import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.oscal.tools.api.util.PathSanitizer;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -368,7 +369,8 @@ public class OrganizationService {
             Files.createDirectories(uploadPath);
         }
 
-        Path filePath = uploadPath.resolve(filename);
+        // Use PathSanitizer to prevent path traversal attacks
+        Path filePath = PathSanitizer.safeResolve(uploadPath, filename);
         Files.write(filePath, fileBytes);
         logger.info("Saved logo to local filesystem: {}", filePath);
 

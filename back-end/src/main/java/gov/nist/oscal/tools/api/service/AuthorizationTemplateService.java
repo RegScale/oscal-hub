@@ -25,8 +25,10 @@ import java.util.stream.Collectors;
 public class AuthorizationTemplateService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationTemplateService.class);
-    // Pattern to match {{ anything }} - allows any content except closing braces
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*([^}]+?)\\s*\\}\\}");
+    // Pattern to match {{ anything }} - allows any content except braces
+    // Uses greedy quantifier without nested alternatives to prevent ReDoS attacks
+    // Whitespace handling is done via trim() in extractVariables()
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{([^{}]+)\\}\\}");
 
     @Autowired
     private AuthorizationTemplateRepository templateRepository;

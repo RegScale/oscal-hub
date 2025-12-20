@@ -5,6 +5,7 @@ import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
+import gov.nist.oscal.tools.api.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -126,7 +127,8 @@ public class LibraryStorageService {
 
     private boolean saveToLocalStorage(String content, String blobPath) {
         try {
-            Path filePath = localLibraryPath.resolve(blobPath);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path filePath = PathSanitizer.safeResolve(localLibraryPath, blobPath);
             Files.createDirectories(filePath.getParent());
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
             logger.info("Saved library file to local storage: {}", filePath.toAbsolutePath());
