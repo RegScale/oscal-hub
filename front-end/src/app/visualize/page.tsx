@@ -421,7 +421,7 @@ function VisualizePageContent() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8 px-4" id="main-content">
+        <div className="container mx-auto py-8 px-4">
           {/* Header */}
           <header className="mb-8">
             <Link

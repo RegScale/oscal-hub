@@ -25,7 +25,7 @@ export default function Dashboard() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <div id="main-content">
+        <div>
           <Hero />
         </div>
       </div>
@@ -39,7 +39,7 @@ export default function Dashboard() {
   if (!hasOrganizationAccess) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-12 px-4" id="main-content">
+        <div className="container mx-auto py-12 px-4">
           <div className="max-w-2xl mx-auto">
             <Card className="text-center p-8">
               <div className="mb-6">
@@ -75,7 +75,7 @@ export default function Dashboard() {
   // Show dashboard for authenticated users
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-12 px-4" id="main-content">
+      <div className="container mx-auto py-12 px-4">
 
         {/* Quick Actions Grid */}
         <nav aria-label="Main operations">
