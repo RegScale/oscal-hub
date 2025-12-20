@@ -48,7 +48,7 @@ jobs:
       if: ${{ !((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref_name == 'develop') }}
       uses: actions/setup-java@v4
       with:
-        java-version-file: '.tool-versions'
+        java-version: '21'
         distribution: 'temurin'
         mvn-toolchain-vendor: 'temurin'
         cache: 'maven'
@@ -56,7 +56,7 @@ jobs:
       if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref_name == 'develop'
       uses: actions/setup-java@v4
       with:
-        java-version-file: '.tool-versions'
+        java-version: '21'
         distribution: 'temurin'
         mvn-toolchain-vendor: 'temurin'
         cache: 'maven'
