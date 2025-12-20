@@ -42,7 +42,7 @@
         <!-- Cloud SDK BOM versions -->
         <azure-sdk-bom.version>1.2.29</azure-sdk-bom.version>
         <aws-sdk-bom.version>2.29.46</aws-sdk-bom.version>
-        <google-cloud-bom.version>26.54.0</google-cloud-bom.version>
+        <google-cloud-bom.version>26.72.0</google-cloud-bom.version>
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
