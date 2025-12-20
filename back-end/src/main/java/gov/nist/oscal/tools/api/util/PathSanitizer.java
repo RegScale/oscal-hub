@@ -33,6 +33,13 @@ public final class PathSanitizer {
             throw new IllegalArgumentException("Filename cannot be null or empty");
         }
 
+        // Check for path traversal patterns in the input string (platform-independent)
+        // This catches backslash-based traversal on Linux where \ is not a path separator
+        if (!isPathSafe(filename)) {
+            logger.warn("Path traversal pattern detected in input: {}", filename);
+            throw new IllegalArgumentException("Invalid path: path traversal detected");
+        }
+
         // Normalize the base directory
         Path normalizedBase = baseDir.toAbsolutePath().normalize();
 
@@ -85,6 +92,11 @@ public final class PathSanitizer {
         for (String component : pathComponents) {
             if (component == null || component.trim().isEmpty()) {
                 throw new IllegalArgumentException("Path component cannot be null or empty");
+            }
+            // Check for path traversal patterns in each component (platform-independent)
+            if (!isPathSafe(component)) {
+                logger.warn("Path traversal pattern detected in component: {}", component);
+                throw new IllegalArgumentException("Invalid path: path traversal detected");
             }
             resolvedPath = resolvedPath.resolve(component);
         }
