@@ -42,3 +42,5 @@ front-end/.env*.local
 security-reports/
 tools/trivy
 back-end/sbom-*.json
+**/dependency-check-output.log
+**/dependency-check-report/

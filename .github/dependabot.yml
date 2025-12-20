@@ -4,12 +4,26 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every weekday
       interval: "daily"
-    target-branch: "develop"
+    target-branch: "main"
+
   # Maintain dependencies for Maven
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
       interval: "daily"
-    target-branch: "develop"
+    target-branch: "main"
+
+  # Maintain dependencies for Node.js (frontend)
+  - package-ecosystem: "npm"
+    directory: "/front-end"
+    schedule:
+      interval: "daily"
+    target-branch: "main"
+
+  # Maintain Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "main"
