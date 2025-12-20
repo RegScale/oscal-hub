@@ -20,7 +20,7 @@ RUN mvn clean package -DskipTests
 # =============================================================================
 # Stage 2: Runtime - Security Hardened for Cloud Run
 # =============================================================================
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 # Add OCI metadata labels
 LABEL org.opencontainers.image.title="OSCAL Tools Backend"

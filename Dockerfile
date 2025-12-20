@@ -60,7 +60,7 @@ RUN npm run build
 # =============================================================================
 # Stage 4: Runtime - Combine both applications (SECURITY HARDENED)
 # =============================================================================
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 # Add security metadata labels (OCI standard)
 LABEL org.opencontainers.image.title="OSCAL Tools"
