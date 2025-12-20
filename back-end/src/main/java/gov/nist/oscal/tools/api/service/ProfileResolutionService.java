@@ -3,7 +3,7 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.ProfileResolutionRequest;
 import gov.nist.oscal.tools.api.model.ProfileResolutionResult;
-import gov.nist.secauto.metaschema.binding.io.IDeserializer;
+import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import gov.nist.secauto.oscal.lib.model.Profile;
 import org.springframework.stereotype.Service;
@@ -67,14 +67,14 @@ public class ProfileResolutionService {
         }
     }
 
-    private gov.nist.secauto.metaschema.binding.io.Format convertFormat(OscalFormat format) {
+    private gov.nist.secauto.metaschema.databind.io.Format convertFormat(OscalFormat format) {
         switch (format) {
             case JSON:
-                return gov.nist.secauto.metaschema.binding.io.Format.JSON;
+                return gov.nist.secauto.metaschema.databind.io.Format.JSON;
             case XML:
-                return gov.nist.secauto.metaschema.binding.io.Format.XML;
+                return gov.nist.secauto.metaschema.databind.io.Format.XML;
             case YAML:
-                return gov.nist.secauto.metaschema.binding.io.Format.YAML;
+                return gov.nist.secauto.metaschema.databind.io.Format.YAML;
             default:
                 throw new IllegalArgumentException("Unsupported format: " + format);
         }

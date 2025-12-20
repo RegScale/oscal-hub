@@ -931,7 +931,52 @@ Files to review and potentially update:
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | 2025-10-18 | Initial migration plan created | System Analysis |
+| 1.1 | 2025-12-20 | Added addendum documenting completed upgrade | System Analysis |
 
 ---
 
 **Next Steps**: Begin with Phase 1 (Java Upgrade) after reviewing and approving this plan.
+
+---
+
+## Addendum: Upgrade Completed (December 2025)
+
+**Status:** ✅ **COMPLETED**
+
+The Java and Spring Boot upgrade outlined in this plan has been successfully completed with the following final versions:
+
+### Final Versions Deployed
+
+| Component | Planned Version | Actual Version | Notes |
+|-----------|----------------|----------------|-------|
+| Java | 21 LTS | **21 LTS** | ✅ As planned |
+| Spring Boot | 3.4.10 | **3.5.9** | Upgraded to latest stable |
+| liboscal-java | 3.0.3 | **6.0.0** | Major upgrade with new groupId |
+| JWT (jjwt) | 0.12.6 | **0.13.0** | Latest stable |
+| springdoc-openapi | 2.6.0 | **2.8.6** | Latest stable |
+
+### Key Changes from Original Plan
+
+1. **liboscal-java Migration**
+   - GroupId changed from `gov.nist.secauto.oscal` to `dev.metaschema.oscal`
+   - Version jumped from 3.0.3 to 6.0.0
+   - GitHub repository moved from `github.com/usnistgov/liboscal-java` to `github.com/metaschema-framework/liboscal-java`
+
+2. **Package Import Changes**
+   - `gov.nist.secauto.metaschema.binding.io` → `gov.nist.secauto.metaschema.databind.io`
+   - Added `gov.nist.secauto.metaschema.core.model.IBoundObject` for type bounds
+
+3. **Dependency Management**
+   - Added BOM imports for Azure SDK, AWS SDK, and Google Cloud libraries
+   - Removed cli-processor and metaschema-cli dependencies (not needed for backend)
+   - Cleaned up Spring Boot managed version overrides
+
+4. **Build Results**
+   - All 2073 tests passing
+   - No HIGH/CRITICAL security vulnerabilities (verified with Trivy)
+
+### Updated Repository Links
+
+The metaschema and liboscal-java projects have moved to the metaschema-framework organization:
+- **liboscal-java**: https://github.com/metaschema-framework/liboscal-java
+- **metaschema-java**: https://github.com/metaschema-framework/metaschema-java

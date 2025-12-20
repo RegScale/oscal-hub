@@ -152,30 +152,6 @@ jobs:
           image: oscal-hub:latest
           args: --severity-threshold=high --sarif-file-output=snyk-docker.sarif --file=Dockerfile
 
-      - name: Upload Snyk Maven results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
-        if: always() && hashFiles('snyk-maven.sarif') != ''
-        with:
-          sarif_file: snyk-maven.sarif
-          category: snyk-maven
-        continue-on-error: true
-
-      - name: Upload Snyk Node.js results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
-        if: always() && hashFiles('snyk-node.sarif') != ''
-        with:
-          sarif_file: snyk-node.sarif
-          category: snyk-node
-        continue-on-error: true
-
-      - name: Upload Snyk Docker results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
-        if: always() && hashFiles('snyk-docker.sarif') != ''
-        with:
-          sarif_file: snyk-docker.sarif
-          category: snyk-docker
-        continue-on-error: true
-
       - name: Generate Security Scan Summary
         if: always()
         run: |
@@ -226,6 +202,30 @@ jobs:
           echo "| Snyk Node.js | ${{ steps.snyk-node.outcome == 'success' && '✅ Passed' || steps.snyk-node.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Snyk Docker | ${{ steps.snyk-docker.outcome == 'success' && '✅ Passed' || steps.snyk-docker.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Snyk Maven results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4.31.9
+        if: always() && hashFiles('snyk-maven.sarif') != ''
+        with:
+          sarif_file: snyk-maven.sarif
+          category: snyk-maven
+        continue-on-error: true
+
+      - name: Upload Snyk Node.js results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4.31.9
+        if: always() && hashFiles('snyk-node.sarif') != ''
+        with:
+          sarif_file: snyk-node.sarif
+          category: snyk-node
+        continue-on-error: true
+
+      - name: Upload Snyk Docker results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4.31.9
+        if: always() && hashFiles('snyk-docker.sarif') != ''
+        with:
+          sarif_file: snyk-docker.sarif
+          category: snyk-docker
+        continue-on-error: true
 
       - name: Check for high severity vulnerabilities
         if: always()
