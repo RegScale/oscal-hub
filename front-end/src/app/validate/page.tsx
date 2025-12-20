@@ -218,7 +218,7 @@ export default function ValidatePage() {
                       disabled={!canValidate}
                       className="w-full"
                       size="lg"
-                      aria-label={isValidating ? 'Validating document, please wait' : 'Start validation of OSCAL document'}
+                      aria-label={isValidating ? 'Validating document, please wait' : 'Validate document'}
                     >
                       {isValidating ? 'Validating...' : 'Validate Document'}
                     </Button>

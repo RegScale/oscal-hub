@@ -42,7 +42,7 @@ export function Navigation() {
               <>
                 <Link href="/profile">
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                    <User className="h-4 w-4" />
+                    <User className="h-4 w-4" aria-hidden="true" />
                     <span className="font-medium">{user.username}</span>
                   </div>
                 </Link>
@@ -54,8 +54,9 @@ export function Navigation() {
                       size="sm"
                       className="flex items-center space-x-2"
                       title="Admin Settings"
+                      aria-label="Admin Settings"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </Link>
                 )}
@@ -64,8 +65,9 @@ export function Navigation() {
                   size="sm"
                   onClick={logout}
                   className="flex items-center space-x-2"
+                  aria-label="Logout"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
                   <span>Logout</span>
                 </Button>
               </>
