@@ -48,15 +48,17 @@ jobs:
       if: ${{ !((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref_name == 'develop') }}
       uses: actions/setup-java@v4
       with:
-        java-version-file: '.tool-versions'
+        java-version: '21'
         distribution: 'temurin'
+        mvn-toolchain-vendor: 'temurin'
         cache: 'maven'
     - name: Set up JDK 21 (deploy)
       if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref_name == 'develop'
       uses: actions/setup-java@v4
       with:
-        java-version-file: '.tool-versions'
+        java-version: '21'
         distribution: 'temurin'
+        mvn-toolchain-vendor: 'temurin'
         cache: 'maven'
         server-id: ossrh # Value of the distributionManagement/repository/id field of the pom.xml
         server-username: MAVEN_USERNAME # env variable for username in deploy
