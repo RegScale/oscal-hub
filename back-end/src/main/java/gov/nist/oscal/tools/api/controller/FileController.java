@@ -33,6 +33,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import gov.nist.oscal.tools.api.util.PathSanitizer;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -273,7 +275,10 @@ public class FileController {
 
     private ResponseEntity<Resource> serveFromLocal(String filename) {
         try {
-            Path filePath = Paths.get(UPLOAD_DIR, "org-logos", filename);
+            // Sanitize filename to prevent path traversal attacks
+            String sanitizedFilename = PathSanitizer.sanitizeFilename(filename);
+            Path baseDir = Paths.get(UPLOAD_DIR, "org-logos");
+            Path filePath = PathSanitizer.safeResolve(baseDir, sanitizedFilename);
 
             if (!Files.exists(filePath)) {
                 logger.warn("Logo file not found locally: {}", filePath);
@@ -290,13 +295,16 @@ public class FileController {
             // Determine content type
             String contentType = Files.probeContentType(filePath);
             if (contentType == null) {
-                contentType = determineContentType(filename);
+                contentType = determineContentType(sanitizedFilename);
             }
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizedFilename + "\"")
                     .body(resource);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid filename rejected: {}", filename);
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logger.error("Error serving logo from local filesystem: {}", filename, e);
             return ResponseEntity.internalServerError().build();

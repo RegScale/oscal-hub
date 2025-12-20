@@ -10,6 +10,7 @@ import com.azure.storage.blob.models.ListBlobsOptions;
 import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.OscalModelType;
 import gov.nist.oscal.tools.api.model.SavedFile;
+import gov.nist.oscal.tools.api.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -151,8 +152,12 @@ public class FileStorageService {
         try {
             String fileId = UUID.randomUUID().toString();
             String sanitizedFileName = sanitizeFileName(fileName);
-            String relativePath = buildBlobPath(username, fileId, sanitizedFileName);
-            Path filePath = Paths.get(LOCAL_STORAGE_DIR, relativePath);
+            // Sanitize username to prevent path traversal
+            String sanitizedUsername = PathSanitizer.sanitizeFilename(username);
+            String relativePath = buildBlobPath(sanitizedUsername, fileId, sanitizedFileName);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path baseDir = Paths.get(LOCAL_STORAGE_DIR);
+            Path filePath = PathSanitizer.safeResolve(baseDir, relativePath);
 
             // Create user directory if it doesn't exist
             Files.createDirectories(filePath.getParent());
@@ -161,11 +166,11 @@ public class FileStorageService {
             byte[] contentBytes = content.getBytes(StandardCharsets.UTF_8);
             Files.write(filePath, contentBytes);
 
-            // Write metadata file
-            Path metadataPath = Paths.get(filePath.toString() + ".meta");
+            // Write metadata file - use safe path construction
+            Path metadataPath = PathSanitizer.safeResolve(baseDir, relativePath + ".meta");
             String metadataContent = String.format(
                 "username=%s\nfileId=%s\noriginalFileName=%s\nmodelType=%s\nformat=%s",
-                username,
+                sanitizedUsername,
                 fileId,
                 fileName,
                 modelType != null ? modelType.toString() : "",

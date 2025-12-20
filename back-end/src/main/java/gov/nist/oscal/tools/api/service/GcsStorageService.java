@@ -2,6 +2,7 @@ package gov.nist.oscal.tools.api.service;
 
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.*;
+import gov.nist.oscal.tools.api.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -345,7 +346,8 @@ public class GcsStorageService implements StorageService {
     private void saveToLocalStorage(String content, String key) {
         try {
             String relativePath = key.replace(buildFolder + "/", "");
-            Path filePath = localBuildPath.resolve(relativePath);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path filePath = PathSanitizer.safeResolve(localBuildPath, relativePath);
             Files.createDirectories(filePath.getParent());
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
             logger.info("Saved component to local storage: {}", filePath.toAbsolutePath());
@@ -358,7 +360,8 @@ public class GcsStorageService implements StorageService {
     private String getFromLocalStorage(String key) {
         try {
             String relativePath = key.replace(buildFolder + "/", "");
-            Path filePath = localBuildPath.resolve(relativePath);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path filePath = PathSanitizer.safeResolve(localBuildPath, relativePath);
             if (!Files.exists(filePath)) {
                 throw new RuntimeException("Component not found: " + key);
             }
@@ -372,7 +375,9 @@ public class GcsStorageService implements StorageService {
     private List<String> listFromLocalStorage(String username) {
         List<String> componentPaths = new ArrayList<>();
         try {
-            Path userPath = localBuildPath.resolve(username);
+            // Sanitize username to prevent path traversal
+            String sanitizedUsername = PathSanitizer.sanitizeFilename(username);
+            Path userPath = PathSanitizer.safeResolve(localBuildPath, sanitizedUsername);
             if (Files.exists(userPath)) {
                 Files.walk(userPath)
                         .filter(Files::isRegularFile)

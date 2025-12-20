@@ -32,7 +32,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Disabled("FileController only implements org-logos endpoint; CRUD file operations are not yet implemented")
+/**
+ * Tests for FileController file CRUD operations.
+ *
+ * DISABLED: These tests were written for file CRUD endpoints (list, get, upload, delete)
+ * that were never implemented in FileController. The controller only has the org-logos
+ * endpoint. These tests should be re-enabled when the file management endpoints are
+ * implemented. See GitHub issue for tracking.
+ */
+@Disabled("File CRUD endpoints not implemented in FileController - only org-logos endpoint exists")
 @WebMvcTest(FileController.class)
 class FileControllerTest {
 

@@ -6,6 +6,7 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
+import gov.nist.oscal.tools.api.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -341,7 +342,8 @@ public class AzureBlobService implements StorageService {
         try {
             // Remove the "build/" prefix from the path for local storage
             String relativePath = blobPath.replace(buildFolder + "/", "");
-            Path filePath = localBuildPath.resolve(relativePath);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path filePath = PathSanitizer.safeResolve(localBuildPath, relativePath);
             Files.createDirectories(filePath.getParent());
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
             logger.info("Saved component to local storage: {}", filePath.toAbsolutePath());
@@ -354,7 +356,8 @@ public class AzureBlobService implements StorageService {
     private String getFromLocalStorage(String blobPath) {
         try {
             String relativePath = blobPath.replace(buildFolder + "/", "");
-            Path filePath = localBuildPath.resolve(relativePath);
+            // Use PathSanitizer to prevent path traversal attacks
+            Path filePath = PathSanitizer.safeResolve(localBuildPath, relativePath);
             if (!Files.exists(filePath)) {
                 throw new RuntimeException("Component not found: " + blobPath);
             }
@@ -368,7 +371,9 @@ public class AzureBlobService implements StorageService {
     private List<String> listFromLocalStorage(String username) {
         List<String> componentPaths = new ArrayList<>();
         try {
-            Path userPath = localBuildPath.resolve(username);
+            // Sanitize username to prevent path traversal
+            String sanitizedUsername = PathSanitizer.sanitizeFilename(username);
+            Path userPath = PathSanitizer.safeResolve(localBuildPath, sanitizedUsername);
             if (Files.exists(userPath)) {
                 Files.walk(userPath)
                         .filter(Files::isRegularFile)
