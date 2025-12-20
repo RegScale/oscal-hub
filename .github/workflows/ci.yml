@@ -95,6 +95,12 @@ jobs:
           category: trivy
         continue-on-error: true
 
+      - name: Set up JDK 21 (for Snyk Maven)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
       - name: Run Snyk for Maven
         id: snyk-maven
         uses: snyk/actions/maven@master
@@ -104,6 +110,16 @@ jobs:
           SNYK_ORG: ${{ secrets.SNYK_ORG }}
         with:
           args: --severity-threshold=high --sarif-file-output=snyk-maven.sarif --file=back-end/pom.xml
+
+      - name: Set up Node.js (for Snyk Node)
+        uses: actions/setup-node@v6
+        with:
+          node-version: '18'
+
+      - name: Install frontend dependencies
+        run: |
+          cd front-end
+          npm ci --legacy-peer-deps
 
       - name: Run Snyk for Node.js
         id: snyk-node
