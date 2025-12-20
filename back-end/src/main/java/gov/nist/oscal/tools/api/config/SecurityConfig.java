@@ -79,6 +79,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // CSRF protection disabled intentionally - this is a stateless REST API using JWT tokens
+            // sent via Authorization header (not cookies). CSRF attacks exploit cookie-based auth
+            // where browsers auto-send credentials. JWT header-based auth is immune to CSRF.
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints - allow without authentication

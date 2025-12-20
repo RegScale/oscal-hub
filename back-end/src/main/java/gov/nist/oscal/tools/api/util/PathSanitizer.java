@@ -129,25 +129,45 @@ public final class PathSanitizer {
         // First, remove characters that are illegal in file paths on Windows/Unix
         // This must be done BEFORE calling Paths.get() to avoid InvalidPathException
         // Illegal chars: < > : " | ? * and null/control characters
-        String sanitized = filename.replaceAll("[<>:\"|?*\\x00-\\x1F]", "_");
+        // Using character-by-character processing to avoid ReDoS vulnerabilities
+        StringBuilder sanitized = new StringBuilder(filename.length());
+        for (int i = 0; i < filename.length(); i++) {
+            char c = filename.charAt(i);
+            // Replace illegal characters with underscore
+            if (c == '<' || c == '>' || c == ':' || c == '"' || c == '|'
+                    || c == '?' || c == '*' || c < 0x20) {
+                sanitized.append('_');
+            } else {
+                sanitized.append(c);
+            }
+        }
 
         // Get only the filename portion (removes any directory components)
         // Use forward slash normalization for cross-platform compatibility
-        sanitized = sanitized.replace("\\", "/");
-        int lastSlash = sanitized.lastIndexOf('/');
-        String baseName = (lastSlash >= 0) ? sanitized.substring(lastSlash + 1) : sanitized;
+        String sanitizedStr = sanitized.toString().replace("\\", "/");
+        int lastSlash = sanitizedStr.lastIndexOf('/');
+        String baseName = (lastSlash >= 0) ? sanitizedStr.substring(lastSlash + 1) : sanitizedStr;
 
-        // Remove any remaining traversal patterns
+        // Remove any remaining traversal patterns (simple string replacement, no regex)
         baseName = baseName.replace("..", "").replace("~", "");
 
-        // Remove or replace remaining non-alphanumeric characters (except . _ -)
-        baseName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        // Replace any remaining non-alphanumeric characters (except . _ -)
+        // Using character-by-character processing to avoid ReDoS
+        StringBuilder cleaned = new StringBuilder(baseName.length());
+        for (int i = 0; i < baseName.length(); i++) {
+            char c = baseName.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                    || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') {
+                cleaned.append(c);
+            } else {
+                cleaned.append('_');
+            }
+        }
+        baseName = cleaned.toString();
 
-        // Collapse multiple underscores
-        baseName = baseName.replaceAll("_+", "_");
-
-        // Remove leading/trailing underscores
-        baseName = baseName.replaceAll("^_+|_+$", "");
+        // Collapse multiple underscores and strip leading/trailing underscores
+        // Using loop-based approach to avoid ReDoS from regex like "^_+|_+$"
+        baseName = collapseAndStripUnderscores(baseName);
 
         // Ensure we have a valid filename
         if (baseName.isEmpty()) {
@@ -155,6 +175,50 @@ public final class PathSanitizer {
         }
 
         return baseName;
+    }
+
+    /**
+     * Collapse multiple consecutive underscores into one and strip leading/trailing underscores.
+     * Uses loop-based approach to avoid ReDoS vulnerabilities from regex patterns like "^_+|_+$".
+     *
+     * @param input The string to process
+     * @return The processed string with collapsed and stripped underscores
+     */
+    private static String collapseAndStripUnderscores(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        // Collapse multiple underscores into single underscore
+        StringBuilder collapsed = new StringBuilder(input.length());
+        boolean lastWasUnderscore = false;
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '_') {
+                if (!lastWasUnderscore) {
+                    collapsed.append(c);
+                    lastWasUnderscore = true;
+                }
+                // Skip consecutive underscores
+            } else {
+                collapsed.append(c);
+                lastWasUnderscore = false;
+            }
+        }
+
+        // Strip leading underscores
+        int start = 0;
+        while (start < collapsed.length() && collapsed.charAt(start) == '_') {
+            start++;
+        }
+
+        // Strip trailing underscores
+        int end = collapsed.length();
+        while (end > start && collapsed.charAt(end - 1) == '_') {
+            end--;
+        }
+
+        return collapsed.substring(start, end);
     }
 
     /**
