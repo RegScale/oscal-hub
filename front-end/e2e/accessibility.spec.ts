@@ -67,47 +67,22 @@ test.describe('Keyboard Navigation Tests', () => {
   test('Should be able to navigate the dashboard using only keyboard', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for authentication state to resolve (either dashboard or hero loads)
-    // The validate card is only visible when authenticated, otherwise we test the hero page
+    // Press Tab to activate skip link
+    await page.keyboard.press('Tab');
+    const skipLink = page.getByText(/skip to main content/i);
+    await expect(skipLink).toBeVisible();
+
+    // Skip to main content
+    await page.keyboard.press('Enter');
+
+    // Tab to first operation card
+    await page.keyboard.press('Tab');
     const validateCard = page.getByRole('link', { name: /navigate to validate/i });
-    const heroButton = page.getByRole('link', { name: /get started/i });
+    await expect(validateCard).toBeFocused();
 
-    // Check if we're authenticated by seeing if dashboard content exists
-    const isAuthenticated = await validateCard.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (isAuthenticated) {
-      // Test authenticated dashboard navigation
-      // Press Tab to activate skip link
-      await page.keyboard.press('Tab');
-      const skipLink = page.getByText(/skip to main content/i);
-      await expect(skipLink).toBeVisible();
-
-      // Skip to main content
-      await page.keyboard.press('Enter');
-
-      // Tab to first operation card
-      await page.keyboard.press('Tab');
-      await expect(validateCard).toBeFocused();
-
-      // Press Enter to activate
-      await page.keyboard.press('Enter');
-      await expect(page).toHaveURL('/validate');
-    } else {
-      // Test unauthenticated hero page navigation
-      await page.keyboard.press('Tab');
-      const skipLink = page.getByText(/skip to main content/i);
-      await expect(skipLink).toBeVisible();
-
-      // Skip to main content
-      await page.keyboard.press('Enter');
-
-      // Tab to first interactive element (hero CTA button)
-      await page.keyboard.press('Tab');
-
-      // Verify we can reach interactive elements
-      const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
-      expect(['A', 'BUTTON']).toContain(focusedElement);
-    }
+    // Press Enter to activate
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL('/validate');
   });
 
   test('Should show visible focus indicators on all interactive elements', async ({ page }) => {
