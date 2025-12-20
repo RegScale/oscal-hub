@@ -232,12 +232,16 @@ jobs:
           </details>
           EOF
 
-          # Save outputs for PR comment step
+          # Save outputs for PR comment step (use heredoc for values with special chars)
           echo "unit_passed=$UNIT_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "unit_failed=$UNIT_TESTS_FAILED" >> $GITHUB_OUTPUT
           echo "e2e_passed=$E2E_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "e2e_failed=$E2E_TESTS_FAILED" >> $GITHUB_OUTPUT
-          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+          {
+            echo 'overall_status<<EOF'
+            echo "$OVERALL_STATUS"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Comment on PR (non-fork only)
         if: github.event.pull_request.head.repo.full_name == github.repository
