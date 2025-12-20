@@ -183,11 +183,15 @@ jobs:
       - name: Parse and display test results
         id: parse-results
         run: |
-          # Count test results
-          UNIT_TESTS_PASSED=$(grep -c "✓" test-results/unit-test-output.txt || echo "0")
-          E2E_TESTS_PASSED=$(grep -c "passed" test-results/e2e-test-output.txt || echo "0")
-          UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt || echo "0")
-          E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt || echo "0")
+          # Count test results (using || : to suppress exit code without adding extra output)
+          UNIT_TESTS_PASSED=$(grep -c "✓" test-results/unit-test-output.txt 2>/dev/null || :)
+          UNIT_TESTS_PASSED=${UNIT_TESTS_PASSED:-0}
+          E2E_TESTS_PASSED=$(grep -c "passed" test-results/e2e-test-output.txt 2>/dev/null || :)
+          E2E_TESTS_PASSED=${E2E_TESTS_PASSED:-0}
+          UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt 2>/dev/null || :)
+          UNIT_TESTS_FAILED=${UNIT_TESTS_FAILED:-0}
+          E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt 2>/dev/null || :)
+          E2E_TESTS_FAILED=${E2E_TESTS_FAILED:-0}
 
           # Determine overall status
           if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then

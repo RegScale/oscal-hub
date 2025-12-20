@@ -121,3 +121,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * WCAG 2.1 Link Accessibility - High Contrast Link Color
+ * Links in dark mode need a brighter color to meet 4.5:1 contrast ratio
+ * This overrides the primary color for links specifically
+ */
+.dark a.text-primary {
+  color: oklch(0.68 0.18 255);
+}
