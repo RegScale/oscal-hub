@@ -26,7 +26,7 @@ RUN mvn package -DskipTests -B -q
 # =============================================================================
 # Stage 2: Build Frontend Dependencies - OPTIMIZED
 # =============================================================================
-FROM node:24-alpine AS frontend-deps
+FROM node:25-alpine AS frontend-deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -40,7 +40,7 @@ RUN npm ci --legacy-peer-deps --prefer-offline && \
 # =============================================================================
 # Stage 3: Build Frontend (Next.js)
 # =============================================================================
-FROM node:24-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 WORKDIR /app
 
 # Copy dependencies from deps stage
