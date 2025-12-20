@@ -80,7 +80,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.31.9
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -119,7 +119,7 @@ jobs:
           args: --severity-threshold=high --sarif-file-output=snyk-docker.sarif --file=Dockerfile
 
       - name: Upload Snyk Maven results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.31.9
         if: always() && hashFiles('snyk-maven.sarif') != ''
         with:
           sarif_file: snyk-maven.sarif
@@ -127,7 +127,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Snyk Node.js results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.31.9
         if: always() && hashFiles('snyk-node.sarif') != ''
         with:
           sarif_file: snyk-node.sarif
@@ -135,7 +135,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Snyk Docker results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.31.9
         if: always() && hashFiles('snyk-docker.sarif') != ''
         with:
           sarif_file: snyk-docker.sarif
