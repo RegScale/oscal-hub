@@ -1,31 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 
 // Use BROWSER_SCOPE env var to control which browsers to test
 // 'chromium' = Chromium only (fast, for PRs)
 // 'all' = All browsers (comprehensive, for develop branch)
 const browserScope = process.env.BROWSER_SCOPE || 'all';
 
-const allProjects = [
-  {
-    name: 'chromium',
-    use: { ...devices['Desktop Chrome'] },
-  },
-  {
-    name: 'firefox',
-    use: { ...devices['Desktop Firefox'] },
-  },
-  {
-    name: 'webkit',
-    use: { ...devices['Desktop Safari'] },
-  },
-];
-
-const chromiumOnly = [
-  {
-    name: 'chromium',
-    use: { ...devices['Desktop Chrome'] },
-  },
-];
+// Path to store authenticated state
+const authFile = path.join(__dirname, 'e2e/.auth/user.json');
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -51,8 +33,44 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  /* Configure projects based on BROWSER_SCOPE */
-  projects: browserScope === 'chromium' ? chromiumOnly : allProjects,
+  /* Configure projects for authentication setup and browser testing */
+  projects: [
+    // Setup project - runs first to establish authenticated state
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    // Chromium tests with authentication
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+    },
+    // Additional browsers when BROWSER_SCOPE is 'all'
+    ...(browserScope === 'all'
+      ? [
+          {
+            name: 'firefox',
+            use: {
+              ...devices['Desktop Firefox'],
+              storageState: authFile,
+            },
+            dependencies: ['setup'],
+          },
+          {
+            name: 'webkit',
+            use: {
+              ...devices['Desktop Safari'],
+              storageState: authFile,
+            },
+            dependencies: ['setup'],
+          },
+        ]
+      : []),
+  ],
 
   /* Run your local dev server before starting the tests */
   webServer: {

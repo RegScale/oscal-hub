@@ -51,6 +51,7 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 // Test component that uses the hook
+// Note: .catch(() => {}) prevents unhandled promise rejections in error tests
 function TestComponent() {
   const auth = useAuth();
 
@@ -60,8 +61,8 @@ function TestComponent() {
       <div data-testid="is-loading">{auth.isLoading ? 'true' : 'false'}</div>
       <div data-testid="username">{auth.user?.username || 'none'}</div>
       <div data-testid="email">{auth.user?.email || 'none'}</div>
-      <button onClick={() => auth.login('testuser', 'password')}>Login</button>
-      <button onClick={() => auth.register('newuser', 'password', 'new@example.com')}>Register</button>
+      <button onClick={() => auth.login('testuser', 'password').catch(() => {})}>Login</button>
+      <button onClick={() => auth.register('newuser', 'password', 'new@example.com').catch(() => {})}>Register</button>
       <button onClick={() => auth.logout()}>Logout</button>
     </div>
   );
@@ -151,7 +152,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('username').textContent).toBe('testuser');
       expect(apiClient.login).toHaveBeenCalledWith('testuser', 'password');
       expect(localStorageMock.getItem('token')).toBe('new-token');
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockPush).toHaveBeenCalledWith('/select-organization');
     });
 
     it('should store user data in localStorage on login', async () => {
@@ -241,7 +242,7 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('is-authenticated').textContent).toBe('true');
       expect(screen.getByTestId('username').textContent).toBe('newuser');
       expect(apiClient.register).toHaveBeenCalledWith('newuser', 'password', 'new@example.com');
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockPush).toHaveBeenCalledWith('/select-organization');
     });
 
     it('should handle registration errors without crashing', async () => {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function LicensePage() {
   return (
-    <main id="main-content" className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background">
       <div className="container mx-auto py-12 px-4 max-w-4xl">
         {/* Header */}
         <div className="mb-8">

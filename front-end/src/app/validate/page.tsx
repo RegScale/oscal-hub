@@ -161,7 +161,7 @@ export default function ValidatePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4" id="main-content">
+      <div className="container mx-auto py-8 px-4">
         {/* Header */}
         <header className="mb-8">
           <Link
@@ -218,7 +218,7 @@ export default function ValidatePage() {
                       disabled={!canValidate}
                       className="w-full"
                       size="lg"
-                      aria-label={isValidating ? 'Validating document, please wait' : 'Start validation of OSCAL document'}
+                      aria-label={isValidating ? 'Validating document, please wait' : 'Validate document'}
                     >
                       {isValidating ? 'Validating...' : 'Validate Document'}
                     </Button>

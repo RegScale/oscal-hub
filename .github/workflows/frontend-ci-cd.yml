@@ -183,11 +183,15 @@ jobs:
       - name: Parse and display test results
         id: parse-results
         run: |
-          # Count test results
-          UNIT_TESTS_PASSED=$(grep -c "✓" test-results/unit-test-output.txt || echo "0")
-          E2E_TESTS_PASSED=$(grep -c "passed" test-results/e2e-test-output.txt || echo "0")
-          UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt || echo "0")
-          E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt || echo "0")
+          # Count test results (using || : to suppress exit code without adding extra output)
+          UNIT_TESTS_PASSED=$(grep -c "✓" test-results/unit-test-output.txt 2>/dev/null || :)
+          UNIT_TESTS_PASSED=${UNIT_TESTS_PASSED:-0}
+          E2E_TESTS_PASSED=$(grep -c "passed" test-results/e2e-test-output.txt 2>/dev/null || :)
+          E2E_TESTS_PASSED=${E2E_TESTS_PASSED:-0}
+          UNIT_TESTS_FAILED=$(grep -c "✗" test-results/unit-test-output.txt 2>/dev/null || :)
+          UNIT_TESTS_FAILED=${UNIT_TESTS_FAILED:-0}
+          E2E_TESTS_FAILED=$(grep -c "failed" test-results/e2e-test-output.txt 2>/dev/null || :)
+          E2E_TESTS_FAILED=${E2E_TESTS_FAILED:-0}
 
           # Determine overall status
           if [ "${{ needs.test.outputs.test-status }}" == "success" ]; then
@@ -232,12 +236,16 @@ jobs:
           </details>
           EOF
 
-          # Save outputs for PR comment step
+          # Save outputs for PR comment step (use heredoc for values with special chars)
           echo "unit_passed=$UNIT_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "unit_failed=$UNIT_TESTS_FAILED" >> $GITHUB_OUTPUT
           echo "e2e_passed=$E2E_TESTS_PASSED" >> $GITHUB_OUTPUT
           echo "e2e_failed=$E2E_TESTS_FAILED" >> $GITHUB_OUTPUT
-          echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+          {
+            echo 'overall_status<<EOF'
+            echo "$OVERALL_STATUS"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Comment on PR (non-fork only)
         if: github.event.pull_request.head.repo.full_name == github.repository

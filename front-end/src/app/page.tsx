@@ -25,7 +25,7 @@ export default function Dashboard() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <div id="main-content">
+        <div>
           <Hero />
         </div>
       </div>
@@ -39,7 +39,7 @@ export default function Dashboard() {
   if (!hasOrganizationAccess) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-12 px-4" id="main-content">
+        <div className="container mx-auto py-12 px-4">
           <div className="max-w-2xl mx-auto">
             <Card className="text-center p-8">
               <div className="mb-6">
@@ -48,6 +48,7 @@ export default function Dashboard() {
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -75,7 +76,7 @@ export default function Dashboard() {
   // Show dashboard for authenticated users
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-12 px-4" id="main-content">
+      <div className="container mx-auto py-12 px-4">
 
         {/* Quick Actions Grid */}
         <nav aria-label="Main operations">
@@ -89,7 +90,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <Library className="h-8 w-8 text-primary" />
+                  <Library className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Library</CardTitle>
@@ -109,7 +110,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <Hammer className="h-8 w-8 text-primary" />
+                  <Hammer className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Build</CardTitle>
@@ -129,7 +130,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <ShieldCheck className="h-8 w-8 text-primary" />
+                  <ShieldCheck className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Authorizations</CardTitle>
@@ -149,7 +150,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <BarChart3 className="h-8 w-8 text-primary" />
+                  <BarChart3 className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Visualize</CardTitle>
@@ -209,7 +210,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <FileCheck className="h-8 w-8 text-primary" />
+                  <FileCheck className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Validation Rules</CardTitle>
@@ -229,7 +230,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <Folders className="h-8 w-8 text-primary" />
+                  <Folders className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Batch</CardTitle>
@@ -249,7 +250,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <Clock className="h-8 w-8 text-primary" />
+                  <Clock className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">History</CardTitle>
@@ -269,7 +270,7 @@ export default function Dashboard() {
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
                 <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <GitMerge className="h-8 w-8 text-primary" />
+                  <GitMerge className="h-8 w-8 text-primary" aria-hidden="true" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl mb-2">Resolve</CardTitle>
@@ -289,7 +290,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <BookOpen className="h-5 w-5 mr-2 text-primary" />
+                <BookOpen className="h-5 w-5 mr-2 text-primary" aria-hidden="true" />
                 Getting Started
               </CardTitle>
             </CardHeader>
@@ -304,7 +305,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     View User Guide
-                    <ArrowRightLeft className="h-4 w-4 ml-2 rotate-45" />
+                    <ArrowRightLeft className="h-4 w-4 ml-2 rotate-45" aria-hidden="true" />
                   </Link>
                 </div>
                 <div>
@@ -313,7 +314,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     API Automation Guide
-                    <Terminal className="h-4 w-4 ml-2" />
+                    <Terminal className="h-4 w-4 ml-2" aria-hidden="true" />
                   </Link>
                 </div>
                 <div>
@@ -322,7 +323,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     Validation Rules Guide
-                    <ShieldCheck className="h-4 w-4 ml-2" />
+                    <ShieldCheck className="h-4 w-4 ml-2" aria-hidden="true" />
                   </Link>
                 </div>
               </div>
@@ -337,7 +338,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Zap className="h-5 w-5 mr-2 text-primary" />
+                <Zap className="h-5 w-5 mr-2 text-primary" aria-hidden="true" />
                 Why Use OSCAL?
               </CardTitle>
             </CardHeader>
@@ -347,28 +348,28 @@ export default function Dashboard() {
               </p>
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start">
-                  <Shield className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <Shield className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" aria-hidden="true" />
                   <div>
                     <span className="font-medium text-foreground">Standardized Compliance</span>
                     <p className="text-xs text-muted-foreground">Consistent format across all security frameworks and controls</p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <RefreshCw className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <RefreshCw className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" aria-hidden="true" />
                   <div>
                     <span className="font-medium text-foreground">Automation Ready</span>
                     <p className="text-xs text-muted-foreground">Machine-readable format enables automated validation and reporting</p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <Users className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <Users className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" aria-hidden="true" />
                   <div>
                     <span className="font-medium text-foreground">Collaboration</span>
                     <p className="text-xs text-muted-foreground">Share and reuse compliance data across teams and organizations</p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <Zap className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" />
+                  <Zap className="h-4 w-4 mr-2 text-primary mt-0.5 flex-shrink-0" aria-hidden="true" />
                   <div>
                     <span className="font-medium text-foreground">Faster ATO Process</span>
                     <p className="text-xs text-muted-foreground">Reduce time to Authority to Operate with streamlined documentation</p>
@@ -382,7 +383,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <ExternalLink className="h-5 w-5 mr-2 text-primary" />
+                <ExternalLink className="h-5 w-5 mr-2 text-primary" aria-hidden="true" />
                 OSCAL Resources
               </CardTitle>
             </CardHeader>
@@ -399,7 +400,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline inline-flex items-center"
                   >
                     API Documentation
-                    <ExternalLink className="h-3 w-3 ml-2" />
+                    <ExternalLink className="h-3 w-3 ml-2" aria-hidden="true" />
                   </a>
                   <p className="text-xs text-muted-foreground ml-5">Interactive API documentation and testing interface</p>
                 </li>
@@ -411,7 +412,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline inline-flex items-center"
                   >
                     NIST OSCAL Website
-                    <ExternalLink className="h-3 w-3 ml-2" />
+                    <ExternalLink className="h-3 w-3 ml-2" aria-hidden="true" />
                   </a>
                   <p className="text-xs text-muted-foreground ml-5">Official OSCAL documentation and specifications</p>
                 </li>
@@ -423,7 +424,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline inline-flex items-center"
                   >
                     OSCAL Foundation
-                    <ExternalLink className="h-3 w-3 ml-2" />
+                    <ExternalLink className="h-3 w-3 ml-2" aria-hidden="true" />
                   </a>
                   <p className="text-xs text-muted-foreground ml-5">Community resources and ecosystem</p>
                 </li>
@@ -435,7 +436,7 @@ export default function Dashboard() {
                     className="text-primary hover:underline inline-flex items-center"
                   >
                     OSCAL on GitHub
-                    <ExternalLink className="h-3 w-3 ml-2" />
+                    <ExternalLink className="h-3 w-3 ml-2" aria-hidden="true" />
                   </a>
                   <p className="text-xs text-muted-foreground ml-5">Source code, schemas, and sample content</p>
                 </li>

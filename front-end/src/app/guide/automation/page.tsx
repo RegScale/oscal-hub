@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 export default function AutomationGuidePage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4 max-w-5xl" id="main-content">
+      <div className="container mx-auto py-8 px-4 max-w-5xl">
         {/* Back Button */}
         <Link
           href="/guide"
