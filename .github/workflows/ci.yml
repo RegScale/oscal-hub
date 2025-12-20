@@ -33,10 +33,10 @@ jobs:
           mvn-toolchain-vendor: 'temurin'
           cache: 'maven'
 
-      - name: Set up Node.js 18
+      - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: front-end/package-lock.json
 
@@ -124,7 +124,7 @@ jobs:
       - name: Set up Node.js (for Snyk Node)
         uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Install frontend dependencies
         run: |

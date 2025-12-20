@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
@@ -64,7 +67,7 @@
     "@vitest/ui": "^3.2.4",
     "axe-core": "^4.11.0",
     "eslint": "^9",
-    "eslint-config-next": "15.5.5",
+    "eslint-config-next": "15.5.9",
     "happy-dom": "^20.0.2",
     "jsdom": "^27.0.0",
     "tailwindcss": "^4",
