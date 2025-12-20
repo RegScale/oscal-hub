@@ -176,6 +176,57 @@ jobs:
           category: snyk-docker
         continue-on-error: true
 
+      - name: Generate Security Scan Summary
+        if: always()
+        run: |
+          echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Function to parse SARIF and extract vulnerabilities
+          parse_sarif() {
+            local file=$1
+            local name=$2
+            if [ -f "$file" ]; then
+              local count=$(jq '[.runs[].results[]] | length' "$file" 2>/dev/null || echo "0")
+              if [ "$count" -gt 0 ]; then
+                echo "### $name: $count issue(s) found" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "| Severity | Rule | Message |" >> $GITHUB_STEP_SUMMARY
+                echo "|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
+                jq -r '.runs[].results[] | "| \(.level // "warning") | \(.ruleId) | \(.message.text | gsub("\n"; " ") | .[0:100]) |"' "$file" 2>/dev/null | head -20 >> $GITHUB_STEP_SUMMARY
+                if [ "$count" -gt 20 ]; then
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "*... and $((count - 20)) more. See Security tab for full details.*" >> $GITHUB_STEP_SUMMARY
+                fi
+                echo "" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "### $name: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "### $name: ⏭️ Skipped or no results" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          }
+
+          # Parse each scanner's results
+          parse_sarif "trivy-results.sarif" "Trivy (Filesystem)"
+          parse_sarif "snyk-maven.sarif" "Snyk (Maven/Java)"
+          parse_sarif "snyk-node.sarif" "Snyk (Node.js)"
+          parse_sarif "snyk-docker.sarif" "Snyk (Docker)"
+
+          # Summary table
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Scanner | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy | ${{ steps.trivy.outcome == 'success' && '✅ Passed' || steps.trivy.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Snyk Maven | ${{ steps.snyk-maven.outcome == 'success' && '✅ Passed' || steps.snyk-maven.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Snyk Node.js | ${{ steps.snyk-node.outcome == 'success' && '✅ Passed' || steps.snyk-node.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Snyk Docker | ${{ steps.snyk-docker.outcome == 'success' && '✅ Passed' || steps.snyk-docker.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
       - name: Check for high severity vulnerabilities
         if: always()
         run: |
@@ -190,6 +241,6 @@ jobs:
             FAILED="$FAILED Snyk-Node"
           fi
           if [ -n "$FAILED" ]; then
-            echo "::error::High severity vulnerabilities found by:$FAILED. Check the Security tab for details."
+            echo "::error::High severity vulnerabilities found by:$FAILED. Check the Security tab and workflow summary for details."
             exit 1
           fi
