@@ -100,7 +100,7 @@ class AuthServiceTest {
         request.setPassword("ValidPassword123!");
 
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
-        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        // Note: existsByEmail is NOT called in AuthService.register() - only username is checked
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
@@ -300,7 +300,7 @@ class AuthServiceTest {
         updates.put("email", "newemail@example.com");
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(userRepository.findByEmail("newemail@example.com")).thenReturn(Optional.empty());
+        // Note: findByEmail is NOT called in AuthService.updateProfile() - no email uniqueness check
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
