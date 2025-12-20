@@ -212,7 +212,7 @@
         <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
-            <version>1.15.0</version>
+            <version>1.27.1</version>
         </dependency>
 
         <!-- Rate Limiting -->
