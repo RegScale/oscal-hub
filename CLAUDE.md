@@ -10,7 +10,7 @@ The OSCAL Tools project consists of three main components:
 2. **Back-end** (`back-end/`) - Spring Boot REST API that exposes OSCAL operations via HTTP endpoints
 3. **Front-end** (`front-end/`) - Next.js web application providing a user-friendly interface for OSCAL operations
 
-All components are built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-java) and [OSCAL Java Library](https://github.com/usnistgov/liboscal-java/).
+All components are built on top of [Metaschema Java Tools](https://github.com/metaschema-framework/metaschema-java) and [OSCAL Java Library](https://github.com/metaschema-framework/liboscal-java/).
 
 ## Project Structure
 
@@ -540,8 +540,8 @@ All OSCAL operations use `OscalBindingContext.instance()` for:
 
 ### Key Dependencies
 
-- **Metaschema Framework** (v0.12.2): Provides CLI framework, binding, and validation
-- **liboscal-java** (v3.0.3): OSCAL model classes and profile resolution
+- **liboscal-java** (v6.0.0): OSCAL model classes, profile resolution, and metaschema binding (groupId: `dev.metaschema.oscal`)
+- **Spring Boot** (v3.5.9): Web framework and dependency management
 - **Apache Commons CLI**: Command-line option parsing
 - **Log4j2**: Logging framework
 - **JUnit 5**: Testing framework

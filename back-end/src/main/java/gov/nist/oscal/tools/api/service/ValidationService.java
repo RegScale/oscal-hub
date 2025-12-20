@@ -3,8 +3,8 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.OperationHistory;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
-import gov.nist.secauto.metaschema.binding.io.Format;
-import gov.nist.secauto.metaschema.binding.io.IDeserializer;
+import gov.nist.secauto.metaschema.databind.io.Format;
+import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

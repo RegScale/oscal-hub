@@ -10,7 +10,7 @@ OSCAL Hub consists of three integrated components:
 - **REST API** - Spring Boot backend exposing OSCAL operations via HTTP endpoints
 - **CLI Tool** - Java command-line interface for batch processing and automation
 
-Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-java) and [OSCAL Java Library](https://github.com/usnistgov/liboscal-java/), OSCAL Hub makes it easier to work with OSCAL content across all seven model types.
+Built on top of [Metaschema Java Tools](https://github.com/metaschema-framework/metaschema-java) and [OSCAL Java Library](https://github.com/metaschema-framework/liboscal-java/), OSCAL Hub makes it easier to work with OSCAL content across all eight model types.
 
 ![OSCAL Hub Dashboard](oscal-hub.png)
 
@@ -54,7 +54,7 @@ Built on top of [Metaschema Java Tools](https://github.com/usnistgov/metaschema-
 
 - **Java 21** - Required for backend and CLI (LTS version)
 - **Maven 3.8.4+** - For building Java components
-- **Node.js 18+** - For frontend development
+- **Node.js 24+** - For frontend development
 
 ### Installation
 
@@ -567,13 +567,13 @@ This project welcomes contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.m
 
 ## License
 
-This project builds upon the NIST OSCAL CLI tool. See [LICENSE.md](LICENSE.md) for details.
+This project builds upon the [OSCAL CLI tool](https://github.com/metaschema-framework/oscal-cli/blob/main/README.md). See [LICENSE.md](LICENSE.md) for details.
 
 ## Related Projects
 
 - [OSCAL](https://pages.nist.gov/OSCAL/) - Official OSCAL documentation
-- [liboscal-java](https://github.com/usnistgov/liboscal-java/) - OSCAL Java library
-- [Metaschema Java Tools](https://github.com/usnistgov/metaschema-java) - Metaschema framework
+- [liboscal-java](https://github.com/metaschema-framework/liboscal-java/) - OSCAL Java library
+- [Metaschema Java Tools](https://github.com/metaschema-framework/metaschema-java) - Metaschema framework
 
 ## Support
 
@@ -582,4 +582,4 @@ This project builds upon the NIST OSCAL CLI tool. See [LICENSE.md](LICENSE.md) f
 
 ## Acknowledgments
 
-Based on the [OSCAL CLI](https://github.com/RegScale/oscal-hub) project by NIST.
+Based on the [OSCAL CLI](https://github.com/metaschema-framework/oscal-cli/blob/main/README.md) originally developed by NIST and maintained by the metaschema-framework project.

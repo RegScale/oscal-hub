@@ -151,11 +151,11 @@ public class OrganizationService {
 
             if (bucket == null) {
                 logger.warn("GCS bucket '{}' does not exist. Attempting to create...", gcsLogoBucket);
-                BucketInfo bucketInfo = BucketInfo.newBuilder(gcsLogoBucket)
+                com.google.cloud.storage.BucketInfo bucketInfo = com.google.cloud.storage.BucketInfo.newBuilder(gcsLogoBucket)
                         .setLocation("US")
                         .setStorageClass(com.google.cloud.storage.StorageClass.STANDARD)
                         .setIamConfiguration(
-                                BucketInfo.IamConfiguration.newBuilder()
+                                com.google.cloud.storage.BucketInfo.IamConfiguration.newBuilder()
                                         .setIsUniformBucketLevelAccessEnabled(true)
                                         .build()
                         )

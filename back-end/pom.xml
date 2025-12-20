@@ -33,15 +33,24 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- OSCAL dependencies versions -->
-        <liboscal-java.version>3.0.3</liboscal-java.version>
-        <metaschema-framework.version>0.12.2</metaschema-framework.version>
+        <liboscal-java.version>6.0.0</liboscal-java.version>
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.3</log4j2.version>
-        <logback.version>1.5.19</logback.version>
-        <tomcat.version>10.1.47</tomcat.version>
-        <netty.version>4.1.129.Final</netty.version>
         <protobuf-java.version>4.28.2</protobuf-java.version>
+
+        <!-- Cloud SDK BOM versions -->
+        <azure-sdk-bom.version>1.2.29</azure-sdk-bom.version>
+        <aws-sdk-bom.version>2.29.46</aws-sdk-bom.version>
+        <google-cloud-bom.version>26.54.0</google-cloud-bom.version>
+
+        <!-- Other dependency versions -->
+        <jjwt.version>0.13.0</jjwt.version>
+        <springdoc-openapi.version>2.7.0</springdoc-openapi.version>
+        <bucket4j.version>8.10.1</bucket4j.version>
+        <org-json.version>20250517</org-json.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <postgres-socket-factory.version>1.27.1</postgres-socket-factory.version>
     </properties>
 
     <repositories>
@@ -64,6 +73,37 @@
             </snapshots>
         </repository>
     </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Azure SDK BOM - manages all Azure SDK versions -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>${azure-sdk-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- AWS SDK v2 BOM - manages all AWS SDK versions -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Google Cloud Libraries BOM - manages all GCP SDK versions -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${google-cloud-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spring Boot Starters -->
@@ -111,21 +151,9 @@
 
         <!-- OSCAL Libraries -->
         <dependency>
-            <groupId>gov.nist.secauto.oscal</groupId>
+            <groupId>dev.metaschema.oscal</groupId>
             <artifactId>liboscal-java</artifactId>
             <version>${liboscal-java.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.nist.secauto.metaschema</groupId>
-            <artifactId>cli-processor</artifactId>
-            <version>${metaschema-framework.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.nist.secauto.metaschema</groupId>
-            <artifactId>metaschema-cli</artifactId>
-            <version>${metaschema-framework.version}</version>
         </dependency>
 
         <!-- JSON Support -->
@@ -138,7 +166,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20250517</version>
+            <version>${org-json.version}</version>
         </dependency>
 
         <!-- XML Support -->
@@ -170,20 +198,20 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt.version}</version>
         </dependency>
 
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
 
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -191,49 +219,46 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.7.0</version>
+            <version>${springdoc-openapi.version}</version>
         </dependency>
 
-        <!-- Azure Blob Storage -->
+        <!-- Azure Blob Storage (version managed by azure-sdk-bom) -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-storage-blob</artifactId>
-            <version>12.25.1</version>
         </dependency>
 
-        <!-- AWS SDK for S3 (Alternative storage provider) -->
+        <!-- AWS SDK for S3 (version managed by aws-sdk-bom) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
-            <version>2.20.140</version>
         </dependency>
 
-        <!-- Google Cloud Storage (Alternative storage provider) -->
+        <!-- Google Cloud Storage (version managed by libraries-bom) -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
-            <version>2.60.0</version>
         </dependency>
 
         <!-- Override transitive commons-lang3 to fix SNYK-JAVA-ORGAPACHECOMMONS-10734078 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
+            <version>${commons-lang3.version}</version>
         </dependency>
 
         <!-- Google Cloud SQL Socket Factory (for Cloud SQL connections) -->
         <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
-            <version>1.27.1</version>
+            <version>${postgres-socket-factory.version}</version>
         </dependency>
 
         <!-- Rate Limiting -->
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
-            <version>8.10.1</version>
+            <version>${bucket4j.version}</version>
         </dependency>
 
         <!-- Caffeine Cache for rate limiting storage -->
