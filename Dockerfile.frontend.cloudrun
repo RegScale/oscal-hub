@@ -5,7 +5,7 @@
 # =============================================================================
 # Stage 1: Install Dependencies
 # =============================================================================
-FROM node:18-alpine AS frontend-deps
+FROM node:25-alpine AS frontend-deps
 
 RUN apk add --no-cache libc6-compat
 
@@ -20,7 +20,7 @@ RUN npm ci --legacy-peer-deps
 # =============================================================================
 # Stage 2: Build Next.js Application
 # =============================================================================
-FROM node:18-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -43,7 +43,7 @@ RUN npm run build
 # =============================================================================
 # Stage 3: Runtime - Production Image for Cloud Run
 # =============================================================================
-FROM node:18-alpine AS runner
+FROM node:25-alpine AS runner
 
 # Add OCI metadata labels
 LABEL org.opencontainers.image.title="OSCAL Tools Frontend"
