@@ -36,7 +36,8 @@ test.describe('Validate Page', () => {
   });
 
   test('should have validate button (disabled initially)', async ({ page }) => {
-    const validateButton = page.getByText('Validate Document');
+    // Use getByRole to specifically target the button, not the nav link
+    const validateButton = page.getByRole('button', { name: /validate document/i });
     await expect(validateButton).toBeVisible();
     await expect(validateButton).toBeDisabled();
   });
@@ -82,7 +83,8 @@ test.describe('Validate Page - With File', () => {
     await page.goto('/validate');
 
     // Verify the validate button exists (will be enabled after file upload)
-    const validateButton = page.getByText('Validate Document');
+    // Use getByRole to specifically target the button, not the nav link
+    const validateButton = page.getByRole('button', { name: /validate document/i });
     await expect(validateButton).toBeVisible();
     // Button should be disabled initially
     await expect(validateButton).toBeDisabled();

@@ -118,8 +118,16 @@ test.describe('Keyboard Navigation Tests', () => {
     // Skip to main content
     await page.keyboard.press('Enter');
 
-    // Tab to first operation card
+    // Tab to first operation card (Library is first in the grid)
     await page.keyboard.press('Tab');
+    const libraryCard = page.getByRole('link', { name: /navigate to library/i });
+    await expect(libraryCard).toBeFocused();
+
+    // Tab through to the Validate card (Library, Build, Authorizations, Visualize, Validate)
+    await page.keyboard.press('Tab'); // Build
+    await page.keyboard.press('Tab'); // Authorizations
+    await page.keyboard.press('Tab'); // Visualize
+    await page.keyboard.press('Tab'); // Validate
     const validateCard = page.getByRole('link', { name: /navigate to validate/i });
     await expect(validateCard).toBeFocused();
 
