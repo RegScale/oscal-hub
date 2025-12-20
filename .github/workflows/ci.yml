@@ -63,14 +63,15 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: build-and-test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
+        id: trivy
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -79,27 +80,82 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+          category: trivy
         continue-on-error: true
 
-      - name: Set up JDK for dependency check
-        uses: actions/setup-java@v4
+      - name: Run Snyk for Maven
+        id: snyk-maven
+        uses: snyk/actions/maven@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_ORG: ${{ secrets.SNYK_ORG }}
         with:
-          java-version-file: '.tool-versions'
-          distribution: 'temurin'
-          cache: 'maven'
+          args: --severity-threshold=high --sarif-file-output=snyk-maven.sarif --file=back-end/pom.xml
 
-      - name: Run OWASP Dependency Check
-        run: |
-          cd back-end
-          mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=8
+      - name: Run Snyk for Node.js
+        id: snyk-node
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_ORG: ${{ secrets.SNYK_ORG }}
+        with:
+          args: --severity-threshold=high --sarif-file-output=snyk-node.sarif --file=front-end/package.json
+
+      - name: Run Snyk for Docker
+        id: snyk-docker
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_ORG: ${{ secrets.SNYK_ORG }}
+        with:
+          image: oscal-hub:latest
+          args: --severity-threshold=high --sarif-file-output=snyk-docker.sarif --file=Dockerfile
+
+      - name: Upload Snyk Maven results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('snyk-maven.sarif') != ''
+        with:
+          sarif_file: snyk-maven.sarif
+          category: snyk-maven
         continue-on-error: true
 
-      - name: Upload dependency check report
-        uses: actions/upload-artifact@v4
+      - name: Upload Snyk Node.js results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('snyk-node.sarif') != ''
         with:
-          name: dependency-check-report
-          path: back-end/target/dependency-check-report/
+          sarif_file: snyk-node.sarif
+          category: snyk-node
+        continue-on-error: true
+
+      - name: Upload Snyk Docker results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('snyk-docker.sarif') != ''
+        with:
+          sarif_file: snyk-docker.sarif
+          category: snyk-docker
+        continue-on-error: true
+
+      - name: Check for high severity vulnerabilities
         if: always()
+        run: |
+          FAILED=""
+          if [ "${{ steps.trivy.outcome }}" == "failure" ]; then
+            FAILED="$FAILED Trivy"
+          fi
+          if [ "${{ steps.snyk-maven.outcome }}" == "failure" ]; then
+            FAILED="$FAILED Snyk-Maven"
+          fi
+          if [ "${{ steps.snyk-node.outcome }}" == "failure" ]; then
+            FAILED="$FAILED Snyk-Node"
+          fi
+          if [ -n "$FAILED" ]; then
+            echo "::error::High severity vulnerabilities found by:$FAILED. Check the Security tab for details."
+            exit 1
+          fi

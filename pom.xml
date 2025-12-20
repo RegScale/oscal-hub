@@ -46,10 +46,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
-
-        <!-- Dependency Check Plugin Configuration -->
-        <dependency-check-maven.version>11.1.1</dependency-check-maven.version>
-        <dependency-check.failBuildOnCVSS>8</dependency-check.failBuildOnCVSS>
     </properties>
 
     <modules>
@@ -70,50 +66,6 @@
                         <target>21</target>
                         <release>21</release>
                     </configuration>
-                </plugin>
-
-                <!-- OWASP Dependency-Check Maven Plugin -->
-                <plugin>
-                    <groupId>org.owasp</groupId>
-                    <artifactId>dependency-check-maven</artifactId>
-                    <version>${dependency-check-maven.version}</version>
-                    <configuration>
-                        <!-- Fail build if CVSS score >= 8 (High severity) -->
-                        <failBuildOnCVSS>${dependency-check.failBuildOnCVSS}</failBuildOnCVSS>
-
-                        <!-- Output formats -->
-                        <format>ALL</format>
-
-                        <!-- Suppression file for false positives -->
-                        <suppressionFile>${project.basedir}/dependency-check-suppressions.xml</suppressionFile>
-
-                        <!-- Skip if suppression file doesn't exist -->
-                        <failOnError>false</failOnError>
-
-                        <!-- Analyzers to enable -->
-                        <assemblyAnalyzerEnabled>true</assemblyAnalyzerEnabled>
-                        <jarAnalyzerEnabled>true</jarAnalyzerEnabled>
-                        <archiveAnalyzerEnabled>true</archiveAnalyzerEnabled>
-
-                        <!-- Skip test dependencies -->
-                        <skipTestScope>false</skipTestScope>
-
-                        <!-- NVD API configuration (optional - set NVD_API_KEY env var for better rate limits) -->
-                        <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
-
-                        <!-- Cache location -->
-                        <dataDirectory>${project.build.directory}/dependency-check-data</dataDirectory>
-
-                        <!-- Output directory -->
-                        <outputDirectory>${project.build.directory}/dependency-check-report</outputDirectory>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <goals>
-                                <goal>check</goal>
-                            </goals>
-                        </execution>
-                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
