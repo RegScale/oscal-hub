@@ -6,9 +6,27 @@
 # =============================================================================
 # Stage 1: Build Backend (Spring Boot with Maven) - OPTIMIZED
 # =============================================================================
-FROM maven:3.9-eclipse-temurin-21 AS backend-builder
+# NOTE: Using specific version 3.9.9 because maven:3.9 tag has corrupted 0-byte mvn script
+FROM maven:3.9.9-eclipse-temurin-21 AS backend-builder
 
 WORKDIR /build
+
+# Configure Maven Toolchains for Temurin 21 (required by pom.xml)
+# The JDK in this image is at /opt/java/openjdk
+RUN mkdir -p /root/.m2 && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' > /root/.m2/toolchains.xml && \
+    echo '<toolchains>' >> /root/.m2/toolchains.xml && \
+    echo '  <toolchain>' >> /root/.m2/toolchains.xml && \
+    echo '    <type>jdk</type>' >> /root/.m2/toolchains.xml && \
+    echo '    <provides>' >> /root/.m2/toolchains.xml && \
+    echo '      <version>21</version>' >> /root/.m2/toolchains.xml && \
+    echo '      <vendor>temurin</vendor>' >> /root/.m2/toolchains.xml && \
+    echo '    </provides>' >> /root/.m2/toolchains.xml && \
+    echo '    <configuration>' >> /root/.m2/toolchains.xml && \
+    echo '      <jdkHome>/opt/java/openjdk</jdkHome>' >> /root/.m2/toolchains.xml && \
+    echo '    </configuration>' >> /root/.m2/toolchains.xml && \
+    echo '  </toolchain>' >> /root/.m2/toolchains.xml && \
+    echo '</toolchains>' >> /root/.m2/toolchains.xml
 
 # Copy pom.xml FIRST for dependency caching
 COPY back-end/pom.xml ./back-end/pom.xml
@@ -21,7 +39,7 @@ RUN mvn dependency:go-offline -B
 COPY back-end/src ./src/
 
 # Build application (dependencies already cached)
-RUN mvn package -DskipTests -B -q
+RUN mvn package -DskipTests -B
 
 # =============================================================================
 # Stage 2: Build Frontend Dependencies - OPTIMIZED
@@ -143,9 +161,9 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
 EXPOSE 8080 8081
 
 # Health check
-# Backend on 8081, frontend on $PORT (defaults to 8080 in Cloud Run)
+# Backend on 8080, frontend on 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8081/actuator/health && curl -f http://localhost:${PORT:-8080} || exit 1
+    CMD curl -f http://localhost:8080/api/health && curl -f http://localhost:3000 || exit 1
 
 # Use tini as init system (proper signal handling, zombie reaping)
 ENTRYPOINT ["/usr/bin/tini", "--"]
