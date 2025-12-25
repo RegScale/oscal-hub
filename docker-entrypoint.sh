@@ -91,8 +91,9 @@ echo "(This may take longer on first startup due to database migrations)"
 echo ""
 
 BACKEND_READY=false
+BACKEND_PORT=${BACKEND_PORT:-8080}
 for i in {1..60}; do
-    if curl -s http://localhost:8081/api/health > /dev/null 2>&1; then
+    if curl -s http://localhost:${BACKEND_PORT}/api/health > /dev/null 2>&1; then
         echo "✓ Backend is ready!"
         BACKEND_READY=true
         break
@@ -164,8 +165,8 @@ echo "  OSCAL UX is Ready! ✓"
 echo "=========================================="
 echo ""
 echo "Frontend: http://localhost:${PORT:-3000}"
-echo "Backend:  http://localhost:8081/api"
-echo "Health:   http://localhost:8081/api/health"
+echo "Backend:  http://localhost:${BACKEND_PORT:-8080}/api"
+echo "Health:   http://localhost:${BACKEND_PORT:-8080}/api/health"
 echo ""
 echo "Environment: ${SPRING_PROFILES_ACTIVE:-dev}"
 if [ "${SPRING_FLYWAY_ENABLED:-true}" = "true" ]; then

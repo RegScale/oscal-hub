@@ -8,9 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NODE_ENV === 'production'
-  ? 'http://localhost:8081'
-  : 'http://localhost:8080';
+// BACKEND_INTERNAL_URL allows overriding the backend URL in Docker environments
+// Default to 8081 for GCP production, but allow override for local Docker (8080)
+const BACKEND_URL = process.env.BACKEND_INTERNAL_URL
+  || (process.env.NODE_ENV === 'production' ? 'http://localhost:8081' : 'http://localhost:8080');
 
 export async function GET(
   request: NextRequest,
