@@ -79,6 +79,8 @@ services:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:8080/api
       - NEXT_PUBLIC_USE_MOCK=false
+      # Backend internal URL for API proxy (within the container, both services run on localhost)
+      - BACKEND_INTERNAL_URL=http://localhost:8080
 
       # Spring Boot profile
       - SPRING_PROFILES_ACTIVE=dev  # Change to 'prod' for production deployment
@@ -151,7 +153,7 @@ services:
     ports:
       - "5050:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@oscal.local}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@oscal-tools.dev}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
       - PGADMIN_CONFIG_SERVER_MODE=False
     volumes:
