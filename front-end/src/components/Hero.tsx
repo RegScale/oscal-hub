@@ -32,11 +32,15 @@ export function Hero() {
           100% Free & Open Source
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/login">
+          <a
+            href="https://regscale.com/oscal-hub-signup/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Button size="lg" className="text-lg px-8">
-              Get Started
+              Sign Up Now
             </Button>
-          </Link>
+          </a>
           <a
             href="https://pages.nist.gov/OSCAL/"
             target="_blank"
@@ -862,11 +866,15 @@ export function Hero() {
         <p className="text-muted-foreground mb-6">
           Create an account to start working with OSCAL documents today
         </p>
-        <Link href="/login">
+        <a
+          href="https://regscale.com/oscal-hub-signup/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <Button size="lg" className="text-lg px-12">
             Sign Up Now
           </Button>
-        </Link>
+        </a>
       </div>
     </div>
   );
