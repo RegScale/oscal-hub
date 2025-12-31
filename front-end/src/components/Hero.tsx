@@ -456,6 +456,7 @@ export function Hero() {
         </p>
 
         {/* Testimonials */}
+        {/*
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -535,6 +536,7 @@ export function Hero() {
             </CardContent>
           </Card>
         </div>
+        */}
       </div>
 
       {/* Deployment Options Section */}
@@ -808,7 +810,7 @@ export function Hero() {
           {[
             {
               q: "Is my data secure?",
-              a: "Yes. All data is encrypted at rest and in transit. We support SOC 2 Type II compliance. For maximum security, you can deploy OSCAL Hub on-premises using our local deployment option."
+              a: "Yes. All data is encrypted at rest and in transit. For convenience, you can also deploy OSCAL Hub on-premises using our local deployment option."
             },
             {
               q: "Do I need to learn OSCAL syntax?",
