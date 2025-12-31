@@ -52,7 +52,13 @@ print_step "Building Docker image locally..."
 echo "This will take 10-20 minutes on first build..."
 echo ""
 
+# Generate timestamp to bust cache for source code changes
+CACHEBUST=$(date +%s)
+echo "Cache bust timestamp: $CACHEBUST"
+echo ""
+
 docker build \
+    --build-arg CACHEBUST=${CACHEBUST} \
     --platform linux/amd64 \
     --tag ${IMAGE_PATH} \
     --tag ${IMAGE_NAME}:${TAG} \

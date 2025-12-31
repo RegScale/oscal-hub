@@ -3,7 +3,7 @@ version: '3.9'
 services:
   # PostgreSQL Database (for development)
   postgres:
-    image: postgres:18-alpine
+    image: postgres:16-alpine
     container_name: oscal-postgres-dev
 
     security_opt:
@@ -56,6 +56,7 @@ services:
       dockerfile: Dockerfile
       args:
         - BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        - CACHEBUST=${CACHEBUST:-1}
     container_name: oscal-ux-dev
     image: oscal-ux:dev
 
