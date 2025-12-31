@@ -39,10 +39,12 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
     List<LibraryItem> findByTagName(@Param("tagName") String tagName);
 
     // Advanced search with multiple criteria
+    // Note: COALESCE prevents PostgreSQL bytea error when LOWER() receives NULL parameter
+    // See: https://github.com/spring-projects/spring-data-jpa/issues/3928
     @Query("SELECT DISTINCT li FROM LibraryItem li LEFT JOIN li.tags t WHERE " +
-           "(:searchTerm IS NULL OR LOWER(li.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(li.description) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
+           "(:searchTerm IS NULL OR LOWER(li.title) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%')) OR LOWER(COALESCE(li.description, '')) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%'))) AND " +
            "(:oscalType IS NULL OR li.oscalType = :oscalType) AND " +
-           "(:tagName IS NULL OR LOWER(t.name) = LOWER(:tagName))")
+           "(:tagName IS NULL OR LOWER(t.name) = LOWER(COALESCE(:tagName, '')))")
     List<LibraryItem> advancedSearch(
         @Param("searchTerm") String searchTerm,
         @Param("oscalType") String oscalType,
