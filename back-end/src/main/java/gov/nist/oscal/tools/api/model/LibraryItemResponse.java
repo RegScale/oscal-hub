@@ -46,7 +46,13 @@ public class LibraryItemResponse {
         }
         response.setDownloadCount(item.getDownloadCount());
         response.setViewCount(item.getViewCount());
-        response.setVersionCount(item.getVersions() != null ? item.getVersions().size() : 0);
+        // Avoid LazyInitializationException - check if versions collection is initialized
+        // before accessing size. If not initialized, use null (can be populated separately if needed)
+        try {
+            response.setVersionCount(item.getVersions() != null ? item.getVersions().size() : 0);
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setVersionCount(null); // Not available outside transaction
+        }
         return response;
     }
 

@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 @Tag(name = "Library Management", description = "APIs for managing shared OSCAL library")
 public class LibraryController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LibraryController.class);
+    
     private final LibraryService libraryService;
 
     @Autowired
@@ -261,6 +263,7 @@ public class LibraryController {
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
+            logger.error("Error fetching all library items", e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -302,6 +305,7 @@ public class LibraryController {
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
+            logger.error("Error fetching popular library items", e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -323,6 +327,7 @@ public class LibraryController {
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
+            logger.error("Error fetching recent library items", e);
             return ResponseEntity.internalServerError().build();
         }
     }
