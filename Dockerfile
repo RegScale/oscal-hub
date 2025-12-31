@@ -33,6 +33,9 @@ COPY back-end/pom.xml ./back-end/pom.xml
 WORKDIR /build/back-end
 RUN mvn dependency:go-offline -B
 
+# Add build arg to bust cache for source copy and build
+ARG CACHEBUST=1
+
 # Copy source code
 COPY back-end/src ./src/
 
@@ -61,6 +64,10 @@ WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=frontend-deps /app/node_modules ./node_modules
+
+# Add build arg to bust cache for source copy and build
+ARG CACHEBUST=1
+
 COPY front-end/ .
 
 # Set build-time environment variables for Next.js
