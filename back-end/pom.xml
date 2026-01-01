@@ -46,7 +46,7 @@
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>2.7.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
         <bucket4j.version>8.10.1</bucket4j.version>
         <org-json.version>20250517</org-json.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
