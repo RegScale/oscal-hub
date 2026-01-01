@@ -188,6 +188,7 @@ module "oscal_app" {
     DB_PASSWORD            = random_password.db_password.result
     JWT_SECRET             = random_password.jwt_secret.result
     GCS_BUCKET_BUILD       = module.storage.build_bucket_name
+    BACKEND_PORT           = "8081"
 
     # Next.js frontend settings
     NODE_ENV = "production"
@@ -209,8 +210,8 @@ module "oscal_app" {
   memory_limit  = var.app_memory
 
 
-  # Health check on frontend port (which is the main entrypoint)
-  health_check_path = "/"
+  # Health check on backend API health endpoint
+  health_check_path = "/api/health"
 
   custom_domain = var.custom_domain
 
