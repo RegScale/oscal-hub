@@ -49,7 +49,7 @@
     "tailwind-merge": "^3.3.1",
     "yaml": "^2.8.1",
     "zod": "^4.2.1",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
