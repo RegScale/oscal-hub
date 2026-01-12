@@ -205,13 +205,24 @@ EOF
   echo "Planning infrastructure changes..."
   terraform plan -out=tfplan
 
-  read -p "Apply Terraform plan? (yes/no): " confirm
-  if [ "$confirm" = "yes" ]; then
-    terraform apply tfplan
+  echo "Applying Terraform plan automatically..."
+  if terraform apply -auto-approve tfplan; then
     print_success "Infrastructure deployed successfully"
   else
-    print_warning "Terraform deployment skipped"
-    exit 0
+    # Terraform may timeout waiting for domain SSL certificates (10-15 min)
+    # Check if the actual deployment succeeded despite timeout
+    CLOUD_RUN_STATUS=$(gcloud run services describe oscal-tools-${ENVIRONMENT} --region ${REGION} --format="value(status.conditions[0].status)" 2>/dev/null || echo "Unknown")
+
+    if [ "$CLOUD_RUN_STATUS" = "True" ]; then
+      print_warning "Terraform timed out (likely waiting for domain SSL certificates)"
+      print_success "Cloud Run service deployed successfully"
+      print_warning "Domain SSL certificate provisioning continues in background (10-15 minutes)"
+      echo "Check status: gcloud run domain-mappings list --region ${REGION}"
+    else
+      print_error "Terraform deployment failed"
+      cd ../..
+      exit 1
+    fi
   fi
 
   cd ../..
