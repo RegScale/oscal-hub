@@ -2,9 +2,9 @@ package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.OperationHistory;
 import gov.nist.oscal.tools.api.model.*;
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
-import gov.nist.secauto.metaschema.databind.io.Format;
-import gov.nist.secauto.metaschema.databind.io.IDeserializer;
+import dev.metaschema.oscal.lib.OscalBindingContext;
+import dev.metaschema.databind.io.Format;
+import dev.metaschema.databind.io.IDeserializer;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -145,19 +145,19 @@ public class ValidationService {
     private IDeserializer<?> getDeserializer(OscalModelType modelType, Format format) throws IOException {
         switch (modelType) {
             case CATALOG:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Catalog.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.Catalog.class);
             case PROFILE:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Profile.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.Profile.class);
             case COMPONENT_DEFINITION:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.ComponentDefinition.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.ComponentDefinition.class);
             case SYSTEM_SECURITY_PLAN:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.SystemSecurityPlan.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.SystemSecurityPlan.class);
             case ASSESSMENT_PLAN:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentPlan.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.AssessmentPlan.class);
             case ASSESSMENT_RESULTS:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentResults.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.AssessmentResults.class);
             case PLAN_OF_ACTION_AND_MILESTONES:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones.class);
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.PlanOfActionAndMilestones.class);
             default:
                 throw new IllegalArgumentException("Unsupported model type: " + modelType);
         }

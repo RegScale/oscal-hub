@@ -433,9 +433,14 @@ class ConversionServiceTest {
             "    <title>Sample Assessment Plan</title>\n" +
             "    <last-modified>2023-01-01T00:00:00.000Z</last-modified>\n" +
             "    <version>1.0</version>\n" +
-            "    <oscal-version>1.0.4</oscal-version>\n" +
+            "    <oscal-version>1.1.2</oscal-version>\n" +
             "  </metadata>\n" +
             "  <import-ssp href=\"ssp.xml\"/>\n" +
+            "  <reviewed-controls>\n" +
+            "    <control-selection>\n" +
+            "      <include-all/>\n" +
+            "    </control-selection>\n" +
+            "  </reviewed-controls>\n" +
             "</assessment-plan>";
 
         ConversionRequest request = new ConversionRequest();
