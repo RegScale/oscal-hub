@@ -12,6 +12,7 @@ import type { ValidationRulesResponse, OscalModelType } from '@/types/oscal';
 
 const modelTypeLabels: Record<OscalModelType, string> = {
   'catalog': 'Catalog',
+  'mapping-collection': 'Mapping Collection',
   'profile': 'Profile',
   'component-definition': 'Component Definition',
   'system-security-plan': 'System Security Plan',

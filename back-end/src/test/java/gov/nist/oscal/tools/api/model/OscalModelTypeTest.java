@@ -9,7 +9,7 @@ class OscalModelTypeTest {
     @Test
     void testEnumValues() {
         OscalModelType[] types = OscalModelType.values();
-        assertEquals(7, types.length);
+        assertEquals(8, types.length);
     }
 
     @Test
@@ -55,6 +55,12 @@ class OscalModelTypeTest {
     }
 
     @Test
+    void testMappingCollectionType() {
+        OscalModelType type = OscalModelType.MAPPING_COLLECTION;
+        assertEquals("mapping-collection", type.getValue());
+    }
+
+    @Test
     void testFromStringWithCatalog() {
         OscalModelType type = OscalModelType.fromString("catalog");
         assertEquals(OscalModelType.CATALOG, type);
@@ -94,6 +100,12 @@ class OscalModelTypeTest {
     void testFromStringWithPlanOfActionAndMilestones() {
         OscalModelType type = OscalModelType.fromString("plan-of-action-and-milestones");
         assertEquals(OscalModelType.PLAN_OF_ACTION_AND_MILESTONES, type);
+    }
+
+    @Test
+    void testFromStringWithMappingCollection() {
+        OscalModelType type = OscalModelType.fromString("mapping-collection");
+        assertEquals(OscalModelType.MAPPING_COLLECTION, type);
     }
 
     @Test
@@ -158,6 +170,7 @@ class OscalModelTypeTest {
         assertEquals("assessment-plan", OscalModelType.ASSESSMENT_PLAN.getValue());
         assertEquals("assessment-results", OscalModelType.ASSESSMENT_RESULTS.getValue());
         assertEquals("plan-of-action-and-milestones", OscalModelType.PLAN_OF_ACTION_AND_MILESTONES.getValue());
+        assertEquals("mapping-collection", OscalModelType.MAPPING_COLLECTION.getValue());
     }
 
     @Test
@@ -177,5 +190,6 @@ class OscalModelTypeTest {
         assertEquals(OscalModelType.ASSESSMENT_PLAN, types[4]);
         assertEquals(OscalModelType.ASSESSMENT_RESULTS, types[5]);
         assertEquals(OscalModelType.PLAN_OF_ACTION_AND_MILESTONES, types[6]);
+        assertEquals(OscalModelType.MAPPING_COLLECTION, types[7]);
     }
 }
