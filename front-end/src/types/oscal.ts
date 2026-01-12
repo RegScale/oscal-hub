@@ -9,7 +9,8 @@ export type OscalModelType =
   | 'system-security-plan'
   | 'assessment-plan'
   | 'assessment-results'
-  | 'plan-of-action-and-milestones';
+  | 'plan-of-action-and-milestones'
+  | 'mapping-collection';
 
 export interface ValidationError {
   line?: number;
