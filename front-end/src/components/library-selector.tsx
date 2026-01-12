@@ -125,6 +125,7 @@ export const LibrarySelector = forwardRef<LibrarySelectorRef, LibrarySelectorPro
   const getOscalTypeColor = (oscalType: string): string => {
     const colors: Record<string, string> = {
       'catalog': 'bg-blue-500/10 text-blue-500',
+      'mapping-collection': 'bg-cyan-500/10 text-cyan-500',
       'profile': 'bg-purple-500/10 text-purple-500',
       'component-definition': 'bg-green-500/10 text-green-500',
       'system-security-plan': 'bg-orange-500/10 text-orange-500',

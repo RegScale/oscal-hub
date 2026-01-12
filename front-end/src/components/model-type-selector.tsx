@@ -22,6 +22,11 @@ const MODEL_TYPES: { value: OscalModelType; label: string; description: string }
     description: 'Collection of security controls',
   },
   {
+    value: 'mapping-collection',
+    label: 'Mapping Collection',
+    description: 'Collection of control mappings',
+  },
+  {
     value: 'profile',
     label: 'Profile',
     description: 'Tailored set of controls from catalogs',

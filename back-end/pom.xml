@@ -33,7 +33,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- OSCAL dependencies versions -->
-        <liboscal-java.version>6.0.0</liboscal-java.version>
+        <liboscal-java.version>7.0.0</liboscal-java.version>
+        <metaschema-java.version>3.0.0.M2</metaschema-java.version>
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.3</log4j2.version>
@@ -154,6 +155,30 @@
             <groupId>dev.metaschema.oscal</groupId>
             <artifactId>liboscal-java</artifactId>
             <version>${liboscal-java.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.metaschema.java</groupId>
+            <artifactId>metaschema-core</artifactId>
+            <version>${metaschema-java.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.metaschema.java</groupId>
+            <artifactId>metaschema-databind</artifactId>
+            <version>${metaschema-java.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.metaschema.java</groupId>
+            <artifactId>cli-processor</artifactId>
+            <version>${metaschema-java.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.metaschema.java</groupId>
+            <artifactId>metaschema-cli</artifactId>
+            <version>${metaschema-java.version}</version>
         </dependency>
 
         <!-- JSON Support -->

@@ -289,7 +289,7 @@ function VisualizePageContent() {
     setError(null);
   };
 
-  const detectDocumentType = (content: string, docFormat: OscalFormat): 'catalog' | 'ssp' | 'profile' | 'sar' | 'unknown' => {
+  const detectDocumentType = (content: string, docFormat: OscalFormat): 'catalog' | 'mapping-collection' | 'ssp' | 'profile' | 'sar' | 'unknown' => {
     try {
       // Normalize content for searching (trim whitespace)
       const normalizedContent = content.trim().toLowerCase();
@@ -310,6 +310,10 @@ function VisualizePageContent() {
             normalizedContent.includes('system-security-plan')) {
           console.log('Document type detected: SSP (JSON)');
           return 'ssp';
+        } else if (normalizedContent.includes('"mapping-collection"') ||
+            normalizedContent.includes("'mapping-collection'")) {
+          console.log('Document type detected: Mapping Collection (JSON)');
+          return 'mapping-collection';
         } else if (normalizedContent.includes('"profile"') ||
                    normalizedContent.includes("'profile'") ||
                    (normalizedContent.includes('profile') && normalizedContent.includes('"imports"'))) {
@@ -331,6 +335,10 @@ function VisualizePageContent() {
             normalizedContent.includes('system_security_plan:')) {
           console.log('Document type detected: SSP (YAML)');
           return 'ssp';
+        } else if (normalizedContent.includes('mapping-collection:') ||
+            normalizedContent.includes('mapping_collection:')) {
+          console.log('Document type detected: Mapping Collection (YAML)');
+          return 'mapping-collection';
         } else if (normalizedContent.includes('profile:') && normalizedContent.includes('imports:')) {
           console.log('Document type detected: Profile (YAML)');
           return 'profile';
@@ -348,6 +356,10 @@ function VisualizePageContent() {
             normalizedContent.includes('<system_security_plan')) {
           console.log('Document type detected: SSP (XML)');
           return 'ssp';
+        } else if (normalizedContent.includes('<mapping-collection') ||
+            normalizedContent.includes('<mapping_collection')) {
+          console.log('Document type detected: Mapping Collection (XML)');
+          return 'mapping-collection';
         } else if (normalizedContent.includes('<profile')) {
           console.log('Document type detected: Profile (XML)');
           return 'profile';
