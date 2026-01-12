@@ -156,6 +156,8 @@ public class ConversionService {
                 return bindingContext.newDeserializer(metaschemaFormat, AssessmentResults.class);
             case PLAN_OF_ACTION_AND_MILESTONES:
                 return bindingContext.newDeserializer(metaschemaFormat, PlanOfActionAndMilestones.class);
+            case MAPPING_COLLECTION:
+                return bindingContext.newDeserializer(metaschemaFormat, MappingCollection.class);
             default:
                 throw new IllegalArgumentException("Unsupported model type: " + modelType);
         }
@@ -179,6 +181,8 @@ public class ConversionService {
                 return bindingContext.newSerializer(metaschemaFormat, AssessmentResults.class);
             case PLAN_OF_ACTION_AND_MILESTONES:
                 return bindingContext.newSerializer(metaschemaFormat, PlanOfActionAndMilestones.class);
+            case MAPPING_COLLECTION:
+                return bindingContext.newSerializer(metaschemaFormat, MappingCollection.class);
             default:
                 throw new IllegalArgumentException("Unsupported model type: " + modelType);
         }

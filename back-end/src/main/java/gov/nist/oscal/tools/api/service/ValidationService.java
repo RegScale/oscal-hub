@@ -158,6 +158,8 @@ public class ValidationService {
                 return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.AssessmentResults.class);
             case PLAN_OF_ACTION_AND_MILESTONES:
                 return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.PlanOfActionAndMilestones.class);
+            case MAPPING_COLLECTION:
+                return bindingContext.newDeserializer(format, dev.metaschema.oscal.lib.model.MappingCollection.class);
             default:
                 throw new IllegalArgumentException("Unsupported model type: " + modelType);
         }

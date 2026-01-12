@@ -9,7 +9,8 @@ public enum OscalModelType {
     SYSTEM_SECURITY_PLAN("system-security-plan"),
     ASSESSMENT_PLAN("assessment-plan"),
     ASSESSMENT_RESULTS("assessment-results"),
-    PLAN_OF_ACTION_AND_MILESTONES("plan-of-action-and-milestones");
+    PLAN_OF_ACTION_AND_MILESTONES("plan-of-action-and-milestones"),
+    MAPPING_COLLECTION("mapping-collection");
 
     private final String value;
 
