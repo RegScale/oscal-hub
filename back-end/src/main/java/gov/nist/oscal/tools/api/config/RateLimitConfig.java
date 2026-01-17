@@ -85,10 +85,10 @@ public class RateLimitConfig {
 
     /**
      * Registration rate limit configuration
-     * Default: 3 attempts per hour per IP
+     * Default: 50 attempts per hour per IP
      */
     public static class RegistrationRateLimit {
-        private int attempts = 3;
+        private int attempts = 50;
         private int duration = 3600; // seconds (1 hour)
 
         public int getAttempts() {
