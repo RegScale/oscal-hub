@@ -3003,6 +3003,62 @@ class ApiClient {
     }
   }
 
+  // ========================================
+  // Analytics API Methods
+  // ========================================
+
+  /**
+   * Get comprehensive analytics data for the super admin dashboard
+   * Super Admin only
+   */
+  async getAnalytics(): Promise<any> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/analytics`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get analytics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get summary statistics for quick dashboard header cards
+   * Super Admin only
+   */
+  async getAnalyticsSummary(): Promise<any> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/analytics/summary`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get analytics summary: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get analytics summary:', error);
+      throw error;
+    }
+  }
+
   // Mock implementations for development without backend
 
   private async mockValidate(

@@ -57,4 +57,18 @@ public interface HistoryRepository extends JpaRepository<OperationHistory, Long>
 
     // Find operations by user and type
     Page<OperationHistory> findByUserIdAndOperationTypeOrderByTimestampDesc(Long userId, String operationType, Pageable pageable);
+
+    // Analytics queries
+
+    /**
+     * Count operations by model type
+     */
+    @Query("SELECT h.modelType, COUNT(h) FROM OperationHistory h WHERE h.modelType IS NOT NULL GROUP BY h.modelType ORDER BY COUNT(h) DESC")
+    List<Object[]> countByModelType();
+
+    /**
+     * Count operations by format
+     */
+    @Query("SELECT h.format, COUNT(h) FROM OperationHistory h WHERE h.format IS NOT NULL GROUP BY h.format ORDER BY COUNT(h) DESC")
+    List<Object[]> countByFormat();
 }

@@ -55,4 +55,10 @@ public interface OrganizationMembershipRepository extends JpaRepository<Organiza
 
     @Query("SELECT COUNT(m) FROM OrganizationMembership m WHERE m.organization.id = :orgId")
     int countByOrganizationId(@Param("orgId") Long orgId);
+
+    /**
+     * Get the first organization name for a user (for analytics display)
+     */
+    @Query("SELECT m.organization.name FROM OrganizationMembership m WHERE m.user.id = :userId ORDER BY m.joinedAt ASC")
+    String findFirstOrganizationNameByUserId(@Param("userId") Long userId);
 }

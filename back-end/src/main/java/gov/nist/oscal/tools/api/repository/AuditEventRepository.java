@@ -336,4 +336,63 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
      * @return Page of audit events
      */
     Page<AuditEvent> findByActionOrderByTimestampDesc(String action, Pageable pageable);
+
+    // ========================================
+    // Hash Chain Queries
+    // ========================================
+
+    /**
+     * Find the most recent audit event (for hash chain initialization)
+     *
+     * @return The most recent audit event, or null if none exist
+     */
+    AuditEvent findTopByOrderByIdDesc();
+
+    /**
+     * Find events with integrity hash issues (null or empty hash)
+     *
+     * @return List of events with potential integrity issues
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.integrityHash IS NULL OR a.integrityHash = ''")
+    List<AuditEvent> findEventsWithMissingHash();
+
+    // ========================================
+    // Analytics Queries
+    // ========================================
+
+    /**
+     * Count events grouped by event type within a date range
+     */
+    @Query("SELECT a.eventType, COUNT(a) FROM AuditEvent a WHERE a.timestamp >= :since GROUP BY a.eventType ORDER BY COUNT(a) DESC")
+    List<Object[]> countByEventTypeSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count events grouped by category within a date range
+     */
+    @Query("SELECT a.category, COUNT(a) FROM AuditEvent a WHERE a.timestamp >= :since GROUP BY a.category ORDER BY COUNT(a) DESC")
+    List<Object[]> countByCategorySince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count events grouped by date (for activity over time chart)
+     */
+    @Query("SELECT CAST(a.timestamp AS date), COUNT(a) FROM AuditEvent a WHERE a.timestamp >= :since GROUP BY CAST(a.timestamp AS date) ORDER BY CAST(a.timestamp AS date)")
+    List<Object[]> countByDateSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count events by username (for most active users)
+     */
+    @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IS NOT NULL AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
+    List<Object[]> countByUsernameSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count total events within a date range
+     */
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.timestamp >= :since")
+    long countEventsSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count unique active users within a date range
+     */
+    @Query("SELECT COUNT(DISTINCT a.username) FROM AuditEvent a WHERE a.username IS NOT NULL AND a.timestamp >= :since")
+    long countUniqueUsersSince(@Param("since") LocalDateTime since);
 }

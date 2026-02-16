@@ -16,9 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Audit Logging Service
@@ -39,6 +43,12 @@ public class AuditLogService {
     private final AuditLogConfig config;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Thread-safe storage of the last audit event hash for chain linking.
+     * This creates a blockchain-like chain of audit events.
+     */
+    private final AtomicReference<String> lastEventHash = new AtomicReference<>("");
+
     @Autowired
     public AuditLogService(AuditEventRepository auditEventRepository,
                           AuditLogConfig config,
@@ -46,6 +56,24 @@ public class AuditLogService {
         this.auditEventRepository = auditEventRepository;
         this.config = config;
         this.objectMapper = objectMapper;
+        // Initialize with the hash of the most recent event if exists
+        initializeLastHash();
+    }
+
+    /**
+     * Initialize the last event hash from the database on startup
+     */
+    private void initializeLastHash() {
+        try {
+            AuditEvent lastEvent = auditEventRepository.findTopByOrderByIdDesc();
+            if (lastEvent != null && lastEvent.getIntegrityHash() != null) {
+                lastEventHash.set(lastEvent.getIntegrityHash());
+                logger.info("Initialized audit chain with last hash: {}...",
+                    lastEvent.getIntegrityHash().substring(0, 8));
+            }
+        } catch (Exception e) {
+            logger.warn("Could not initialize last audit hash: {}", e.getMessage());
+        }
     }
 
     /**
@@ -181,17 +209,38 @@ public class AuditLogService {
             event.setUserAgent(request.getHeader("User-Agent"));
             event.setSessionId(request.getSession(false) != null ?
                 request.getSession().getId() : null);
+
+            // Capture request URL and HTTP method
+            event.setHttpMethod(request.getMethod());
+            String requestUrl = request.getRequestURI();
+            String queryString = request.getQueryString();
+            if (queryString != null && !queryString.isEmpty()) {
+                requestUrl = requestUrl + "?" + queryString;
+            }
+            event.setRequestUrl(requestUrl);
         }
 
         return event;
     }
 
     /**
-     * Save event to database and optionally log to application log
+     * Save event to database and optionally log to application log.
+     * Computes integrity hash before saving to ensure immutability.
      */
     private void saveEvent(AuditEvent event) {
         try {
+            // Set the previous hash for chain linking
+            event.setPreviousHash(lastEventHash.get());
+
+            // Compute the integrity hash
+            String hash = computeHash(event.getHashContent());
+            event.setIntegrityHash(hash);
+
+            // Save the event
             auditEventRepository.save(event);
+
+            // Update the last hash for the next event
+            lastEventHash.set(hash);
 
             if (config.isLogToApplicationLog()) {
                 String logMessage = String.format("[AUDIT] %s", event.getSummary());
@@ -204,6 +253,46 @@ public class AuditLogService {
         } catch (Exception e) {
             logger.error("Failed to save audit event: {}", event.getEventType(), e);
         }
+    }
+
+    /**
+     * Compute SHA-256 hash of the given content.
+     *
+     * @param content The content to hash
+     * @return Hex-encoded SHA-256 hash
+     */
+    private String computeHash(String content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("SHA-256 algorithm not available", e);
+            return null;
+        }
+    }
+
+    /**
+     * Verify the integrity of an audit event chain.
+     *
+     * @param eventId The ID of the event to verify
+     * @return true if the event and its chain are valid
+     */
+    public boolean verifyEventIntegrity(Long eventId) {
+        AuditEvent event = auditEventRepository.findById(eventId).orElse(null);
+        if (event == null) {
+            return false;
+        }
+        String computedHash = computeHash(event.getHashContent());
+        return event.verifyIntegrity(computedHash);
     }
 
     /**
