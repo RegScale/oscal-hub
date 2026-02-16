@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.springframework.context.annotation.Lazy;
+
 /**
  * Audit Logging Service
  * <p>
@@ -42,6 +44,7 @@ public class AuditLogService {
     private final AuditEventRepository auditEventRepository;
     private final AuditLogConfig config;
     private final ObjectMapper objectMapper;
+    private final SiemForwardingService siemForwardingService;
 
     /**
      * Thread-safe storage of the last audit event hash for chain linking.
@@ -52,10 +55,12 @@ public class AuditLogService {
     @Autowired
     public AuditLogService(AuditEventRepository auditEventRepository,
                           AuditLogConfig config,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          @Lazy SiemForwardingService siemForwardingService) {
         this.auditEventRepository = auditEventRepository;
         this.config = config;
         this.objectMapper = objectMapper;
+        this.siemForwardingService = siemForwardingService;
         // Initialize with the hash of the most recent event if exists
         initializeLastHash();
     }
@@ -226,6 +231,7 @@ public class AuditLogService {
     /**
      * Save event to database and optionally log to application log.
      * Computes integrity hash before saving to ensure immutability.
+     * Also forwards the event to SIEM if configured.
      */
     private void saveEvent(AuditEvent event) {
         try {
@@ -237,7 +243,7 @@ public class AuditLogService {
             event.setIntegrityHash(hash);
 
             // Save the event
-            auditEventRepository.save(event);
+            AuditEvent savedEvent = auditEventRepository.save(event);
 
             // Update the last hash for the next event
             lastEventHash.set(hash);
@@ -249,6 +255,11 @@ public class AuditLogService {
                 } else {
                     logger.info(logMessage);
                 }
+            }
+
+            // Forward to SIEM if configured
+            if (siemForwardingService != null) {
+                siemForwardingService.queueEvent(savedEvent);
             }
         } catch (Exception e) {
             logger.error("Failed to save audit event: {}", event.getEventType(), e);

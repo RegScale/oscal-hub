@@ -38,6 +38,8 @@ import type {
   ComponentDefinitionResponse,
   ReusableElementRequest,
   ReusableElementResponse,
+  AuditLog,
+  AuditLogStats,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -55,6 +57,27 @@ class ApiClient {
       : { 'Content-Type': 'application/json' };
   }
 
+  /**
+   * Handle authentication errors by clearing credentials and redirecting to login.
+   * This is called when the server returns 401 or 403 on authenticated endpoints,
+   * indicating the token is invalid or expired.
+   */
+  private handleAuthError(): void {
+    // Only handle if we thought we were authenticated
+    const hadToken = localStorage.getItem('token');
+    if (hadToken) {
+      console.warn('Authentication token is invalid or expired. Redirecting to login.');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentOrganization');
+
+      // Redirect to login page (only in browser environment)
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+  }
+
   private async fetchWithTimeout(
     url: string,
     options: RequestInit,
@@ -69,6 +92,26 @@ class ApiClient {
         signal: controller.signal,
       });
       clearTimeout(id);
+
+      // Check for auth errors on non-auth endpoints
+      // (auth endpoints like /login naturally return 401/403 for bad credentials)
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+      if (!isAuthEndpoint && (response.status === 401 || response.status === 403)) {
+        // Check if this is an authorization issue vs invalid token
+        // 403 on admin endpoints for non-admin users is expected, not a token issue
+        const isAdminEndpoint = url.includes('/admin/');
+        const user = localStorage.getItem('user');
+        const isSuperAdmin = user && JSON.parse(user).globalRole === 'SUPER_ADMIN';
+
+        // Only treat as auth error if:
+        // - It's a 401 (always means unauthorized/invalid token)
+        // - Or it's a 403 on a non-admin endpoint (token is invalid)
+        // - Or it's a 403 on admin endpoint but user should be admin
+        if (response.status === 401 || !isAdminEndpoint || isSuperAdmin) {
+          this.handleAuthError();
+        }
+      }
+
       return response;
     } catch (error) {
       clearTimeout(id);
@@ -3057,6 +3100,351 @@ class ApiClient {
       console.error('Failed to get analytics summary:', error);
       throw error;
     }
+  }
+
+  // ========================================
+  // Admin Audit Logs API Methods
+  // ========================================
+
+  /**
+   * Get all audit logs with pagination and optional filters
+   * Super Admin only
+   */
+  async getAuditLogs(params: {
+    page?: number;
+    size?: number;
+    username?: string;
+    ipAddress?: string;
+    riskLevel?: string;
+    eventType?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', String(params.page || 0));
+      queryParams.append('size', String(params.size || 50));
+      if (params.username) queryParams.append('username', params.username);
+      if (params.ipAddress) queryParams.append('ipAddress', params.ipAddress);
+      if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+      if (params.eventType) queryParams.append('eventType', params.eventType);
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get audit logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size: 50, number: 0 };
+    }
+  }
+
+  /**
+   * Get raw access logs (API requests)
+   * Super Admin only
+   */
+  async getRawLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/raw?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get raw logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get raw logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get security logs (security events and high-risk events)
+   * Super Admin only
+   */
+  async getSecurityLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/security?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get security logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get security logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get error logs (failed and error events)
+   * Super Admin only
+   */
+  async getErrorLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/errors?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get error logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get error logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Search audit logs by keyword
+   * Super Admin only
+   */
+  async searchAuditLogs(query: string, page = 0, size = 50): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/search?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search audit logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search audit logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get a single audit log by ID
+   * Super Admin only
+   */
+  async getAuditLogById(id: number): Promise<AuditLog | null> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/${id}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`Failed to get audit log: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit log:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get audit log statistics
+   * Super Admin only
+   */
+  async getAuditLogStats(): Promise<AuditLogStats> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/stats`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get audit log stats: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit log stats:', error);
+      return {
+        totalLogs: 0,
+        logsToday: 0,
+        securityEventsToday: 0,
+        errorsToday: 0,
+        highRiskUnreviewed: 0,
+        byCategory: {},
+        byRiskLevel: {},
+        byOutcome: {},
+      };
+    }
+  }
+
+  /**
+   * Export audit logs to CSV with authentication
+   * Downloads the file through an authenticated request
+   * Super Admin only
+   */
+  async exportLogsCsv(params: {
+    username?: string;
+    riskLevel?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<void> {
+    const queryParams = new URLSearchParams();
+    if (params.username) queryParams.append('username', params.username);
+    if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+
+    const query = queryParams.toString();
+    const url = `${API_BASE_URL}/admin/logs/export/csv${query ? '?' + query : ''}`;
+
+    const response = await this.fetchWithTimeout(url, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    // Get the blob and trigger download
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+
+  /**
+   * Export audit logs to JSON Lines with authentication
+   * Downloads the file through an authenticated request
+   * Super Admin only
+   */
+  async exportLogsJson(params: {
+    username?: string;
+    riskLevel?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<void> {
+    const queryParams = new URLSearchParams();
+    if (params.username) queryParams.append('username', params.username);
+    if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+
+    const query = queryParams.toString();
+    const url = `${API_BASE_URL}/admin/logs/export/json${query ? '?' + query : ''}`;
+
+    const response = await this.fetchWithTimeout(url, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    // Get the blob and trigger download
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.jsonl`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
   }
 
   // Mock implementations for development without backend

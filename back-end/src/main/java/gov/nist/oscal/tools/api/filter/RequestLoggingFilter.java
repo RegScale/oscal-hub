@@ -248,11 +248,11 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             return AuditEventType.SYSTEM_ERROR;
         }
 
-        // Default to data access for GET, file modify for other methods
-        if ("GET".equals(method)) {
-            return AuditEventType.DATA_FILE_ACCESS;
+        // Generic API requests (use the new API_REQUEST types)
+        if (status >= 400) {
+            return AuditEventType.API_REQUEST_ERROR;
         }
-        return AuditEventType.DATA_FILE_MODIFY;
+        return AuditEventType.API_REQUEST;
     }
 
     /**

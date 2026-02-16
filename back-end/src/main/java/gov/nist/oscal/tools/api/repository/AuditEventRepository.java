@@ -38,6 +38,96 @@ import java.util.List;
 public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
 
     // ========================================
+    // Find All (Paginated)
+    // ========================================
+
+    /**
+     * Find all audit events ordered by timestamp descending
+     *
+     * @param pageable Pagination parameters
+     * @return Page of audit events
+     */
+    Page<AuditEvent> findAllByOrderByTimestampDesc(Pageable pageable);
+
+    /**
+     * Find all audit events for "raw" logs (API access - Authentication and Data Access categories)
+     *
+     * @param pageable Pagination parameters
+     * @return Page of audit events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.category IN ('Authentication', 'Data Access') ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findRawLogs(Pageable pageable);
+
+    /**
+     * Find raw logs filtered by username
+     *
+     * @param username Username to filter by
+     * @param pageable Pagination parameters
+     * @return Page of audit events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.category IN ('Authentication', 'Data Access') AND a.username = :username ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findRawLogsByUsername(@Param("username") String username, Pageable pageable);
+
+    /**
+     * Find raw logs filtered by risk level
+     *
+     * @param riskLevel Risk level to filter by
+     * @param pageable Pagination parameters
+     * @return Page of audit events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.category IN ('Authentication', 'Data Access') AND a.riskLevel = :riskLevel ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findRawLogsByRiskLevel(@Param("riskLevel") String riskLevel, Pageable pageable);
+
+    /**
+     * Search logs by keyword in username, resource, requestUrl, or errorMessage
+     *
+     * @param keyword Search keyword
+     * @param pageable Pagination parameters
+     * @return Page of matching audit events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE " +
+           "LOWER(a.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(a.resource) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(a.requestUrl) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(a.errorMessage) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "ORDER BY a.timestamp DESC")
+    Page<AuditEvent> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * Count events by outcome
+     *
+     * @param outcome The outcome to count (SUCCESS, FAILURE, ERROR)
+     * @return Number of events with that outcome
+     */
+    long countByOutcome(String outcome);
+
+    /**
+     * Count events by category
+     *
+     * @param category The category to count
+     * @return Number of events in that category
+     */
+    long countByCategory(String category);
+
+    /**
+     * Count security events today (Security category or HIGH risk level)
+     *
+     * @param since Start of today
+     * @return Number of security events
+     */
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE (a.category = 'Security' OR a.riskLevel = 'HIGH') AND a.timestamp >= :since")
+    long countSecurityEventsSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Count error events today (FAILURE or ERROR outcome)
+     *
+     * @param since Start of today
+     * @return Number of error events
+     */
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.outcome IN ('FAILURE', 'ERROR') AND a.timestamp >= :since")
+    long countErrorsSince(@Param("since") LocalDateTime since);
+
+    // ========================================
     // Find by User
     // ========================================
 
@@ -126,6 +216,26 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("SELECT a FROM AuditEvent a WHERE a.username = :username AND a.outcome IN ('FAILURE', 'ERROR') ORDER BY a.timestamp DESC")
     Page<AuditEvent> findFailedEventsByUsername(@Param("username") String username, Pageable pageable);
 
+    /**
+     * Find error logs filtered by username (alias for findFailedEventsByUsername)
+     *
+     * @param username Username to filter by
+     * @param pageable Pagination parameters
+     * @return Page of error events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.outcome IN ('FAILURE', 'ERROR') AND a.username = :username ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findErrorsByUsername(@Param("username") String username, Pageable pageable);
+
+    /**
+     * Find error logs filtered by risk level
+     *
+     * @param riskLevel Risk level to filter by
+     * @param pageable Pagination parameters
+     * @return Page of error events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE a.outcome IN ('FAILURE', 'ERROR') AND a.riskLevel = :riskLevel ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findErrorsByRiskLevel(@Param("riskLevel") String riskLevel, Pageable pageable);
+
     // ========================================
     // Find by Date Range
     // ========================================
@@ -199,6 +309,26 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
      */
     @Query("SELECT a FROM AuditEvent a WHERE a.category = 'Security' OR a.riskLevel = 'HIGH' ORDER BY a.timestamp DESC")
     Page<AuditEvent> findAllSecurityEvents(Pageable pageable);
+
+    /**
+     * Find security events filtered by username
+     *
+     * @param username Username to filter by
+     * @param pageable Pagination parameters
+     * @return Page of security events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE (a.category = 'Security' OR a.riskLevel = 'HIGH') AND a.username = :username ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findSecurityEventsByUsername(@Param("username") String username, Pageable pageable);
+
+    /**
+     * Find security events filtered by risk level
+     *
+     * @param riskLevel Risk level to filter by
+     * @param pageable Pagination parameters
+     * @return Page of security events
+     */
+    @Query("SELECT a FROM AuditEvent a WHERE (a.category = 'Security' OR a.riskLevel = 'HIGH') AND a.riskLevel = :riskLevel ORDER BY a.timestamp DESC")
+    Page<AuditEvent> findSecurityEventsByRiskLevel(@Param("riskLevel") String riskLevel, Pageable pageable);
 
     /**
      * Find recent failed login attempts (within last N minutes)

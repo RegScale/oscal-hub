@@ -298,7 +298,25 @@ public enum AuditEventType {
      * <p>Risk Level: MEDIUM</p>
      * <p>Retention: MEDIUM</p>
      */
-    SYSTEM_EXTERNAL_API_ERROR("System", "External API error", "MEDIUM");
+    SYSTEM_EXTERNAL_API_ERROR("System", "External API error", "MEDIUM"),
+
+    // ========================================
+    // API Request Events (API_*)
+    // ========================================
+
+    /**
+     * Generic API request logged
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: SHORT (90 days)</p>
+     */
+    API_REQUEST("Data Access", "API request", "LOW"),
+
+    /**
+     * API request that resulted in an error (4xx or 5xx)
+     * <p>Risk Level: MEDIUM</p>
+     * <p>Retention: MEDIUM (2 years)</p>
+     */
+    API_REQUEST_ERROR("Data Access", "API request error", "MEDIUM");
 
     // ========================================
     // Enum Fields

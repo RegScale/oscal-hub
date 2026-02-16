@@ -1,16 +1,57 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield } from 'lucide-react';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
+  const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Show loading state
-  if (isLoading) {
+  // Check if user is super admin - check both context and localStorage
+  const isSuperAdmin = () => {
+    if (user?.globalRole === 'SUPER_ADMIN') return true;
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          return userData.globalRole === 'SUPER_ADMIN';
+        } catch (e) {
+          return false;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Redirect super admins to admin dashboard
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check localStorage directly for super admin
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        if (userData.globalRole === 'SUPER_ADMIN') {
+          router.push('/admin');
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    setCheckingAuth(false);
+  }, [router]);
+
+  // Show loading while checking auth or AuthContext is loading
+  if (isLoading || checkingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -27,6 +68,19 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <div>
           <Hero />
+        </div>
+      </div>
+    );
+  }
+
+  // Super admin redirect is handled by useEffect above
+  // Show loading while redirect is happening
+  if (isSuperAdmin()) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting to admin dashboard...</p>
         </div>
       </div>
     );

@@ -709,3 +709,42 @@ export interface ReusableElementResponse {
   isShared: boolean;
   useCount: number;
 }
+
+// Audit Log Types
+export interface AuditLog {
+  id: number;
+  eventType: string;
+  category: string;
+  username: string | null;
+  userId: number | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  sessionId: string | null;
+  resource: string | null;
+  action: string | null;
+  outcome: string;
+  errorMessage: string | null;
+  metadata: string | null;
+  riskLevel: string;
+  timestamp: string; // ISO 8601 date string
+  processingTimeMs: number | null;
+  reviewed: boolean;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  requestUrl: string | null;
+  httpMethod: string | null;
+  integrityHash: string | null;
+  previousHash: string | null;
+}
+
+export interface AuditLogStats {
+  totalLogs: number;
+  logsToday: number;
+  securityEventsToday: number;
+  errorsToday: number;
+  highRiskUnreviewed: number;
+  byCategory: Record<string, number>;
+  byRiskLevel: Record<string, number>;
+  byOutcome: Record<string, number>;
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Users, BarChart3 } from 'lucide-react';
+import { Building2, Users, BarChart3, FileText } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tiles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Manage Organizations Tile */}
           <button
             onClick={() => router.push('/admin/organizations')}
@@ -110,6 +110,28 @@ export default function AdminDashboardPage() {
             </p>
             <div className="mt-4 flex items-center text-emerald-600 dark:text-emerald-400 font-medium">
               <span>View Analytics</span>
+              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
+
+          {/* Logs Tile */}
+          <button
+            onClick={() => router.push('/admin/logs')}
+            className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-amber-500 dark:hover:border-amber-400"
+          >
+            <div className="flex items-center justify-center w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-lg mb-6 group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
+              <FileText className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Logs
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              View audit logs, security events, and system errors. Search, filter, and export for compliance.
+            </p>
+            <div className="mt-4 flex items-center text-amber-600 dark:text-amber-400 font-medium">
+              <span>View Logs</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

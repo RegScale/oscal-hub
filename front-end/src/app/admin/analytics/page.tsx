@@ -257,7 +257,7 @@ export default function AnalyticsDashboardPage() {
                 </h3>
                 <div className="h-64">
                   {(analytics.activityOverTime?.length ?? 0) > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={250}>
                       <LineChart data={analytics.activityOverTime}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
                         <XAxis
@@ -302,7 +302,7 @@ export default function AnalyticsDashboardPage() {
                 </h3>
                 <div className="h-64">
                   {(analytics.userGrowthTrend?.length ?? 0) > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={analytics.userGrowthTrend}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
                         <XAxis
@@ -342,7 +342,7 @@ export default function AnalyticsDashboardPage() {
                 </h3>
                 <div className="h-64">
                   {(analytics.operationsByType?.length ?? 0) > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
                           data={analytics.operationsByType}
@@ -385,7 +385,7 @@ export default function AnalyticsDashboardPage() {
                 </h3>
                 <div className="h-64">
                   {(analytics.formatPreferences?.length ?? 0) > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
                           data={analytics.formatPreferences}
