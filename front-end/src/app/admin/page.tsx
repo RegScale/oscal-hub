@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { HealthStatus } from '@/types/oscal';
 
@@ -199,6 +199,28 @@ export default function AdminDashboardPage() {
             </p>
             <div className="mt-4 flex items-center text-cyan-600 dark:text-cyan-400 font-medium">
               <span>View Health Status</span>
+              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
+
+          {/* Security Compliance Tile */}
+          <button
+            onClick={() => router.push('/admin/security')}
+            className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-400"
+          >
+            <div className="flex items-center justify-center w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg mb-6 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50 transition-colors">
+              <ShieldCheck className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Security Compliance
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              View SOC 2 compliance status, control implementation, and gap analysis for attestation.
+            </p>
+            <div className="mt-4 flex items-center text-indigo-600 dark:text-indigo-400 font-medium">
+              <span>View Compliance</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

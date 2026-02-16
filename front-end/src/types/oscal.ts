@@ -809,3 +809,49 @@ export interface DetailedHealthResponse {
   system: HealthSystemInfo;
   environment: EnvironmentInfo;
 }
+
+// Security Compliance Types (SOC 2)
+export type ControlCategory = 'CC6' | 'CC7' | 'CC8' | 'CC9' | 'DATA' | 'AUDIT';
+
+export type ControlStatus = 'IMPLEMENTED' | 'PARTIAL' | 'GAP';
+
+export type GapSeverity = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface Soc2Control {
+  controlId: string;
+  name: string;
+  description: string;
+  category: ControlCategory;
+  status: ControlStatus;
+  implementation: string;
+  evidence: string[];
+}
+
+export interface GapAnalysis {
+  gapId: string;
+  controlId: string;
+  title: string;
+  description: string;
+  severity: GapSeverity;
+  recommendation: string;
+  effort: string;
+  priority: number;
+}
+
+export interface CategorySummary {
+  displayName: string;
+  total: number;
+  implemented: number;
+  partial: number;
+  gaps: number;
+}
+
+export interface ComplianceSummary {
+  totalControls: number;
+  implementedControls: number;
+  partialControls: number;
+  gapControls: number;
+  compliancePercentage: number;
+  assessmentDate: string;
+  byCategory: Record<string, CategorySummary>;
+}

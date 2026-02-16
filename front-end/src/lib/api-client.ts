@@ -43,6 +43,9 @@ import type {
   SimpleHealthResponse,
   DetailedHealthResponse,
   ComponentHealth,
+  ComplianceSummary,
+  Soc2Control,
+  GapAnalysis,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -3541,6 +3544,92 @@ class ApiClient {
       console.error('Ping failed:', error);
       return false;
     }
+  }
+
+  // ========== Security Compliance Methods ==========
+
+  /**
+   * Get SOC 2 compliance summary (requires SUPER_ADMIN auth).
+   * Returns overall compliance statistics.
+   */
+  async getComplianceSummary(): Promise<ComplianceSummary> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/compliance-summary`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get compliance summary: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all SOC 2 controls (requires SUPER_ADMIN auth).
+   * Returns all controls with their implementation status.
+   */
+  async getAllControls(): Promise<Soc2Control[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/controls`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get controls: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get SOC 2 controls by category (requires SUPER_ADMIN auth).
+   * @param category - Category code: CC6, CC7, CC8, CC9, DATA, AUDIT
+   */
+  async getControlsByCategory(category: string): Promise<Soc2Control[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/controls/${encodeURIComponent(category)}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get controls for category ${category}: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get SOC 2 gap analysis (requires SUPER_ADMIN auth).
+   * Returns identified compliance gaps with recommendations.
+   */
+  async getGapAnalysis(): Promise<GapAnalysis[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/gaps`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get gap analysis: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
   }
 
   // Mock implementations for development without backend
