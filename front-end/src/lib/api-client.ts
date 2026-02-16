@@ -40,6 +40,9 @@ import type {
   ReusableElementResponse,
   AuditLog,
   AuditLogStats,
+  SimpleHealthResponse,
+  DetailedHealthResponse,
+  ComponentHealth,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -99,7 +102,10 @@ class ApiClient {
       if (!isAuthEndpoint && (response.status === 401 || response.status === 403)) {
         // Check if this is an authorization issue vs invalid token
         // 403 on admin endpoints for non-admin users is expected, not a token issue
-        const isAdminEndpoint = url.includes('/admin/');
+        // Include health/detailed and health/component as admin-protected endpoints
+        const isAdminEndpoint = url.includes('/admin/') ||
+                                url.includes('/api/health/detailed') ||
+                                url.includes('/api/health/component/');
         const user = localStorage.getItem('user');
         const isSuperAdmin = user && JSON.parse(user).globalRole === 'SUPER_ADMIN';
 
@@ -3445,6 +3451,96 @@ class ApiClient {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
+  }
+
+  // ========== Health Check Methods ==========
+
+  /**
+   * Get simple health status (public endpoint - no auth required).
+   * Used for basic monitoring and load balancers.
+   */
+  async getSimpleHealth(): Promise<SimpleHealthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        return {
+          status: 'DOWN',
+          timestamp: new Date().toISOString(),
+          version: 'unknown',
+        };
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return {
+        status: 'DOWN',
+        timestamp: new Date().toISOString(),
+        version: 'unknown',
+      };
+    }
+  }
+
+  /**
+   * Get detailed health status (requires SUPER_ADMIN auth).
+   * Returns comprehensive health information for admin dashboard.
+   */
+  async getDetailedHealth(): Promise<DetailedHealthResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/health/detailed`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get health status for a specific component (requires SUPER_ADMIN auth).
+   * @param component - Component name: database, storage, memory, diskspace, oscal
+   */
+  async getComponentHealth(component: string): Promise<ComponentHealth> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/health/component/${encodeURIComponent(component)}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Component health check failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Simple ping check (public endpoint - no auth required).
+   * Returns true if healthy, false if unhealthy.
+   */
+  async ping(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health/ping`, {
+        method: 'GET',
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Ping failed:', error);
+      return false;
+    }
   }
 
   // Mock implementations for development without backend

@@ -302,18 +302,6 @@ class ValidationControllerTest {
         verify(batchOperationService).getBatchResult(operationId);
     }
 
-    // ========== HEALTH ENDPOINT TESTS ==========
-
-    @Test
-    @WithMockUser(username = "testuser")
-    void testHealth_returnsOk() throws Exception {
-        // When & Then - Note: health endpoint is public in production, but we use @WithMockUser here
-        // because the @WebMvcTest context doesn't fully load the SecurityConfig permitAll rules
-        mockMvc.perform(get("/api/health"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("OSCAL CLI API is running"));
-    }
-
     // ========== INTEGRATION TESTS ==========
 
     @Test

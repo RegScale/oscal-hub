@@ -110,15 +110,4 @@ public class ValidationController {
         return ResponseEntity.ok(result);
     }
 
-    @Operation(
-        summary = "Health check",
-        description = "Simple health check endpoint to verify the API is running"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "API is healthy")
-    })
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("OSCAL CLI API is running");
-    }
 }

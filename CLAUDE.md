@@ -84,6 +84,7 @@ The `docs/` directory contains:
 - **AUTHORIZATION-FEATURE-SUMMARY.md** - Complete guide to the authorization feature
 - **GCP-DEPLOYMENT-SETUP.md** - Complete guide for setting up GCP deployment with GitHub Actions
 - **GITHUB-SECRETS-SETUP.md** - Quick reference for configuring GitHub secrets for GCP deployment
+- **HEALTH-CHECK-API.md** - Health check API documentation for monitoring integration
 - **TEMPLATE-EDITOR-FIX.md** - Technical details on template editor fixes
 - **VARIABLE-DETECTION-SUMMARY.md** - User guide for variable detection
 - **VARIABLE-PATTERN-UPDATE.md** - Pattern matching updates for variables
@@ -178,8 +179,8 @@ docker-compose down
 
 The application uses **JWT (JSON Web Token)** authentication to secure all API endpoints:
 
-- **Public endpoints** (no auth required): `/api/auth/login`, `/api/auth/register`, `/api/health`, Swagger UI
-- **Protected endpoints** (auth required): All other `/api/*` endpoints including validation, conversion, visualization, etc.
+- **Public endpoints** (no auth required): `/api/auth/login`, `/api/auth/register`, `/api/health`, `/api/health/ping`, Swagger UI
+- **Protected endpoints** (auth required): All other `/api/*` endpoints including validation, conversion, visualization, health/detailed, etc.
 
 ### How JWT Authentication Works
 
@@ -274,6 +275,25 @@ console.log('Auth header:', token ? `Bearer ${token}` : 'No token');
 - **Token Expiration**: 24 hours (configurable in `application.properties`)
 - **CORS**: Allows `http://localhost:3000` and `http://localhost:3001`
 - **Session Management**: Stateless (no server-side sessions)
+
+### Health Check Endpoints
+
+The application provides health check endpoints for monitoring and load balancers:
+
+| Endpoint | Auth Required | Purpose |
+|----------|---------------|---------|
+| `GET /api/health` | No | Simple health status (JSON) |
+| `GET /api/health/ping` | No | Simple ping for monitoring tools (returns "OK" or 503) |
+| `GET /api/health/detailed` | SUPER_ADMIN | Comprehensive health with components, system info |
+| `GET /api/health/component/{name}` | SUPER_ADMIN | Individual component health check |
+
+**Components Monitored**: Database, Storage, Memory, Disk Space, OSCAL Library
+
+**Admin Dashboard**: Access the health dashboard at `/admin/health` (SUPER_ADMIN only)
+
+**External Monitoring**: Use `/api/health/ping` for UptimeRobot, Kubernetes probes, etc.
+
+For full documentation, see `docs/HEALTH-CHECK-API.md`.
 
 ### Debugging Authentication Issues
 

@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Users, BarChart3, FileText } from 'lucide-react';
+import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
+import type { HealthStatus } from '@/types/oscal';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | 'LOADING'>('LOADING');
 
   useEffect(() => {
     // Verify user is super admin
@@ -22,6 +25,22 @@ export default function AdminDashboardPage() {
       return;
     }
     setLoading(false);
+
+    // Fetch health status
+    const fetchHealth = async () => {
+      try {
+        const health = await apiClient.getSimpleHealth();
+        setHealthStatus(health.status);
+      } catch (error) {
+        console.error('Failed to fetch health status:', error);
+        setHealthStatus('DOWN');
+      }
+    };
+
+    fetchHealth();
+    // Refresh health status every 30 seconds
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
   }, [router]);
 
   if (loading) {
@@ -132,6 +151,54 @@ export default function AdminDashboardPage() {
             </p>
             <div className="mt-4 flex items-center text-amber-600 dark:text-amber-400 font-medium">
               <span>View Logs</span>
+              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
+
+          {/* System Health Tile */}
+          <button
+            onClick={() => router.push('/admin/health')}
+            className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-cyan-500 dark:hover:border-cyan-400"
+          >
+            <div className="flex items-center justify-center w-16 h-16 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg mb-6 group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/50 transition-colors relative">
+              <Activity className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
+              {/* Live Status Indicator */}
+              <div className="absolute -top-1 -right-1">
+                {healthStatus === 'LOADING' && (
+                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                )}
+                {healthStatus === 'UP' && (
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                )}
+                {(healthStatus === 'DOWN' || healthStatus === 'DEGRADED' || healthStatus === 'UNKNOWN') && (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+              </div>
+            </div>
+            <div className="flex items-center mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                System Health
+              </h2>
+              {/* Status Badge */}
+              {healthStatus !== 'LOADING' && (
+                <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${
+                  healthStatus === 'UP'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : healthStatus === 'DEGRADED'
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  {healthStatus}
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600 dark:text-gray-400">
+              Monitor system health, component status, memory usage, and service availability.
+            </p>
+            <div className="mt-4 flex items-center text-cyan-600 dark:text-cyan-400 font-medium">
+              <span>View Health Status</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

@@ -748,3 +748,64 @@ export interface AuditLogStats {
   byRiskLevel: Record<string, number>;
   byOutcome: Record<string, number>;
 }
+
+// Health Check Types
+export type HealthStatus = 'UP' | 'DOWN' | 'DEGRADED' | 'UNKNOWN';
+
+export interface SimpleHealthResponse {
+  status: HealthStatus;
+  timestamp: string;
+  version: string;
+}
+
+export interface ComponentHealth {
+  status: HealthStatus;
+  message?: string;
+  details?: Record<string, unknown>;
+  responseTimeMs?: number;
+}
+
+export interface ApplicationInfo {
+  name: string;
+  version: string;
+  profile: string;
+  uptime: string;
+  startTime: string;
+}
+
+export interface HealthSystemInfo {
+  totalMemoryMb: number;
+  usedMemoryMb: number;
+  freeMemoryMb: number;
+  memoryUsagePercent: number;
+  availableProcessors: number;
+  systemLoadAverage: number;
+  totalDiskSpaceGb: number;
+  freeDiskSpaceGb: number;
+  diskUsagePercent: number;
+}
+
+export interface EnvironmentInfo {
+  javaVersion: string;
+  javaVendor: string;
+  osName: string;
+  osVersion: string;
+  osArch: string;
+  timezone: string;
+}
+
+export interface DetailedHealthResponse {
+  status: HealthStatus;
+  timestamp: string;
+  application: ApplicationInfo;
+  components: {
+    database: ComponentHealth;
+    storage: ComponentHealth;
+    memory: ComponentHealth;
+    diskSpace: ComponentHealth;
+    oscalLibrary: ComponentHealth;
+    [key: string]: ComponentHealth;
+  };
+  system: HealthSystemInfo;
+  environment: EnvironmentInfo;
+}
