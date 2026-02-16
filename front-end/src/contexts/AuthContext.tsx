@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: response.userId,
         username: response.username,
         email: response.email,
+        globalRole: response.globalRole,
         street: response.street,
         city: response.city,
         state: response.state,
@@ -143,8 +144,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();
-      // Redirect to organization selector for two-step authentication
-      router.push('/select-organization');
+
+      // Super admins go directly to admin dashboard
+      if (response.globalRole === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        // Regular users go to organization selector for two-step authentication
+        router.push('/select-organization');
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw error;

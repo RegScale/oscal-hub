@@ -4,13 +4,19 @@ import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.entity.UserAccessRequest;
+import gov.nist.oscal.tools.api.model.AccessRequestResponse;
 import gov.nist.oscal.tools.api.model.AddMemberRequest;
 import gov.nist.oscal.tools.api.model.AssignAdminRequest;
 import gov.nist.oscal.tools.api.model.OrganizationRequest;
 import gov.nist.oscal.tools.api.model.OrganizationResponse;
+import gov.nist.oscal.tools.api.model.OrganizationSummaryResponse;
 import gov.nist.oscal.tools.api.model.UpdateMemberRoleRequest;
+import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
+import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrganizationService;
+import gov.nist.oscal.tools.api.service.UserAccessRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -45,6 +51,15 @@ public class OrganizationController {
 
     @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserAccessRequestService userAccessRequestService;
+
+    @Autowired
+    private UserAccessRequestRepository userAccessRequestRepository;
+
+    @Autowired
+    private OrganizationMembershipRepository organizationMembershipRepository;
 
     @Operation(
         summary = "Get all users",
@@ -503,6 +518,111 @@ public class OrganizationController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(404).body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Get organizations summary",
+        description = "Retrieve all organizations with member counts and pending access request counts. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organizations summary retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/organizations/summary")
+    public ResponseEntity<List<OrganizationSummaryResponse>> getOrganizationsSummary() {
+        List<Organization> organizations = organizationService.getAllOrganizations();
+        List<OrganizationSummaryResponse> response = organizations.stream()
+                .map(org -> {
+                    int memberCount = organizationMembershipRepository.countByOrganizationId(org.getId());
+                    long pendingCount = userAccessRequestService.getPendingRequestCount(org.getId());
+                    return new OrganizationSummaryResponse(
+                            org.getId(),
+                            org.getName(),
+                            memberCount,
+                            pendingCount
+                    );
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "Get all pending access requests",
+        description = "Retrieve all pending access requests across all organizations. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Access requests retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/access-requests")
+    public ResponseEntity<List<AccessRequestResponse>> getAllPendingAccessRequests() {
+        List<UserAccessRequest> requests = userAccessRequestRepository.findAllPending();
+        List<AccessRequestResponse> response = requests.stream()
+                .map(AccessRequestResponse::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "Approve access request",
+        description = "Approve a pending access request. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Access request approved successfully"),
+        @ApiResponse(responseCode = "400", description = "Request already processed or invalid"),
+        @ApiResponse(responseCode = "404", description = "Access request not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/access-requests/{id}/approve")
+    public ResponseEntity<?> approveAccessRequest(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            org.springframework.security.core.userdetails.UserDetails userDetails) {
+        try {
+            User reviewer = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+            String notes = body != null ? body.get("notes") : null;
+            UserAccessRequest request = userAccessRequestService.approveRequest(id, reviewer.getId(), notes);
+            return ResponseEntity.ok(new AccessRequestResponse(request));
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Reject access request",
+        description = "Reject a pending access request. Super Admin only."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Access request rejected successfully"),
+        @ApiResponse(responseCode = "400", description = "Request already processed or invalid"),
+        @ApiResponse(responseCode = "404", description = "Access request not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - Super Admin role required")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/access-requests/{id}/reject")
+    public ResponseEntity<?> rejectAccessRequest(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            org.springframework.security.core.userdetails.UserDetails userDetails) {
+        try {
+            User reviewer = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+            String notes = body != null ? body.get("notes") : null;
+            UserAccessRequest request = userAccessRequestService.rejectRequest(id, reviewer.getId(), notes);
+            return ResponseEntity.ok(new AccessRequestResponse(request));
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 }

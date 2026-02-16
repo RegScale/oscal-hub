@@ -65,4 +65,12 @@ public interface UserAccessRequestRepository extends JpaRepository<UserAccessReq
            "LEFT JOIN FETCH r.reviewedBy " +
            "WHERE r.id = :id")
     Optional<UserAccessRequest> findByIdWithRelations(@Param("id") Long id);
+
+    @Query("SELECT r FROM UserAccessRequest r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.organization " +
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE r.status = 'PENDING' " +
+           "ORDER BY r.requestDate DESC")
+    List<UserAccessRequest> findAllPending();
 }

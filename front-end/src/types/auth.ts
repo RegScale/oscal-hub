@@ -23,6 +23,7 @@ export interface AuthResponse {
   username: string;
   email: string;
   userId: number;
+  globalRole?: string;
   firstName?: string;
   lastName?: string;
   street?: string;

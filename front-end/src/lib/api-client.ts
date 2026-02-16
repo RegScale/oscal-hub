@@ -2874,6 +2874,135 @@ class ApiClient {
     }
   }
 
+  // ========================================
+  // Super Admin API Methods
+  // ========================================
+
+  /**
+   * Get organizations summary with member counts and pending request counts
+   * Super Admin only
+   */
+  async getOrganizationsSummary(): Promise<Array<{
+    id: number;
+    name: string;
+    memberCount: number;
+    pendingRequestCount: number;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/organizations/summary`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get organizations summary: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get organizations summary:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all pending access requests across all organizations
+   * Super Admin only
+   */
+  async getAllPendingAccessRequests(): Promise<Array<{
+    id: number;
+    userId: number | null;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationId: number;
+    organizationName: string;
+    status: string;
+    message: string | null;
+    requestDate: string;
+    reviewedBy: number | null;
+    reviewedByUsername: string | null;
+    reviewedDate: string | null;
+    notes: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get pending access requests: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get pending access requests:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve an access request
+   * Super Admin only
+   */
+  async approveAccessRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests/${requestId}/approve`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve access request');
+      }
+    } catch (error) {
+      console.error('Failed to approve access request:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject an access request
+   * Super Admin only
+   */
+  async rejectAccessRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests/${requestId}/reject`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject access request');
+      }
+    } catch (error) {
+      console.error('Failed to reject access request:', error);
+      throw error;
+    }
+  }
+
   // Mock implementations for development without backend
 
   private async mockValidate(

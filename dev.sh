@@ -198,20 +198,38 @@ start_docker() {
     return 0
 }
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo -e "${RED}✗ Docker is not running!${NC}"
+# Check if Docker is running - use multiple methods for reliability
+docker_is_running() {
+    # Try docker info first
+    if docker info > /dev/null 2>&1; then
+        return 0
+    fi
+    # Fallback: check if docker ps works
+    if docker ps > /dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
 
-    # Try to start Docker
-    if ! start_docker; then
-        exit 1
+if ! docker_is_running; then
+    echo -e "${YELLOW}Docker not responding, checking if it needs to start...${NC}"
+
+    # Check if Docker Desktop is already running (macOS)
+    if [[ "$(uname -s)" == "Darwin" ]] && pgrep -x "Docker" > /dev/null 2>&1; then
+        echo -e "${BLUE}Docker Desktop is running but not ready yet. Waiting...${NC}"
+    else
+        echo -e "${YELLOW}Starting Docker...${NC}"
+        # Try to start Docker
+        if ! start_docker; then
+            exit 1
+        fi
     fi
 
     # Wait for Docker to be ready
     echo -e "${BLUE}Waiting for Docker to be ready...${NC}"
     DOCKER_READY=0
     for i in {1..60}; do
-        if docker info > /dev/null 2>&1; then
+        if docker_is_running; then
             DOCKER_READY=1
             break
         fi
@@ -228,13 +246,48 @@ if ! docker info > /dev/null 2>&1; then
         exit 1
     fi
 else
-    echo -e "${GREEN}✓ Docker is already running${NC}"
+    echo -e "${GREEN}✓ Docker is running${NC}"
 fi
 
-# Check if PostgreSQL is running
+# Check if PostgreSQL is running and accepting connections
 echo -e "${BLUE}Checking PostgreSQL database...${NC}"
+
+# Function to check if PostgreSQL is accepting connections
+check_postgres_connection() {
+    docker exec oscal-postgres-dev pg_isready -U oscal_user -d oscal_dev > /dev/null 2>&1
+}
+
+# Check if container exists and is running
 if docker ps --format '{{.Names}}' | grep -q '^oscal-postgres-dev$'; then
-    echo -e "${GREEN}✓ PostgreSQL is already running${NC}"
+    echo -e "${BLUE}PostgreSQL container found, verifying connection...${NC}"
+    if check_postgres_connection; then
+        echo -e "${GREEN}✓ PostgreSQL is running and accepting connections${NC}"
+    else
+        echo -e "${YELLOW}PostgreSQL container exists but not responding. Restarting...${NC}"
+        docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" down
+        docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" up -d
+
+        # Wait for PostgreSQL to be ready
+        echo -e "${BLUE}Waiting for PostgreSQL to be ready...${NC}"
+        POSTGRES_READY=0
+        for i in {1..30}; do
+            if check_postgres_connection; then
+                POSTGRES_READY=1
+                break
+            fi
+            echo -n "."
+            sleep 1
+        done
+        echo ""
+
+        if [ $POSTGRES_READY -eq 1 ]; then
+            echo -e "${GREEN}✓ PostgreSQL is ready!${NC}"
+        else
+            echo -e "${RED}✗ PostgreSQL failed to start${NC}"
+            echo -e "${YELLOW}Check logs with: docker logs oscal-postgres-dev${NC}"
+            exit 1
+        fi
+    fi
 else
     echo -e "${YELLOW}PostgreSQL not running. Starting it now...${NC}"
     docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" up -d
@@ -243,7 +296,7 @@ else
     echo -e "${BLUE}Waiting for PostgreSQL to be ready...${NC}"
     POSTGRES_READY=0
     for i in {1..30}; do
-        if docker inspect oscal-postgres-dev --format='{{.State.Health.Status}}' 2>/dev/null | grep -q 'healthy'; then
+        if check_postgres_connection; then
             POSTGRES_READY=1
             break
         fi
@@ -337,11 +390,84 @@ fi
 FRONTEND_PID=$!
 
 echo ""
-echo "Servers starting in background..."
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}OSCAL HUB is starting...${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
 echo "Backend PID: $BACKEND_PID"
 echo "Frontend PID: $FRONTEND_PID"
 echo ""
-echo "To stop:"
-echo "  kill $BACKEND_PID $FRONTEND_PID"
+echo -e "${BLUE}Waiting for services to be ready...${NC}"
+
+# Wait for backend to be ready
+BACKEND_READY=0
+for i in {1..60}; do
+    if curl -s http://localhost:8080/api/health > /dev/null 2>&1; then
+        BACKEND_READY=1
+        break
+    fi
+    # Check if backend process is still running
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        echo -e "${RED}✗ Backend process died unexpectedly${NC}"
+        kill $FRONTEND_PID 2>/dev/null
+        exit 1
+    fi
+    echo -n "."
+    sleep 2
+done
 echo ""
-echo "Or use: pkill -f 'spring-boot:run' && pkill -f 'next-server'"
+
+if [ $BACKEND_READY -eq 1 ]; then
+    echo -e "${GREEN}✓ Backend is ready at http://localhost:8080/api${NC}"
+else
+    echo -e "${RED}✗ Backend failed to start within 2 minutes${NC}"
+    echo -e "${YELLOW}Check logs for errors${NC}"
+fi
+
+# Wait for frontend to be ready
+FRONTEND_READY=0
+for i in {1..30}; do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        FRONTEND_READY=1
+        break
+    fi
+    # Check if frontend process is still running
+    if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+        echo -e "${RED}✗ Frontend process died unexpectedly${NC}"
+        kill $BACKEND_PID 2>/dev/null
+        exit 1
+    fi
+    echo -n "."
+    sleep 1
+done
+echo ""
+
+if [ $FRONTEND_READY -eq 1 ]; then
+    echo -e "${GREEN}✓ Frontend is ready at http://localhost:3000${NC}"
+else
+    echo -e "${YELLOW}⚠ Frontend may still be compiling...${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}OSCAL HUB is running!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo -e "${BLUE}To stop: ./stop.sh${NC}"
+echo -e "${BLUE}To stop everything (including DB): ./stop.sh --all${NC}"
+echo ""
+
+# Trap to handle Ctrl+C gracefully
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Shutting down...${NC}"
+    kill $BACKEND_PID 2>/dev/null
+    kill $FRONTEND_PID 2>/dev/null
+    echo -e "${GREEN}✓ Servers stopped${NC}"
+    echo -e "${BLUE}Note: PostgreSQL is still running. Use ./stop.sh --all to stop it.${NC}"
+    exit 0
+}
+trap cleanup SIGINT SIGTERM
+
+# Wait for both processes (keeps script running)
+wait $BACKEND_PID $FRONTEND_PID

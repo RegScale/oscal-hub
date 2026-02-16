@@ -290,6 +290,18 @@ terraform init
 terraform apply
 ```
 
+**GCP (Manual Deployment):**
+```bash
+# Deploy to production
+./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment prod
+
+# Deploy to staging
+./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment staging
+
+# Build and push images only (without Terraform)
+./build-and-push.sh oscal-hub us-central1
+```
+
 ### Local Development with Cloud Storage
 
 For local development, you can configure cloud storage using a `.env` file:

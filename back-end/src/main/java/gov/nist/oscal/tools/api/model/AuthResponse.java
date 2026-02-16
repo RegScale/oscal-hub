@@ -6,6 +6,7 @@ public class AuthResponse {
     private String username;
     private String email;
     private Long userId;
+    private String globalRole;
 
     public AuthResponse() {
     }
@@ -15,6 +16,14 @@ public class AuthResponse {
         this.username = username;
         this.email = email;
         this.userId = userId;
+    }
+
+    public AuthResponse(String token, String username, String email, Long userId, String globalRole) {
+        this.token = token;
+        this.username = username;
+        this.email = email;
+        this.userId = userId;
+        this.globalRole = globalRole;
     }
 
     public String getToken() {
@@ -47,5 +56,13 @@ public class AuthResponse {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getGlobalRole() {
+        return globalRole;
+    }
+
+    public void setGlobalRole(String globalRole) {
+        this.globalRole = globalRole;
     }
 }

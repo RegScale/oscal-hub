@@ -46,15 +46,15 @@ export function Navigation() {
                     <span className="font-medium">{user.username}</span>
                   </div>
                 </Link>
-                <OrganizationSwitcher />
+                {!isSuperAdmin() && <OrganizationSwitcher />}
                 {isSuperAdmin() && (
-                  <Link href="/admin/organizations">
+                  <Link href="/admin">
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex items-center space-x-2"
-                      title="Admin Settings"
-                      aria-label="Admin Settings"
+                      title="Admin Dashboard"
+                      aria-label="Admin Dashboard"
                     >
                       <Settings className="h-4 w-4" aria-hidden="true" />
                     </Button>

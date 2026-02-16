@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # OSCAL CLI Web Interface - Stop Script
-# This script stops frontend, backend servers, and Docker containers
+# This script stops frontend and backend servers
+# By default, keeps PostgreSQL running for faster restarts
+#
+# Usage:
+#   ./stop.sh          # Stop app servers only (keeps database)
+#   ./stop.sh --all    # Stop everything including database
+#   ./stop.sh --db     # Stop only the database
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -13,32 +19,36 @@ NC='\033[0m' # No Color
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Parse arguments
+STOP_DB=false
+STOP_APP=true
+
+for arg in "$@"; do
+    case $arg in
+        --all)
+            STOP_DB=true
+            ;;
+        --db)
+            STOP_DB=true
+            STOP_APP=false
+            ;;
+        --help|-h)
+            echo "Usage: ./stop.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  (none)    Stop app servers only (keeps database running)"
+            echo "  --all     Stop everything including database"
+            echo "  --db      Stop only the database"
+            echo "  --help    Show this help message"
+            exit 0
+            ;;
+    esac
+done
+
 echo -e "${BLUE}Stopping OSCAL HUB...${NC}"
 echo ""
 
-# Stop Spring Boot backend
-echo -e "${YELLOW}Stopping backend...${NC}"
-# Try both patterns: JAR execution and mvn spring-boot:run
-pkill -f 'oscal-cli-api.*\.jar' 2>/dev/null || pkill -f 'spring-boot:run' 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Backend stopped${NC}"
-else
-    echo -e "${BLUE}ℹ Backend was not running${NC}"
-fi
-
-# Stop Next.js frontend
-echo -e "${YELLOW}Stopping frontend...${NC}"
-pkill -f 'next-server' 2>/dev/null
-pkill -f 'next dev' 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Frontend stopped${NC}"
-else
-    echo -e "${BLUE}ℹ Frontend was not running${NC}"
-fi
-
-# Force kill processes by port (cross-platform)
-echo -e "${YELLOW}Cleaning up ports...${NC}"
-
+# Define kill_port function (used by both app and db stopping)
 kill_port() {
     local port=$1
     # Try lsof first (macOS/Linux)
@@ -53,72 +63,107 @@ kill_port() {
     echo -e "${BLUE}ℹ Port $port was not in use${NC}"
 }
 
-kill_port 8080
-kill_port 3000
-kill_port 3001
-
-# Stop Docker containers
-echo ""
-echo -e "${YELLOW}Stopping Docker containers...${NC}"
-
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo -e "${YELLOW}ℹ Docker is not running, skipping container cleanup${NC}"
+if [ "$STOP_APP" = false ]; then
+    echo -e "${YELLOW}Stopping database only...${NC}"
 else
-    # Stop containers from docker-compose-postgres.yml
-    if docker ps -q --filter "name=oscal-postgres-dev" 2>/dev/null | grep -q .; then
-        echo -e "${YELLOW}Stopping PostgreSQL container...${NC}"
-        docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" down
-        echo -e "${GREEN}✓ PostgreSQL container stopped${NC}"
+    # Stop Spring Boot backend
+    echo -e "${YELLOW}Stopping backend...${NC}"
+    # Try both patterns: JAR execution and mvn spring-boot:run
+    pkill -f 'oscal-cli-api.*\.jar' 2>/dev/null || pkill -f 'spring-boot:run' 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Backend stopped${NC}"
     else
-        echo -e "${BLUE}ℹ PostgreSQL container was not running${NC}"
+        echo -e "${BLUE}ℹ Backend was not running${NC}"
     fi
 
-    # Also check for pgAdmin
-    if docker ps -q --filter "name=oscal-pgadmin" 2>/dev/null | grep -q .; then
-        echo -e "${YELLOW}Stopping pgAdmin container...${NC}"
-        docker stop oscal-pgadmin 2>/dev/null
-        docker rm oscal-pgadmin 2>/dev/null
-        echo -e "${GREEN}✓ pgAdmin container stopped${NC}"
+    # Stop Next.js frontend
+    echo -e "${YELLOW}Stopping frontend...${NC}"
+    pkill -f 'next-server' 2>/dev/null
+    pkill -f 'next dev' 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Frontend stopped${NC}"
     else
-        echo -e "${BLUE}ℹ pgAdmin container was not running${NC}"
+        echo -e "${BLUE}ℹ Frontend was not running${NC}"
     fi
 
-    # Also stop any containers from the main docker-compose.yml
-    if docker ps -q --filter "name=oscal-ux-dev" 2>/dev/null | grep -q .; then
-        echo -e "${YELLOW}Stopping OSCAL UX container...${NC}"
-        docker-compose -f "$SCRIPT_DIR/docker-compose.yml" down
-        echo -e "${GREEN}✓ OSCAL UX containers stopped${NC}"
-    fi
+    # Force kill processes by port (cross-platform)
+    echo -e "${YELLOW}Cleaning up ports...${NC}"
+    kill_port 8080
+    kill_port 3000
+    kill_port 3001
+fi
 
-    # Verify port 5432 is freed (cross-platform)
+# Stop Docker containers (only if --all or --db flag is passed)
+if [ "$STOP_DB" = true ]; then
     echo ""
-    echo -e "${YELLOW}Verifying PostgreSQL port (5432) is freed...${NC}"
-    port_in_use() {
-        local port=$1
-        if command -v lsof &> /dev/null; then
-            lsof -ti:$port 2>/dev/null | grep -q .
-        else
-            netstat -ano 2>/dev/null | grep ":$port " | grep -q "LISTENING"
-        fi
-    }
-    if port_in_use 5432; then
-        echo -e "${RED}⚠ Port 5432 is still in use. Force killing...${NC}"
-        kill_port 5432
-        sleep 1
-        if ! port_in_use 5432; then
-            echo -e "${GREEN}✓ Port 5432 is now free${NC}"
-        else
-            echo -e "${RED}✗ Port 5432 is still in use. Manual intervention may be required.${NC}"
-        fi
+    echo -e "${YELLOW}Stopping Docker containers...${NC}"
+
+    # Check if Docker is running
+    if ! docker info > /dev/null 2>&1; then
+        echo -e "${YELLOW}ℹ Docker is not running, skipping container cleanup${NC}"
     else
-        echo -e "${GREEN}✓ Port 5432 is free${NC}"
+        # Stop containers from docker-compose-postgres.yml
+        if docker ps -q --filter "name=oscal-postgres-dev" 2>/dev/null | grep -q .; then
+            echo -e "${YELLOW}Stopping PostgreSQL container...${NC}"
+            docker-compose -f "$SCRIPT_DIR/docker-compose-postgres.yml" down
+            echo -e "${GREEN}✓ PostgreSQL container stopped${NC}"
+        else
+            echo -e "${BLUE}ℹ PostgreSQL container was not running${NC}"
+        fi
+
+        # Also check for pgAdmin
+        if docker ps -q --filter "name=oscal-pgadmin" 2>/dev/null | grep -q .; then
+            echo -e "${YELLOW}Stopping pgAdmin container...${NC}"
+            docker stop oscal-pgadmin 2>/dev/null
+            docker rm oscal-pgadmin 2>/dev/null
+            echo -e "${GREEN}✓ pgAdmin container stopped${NC}"
+        else
+            echo -e "${BLUE}ℹ pgAdmin container was not running${NC}"
+        fi
+
+        # Also stop any containers from the main docker-compose.yml
+        if docker ps -q --filter "name=oscal-ux-dev" 2>/dev/null | grep -q .; then
+            echo -e "${YELLOW}Stopping OSCAL UX container...${NC}"
+            docker-compose -f "$SCRIPT_DIR/docker-compose.yml" down
+            echo -e "${GREEN}✓ OSCAL UX containers stopped${NC}"
+        fi
+
+        # Verify port 5432 is freed (cross-platform)
+        echo ""
+        echo -e "${YELLOW}Verifying PostgreSQL port (5432) is freed...${NC}"
+        port_in_use() {
+            local port=$1
+            if command -v lsof &> /dev/null; then
+                lsof -ti:$port 2>/dev/null | grep -q .
+            else
+                netstat -ano 2>/dev/null | grep ":$port " | grep -q "LISTENING"
+            fi
+        }
+        if port_in_use 5432; then
+            echo -e "${RED}⚠ Port 5432 is still in use. Force killing...${NC}"
+            kill_port 5432
+            sleep 1
+            if ! port_in_use 5432; then
+                echo -e "${GREEN}✓ Port 5432 is now free${NC}"
+            else
+                echo -e "${RED}✗ Port 5432 is still in use. Manual intervention may be required.${NC}"
+            fi
+        else
+            echo -e "${GREEN}✓ Port 5432 is free${NC}"
+        fi
     fi
+else
+    echo ""
+    echo -e "${BLUE}ℹ Database left running (use --all to stop everything)${NC}"
 fi
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}All servers and containers stopped!${NC}"
+if [ "$STOP_DB" = true ]; then
+    echo -e "${GREEN}All servers and containers stopped!${NC}"
+else
+    echo -e "${GREEN}App servers stopped!${NC}"
+fi
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${BLUE}To restart:${NC}"

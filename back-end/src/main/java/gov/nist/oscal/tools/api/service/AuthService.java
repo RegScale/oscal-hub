@@ -167,7 +167,7 @@ public class AuthService {
             // Generate token
             String token = jwtUtil.generateToken(userDetails);
 
-            return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getId());
+            return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getId(), user.getGlobalRole().toString());
 
         } catch (AuthenticationException e) {
             // Record failed login attempt
