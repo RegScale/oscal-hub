@@ -25,6 +25,10 @@ import type {
   LibraryVersionRequest,
   LibraryTag,
   LibraryAnalytics,
+  RatingStats,
+  RatingRequest,
+  LibraryComment,
+  CommentRequest,
   ServiceAccountTokenRequest,
   ServiceAccountTokenResponse,
   SspVisualizationData,
@@ -1736,6 +1740,186 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to get popular tags:', error);
       return [];
+    }
+  }
+
+  // ========================
+  // Library Rating Methods
+  // ========================
+
+  /**
+   * Rate a library item (1-5 stars)
+   * Creates or updates the user's rating for the item
+   */
+  async rateLibraryItem(itemId: string, rating: number): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ rating } as RatingRequest),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to rate library item: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get rating statistics for a library item
+   */
+  async getLibraryItemRatings(itemId: string): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get library item ratings: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete the user's rating for a library item
+   */
+  async deleteLibraryItemRating(itemId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete library item rating: ${response.statusText}`);
+    }
+  }
+
+  // ========================
+  // Library Comment Methods
+  // ========================
+
+  /**
+   * Create a comment on a library item
+   * @param itemId The library item UUID
+   * @param content The comment content
+   * @param parentCommentId Optional parent comment ID for replies
+   */
+  async createLibraryComment(
+    itemId: string,
+    content: string,
+    parentCommentId?: string
+  ): Promise<LibraryComment> {
+    const request: CommentRequest = { content, parentCommentId };
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create comment: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get all comments for a library item (threaded)
+   */
+  async getLibraryComments(itemId: string): Promise<LibraryComment[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get comments: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get comment count for a library item
+   */
+  async getLibraryCommentCount(itemId: string): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get comment count: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Update a comment
+   */
+  async updateLibraryComment(
+    itemId: string,
+    commentId: string,
+    content: string
+  ): Promise<LibraryComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content } as CommentRequest),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update comment: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete a comment (soft delete)
+   */
+  async deleteLibraryComment(itemId: string, commentId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete comment: ${response.statusText}`);
     }
   }
 

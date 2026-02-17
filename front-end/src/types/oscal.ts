@@ -259,6 +259,11 @@ export interface LibraryItem {
   viewCount: number;
   versionCount: number;
 
+  // Rating and comment fields
+  averageRating?: number;
+  totalRatings?: number;
+  commentCount?: number;
+
   // Convenience properties (computed or optional)
   name?: string; // Alias for title
   blobUrl?: string; // Optional blob storage URL
@@ -307,6 +312,36 @@ export interface LibraryAnalytics {
     title: string;
     downloadCount: number;
   }>;
+}
+
+// Rating Types
+export interface RatingStats {
+  averageRating: number;
+  totalRatings: number;
+  userRating?: number; // Current user's rating, null if not rated
+}
+
+export interface RatingRequest {
+  rating: number; // 1-5
+}
+
+// Comment Types
+export interface LibraryComment {
+  commentId: string;
+  content: string;
+  username: string;
+  userDisplayName?: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  isEdited: boolean;
+  parentCommentId?: string;
+  replies: LibraryComment[];
+  replyCount: number;
+}
+
+export interface CommentRequest {
+  content: string;
+  parentCommentId?: string; // Optional - for replies
 }
 
 // Service Account Token Types

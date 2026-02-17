@@ -25,6 +25,11 @@ public class LibraryItemResponse {
     private Long viewCount;
     private Integer versionCount;
 
+    // Rating and comment fields
+    private Double averageRating;
+    private Long totalRatings;
+    private Long commentCount;
+
     // Constructors
     public LibraryItemResponse() {
     }
@@ -151,5 +156,29 @@ public class LibraryItemResponse {
 
     public void setVersionCount(Integer versionCount) {
         this.versionCount = versionCount;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public Long getTotalRatings() {
+        return totalRatings;
+    }
+
+    public void setTotalRatings(Long totalRatings) {
+        this.totalRatings = totalRatings;
+    }
+
+    public Long getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(Long commentCount) {
+        this.commentCount = commentCount;
     }
 }
