@@ -48,7 +48,8 @@ export function DigitalSignatureStep({
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       if (context) {
-        context.strokeStyle = '#000000';
+        // Use white stroke for dark background
+        context.strokeStyle = '#ffffff';
         context.lineWidth = 2;
         context.lineCap = 'round';
         context.lineJoin = 'round';
@@ -59,9 +60,12 @@ export function DigitalSignatureStep({
         canvas.width = rect.width;
         canvas.height = rect.height;
 
-        // Fill with white background
-        context.fillStyle = '#ffffff';
+        // Fill with dark background (slate-800)
+        context.fillStyle = '#1e293b';
         context.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Reset stroke style after fill
+        context.strokeStyle = '#ffffff';
       }
     }
   }, [showElectronicSignature]);
@@ -100,8 +104,11 @@ export function DigitalSignatureStep({
     if (!ctx || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    ctx.fillStyle = '#ffffff';
+    // Clear with dark background (slate-800)
+    ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Reset stroke style to white after clearing
+    ctx.strokeStyle = '#ffffff';
     setHasSignature(false);
   };
 
@@ -288,7 +295,7 @@ export function DigitalSignatureStep({
           {/* Signature Canvas */}
           <div className="mb-6">
             <Label className="mb-2 block">Draw Your Signature *</Label>
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white">
+            <div className="border-2 border-dashed border-slate-500 rounded-lg overflow-hidden bg-slate-800">
               <canvas
                 ref={canvasRef}
                 onMouseDown={startDrawing}
@@ -335,6 +342,17 @@ export function DigitalSignatureStep({
                 <p className="text-sm mt-1 text-red-800 dark:text-red-200">{error}</p>
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* Requirements indicator */}
+          {(!hasSignature || !signerName.trim()) && (
+            <div className="mb-4 p-3 bg-amber-900/20 border border-amber-700 rounded-lg">
+              <p className="text-sm text-amber-300">
+                <strong>To sign:</strong>
+                {!signerName.trim() && <span className="block">• Enter your full name above</span>}
+                {!hasSignature && <span className="block">• Draw your signature in the box above</span>}
+              </p>
+            </div>
           )}
 
           {/* Action buttons */}

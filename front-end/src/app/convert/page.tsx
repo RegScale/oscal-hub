@@ -24,8 +24,8 @@ export default function ConvertPage() {
   const [inputContent, setInputContent] = useState<string>('');
   const [outputContent, setOutputContent] = useState<string>('');
   const [modelType, setModelType] = useState<OscalModelType | ''>('');
-  const [fromFormat, setFromFormat] = useState<OscalFormat>('json');
-  const [toFormat, setToFormat] = useState<OscalFormat>('xml');
+  const [fromFormat, setFromFormat] = useState<OscalFormat | ''>('');
+  const [toFormat, setToFormat] = useState<OscalFormat | ''>('');
   const [isConverting, setIsConverting] = useState(false);
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
   const savedFilesRef = useRef<SavedFileSelectorRef>(null);
@@ -40,15 +40,16 @@ export default function ConvertPage() {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension === 'xml') {
       setFromFormat('xml');
-      // Set a different target format
-      if (toFormat === 'xml') setToFormat('json');
     } else if (extension === 'json') {
       setFromFormat('json');
-      if (toFormat === 'json') setToFormat('xml');
     } else if (extension === 'yaml' || extension === 'yml') {
       setFromFormat('yaml');
-      if (toFormat === 'yaml') setToFormat('xml');
+    } else {
+      setFromFormat('');
     }
+
+    // Clear destination format - let user choose
+    setToFormat('');
 
     toast.success('File loaded successfully');
   };
@@ -64,14 +65,8 @@ export default function ConvertPage() {
     setConversionResult(null);
     setFromFormat(file.format);
 
-    // Set a different target format
-    if (file.format === 'xml') {
-      if (toFormat === 'xml') setToFormat('json');
-    } else if (file.format === 'json') {
-      if (toFormat === 'json') setToFormat('xml');
-    } else if (file.format === 'yaml') {
-      if (toFormat === 'yaml') setToFormat('xml');
-    }
+    // Clear destination format - let user choose
+    setToFormat('');
 
     if (file.modelType) {
       setModelType(file.modelType);
@@ -84,10 +79,12 @@ export default function ConvertPage() {
     setOutputContent('');
     setConversionResult(null);
     setModelType('');
+    setFromFormat('');
+    setToFormat('');
   };
 
   const handleConvert = async () => {
-    if (!inputContent || !modelType) return;
+    if (!inputContent || !modelType || !fromFormat || !toFormat) return;
 
     setIsConverting(true);
     setOutputContent('');
@@ -97,8 +94,8 @@ export default function ConvertPage() {
     try {
       const result = await apiClient.convert({
         content: inputContent,
-        fromFormat,
-        toFormat,
+        fromFormat: fromFormat as OscalFormat,
+        toFormat: toFormat as OscalFormat,
         modelType,
         fileName: selectedFile?.name,
       });
@@ -127,10 +124,10 @@ export default function ConvertPage() {
   };
 
   const handleDownload = () => {
-    if (!outputContent || !selectedFile) return;
+    if (!outputContent || !selectedFile || !toFormat) return;
 
-    const filename = generateConvertedFilename(selectedFile.name, toFormat);
-    downloadFile(outputContent, filename, toFormat);
+    const filename = generateConvertedFilename(selectedFile.name, toFormat as OscalFormat);
+    downloadFile(outputContent, filename, toFormat as OscalFormat);
     toast.success('Converted file downloaded');
   };
 
@@ -148,7 +145,7 @@ export default function ConvertPage() {
     }
   };
 
-  const canConvert = selectedFile && modelType && inputContent && !isConverting;
+  const canConvert = selectedFile && modelType && inputContent && fromFormat && toFormat && !isConverting;
   const hasOutput = conversionResult?.success && outputContent;
 
   return (
@@ -213,19 +210,19 @@ export default function ConvertPage() {
                         disabled={!canConvert}
                         className="flex-1"
                         size="lg"
-                        aria-label={isConverting ? 'Converting document, please wait' : `Convert document from ${fromFormat.toUpperCase()} to ${toFormat.toUpperCase()}`}
+                        aria-label={isConverting ? 'Converting document, please wait' : `Convert document${fromFormat && toFormat ? ` from ${fromFormat.toUpperCase()} to ${toFormat.toUpperCase()}` : ''}`}
                       >
                         {isConverting ? 'Converting...' : 'Convert'}
                       </Button>
 
                       <Button
                         onClick={handleSwapFormats}
-                        disabled={!selectedFile}
+                        disabled={!selectedFile || !fromFormat || !toFormat}
                         variant="outline"
                         size="lg"
                         className="px-3"
                         title="Swap formats"
-                        aria-label={`Swap formats between ${fromFormat.toUpperCase()} and ${toFormat.toUpperCase()}`}
+                        aria-label={`Swap formats${fromFormat && toFormat ? ` between ${fromFormat.toUpperCase()} and ${toFormat.toUpperCase()}` : ''}`}
                       >
                         <RefreshCw className="h-4 w-4" aria-hidden="true" />
                       </Button>
@@ -235,7 +232,7 @@ export default function ConvertPage() {
                       <div className="space-y-2" role="status" aria-live="polite">
                         <Progress value={undefined} aria-label="Conversion progress" />
                         <p className="text-xs text-center text-muted-foreground">
-                          Converting {fromFormat.toUpperCase()} to {toFormat.toUpperCase()}...
+                          Converting {fromFormat ? fromFormat.toUpperCase() : '...'} to {toFormat ? toFormat.toUpperCase() : '...'}...
                         </p>
                       </div>
                     )}
@@ -246,10 +243,10 @@ export default function ConvertPage() {
                         variant="secondary"
                         className="w-full"
                         size="lg"
-                        aria-label={`Download converted document as ${toFormat.toUpperCase()} file`}
+                        aria-label={`Download converted document as ${toFormat ? toFormat.toUpperCase() : ''} file`}
                       >
                         <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                        Download {toFormat.toUpperCase()}
+                        Download {toFormat ? toFormat.toUpperCase() : ''}
                       </Button>
                     )}
                   </CardContent>
@@ -300,13 +297,13 @@ export default function ConvertPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">
-                      Source ({fromFormat.toUpperCase()})
+                      Source{fromFormat ? ` (${fromFormat.toUpperCase()})` : ''}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <CodeEditor
                       content={inputContent}
-                      format={fromFormat}
+                      format={fromFormat || 'json'}
                       readOnly={true}
                       height="600px"
                     />
@@ -317,14 +314,14 @@ export default function ConvertPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">
-                      {outputContent ? `Result (${toFormat.toUpperCase()})` : 'Result'}
+                      {outputContent && toFormat ? `Result (${toFormat.toUpperCase()})` : 'Result'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {outputContent ? (
                       <CodeEditor
                         content={outputContent}
-                        format={toFormat}
+                        format={toFormat || 'json'}
                         readOnly={true}
                         height="600px"
                       />
@@ -339,7 +336,9 @@ export default function ConvertPage() {
                           <p className="text-sm">
                             {isConverting
                               ? 'Please wait while we process your document'
-                              : `Will convert from ${fromFormat.toUpperCase()} to ${toFormat.toUpperCase()}`}
+                              : fromFormat && toFormat
+                                ? `Will convert from ${fromFormat.toUpperCase()} to ${toFormat.toUpperCase()}`
+                                : 'Select source and target formats'}
                           </p>
                         </div>
                       </div>
