@@ -22,6 +22,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +32,8 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @Tag(name = "Authentication", description = "User authentication and registration APIs")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private AuthService authService;
@@ -74,8 +78,11 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            logger.error("Login failed for user {}: {} - {}", request.getUsername(), e.getClass().getSimpleName(), e.getMessage(), e);
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Invalid username or password");
+            error.put("error", e.getMessage() != null && e.getMessage().contains("locked")
+                ? e.getMessage()
+                : "Invalid username or password");
             return ResponseEntity.status(401).body(error);
         }
     }
@@ -173,6 +180,7 @@ public class AuthController {
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
         response.put("userId", user.getId());
+        response.put("globalRole", user.getGlobalRole() != null ? user.getGlobalRole().name() : null);
         response.put("street", user.getStreet());
         response.put("city", user.getCity());
         response.put("state", user.getState());

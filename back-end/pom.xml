@@ -215,6 +215,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- TOTP (Time-based One-Time Password) for MFA -->
+        <dependency>
+            <groupId>dev.samstevens.totp</groupId>
+            <artifactId>totp</artifactId>
+            <version>1.7.1</version>
+        </dependency>
+
         <!-- OpenAPI/Swagger Documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>

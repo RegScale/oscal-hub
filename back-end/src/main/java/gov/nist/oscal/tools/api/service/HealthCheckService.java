@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.config.FileValidationConfig;
 import gov.nist.oscal.tools.api.model.health.ComponentHealth;
 import gov.nist.oscal.tools.api.model.health.DetailedHealthResponse;
 import gov.nist.oscal.tools.api.model.health.DetailedHealthResponse.ApplicationInfo;
@@ -49,6 +50,12 @@ public class HealthCheckService {
 
     @Autowired(required = false)
     private GcsStorageService gcsStorageService;
+
+    @Autowired(required = false)
+    private ClamAvScannerService clamAvScannerService;
+
+    @Autowired
+    private FileValidationConfig fileValidationConfig;
 
     @Value("${spring.application.name:oscal-cli-api}")
     private String applicationName;
@@ -154,6 +161,11 @@ public class HealthCheckService {
             case "config":
             case "configuration":
                 return checkSecretsHealth();
+            case "clamav":
+            case "malware":
+            case "antivirus":
+            case "virus":
+                return checkClamavHealth();
             default:
                 return ComponentHealth.builder()
                         .status("UNKNOWN")
@@ -195,6 +207,7 @@ public class HealthCheckService {
         components.put("diskSpace", checkDiskSpaceHealth());
         components.put("oscalLibrary", checkOscalLibraryHealth());
         components.put("secrets", checkSecretsHealth());
+        components.put("clamav", checkClamavHealth());
         return components;
     }
 
@@ -626,6 +639,86 @@ public class HealthCheckService {
             return ComponentHealth.builder()
                     .status("DOWN")
                     .message("OSCAL library check failed: " + e.getMessage())
+                    .details(details)
+                    .responseTimeMs(System.currentTimeMillis() - startTime)
+                    .build();
+        }
+    }
+
+    private ComponentHealth checkClamavHealth() {
+        long startTime = System.currentTimeMillis();
+
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("enabled", fileValidationConfig.isEnableVirusScanning());
+
+        // If malware scanning is disabled, report as UNKNOWN (not applicable)
+        if (!fileValidationConfig.isEnableVirusScanning()) {
+            details.put("status", "disabled");
+            return ComponentHealth.builder()
+                    .status("UNKNOWN")
+                    .message("Malware scanning is disabled")
+                    .details(details)
+                    .responseTimeMs(System.currentTimeMillis() - startTime)
+                    .build();
+        }
+
+        // Malware scanning is enabled - check ClamAV availability
+        details.put("host", fileValidationConfig.getClamavHost());
+        details.put("port", fileValidationConfig.getClamavPort());
+        details.put("failOpen", fileValidationConfig.isClamavFailOpen());
+
+        try {
+            if (clamAvScannerService == null) {
+                return ComponentHealth.builder()
+                        .status("DOWN")
+                        .message("ClamAV scanner service is not available")
+                        .details(details)
+                        .responseTimeMs(System.currentTimeMillis() - startTime)
+                        .build();
+            }
+
+            boolean available = clamAvScannerService.isAvailable();
+            String version = null;
+
+            if (available) {
+                try {
+                    version = clamAvScannerService.getVersion();
+                    details.put("version", version);
+                } catch (Exception e) {
+                    logger.debug("Could not retrieve ClamAV version: {}", e.getMessage());
+                }
+            }
+
+            details.put("connected", available);
+
+            if (available) {
+                return ComponentHealth.builder()
+                        .status("UP")
+                        .message("ClamAV is available" + (version != null ? " (" + version + ")" : ""))
+                        .details(details)
+                        .responseTimeMs(System.currentTimeMillis() - startTime)
+                        .build();
+            } else {
+                // If fail-open is enabled, report as DEGRADED instead of DOWN
+                String status = fileValidationConfig.isClamavFailOpen() ? "DEGRADED" : "DOWN";
+                String message = fileValidationConfig.isClamavFailOpen()
+                        ? "ClamAV unavailable (fail-open mode - uploads allowed without scanning)"
+                        : "ClamAV unavailable (fail-closed mode - uploads will be rejected)";
+
+                return ComponentHealth.builder()
+                        .status(status)
+                        .message(message)
+                        .details(details)
+                        .responseTimeMs(System.currentTimeMillis() - startTime)
+                        .build();
+            }
+        } catch (Exception e) {
+            details.put("error", e.getClass().getSimpleName());
+            details.put("errorMessage", e.getMessage());
+
+            return ComponentHealth.builder()
+                    .status("DOWN")
+                    .message("ClamAV health check failed: " + e.getMessage())
                     .details(details)
                     .responseTimeMs(System.currentTimeMillis() - startTime)
                     .build();

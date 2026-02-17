@@ -855,3 +855,57 @@ export interface ComplianceSummary {
   assessmentDate: string;
   byCategory: Record<string, CategorySummary>;
 }
+
+// Security Policy Types
+export interface SecurityPolicy {
+  id: number;
+  mfaRequired: boolean;
+  passwordMinLength: number;
+  passwordMaxLength: number;
+  passwordRotationDays: number;
+  auditLogRetentionDays: number;
+  updatedAt: string; // ISO 8601 date string
+  updatedBy?: string;
+}
+
+export interface SecurityPolicyUpdateRequest {
+  mfaRequired: boolean;
+  passwordMinLength: number;
+  passwordMaxLength: number;
+  passwordRotationDays: number;
+  auditLogRetentionDays: number;
+}
+
+// MFA Types
+export interface MfaSetupResponse {
+  qrCodeDataUri: string;
+  secret: string;
+  formattedSecret: string;
+  setupToken: string;
+}
+
+export interface MfaSetupCompleteRequest {
+  setupToken: string;
+  totpCode: string;
+}
+
+export interface MfaSetupCompleteResponse {
+  token: string;
+  backupCodes: string[];
+}
+
+export interface MfaVerifyRequest {
+  mfaToken: string;
+  totpCode: string;
+}
+
+export interface MfaBackupCodeRequest {
+  mfaToken: string;
+  backupCode: string;
+}
+
+export interface MfaStatus {
+  mfaEnabled: boolean;
+  mfaSetupCompleted: boolean;
+  backupCodesRemaining: number;
+}

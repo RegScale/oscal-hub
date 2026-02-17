@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, Database, HardDrive, Cloud, Server, CheckCircle2, XCircle, AlertCircle, Loader2, BookOpen } from 'lucide-react';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+
 interface HealthComponent {
   status: 'UP' | 'DOWN' | 'UNKNOWN';
   details?: Record<string, unknown>;
@@ -28,8 +30,9 @@ export function SystemHealth() {
 
   const checkApiDocs = async () => {
     try {
-      // Use relative URL for same-origin requests
-      const response = await fetch('/v3/api-docs', {
+      // Use backend URL for API docs
+      const backendBase = API_BASE_URL.replace('/api', '');
+      const response = await fetch(`${backendBase}/v3/api-docs`, {
         method: 'GET'
       });
 
@@ -41,8 +44,9 @@ export function SystemHealth() {
 
   const fetchHealth = async () => {
     try {
-      // Use relative URL for same-origin requests
-      const response = await fetch('/actuator/health');
+      // Use backend URL for health endpoint
+      const backendBase = API_BASE_URL.replace('/api', '');
+      const response = await fetch(`${backendBase}/actuator/health`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);

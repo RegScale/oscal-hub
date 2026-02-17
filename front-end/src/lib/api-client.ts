@@ -46,6 +46,14 @@ import type {
   ComplianceSummary,
   Soc2Control,
   GapAnalysis,
+  SecurityPolicy,
+  SecurityPolicyUpdateRequest,
+  MfaSetupResponse,
+  MfaSetupCompleteRequest,
+  MfaSetupCompleteResponse,
+  MfaVerifyRequest,
+  MfaBackupCodeRequest,
+  MfaStatus,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -150,21 +158,25 @@ class ApiClient {
 
       const authResponse: AuthResponse = await response.json();
 
-      // Store token in localStorage
-      localStorage.setItem('token', authResponse.token);
-      localStorage.setItem('user', JSON.stringify({
-        userId: authResponse.userId,
-        username: authResponse.username,
-        email: authResponse.email,
-        street: authResponse.street,
-        city: authResponse.city,
-        state: authResponse.state,
-        zip: authResponse.zip,
-        title: authResponse.title,
-        organization: authResponse.organization,
-        phoneNumber: authResponse.phoneNumber,
-        logo: authResponse.logo,
-      }));
+      // Only store token if MFA is not required (token will be present)
+      // If MFA is required, mfaToken will be present instead of regular token
+      if (authResponse.token && !authResponse.mfaRequired && !authResponse.mfaSetupRequired) {
+        localStorage.setItem('token', authResponse.token);
+        localStorage.setItem('user', JSON.stringify({
+          userId: authResponse.userId,
+          username: authResponse.username,
+          email: authResponse.email,
+          globalRole: authResponse.globalRole,
+          street: authResponse.street,
+          city: authResponse.city,
+          state: authResponse.state,
+          zip: authResponse.zip,
+          title: authResponse.title,
+          organization: authResponse.organization,
+          phoneNumber: authResponse.phoneNumber,
+          logo: authResponse.logo,
+        }));
+      }
 
       return authResponse;
     } catch (error) {
@@ -289,11 +301,19 @@ class ApiClient {
       const authResponse: AuthResponse = await response.json();
 
       // Update token in localStorage
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token!);
+
+      // Preserve existing user data (especially globalRole, organizationId, etc.)
+      // and merge with refreshed data
+      const existingUser = localStorage.getItem('user');
+      const existingUserData = existingUser ? JSON.parse(existingUser) : {};
+
       localStorage.setItem('user', JSON.stringify({
+        ...existingUserData, // Preserve existing fields like organizationId, orgRole
         userId: authResponse.userId,
         username: authResponse.username,
         email: authResponse.email,
+        globalRole: authResponse.globalRole || existingUserData.globalRole, // Preserve if not in response
         street: authResponse.street,
         city: authResponse.city,
         state: authResponse.state,
@@ -316,6 +336,8 @@ class ApiClient {
   async updateProfile(updates: {
     email?: string;
     password?: string;
+    firstName?: string;
+    lastName?: string;
     street?: string;
     city?: string;
     state?: string;
@@ -2794,12 +2816,28 @@ class ApiClient {
 
       const result = await response.json();
 
+      // Get existing user data to preserve firstName/lastName
+      const existingUser = localStorage.getItem('user');
+      let firstName = '';
+      let lastName = '';
+      if (existingUser) {
+        try {
+          const parsed = JSON.parse(existingUser);
+          firstName = parsed.firstName || '';
+          lastName = parsed.lastName || '';
+        } catch (e) {
+          // ignore
+        }
+      }
+
       // Update token and user info in localStorage
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify({
         userId: result.userId,
         username: result.username,
         email: result.email,
+        firstName: result.firstName || firstName,
+        lastName: result.lastName || lastName,
         organizationId: result.organizationId,
         organizationName: result.organizationName,
         orgRole: result.orgRole,
@@ -2845,12 +2883,28 @@ class ApiClient {
 
       const result = await response.json();
 
+      // Get existing user data to preserve firstName/lastName
+      const existingUser = localStorage.getItem('user');
+      let firstName = '';
+      let lastName = '';
+      if (existingUser) {
+        try {
+          const parsed = JSON.parse(existingUser);
+          firstName = parsed.firstName || '';
+          lastName = parsed.lastName || '';
+        } catch (e) {
+          // ignore
+        }
+      }
+
       // Update token and user info in localStorage
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify({
         userId: result.userId,
         username: result.username,
         email: result.email,
+        firstName: result.firstName || firstName,
+        lastName: result.lastName || lastName,
         organizationId: result.organizationId,
         organizationName: result.organizationName,
         orgRole: result.orgRole,
@@ -3705,6 +3759,315 @@ class ApiClient {
       timestamp: new Date().toISOString(),
     };
   }
+
+  // ========================================
+  // Security Policy API Methods
+  // ========================================
+
+  /**
+   * Get current security policy (Super Admin only)
+   */
+  async getSecurityPolicy(): Promise<SecurityPolicy> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to fetch security policy');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update security policy (Super Admin only)
+   */
+  async updateSecurityPolicy(request: SecurityPolicyUpdateRequest): Promise<SecurityPolicy> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to update security policy');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Trigger manual audit log cleanup (Super Admin only)
+   */
+  async triggerAuditLogCleanup(): Promise<{ message: string; deletedCount: number; retentionDays: number }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy/cleanup-logs`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      },
+      60000 // 60 seconds for cleanup operation
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to trigger audit log cleanup');
+    }
+
+    return response.json();
+  }
+
+  // ========================================
+  // MFA API Methods
+  // ========================================
+
+  /**
+   * Initiate MFA setup - generates QR code and secret
+   * @param mfaSetupToken Optional MFA setup token for users coming from login flow
+   */
+  async initiateMfaSetup(mfaSetupToken?: string): Promise<MfaSetupResponse> {
+    // Use the MFA setup token if provided (from login flow), otherwise use regular auth
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (mfaSetupToken) {
+      headers['Authorization'] = `Bearer ${mfaSetupToken}`;
+    } else {
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/setup/initiate`,
+      {
+        method: 'POST',
+        headers,
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to initiate MFA setup');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Complete MFA setup by verifying the first TOTP code
+   */
+  async completeMfaSetup(request: MfaSetupCompleteRequest): Promise<MfaSetupCompleteResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/setup/complete`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to complete MFA setup');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Verify TOTP code during login
+   */
+  async verifyMfaCode(request: MfaVerifyRequest): Promise<AuthResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/verify`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'MFA verification failed');
+    }
+
+    const authResponse: AuthResponse = await response.json();
+
+    // Store token after successful MFA verification
+    if (authResponse.token) {
+      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('user', JSON.stringify({
+        userId: authResponse.userId,
+        username: authResponse.username,
+        email: authResponse.email,
+        globalRole: authResponse.globalRole,
+      }));
+    }
+
+    return authResponse;
+  }
+
+  /**
+   * Verify backup code during login
+   */
+  async verifyBackupCode(request: MfaBackupCodeRequest): Promise<AuthResponse & { backupCodesRemaining?: number; warning?: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/verify-backup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Backup code verification failed');
+    }
+
+    const authResponse = await response.json();
+
+    // Store token after successful backup code verification
+    if (authResponse.token) {
+      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('user', JSON.stringify({
+        userId: authResponse.user?.id || authResponse.userId,
+        username: authResponse.user?.username || authResponse.username,
+        email: authResponse.user?.email || authResponse.email,
+        globalRole: authResponse.user?.globalRole || authResponse.globalRole,
+      }));
+    }
+
+    return authResponse;
+  }
+
+  /**
+   * Get MFA status for current user
+   */
+  async getMfaStatus(): Promise<MfaStatus> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/status`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to get MFA status');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get backup codes count
+   */
+  async getBackupCodesCount(): Promise<{ count: number }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/backup-codes/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to get backup codes count');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Regenerate backup codes (requires TOTP verification)
+   */
+  async regenerateBackupCodes(totpCode: string): Promise<{ backupCodes: string[] }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/backup-codes/regenerate?totpCode=${encodeURIComponent(totpCode)}`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to regenerate backup codes');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Disable MFA for current user (requires TOTP verification)
+   */
+  async disableMfa(totpCode: string): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/disable?totpCode=${encodeURIComponent(totpCode)}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to disable MFA');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Admin: Disable MFA for another user (Super Admin only)
+   */
+  async adminDisableMfa(userId: number): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/admin/users/${userId}/mfa`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to disable MFA for user');
+    }
+
+    return response.json();
+  }
+
+  // ========================================
+  // Mock Implementations (for development)
+  // ========================================
 
   private async mockConvert(request: ConversionRequest): Promise<ConversionResult> {
     await new Promise((resolve) => setTimeout(resolve, 1000));

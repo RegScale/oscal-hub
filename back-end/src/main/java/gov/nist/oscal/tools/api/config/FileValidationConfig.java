@@ -97,14 +97,36 @@ public class FileValidationConfig {
     private boolean enableMagicNumberValidation = true;
 
     /**
-     * Enable virus scanning integration (optional, requires external service)
+     * Enable virus scanning integration (optional, requires ClamAV)
      */
     private boolean enableVirusScanning = false;
 
     /**
-     * Virus scanning service URL (if enabled)
+     * ClamAV daemon host (default: localhost for sidecar deployment)
      */
-    private String virusScanningUrl;
+    private String clamavHost = "localhost";
+
+    /**
+     * ClamAV daemon port (default: 3310)
+     */
+    private int clamavPort = 3310;
+
+    /**
+     * ClamAV connection and read timeout in milliseconds (default: 30 seconds)
+     */
+    private int clamavTimeoutMs = 30000;
+
+    /**
+     * ClamAV stream chunk size in bytes (default: 2048)
+     */
+    private int clamavChunkSize = 2048;
+
+    /**
+     * Fail-open behavior when ClamAV is unavailable.
+     * If true: allow file uploads when ClamAV is down (less secure)
+     * If false: reject file uploads when ClamAV is down (more secure, may impact availability)
+     */
+    private boolean clamavFailOpen = false;
 
     // Getters and Setters
 
@@ -172,12 +194,44 @@ public class FileValidationConfig {
         this.enableVirusScanning = enableVirusScanning;
     }
 
-    public String getVirusScanningUrl() {
-        return virusScanningUrl;
+    public String getClamavHost() {
+        return clamavHost;
     }
 
-    public void setVirusScanningUrl(String virusScanningUrl) {
-        this.virusScanningUrl = virusScanningUrl;
+    public void setClamavHost(String clamavHost) {
+        this.clamavHost = clamavHost;
+    }
+
+    public int getClamavPort() {
+        return clamavPort;
+    }
+
+    public void setClamavPort(int clamavPort) {
+        this.clamavPort = clamavPort;
+    }
+
+    public int getClamavTimeoutMs() {
+        return clamavTimeoutMs;
+    }
+
+    public void setClamavTimeoutMs(int clamavTimeoutMs) {
+        this.clamavTimeoutMs = clamavTimeoutMs;
+    }
+
+    public int getClamavChunkSize() {
+        return clamavChunkSize;
+    }
+
+    public void setClamavChunkSize(int clamavChunkSize) {
+        this.clamavChunkSize = clamavChunkSize;
+    }
+
+    public boolean isClamavFailOpen() {
+        return clamavFailOpen;
+    }
+
+    public void setClamavFailOpen(boolean clamavFailOpen) {
+        this.clamavFailOpen = clamavFailOpen;
     }
 
     public String[][] getImageMagicNumbers() {

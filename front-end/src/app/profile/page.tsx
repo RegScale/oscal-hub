@@ -16,7 +16,7 @@ import { ServiceAccountTokenGenerator } from '@/components/ServiceAccountTokenGe
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -141,18 +141,49 @@ export default function ProfilePage() {
       // Fetch the updated user data from the server
       const updatedUser = await apiClient.getCurrentUser();
 
-      // Update localStorage with the complete user data
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      // Preserve organization data from existing localStorage (not returned by /auth/me)
+      const existingUserStr = localStorage.getItem('user');
+      let organizationData = {};
+      if (existingUserStr) {
+        try {
+          const existingUser = JSON.parse(existingUserStr);
+          organizationData = {
+            organizationId: existingUser.organizationId,
+            organizationName: existingUser.organizationName,
+            orgRole: existingUser.orgRole,
+            globalRole: existingUser.globalRole,
+          };
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Update localStorage with merged user data (profile + organization context)
+      localStorage.setItem('user', JSON.stringify({
+        ...updatedUser,
+        ...organizationData,
+      }));
+
+      // Sync AuthContext with updated localStorage
+      updateUser();
+
+      // Update local form state with new values
+      setFirstName(updatedUser.firstName || '');
+      setLastName(updatedUser.lastName || '');
+      setEmail(updatedUser.email || '');
+      setStreet(updatedUser.street || '');
+      setCity(updatedUser.city || '');
+      setState(updatedUser.state || '');
+      setZip(updatedUser.zip || '');
+      setTitle(updatedUser.title || '');
+      setOrganization(updatedUser.organization || '');
+      setPhoneNumber(updatedUser.phoneNumber || '');
+      setLogoPreview(updatedUser.logo || null);
 
       setSuccessMessage('Profile updated successfully');
       toast.success('Profile updated successfully');
       setNewPassword('');
       setConfirmPassword('');
-
-      // Refresh the page to reload user data
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (error: unknown) {
       console.error('Profile update error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');

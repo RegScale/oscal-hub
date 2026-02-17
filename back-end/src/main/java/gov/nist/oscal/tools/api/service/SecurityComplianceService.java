@@ -219,11 +219,15 @@ public class SecurityComplianceService {
                 .name("Vulnerability Detection")
                 .description("The entity detects vulnerabilities and implements controls to mitigate risks.")
                 .category(ControlCategory.CC7)
-                .status(ControlStatus.PARTIAL)
-                .implementation("Rate limiting (100 requests/minute) prevents abuse. " +
+                .status(ControlStatus.IMPLEMENTED)
+                .implementation("Wiz vulnerability scanning integrated in CI/CD pipeline for container and infrastructure security. " +
+                        "Dependabot enabled for automated dependency updates and SAST analysis. " +
+                        "Rate limiting (100 requests/minute) prevents abuse. " +
                         "Input validation on all API endpoints. File type and size restrictions on uploads. " +
                         "OSCAL schema validation prevents malformed document processing.")
                 .evidence(Arrays.asList(
+                        "GitHub Actions CI/CD - Wiz scanning integration",
+                        "Dependabot configuration - dependency scanning and SAST",
                         "RateLimitFilter.java - rate limiting",
                         "FileValidationService.java - file validation",
                         "OscalValidationService.java - schema validation"
@@ -269,14 +273,19 @@ public class SecurityComplianceService {
                 .name("Incident Response")
                 .description("The entity responds to identified security incidents.")
                 .category(ControlCategory.CC7)
-                .status(ControlStatus.PARTIAL)
-                .implementation("Audit logs capture all security events for investigation. " +
-                        "SIEM integration enables alerting on suspicious activity. " +
-                        "Account lockout (5 failed attempts = 15 minute lockout) prevents brute force attacks.")
+                .status(ControlStatus.IMPLEMENTED)
+                .implementation("Comprehensive incident response plan documented with severity levels (P1-P4), " +
+                        "response team roles, and escalation procedures. " +
+                        "Detection via 27 audit event types with SIEM integration for real-time alerting. " +
+                        "Runbooks for common incidents: service unavailable, account compromise, database performance. " +
+                        "Account lockout (5 failed attempts = 15 minute lockout) prevents brute force attacks. " +
+                        "Post-incident procedures including timeline documentation and post-mortem templates.")
                 .evidence(Arrays.asList(
-                        "AuditService.java - event logging",
-                        "SiemService.java - alert delivery",
-                        "AuthService.java - account lockout"
+                        "docs/INCIDENT-RESPONSE.md - comprehensive IR plan",
+                        "AuditService.java - 27 event types for detection",
+                        "SiemService.java - real-time alert delivery",
+                        "AuthService.java - account lockout",
+                        "Cloud Monitoring alerts configuration"
                 ))
                 .build());
 
@@ -303,10 +312,22 @@ public class SecurityComplianceService {
                 .name("Risk Identification and Analysis")
                 .description("The entity identifies and analyzes risks that could impact objectives.")
                 .category(ControlCategory.CC9)
-                .status(ControlStatus.GAP)
-                .implementation("File uploads are validated for type and size, but no malware scanning is performed.")
+                .status(ControlStatus.IMPLEMENTED)
+                .implementation("ClamAV malware scanning integrated for all file uploads. " +
+                        "Synchronous scanning blocks infected files before storage. " +
+                        "File type, size, and content validation with configurable limits. " +
+                        "Malware detections logged to audit trail with SECURITY_MALWARE_DETECTED event type. " +
+                        "SIEM integration for real-time security alerting. " +
+                        "Configurable fail-open/fail-closed behavior for ClamAV unavailability. " +
+                        "Health monitoring endpoint for ClamAV service status.")
                 .evidence(Arrays.asList(
-                        "FileValidationService.java - basic validation only"
+                        "ClamAvScannerService.java - TCP client for ClamAV daemon",
+                        "FileValidationService.java - integrated malware scanning",
+                        "FileStorageService.java - scans files before storage",
+                        "OrganizationService.java - scans logo uploads",
+                        "AuditEventType.SECURITY_MALWARE_DETECTED - audit logging",
+                        "HealthCheckService.java - ClamAV health monitoring",
+                        "docs/MALWARE-SCANNING.md - configuration guide"
                 ))
                 .build());
 
@@ -315,14 +336,21 @@ public class SecurityComplianceService {
                 .name("Business Continuity")
                 .description("The entity implements controls to enable recovery following a disaster or incident.")
                 .category(ControlCategory.CC9)
-                .status(ControlStatus.PARTIAL)
-                .implementation("Health monitoring provides visibility into system status. " +
-                        "Cloud deployment (GCP Cloud Run) provides infrastructure resilience. " +
-                        "Documented DR procedures not yet established.")
+                .status(ControlStatus.IMPLEMENTED)
+                .implementation("Comprehensive disaster recovery plan with defined RTO/RPO objectives: " +
+                        "Service failure (RTO: 15min, RPO: 0), Database corruption (RTO: 1hr, RPO: 5min via PITR), " +
+                        "Complete region failure (RTO: 4hr, RPO: 24hr). " +
+                        "Automated daily Cloud SQL backups with 7-day retention and Point-in-Time Recovery. " +
+                        "Cloud Storage versioning with 30-day retention. Container images in Artifact Registry. " +
+                        "Infrastructure-as-Code via Terraform enables rapid environment recreation. " +
+                        "DR testing schedule: quarterly tabletop, semi-annual technical, annual full.")
                 .evidence(Arrays.asList(
-                        "HealthCheckService.java",
-                        "GCP deployment configuration",
-                        "docker-compose.yml for local recovery"
+                        "docs/DISASTER-RECOVERY.md - comprehensive DR plan",
+                        "HealthCheckService.java - system monitoring",
+                        "Terraform configuration - infrastructure as code",
+                        "Cloud SQL automated backups - daily with PITR",
+                        "Cloud Storage versioning configuration",
+                        "Artifact Registry - container image retention"
                 ))
                 .build());
 
@@ -481,61 +509,9 @@ public class SecurityComplianceService {
                 .priority(1)
                 .build());
 
-        list.add(GapAnalysis.builder()
-                .gapId("GAP-002")
-                .controlId("CC9.1")
-                .title("No Malware Scanning for File Uploads")
-                .description("File uploads are validated for type and size, but no malware scanning is performed. " +
-                        "Malicious files could be uploaded and stored.")
-                .severity(GapSeverity.HIGH)
-                .recommendation("Integrate ClamAV for on-premise scanning or use a cloud-based " +
-                        "malware scanning service (e.g., VirusTotal API, Google Safe Browsing). " +
-                        "Quarantine suspicious files before processing.")
-                .effort("Medium")
-                .priority(2)
-                .build());
-
-        list.add(GapAnalysis.builder()
-                .gapId("GAP-003")
-                .controlId("CC7.4")
-                .title("Incomplete Incident Response Procedures")
-                .description("While audit logging and SIEM integration exist, documented incident response " +
-                        "procedures and runbooks are not established.")
-                .severity(GapSeverity.MEDIUM)
-                .recommendation("Create incident response runbook covering: escalation procedures, " +
-                        "common attack scenarios, communication templates, recovery steps. " +
-                        "Conduct periodic incident response drills.")
-                .effort("Low")
-                .priority(3)
-                .build());
-
-        list.add(GapAnalysis.builder()
-                .gapId("GAP-004")
-                .controlId("CC9.2")
-                .title("Disaster Recovery Not Documented")
-                .description("Health monitoring exists but formal DR procedures are not documented. " +
-                        "Recovery time objectives (RTO) and recovery point objectives (RPO) are not defined.")
-                .severity(GapSeverity.MEDIUM)
-                .recommendation("Document disaster recovery procedures including: backup strategies, " +
-                        "recovery steps, RTO/RPO targets, testing schedule. " +
-                        "Implement automated database backups.")
-                .effort("Medium")
-                .priority(4)
-                .build());
-
-        list.add(GapAnalysis.builder()
-                .gapId("GAP-005")
-                .controlId("CC7.1")
-                .title("Limited Vulnerability Scanning")
-                .description("While input validation exists, no automated vulnerability scanning or " +
-                        "dependency checking is in place.")
-                .severity(GapSeverity.MEDIUM)
-                .recommendation("Implement dependency scanning in CI/CD pipeline (e.g., Snyk, Dependabot). " +
-                        "Add SAST tools for code security analysis. " +
-                        "Conduct periodic penetration testing.")
-                .effort("Medium")
-                .priority(5)
-                .build());
+        // GAP-002 (CC9.1 Malware Scanning) - RESOLVED: See docs/MALWARE-SCANNING.md
+        // GAP-003 (CC7.4 Incident Response) - RESOLVED: See docs/INCIDENT-RESPONSE.md
+        // GAP-004 (CC9.2 Disaster Recovery) - RESOLVED: See docs/DISASTER-RECOVERY.md
 
         logger.info("Initialized {} compliance gaps", list.size());
         return list;

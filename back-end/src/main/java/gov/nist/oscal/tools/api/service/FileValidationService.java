@@ -1,6 +1,8 @@
 package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.config.FileValidationConfig;
+import gov.nist.oscal.tools.api.exception.MalwareDetectedException;
+import gov.nist.oscal.tools.api.service.ClamAvScannerService.ScanResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,10 +34,12 @@ public class FileValidationService {
     private static final Logger logger = LoggerFactory.getLogger(FileValidationService.class);
 
     private final FileValidationConfig config;
+    private final ClamAvScannerService clamAvScannerService;
 
     @Autowired
-    public FileValidationService(FileValidationConfig config) {
+    public FileValidationService(FileValidationConfig config, ClamAvScannerService clamAvScannerService) {
         this.config = config;
+        this.clamAvScannerService = clamAvScannerService;
     }
 
     /**
@@ -320,11 +324,14 @@ public class FileValidationService {
     }
 
     /**
-     * Integration point for virus scanning (if enabled)
+     * Scan file for malware using ClamAV
+     *
+     * This method performs synchronous malware scanning and throws
+     * MalwareDetectedException if a threat is detected.
      *
      * @param fileBytes The file bytes to scan
-     * @param filename The filename
-     * @throws IllegalArgumentException if virus detected
+     * @param filename The filename (for logging)
+     * @throws MalwareDetectedException if malware is detected or scan fails (when fail-closed)
      */
     public void scanForViruses(byte[] fileBytes, String filename) {
         if (!config.isEnableVirusScanning()) {
@@ -332,19 +339,46 @@ public class FileValidationService {
             return;
         }
 
-        logger.info("Virus scanning requested for file: {} (size: {} bytes)", filename, fileBytes.length);
-
-        // Integration point for external virus scanning service
-        // Could integrate with ClamAV, VirusTotal API, or other scanning service
-        String scanUrl = config.getVirusScanningUrl();
-
-        if (scanUrl == null || scanUrl.isEmpty()) {
-            logger.warn("Virus scanning is enabled but no scan URL configured");
+        if (fileBytes == null || fileBytes.length == 0) {
+            logger.debug("Empty file, skipping virus scan: {}", filename);
             return;
         }
 
-        // TODO: Implement actual virus scanning integration
-        // For now, just log that we would scan
-        logger.info("Would scan file at URL: {}", scanUrl);
+        logger.info("Scanning file for malware: {} ({} bytes)", filename, fileBytes.length);
+
+        ScanResult result = clamAvScannerService.scan(fileBytes, filename);
+
+        if (!result.clean()) {
+            if (result.threatName() != null) {
+                // Malware detected
+                logger.warn("MALWARE DETECTED - File: {}, Threat: {}, Response: {}",
+                    filename, result.threatName(), result.rawResponse());
+                throw MalwareDetectedException.detected(result.threatName(), filename);
+            } else {
+                // Scan error (and not fail-open)
+                logger.error("Malware scan failed - File: {}, Response: {}",
+                    filename, result.rawResponse());
+                throw MalwareDetectedException.scanFailed(result.rawResponse(), filename);
+            }
+        }
+
+        logger.info("File scanned clean: {} ({}ms)", filename, result.scanTimeMs());
+    }
+
+    /**
+     * Scan string content for malware
+     *
+     * Convenience method that converts string content to bytes before scanning.
+     *
+     * @param content The file content as a string
+     * @param filename The filename (for logging)
+     * @throws MalwareDetectedException if malware is detected
+     */
+    public void scanForViruses(String content, String filename) {
+        if (content == null || content.isEmpty()) {
+            logger.debug("Empty content, skipping virus scan: {}", filename);
+            return;
+        }
+        scanForViruses(content.getBytes(), filename);
     }
 }

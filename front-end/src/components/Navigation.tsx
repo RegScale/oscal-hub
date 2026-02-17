@@ -28,8 +28,8 @@ export function Navigation() {
 
   // Also update when user changes
   useEffect(() => {
-    if (user?.globalRole === 'SUPER_ADMIN') {
-      setIsSuperAdminUser(true);
+    if (user) {
+      setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
     }
   }, [user]);
 

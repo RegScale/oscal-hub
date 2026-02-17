@@ -12,43 +12,41 @@ export default function Dashboard() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [hasOrgAccess, setHasOrgAccess] = useState(false);
 
-  // Check if user is super admin - check both context and localStorage
-  const isSuperAdmin = () => {
-    if (user?.globalRole === 'SUPER_ADMIN') return true;
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          return userData.globalRole === 'SUPER_ADMIN';
-        } catch (e) {
-          return false;
-        }
-      }
-    }
-    return false;
-  };
-
-  // Redirect super admins to admin dashboard
+  // Check auth status from localStorage on mount and navigation
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Check localStorage directly for super admin
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
+
+        // Check super admin status
         if (userData.globalRole === 'SUPER_ADMIN') {
+          setIsSuperAdminUser(true);
           router.push('/admin');
           return;
         }
+
+        // Check organization access
+        setHasOrgAccess(userData.organizationId != null);
       } catch (e) {
-        // ignore
+        setHasOrgAccess(false);
       }
     }
     setCheckingAuth(false);
   }, [router]);
+
+  // Also update when user from context changes
+  useEffect(() => {
+    if (user) {
+      setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
+      setHasOrgAccess(user.organizationId != null);
+    }
+  }, [user]);
 
   // Show loading while checking auth or AuthContext is loading
   if (isLoading || checkingAuth) {
@@ -75,7 +73,7 @@ export default function Dashboard() {
 
   // Super admin redirect is handled by useEffect above
   // Show loading while redirect is happening
-  if (isSuperAdmin()) {
+  if (isSuperAdminUser) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -86,11 +84,8 @@ export default function Dashboard() {
     );
   }
 
-  // Check if user has organization access
-  const hasOrganizationAccess = user?.organizationId != null;
-
   // Show pending message for authenticated users without organization access
-  if (!hasOrganizationAccess) {
+  if (!hasOrgAccess) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-12 px-4">

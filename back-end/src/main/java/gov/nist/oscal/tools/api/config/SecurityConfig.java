@@ -88,6 +88,9 @@ public class SecurityConfig {
                 // Public endpoints - allow without authentication
                 .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers("/api/auth/organizations", "/api/auth/request-access").permitAll()
+                // MFA endpoints that work during login flow (before user has full JWT)
+                .requestMatchers("/api/auth/mfa/setup/initiate", "/api/auth/mfa/setup/complete").permitAll()
+                .requestMatchers("/api/auth/mfa/verify", "/api/auth/mfa/verify-backup").permitAll()
                 .requestMatchers("/api/files/org-logos/**").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()

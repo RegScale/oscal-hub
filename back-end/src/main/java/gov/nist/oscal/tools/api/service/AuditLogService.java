@@ -199,6 +199,93 @@ public class AuditLogService {
     }
 
     /**
+     * Log a security event (MFA operations, security policy changes, etc.)
+     *
+     * @param eventType The type of security event
+     * @param username The username performing the action
+     * @param details Description of what happened
+     * @param request The HTTP request (for IP, user agent, etc.)
+     */
+    @Async
+    @Transactional
+    public void logSecurityEvent(AuditEventType eventType, String username, String details,
+                                  HttpServletRequest request) {
+        if (!config.isEnabled()) return;
+
+        AuditEvent event = new AuditEvent(eventType, username, "SUCCESS");
+        event.setAction(details);
+
+        if (request != null) {
+            event.setIpAddress(getClientIpAddress(request));
+            event.setUserAgent(request.getHeader("User-Agent"));
+            event.setSessionId(request.getSession(false) != null ?
+                request.getSession().getId() : null);
+            event.setHttpMethod(request.getMethod());
+            event.setRequestUrl(request.getRequestURI());
+        }
+
+        saveEvent(event);
+    }
+
+    /**
+     * Log a security event failure
+     *
+     * @param eventType The type of security event
+     * @param username The username performing the action
+     * @param details Description of what happened
+     * @param request The HTTP request (for IP, user agent, etc.)
+     */
+    @Async
+    @Transactional
+    public void logSecurityEventFailure(AuditEventType eventType, String username, String details,
+                                         HttpServletRequest request) {
+        if (!config.isEnabled()) return;
+
+        AuditEvent event = new AuditEvent(eventType, username, "FAILURE");
+        event.setAction(details);
+        event.setErrorMessage(details);
+
+        if (request != null) {
+            event.setIpAddress(getClientIpAddress(request));
+            event.setUserAgent(request.getHeader("User-Agent"));
+            event.setSessionId(request.getSession(false) != null ?
+                request.getSession().getId() : null);
+            event.setHttpMethod(request.getMethod());
+            event.setRequestUrl(request.getRequestURI());
+        }
+
+        saveEvent(event);
+    }
+
+    /**
+     * Log a configuration change event (security policy updates, etc.)
+     *
+     * @param username The username making the change
+     * @param details Description of the configuration change
+     * @param request The HTTP request (for IP, user agent, etc.)
+     */
+    @Async
+    @Transactional
+    public void logConfigChange(String username, String details, HttpServletRequest request) {
+        if (!config.isEnabled()) return;
+
+        AuditEvent event = new AuditEvent(AuditEventType.CONFIG_SECURITY_POLICY_CHANGE, username, "SUCCESS");
+        event.setAction(details);
+        event.setResource("SecurityPolicy");
+
+        if (request != null) {
+            event.setIpAddress(getClientIpAddress(request));
+            event.setUserAgent(request.getHeader("User-Agent"));
+            event.setSessionId(request.getSession(false) != null ?
+                request.getSession().getId() : null);
+            event.setHttpMethod(request.getMethod());
+            event.setRequestUrl(request.getRequestURI());
+        }
+
+        saveEvent(event);
+    }
+
+    /**
      * Create base audit event with context from current HTTP request
      */
     private AuditEvent createBaseEvent(AuditEventType eventType, String username, String outcome) {

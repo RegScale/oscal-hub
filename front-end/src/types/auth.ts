@@ -19,7 +19,7 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   username: string;
   email: string;
   userId: number;
@@ -34,6 +34,11 @@ export interface AuthResponse {
   organization?: string;
   phoneNumber?: string;
   logo?: string;
+
+  // MFA fields
+  mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
+  mfaToken?: string;
 }
 
 export interface LoginRequest {

@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -90,6 +91,18 @@ public class User {
 
     @Column(name = "must_change_password", nullable = false)
     private Boolean mustChangePassword = false;
+
+    // MFA (Multi-Factor Authentication) fields
+    @Column(name = "mfa_enabled")
+    @ColumnDefault("false")
+    private Boolean mfaEnabled = false;
+
+    @Column(name = "mfa_secret", length = 512)
+    private String mfaSecret; // Encrypted TOTP secret
+
+    @Column(name = "mfa_setup_completed")
+    @ColumnDefault("false")
+    private Boolean mfaSetupCompleted = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<OrganizationMembership> organizationMemberships = new HashSet<>();
@@ -319,6 +332,30 @@ public class User {
 
     public void setOrganizationMemberships(Set<OrganizationMembership> organizationMemberships) {
         this.organizationMemberships = organizationMemberships;
+    }
+
+    public Boolean getMfaEnabled() {
+        return mfaEnabled;
+    }
+
+    public void setMfaEnabled(Boolean mfaEnabled) {
+        this.mfaEnabled = mfaEnabled;
+    }
+
+    public String getMfaSecret() {
+        return mfaSecret;
+    }
+
+    public void setMfaSecret(String mfaSecret) {
+        this.mfaSecret = mfaSecret;
+    }
+
+    public Boolean getMfaSetupCompleted() {
+        return mfaSetupCompleted;
+    }
+
+    public void setMfaSetupCompleted(Boolean mfaSetupCompleted) {
+        this.mfaSetupCompleted = mfaSetupCompleted;
     }
 
     /**

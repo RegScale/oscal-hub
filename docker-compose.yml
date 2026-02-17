@@ -49,6 +49,41 @@ services:
     networks:
       - oscal-network
 
+  # ClamAV Antivirus Scanner (optional - for malware scanning)
+  clamav:
+    image: clamav/clamav:latest
+    container_name: oscal-clamav
+    profiles:
+      - malware-scanning  # Only start when using: docker-compose --profile malware-scanning up
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # ClamAV needs time to download virus definitions on first start
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G  # ClamAV needs ~1-2GB RAM for virus definitions
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - oscal-network
+
   # Full-stack OSCAL application
   oscal-ux:
     build:
@@ -96,6 +131,14 @@ services:
       # Security Configuration (override for production)
       - SECURITY_HEADERS_ENABLED=false
       - RATE_LIMIT_ENABLED=false
+
+      # ClamAV Malware Scanning Configuration (optional)
+      # Set MALWARE_SCANNING_ENABLED=true when running with --profile malware-scanning
+      - MALWARE_SCANNING_ENABLED=${MALWARE_SCANNING_ENABLED:-false}
+      - CLAMAV_HOST=clamav
+      - CLAMAV_PORT=3310
+      - CLAMAV_TIMEOUT_MS=30000
+      - CLAMAV_FAIL_OPEN=false
 
       # IMPORTANT: Set these for production deployment
       # - JWT_SECRET=your-production-secret-here
@@ -209,3 +252,5 @@ volumes:
     driver: local
   pgadmin_data:
     driver: local
+  clamav-db:
+    driver: local  # ClamAV virus definitions database
