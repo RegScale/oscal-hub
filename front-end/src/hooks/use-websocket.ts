@@ -210,15 +210,16 @@ export function useAsyncOperation<T = unknown>(operationId: string | null) {
     if (!operationId || !isConnected) return;
 
     const topic = `/topic/async/${operationId}`;
-    const unsubscribe = subscribe(topic, (message: WebSocketMessage<T>) => {
-      if (message.status) {
-        setStatus(message.status);
+    const unsubscribe = subscribe(topic, (message) => {
+      const typedMessage = message as WebSocketMessage<T>;
+      if (typedMessage.status) {
+        setStatus(typedMessage.status);
       }
-      if (message.result) {
-        setResult(message.result);
+      if (typedMessage.result) {
+        setResult(typedMessage.result);
       }
-      if (message.error) {
-        setError(message.error);
+      if (typedMessage.error) {
+        setError(typedMessage.error);
       }
     });
 

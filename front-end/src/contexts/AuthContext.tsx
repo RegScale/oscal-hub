@@ -157,11 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       // Save to state
-      setToken(response.token);
+      setToken(response.token ?? null);
       setUser(userData);
 
       // Persist to localStorage
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('token', response.token ?? '');
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();
@@ -199,11 +199,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       // Save to state
-      setToken(response.token);
+      setToken(response.token ?? null);
       setUser(userData);
 
       // Persist to localStorage
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('token', response.token ?? '');
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();

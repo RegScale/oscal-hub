@@ -162,7 +162,7 @@ class ApiClient {
       // Only store token if MFA is not required (token will be present)
       // If MFA is required, mfaToken will be present instead of regular token
       if (authResponse.token && !authResponse.mfaRequired && !authResponse.mfaSetupRequired) {
-        localStorage.setItem('token', authResponse.token);
+        localStorage.setItem('token', authResponse.token ?? '');
         localStorage.setItem('user', JSON.stringify({
           userId: authResponse.userId,
           username: authResponse.username,
@@ -209,7 +209,7 @@ class ApiClient {
       const authResponse: AuthResponse = await response.json();
 
       // Store token in localStorage
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token ?? '');
       localStorage.setItem('user', JSON.stringify({
         userId: authResponse.userId,
         username: authResponse.username,
@@ -4104,7 +4104,7 @@ class ApiClient {
 
     // Store token after successful MFA verification
     if (authResponse.token) {
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token ?? '');
       localStorage.setItem('user', JSON.stringify({
         userId: authResponse.userId,
         username: authResponse.username,
@@ -4139,7 +4139,7 @@ class ApiClient {
 
     // Store token after successful backup code verification
     if (authResponse.token) {
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token ?? '');
       localStorage.setItem('user', JSON.stringify({
         userId: authResponse.user?.id || authResponse.userId,
         username: authResponse.user?.username || authResponse.username,

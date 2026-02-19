@@ -488,7 +488,7 @@ describe('ApiClient', () => {
         });
 
         const request: BatchOperationRequest = {
-          operationType: 'validate',
+          operationType: 'VALIDATE',
           modelType: 'catalog',
           files: [
             { filename: 'catalog1.xml', content: '<catalog/>', format: 'xml' },
@@ -969,8 +969,8 @@ describe('ApiClient', () => {
           expect.any(Object)
         );
 
-        expect(result.id).toBe(123);
-        expect(result.username).toBe('testuser');
+        expect(result!.id).toBe(123);
+        expect(result!.username).toBe('testuser');
       });
 
       it('should throw error when log not found', async () => {
