@@ -4,6 +4,7 @@ import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,11 @@ public class LibraryItemResponse {
     private Long viewCount;
     private Integer versionCount;
 
+    // Rating and comment fields
+    private Double averageRating;
+    private Long totalRatings;
+    private Long commentCount;
+
     // Constructors
     public LibraryItemResponse() {
     }
@@ -35,23 +41,43 @@ public class LibraryItemResponse {
         response.setTitle(item.getTitle());
         response.setDescription(item.getDescription());
         response.setOscalType(item.getOscalType());
-        response.setCreatedBy(item.getCreatedBy().getUsername());
+
+        // Handle lazy-loaded createdBy
+        try {
+            response.setCreatedBy(item.getCreatedBy().getUsername());
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setCreatedBy(null);
+        }
+
         response.setCreatedAt(item.getCreatedAt());
         response.setUpdatedAt(item.getUpdatedAt());
-        response.setTags(item.getTags().stream()
-                .map(LibraryTag::getName)
-                .collect(Collectors.toSet()));
-        if (item.getCurrentVersion() != null) {
-            response.setCurrentVersion(LibraryVersionResponse.fromEntity(item.getCurrentVersion()));
+
+        // Handle lazy-loaded tags
+        try {
+            response.setTags(item.getTags().stream()
+                    .map(LibraryTag::getName)
+                    .collect(Collectors.toSet()));
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setTags(new HashSet<>());
         }
+
+        // Handle lazy-loaded currentVersion
+        try {
+            if (item.getCurrentVersion() != null) {
+                response.setCurrentVersion(LibraryVersionResponse.fromEntity(item.getCurrentVersion()));
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setCurrentVersion(null);
+        }
+
         response.setDownloadCount(item.getDownloadCount());
         response.setViewCount(item.getViewCount());
-        // Avoid LazyInitializationException - check if versions collection is initialized
-        // before accessing size. If not initialized, use null (can be populated separately if needed)
+
+        // Handle lazy-loaded versions
         try {
             response.setVersionCount(item.getVersions() != null ? item.getVersions().size() : 0);
         } catch (org.hibernate.LazyInitializationException e) {
-            response.setVersionCount(null); // Not available outside transaction
+            response.setVersionCount(null);
         }
         return response;
     }
@@ -151,5 +177,29 @@ public class LibraryItemResponse {
 
     public void setVersionCount(Integer versionCount) {
         this.versionCount = versionCount;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public Long getTotalRatings() {
+        return totalRatings;
+    }
+
+    public void setTotalRatings(Long totalRatings) {
+        this.totalRatings = totalRatings;
+    }
+
+    public Long getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(Long commentCount) {
+        this.commentCount = commentCount;
     }
 }

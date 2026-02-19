@@ -57,11 +57,38 @@ public class AuthorizationResponse {
         this.name = authorization.getName();
         this.sspItemId = authorization.getSspItemId();
         this.sarItemId = authorization.getSarItemId();
-        this.templateId = authorization.getTemplate().getId();
-        this.templateName = authorization.getTemplate().getName();
-        this.variableValues = authorization.getVariableValues();
+
+        // Handle lazy-loaded template
+        try {
+            this.templateId = authorization.getTemplate().getId();
+            this.templateName = authorization.getTemplate().getName();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.templateId = null;
+            this.templateName = null;
+        }
+
+        // Handle lazy-loaded variableValues - must make a deep copy to force loading
+        // Simply assigning the proxy map causes LazyInitializationException during JSON serialization
+        try {
+            Map<String, String> source = authorization.getVariableValues();
+            this.variableValues = new java.util.HashMap<>();
+            if (source != null) {
+                // putAll() forces Hibernate to load all entries NOW while session may still be open
+                this.variableValues.putAll(source);
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.variableValues = new java.util.HashMap<>();
+        }
+
         this.completedContent = authorization.getCompletedContent();
-        this.authorizedBy = authorization.getAuthorizedBy().getUsername();
+
+        // Handle lazy-loaded authorizedBy
+        try {
+            this.authorizedBy = authorization.getAuthorizedBy().getUsername();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.authorizedBy = null;
+        }
+
         this.authorizedAt = authorization.getAuthorizedAt();
         this.createdAt = authorization.getCreatedAt();
         this.dateAuthorized = authorization.getDateAuthorized();
@@ -69,9 +96,15 @@ public class AuthorizationResponse {
         this.systemOwner = authorization.getSystemOwner();
         this.securityManager = authorization.getSecurityManager();
         this.authorizingOfficial = authorization.getAuthorizingOfficial();
-        this.conditions = authorization.getConditions().stream()
-                .map(ConditionOfApprovalResponse::new)
-                .collect(Collectors.toList());
+
+        // Handle lazy-loaded conditions
+        try {
+            this.conditions = authorization.getConditions().stream()
+                    .map(ConditionOfApprovalResponse::new)
+                    .collect(Collectors.toList());
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.conditions = new java.util.ArrayList<>();
+        }
 
         // Digital Signature fields
         this.digitalSignatureMethod = authorization.getDigitalSignatureMethod();

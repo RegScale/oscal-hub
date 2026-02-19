@@ -58,6 +58,9 @@ public class OrganizationService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private FileValidationService fileValidationService;
+
     @Value("${storage.provider:azure}")
     private String storageProvider;
 
@@ -357,6 +360,9 @@ public class OrganizationService {
 
         // Read file content into byte array (so we can upload to cloud and local)
         byte[] fileBytes = file.getBytes();
+
+        // Scan file for malware before saving
+        fileValidationService.scanForViruses(fileBytes, filename);
 
         // Upload to cloud storage if configured
         if (useCloudStorage) {

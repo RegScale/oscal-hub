@@ -13,6 +13,7 @@ import gov.nist.oscal.tools.api.model.SavedFile;
 import gov.nist.oscal.tools.api.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +38,9 @@ public class FileStorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(FileStorageService.class);
     private static final String LOCAL_STORAGE_DIR = System.getProperty("user.home") + "/.oscal-hub/files";
+
+    @Autowired
+    private FileValidationService fileValidationService;
 
     @Value("${azure.storage.connection-string}")
     private String connectionString;
@@ -99,8 +103,15 @@ public class FileStorageService {
 
     /**
      * Save a file to Azure Blob Storage or local filesystem
+     *
+     * Files are scanned for malware before being saved if scanning is enabled.
+     *
+     * @throws MalwareDetectedException if malware is detected in the file
      */
     public SavedFile saveFile(String content, String fileName, OscalModelType modelType, OscalFormat format, String username) {
+        // Scan file for malware before saving
+        fileValidationService.scanForViruses(content, fileName);
+
         if (useLocalStorage) {
             return saveFileLocally(content, fileName, modelType, format, username);
         }

@@ -11,9 +11,12 @@ import gov.nist.oscal.tools.api.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -295,7 +298,9 @@ public class LibraryService {
 
     /**
      * Get library analytics
+     * Cached for 5 minutes
      */
+    @Cacheable(value = "libraryAnalytics", key = "'all'")
     @Transactional(readOnly = true)
     public Map<String, Object> getAnalytics() {
         Map<String, Object> analytics = new HashMap<>();
@@ -362,7 +367,9 @@ public class LibraryService {
 
     /**
      * Get all tags with usage counts
+     * Cached for 10 minutes
      */
+    @Cacheable(value = "libraryTags", key = "'all'")
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllTags() {
         List<Object[]> tagsData = libraryTagRepository.findAllWithCountsOrderByNameAsc();
@@ -378,7 +385,9 @@ public class LibraryService {
 
     /**
      * Get popular tags with usage counts
+     * Cached for 10 minutes
      */
+    @Cacheable(value = "popularTags", key = "'library_' + #limit")
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getPopularTags(int limit) {
         List<Object[]> tagsData = libraryTagRepository.findMostPopularWithCounts();
@@ -391,5 +400,31 @@ public class LibraryService {
                     return tagMap;
                 })
                 .collect(Collectors.toList());
+    }
+
+    // ==================== PAGINATED METHODS ====================
+
+    /**
+     * Get all library items (paginated)
+     */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> getAllLibraryItemsPaged(Pageable pageable) {
+        return libraryItemRepository.findAllPaged(pageable);
+    }
+
+    /**
+     * Get library items by OSCAL type (paginated)
+     */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> getLibraryItemsByOscalTypePaged(String oscalType, Pageable pageable) {
+        return libraryItemRepository.findByOscalTypePaged(oscalType, pageable);
+    }
+
+    /**
+     * Search library items (paginated)
+     */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> searchLibraryPaged(String searchTerm, String oscalType, String tagName, Pageable pageable) {
+        return libraryItemRepository.advancedSearchPaged(searchTerm, oscalType, tagName, pageable);
     }
 }

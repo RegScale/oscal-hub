@@ -259,6 +259,11 @@ export interface LibraryItem {
   viewCount: number;
   versionCount: number;
 
+  // Rating and comment fields
+  averageRating?: number;
+  totalRatings?: number;
+  commentCount?: number;
+
   // Convenience properties (computed or optional)
   name?: string; // Alias for title
   blobUrl?: string; // Optional blob storage URL
@@ -307,6 +312,36 @@ export interface LibraryAnalytics {
     title: string;
     downloadCount: number;
   }>;
+}
+
+// Rating Types
+export interface RatingStats {
+  averageRating: number;
+  totalRatings: number;
+  userRating?: number; // Current user's rating, null if not rated
+}
+
+export interface RatingRequest {
+  rating: number; // 1-5
+}
+
+// Comment Types
+export interface LibraryComment {
+  commentId: string;
+  content: string;
+  username: string;
+  userDisplayName?: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  isEdited: boolean;
+  parentCommentId?: string;
+  replies: LibraryComment[];
+  replyCount: number;
+}
+
+export interface CommentRequest {
+  content: string;
+  parentCommentId?: string; // Optional - for replies
 }
 
 // Service Account Token Types
@@ -708,4 +743,297 @@ export interface ReusableElementResponse {
   updatedAt: string; // ISO 8601 date string
   isShared: boolean;
   useCount: number;
+}
+
+// Audit Log Types
+export interface AuditLog {
+  id: number;
+  eventType: string;
+  category: string;
+  username: string | null;
+  userId: number | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  sessionId: string | null;
+  resource: string | null;
+  action: string | null;
+  outcome: string;
+  errorMessage: string | null;
+  metadata: string | null;
+  riskLevel: string;
+  timestamp: string; // ISO 8601 date string
+  processingTimeMs: number | null;
+  reviewed: boolean;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  requestUrl: string | null;
+  httpMethod: string | null;
+  integrityHash: string | null;
+  previousHash: string | null;
+}
+
+export interface AuditLogStats {
+  totalLogs: number;
+  logsToday: number;
+  securityEventsToday: number;
+  errorsToday: number;
+  highRiskUnreviewed: number;
+  byCategory: Record<string, number>;
+  byRiskLevel: Record<string, number>;
+  byOutcome: Record<string, number>;
+}
+
+// Health Check Types
+export type HealthStatus = 'UP' | 'DOWN' | 'DEGRADED' | 'UNKNOWN';
+
+export interface SimpleHealthResponse {
+  status: HealthStatus;
+  timestamp: string;
+  version: string;
+}
+
+export interface ComponentHealth {
+  status: HealthStatus;
+  message?: string;
+  details?: Record<string, unknown>;
+  responseTimeMs?: number;
+}
+
+export interface ApplicationInfo {
+  name: string;
+  version: string;
+  profile: string;
+  uptime: string;
+  startTime: string;
+}
+
+export interface HealthSystemInfo {
+  totalMemoryMb: number;
+  usedMemoryMb: number;
+  freeMemoryMb: number;
+  memoryUsagePercent: number;
+  availableProcessors: number;
+  systemLoadAverage: number;
+  totalDiskSpaceGb: number;
+  freeDiskSpaceGb: number;
+  diskUsagePercent: number;
+}
+
+export interface EnvironmentInfo {
+  javaVersion: string;
+  javaVendor: string;
+  osName: string;
+  osVersion: string;
+  osArch: string;
+  timezone: string;
+}
+
+export interface DetailedHealthResponse {
+  status: HealthStatus;
+  timestamp: string;
+  application: ApplicationInfo;
+  components: {
+    database: ComponentHealth;
+    storage: ComponentHealth;
+    memory: ComponentHealth;
+    diskSpace: ComponentHealth;
+    oscalLibrary: ComponentHealth;
+    [key: string]: ComponentHealth;
+  };
+  system: HealthSystemInfo;
+  environment: EnvironmentInfo;
+}
+
+// Security Compliance Types (SOC 2)
+export type ControlCategory = 'CC6' | 'CC7' | 'CC8' | 'CC9' | 'DATA' | 'AUDIT';
+
+export type ControlStatus = 'IMPLEMENTED' | 'PARTIAL' | 'GAP';
+
+export type GapSeverity = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface Soc2Control {
+  controlId: string;
+  name: string;
+  description: string;
+  category: ControlCategory;
+  status: ControlStatus;
+  implementation: string;
+  evidence: string[];
+}
+
+export interface GapAnalysis {
+  gapId: string;
+  controlId: string;
+  title: string;
+  description: string;
+  severity: GapSeverity;
+  recommendation: string;
+  effort: string;
+  priority: number;
+}
+
+export interface CategorySummary {
+  displayName: string;
+  total: number;
+  implemented: number;
+  partial: number;
+  gaps: number;
+}
+
+export interface ComplianceSummary {
+  totalControls: number;
+  implementedControls: number;
+  partialControls: number;
+  gapControls: number;
+  compliancePercentage: number;
+  assessmentDate: string;
+  byCategory: Record<string, CategorySummary>;
+}
+
+// Security Policy Types
+export interface SecurityPolicy {
+  id: number;
+  mfaRequired: boolean;
+  passwordMinLength: number;
+  passwordMaxLength: number;
+  passwordRotationDays: number;
+  auditLogRetentionDays: number;
+  updatedAt: string; // ISO 8601 date string
+  updatedBy?: string;
+}
+
+export interface SecurityPolicyUpdateRequest {
+  mfaRequired: boolean;
+  passwordMinLength: number;
+  passwordMaxLength: number;
+  passwordRotationDays: number;
+  auditLogRetentionDays: number;
+}
+
+// MFA Types
+export interface MfaSetupResponse {
+  qrCodeDataUri: string;
+  secret: string;
+  formattedSecret: string;
+  setupToken: string;
+}
+
+export interface MfaSetupCompleteRequest {
+  setupToken: string;
+  totpCode: string;
+}
+
+export interface MfaSetupCompleteResponse {
+  token: string;
+  backupCodes: string[];
+}
+
+export interface MfaVerifyRequest {
+  mfaToken: string;
+  totpCode: string;
+}
+
+export interface MfaBackupCodeRequest {
+  mfaToken: string;
+  backupCode: string;
+}
+
+export interface MfaStatus {
+  mfaEnabled: boolean;
+  mfaSetupCompleted: boolean;
+  backupCodesRemaining: number;
+}
+
+// Artifact Types
+export type ArtifactVisibility = 'PRIVATE' | 'ORGANIZATION' | 'PUBLIC';
+
+export interface ArtifactVersion {
+  versionId: string;
+  versionNumber: number;
+  contentSize: number;
+  uploadedBy: string;
+  uploadedAt: string; // ISO 8601 date string
+  changeDescription?: string;
+  extractedVariables: string[];
+}
+
+export interface Artifact {
+  artifactId: string;
+  title: string;
+  description?: string;
+  visibility: ArtifactVisibility;
+  organizationId?: number;
+  organizationName?: string;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  tags: string[];
+  currentVersion?: ArtifactVersion;
+  extractedVariables: string[];
+  downloadCount: number;
+  viewCount: number;
+  versionCount?: number;
+
+  // Rating and comment fields
+  averageRating?: number;
+  totalRatings?: number;
+  commentCount?: number;
+}
+
+export interface ArtifactRequest {
+  title: string;
+  description?: string;
+  visibility: ArtifactVisibility;
+  organizationId?: number;
+  content: string; // Markdown content
+  tags?: string[];
+}
+
+export interface ArtifactUpdateRequest {
+  title?: string;
+  description?: string;
+  visibility?: ArtifactVisibility;
+  organizationId?: number;
+  tags?: string[];
+}
+
+export interface ArtifactVersionRequest {
+  content: string; // Markdown content
+  changeDescription?: string;
+}
+
+export interface ArtifactTag {
+  name: string;
+  usageCount: number;
+}
+
+export interface ArtifactAnalytics {
+  totalArtifacts: number;
+  totalVersions: number;
+  totalTags: number;
+  artifactsByVisibility: Record<string, number>;
+  popularTags: Array<{
+    name: string;
+    count: number;
+  }>;
+  mostDownloaded: Array<{
+    artifactId: string;
+    title: string;
+    downloadCount: number;
+  }>;
+}
+
+// Artifact Comment (reuses LibraryComment structure)
+export interface ArtifactComment {
+  commentId: string;
+  content: string;
+  username: string;
+  userDisplayName?: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  isEdited: boolean;
+  parentCommentId?: string;
+  replies: ArtifactComment[];
+  replyCount: number;
 }

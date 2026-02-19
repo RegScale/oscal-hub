@@ -94,8 +94,12 @@ export default function SelectOrganizationPage() {
         return;
       }
 
-      // Redirect to home page
-      router.push('/');
+      // Redirect based on user role
+      if (result.globalRole === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       console.error('Failed to select organization:', err);
       setError(err.message || 'Failed to select organization. Please try again.');

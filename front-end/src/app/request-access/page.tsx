@@ -37,6 +37,8 @@ export default function RequestAccessPage() {
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
+        setFirstName(user.firstName || '');
+        setLastName(user.lastName || '');
         setEmail(user.email || '');
         setUsername(user.username || '');
       } catch (err) {

@@ -120,10 +120,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       const response = await apiClient.login(username, password);
+
+      // Check for MFA requirements
+      if (response.mfaSetupRequired && response.mfaToken) {
+        // User needs to set up MFA (policy requires MFA but user hasn't set it up)
+        router.push(`/mfa-setup?token=${encodeURIComponent(response.mfaToken)}`);
+        return;
+      }
+
+      if (response.mfaRequired && response.mfaToken) {
+        // User has MFA enabled, need to verify
+        router.push(`/mfa-verify?token=${encodeURIComponent(response.mfaToken)}`);
+        return;
+      }
+
+      // No MFA required - normal login flow
+      if (!response.token) {
+        throw new Error('No authentication token received');
+      }
+
       const userData = {
         userId: response.userId,
         username: response.username,
         email: response.email,
+        globalRole: response.globalRole,
+        firstName: response.firstName,
+        lastName: response.lastName,
         street: response.street,
         city: response.city,
         state: response.state,
@@ -135,16 +157,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       // Save to state
-      setToken(response.token);
+      setToken(response.token ?? null);
       setUser(userData);
 
       // Persist to localStorage
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('token', response.token ?? '');
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();
-      // Redirect to organization selector for two-step authentication
-      router.push('/select-organization');
+
+      // Super admins go directly to admin dashboard
+      if (response.globalRole === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        // Regular users go to organization selector for two-step authentication
+        router.push('/select-organization');
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -158,6 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: response.userId,
         username: response.username,
         email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
         street: response.street,
         city: response.city,
         state: response.state,
@@ -169,11 +199,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       // Save to state
-      setToken(response.token);
+      setToken(response.token ?? null);
       setUser(userData);
 
       // Persist to localStorage
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('token', response.token ?? '');
       localStorage.setItem('user', JSON.stringify(userData));
 
       updateActivity();

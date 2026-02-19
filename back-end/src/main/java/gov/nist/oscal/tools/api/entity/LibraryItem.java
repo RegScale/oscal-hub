@@ -44,7 +44,7 @@ public class LibraryItem {
     @JoinColumn(name = "current_version_id")
     private LibraryVersion currentVersion;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "library_item_tags",
         joinColumns = @JoinColumn(name = "library_item_id"),

@@ -179,6 +179,33 @@ public class AuditEvent {
     @Column(name = "reviewed_by", length = 100)
     private String reviewedBy;
 
+    /**
+     * Full request URL/endpoint that was accessed
+     */
+    @Column(name = "request_url", length = 2000)
+    private String requestUrl;
+
+    /**
+     * HTTP method (GET, POST, PUT, DELETE, etc.)
+     */
+    @Column(name = "http_method", length = 10)
+    private String httpMethod;
+
+    /**
+     * SHA-256 hash of the audit record for immutability verification.
+     * Computed from: eventType + username + timestamp + ipAddress + resource + action + outcome
+     * This hash can be used to detect tampering with audit records.
+     */
+    @Column(name = "integrity_hash", length = 64)
+    private String integrityHash;
+
+    /**
+     * Hash of the previous audit event for chain verification.
+     * Creates a blockchain-like chain of audit events for tamper detection.
+     */
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
+
     // ========================================
     // Constructors
     // ========================================
@@ -365,6 +392,38 @@ public class AuditEvent {
         this.reviewedBy = reviewedBy;
     }
 
+    public String getRequestUrl() {
+        return requestUrl;
+    }
+
+    public void setRequestUrl(String requestUrl) {
+        this.requestUrl = requestUrl;
+    }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
+    public String getIntegrityHash() {
+        return integrityHash;
+    }
+
+    public void setIntegrityHash(String integrityHash) {
+        this.integrityHash = integrityHash;
+    }
+
+    public String getPreviousHash() {
+        return previousHash;
+    }
+
+    public void setPreviousHash(String previousHash) {
+        this.previousHash = previousHash;
+    }
+
     // ========================================
     // Utility Methods
     // ========================================
@@ -418,5 +477,49 @@ public class AuditEvent {
             "AuditEvent{id=%d, type=%s, username='%s', outcome='%s', timestamp=%s}",
             id, eventType, username, outcome, timestamp
         );
+    }
+
+    /**
+     * Generate the content string used for hash computation.
+     * This creates a deterministic string from the audit event's key fields.
+     *
+     * @return String representation of key fields for hashing
+     */
+    public String getHashContent() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(eventType != null ? eventType.name() : "");
+        sb.append("|");
+        sb.append(username != null ? username : "");
+        sb.append("|");
+        sb.append(timestamp != null ? timestamp.toString() : "");
+        sb.append("|");
+        sb.append(ipAddress != null ? ipAddress : "");
+        sb.append("|");
+        sb.append(userAgent != null ? userAgent : "");
+        sb.append("|");
+        sb.append(requestUrl != null ? requestUrl : "");
+        sb.append("|");
+        sb.append(httpMethod != null ? httpMethod : "");
+        sb.append("|");
+        sb.append(resource != null ? resource : "");
+        sb.append("|");
+        sb.append(action != null ? action : "");
+        sb.append("|");
+        sb.append(outcome != null ? outcome : "");
+        sb.append("|");
+        sb.append(metadata != null ? metadata : "");
+        sb.append("|");
+        sb.append(previousHash != null ? previousHash : "");
+        return sb.toString();
+    }
+
+    /**
+     * Verify the integrity of this audit event by recomputing the hash.
+     *
+     * @param computedHash The hash to compare against
+     * @return true if the record has not been tampered with
+     */
+    public boolean verifyIntegrity(String computedHash) {
+        return integrityHash != null && integrityHash.equals(computedHash);
     }
 }

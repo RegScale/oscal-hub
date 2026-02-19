@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,29 +9,41 @@ import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 export function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
 
-  // Check globalRole from localStorage as well (in case user object doesn't have it)
-  const isSuperAdmin = () => {
-    if (user?.globalRole === 'SUPER_ADMIN') return true;
-
+  // Check localStorage on mount to determine super admin status
+  useEffect(() => {
+    setMounted(true);
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        return userData.globalRole === 'SUPER_ADMIN';
+        setIsSuperAdminUser(userData.globalRole === 'SUPER_ADMIN');
       } catch (e) {
-        return false;
+        setIsSuperAdminUser(false);
       }
     }
-    return false;
+  }, []);
+
+  // Also update when user changes
+  useEffect(() => {
+    if (user) {
+      setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
+    }
+  }, [user]);
+
+  // Check if user is super admin
+  const isSuperAdmin = () => {
+    return isSuperAdminUser || user?.globalRole === 'SUPER_ADMIN';
   };
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo/Brand */}
-          <Link href="/" className="flex items-center space-x-2">
+          {/* Logo/Brand - links to /admin for super admins, / for others */}
+          <Link href={isSuperAdmin() ? '/admin' : '/'} className="flex items-center space-x-2">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
               OSCAL Hub
             </div>
@@ -38,7 +51,7 @@ export function Navigation() {
 
           {/* User Section */}
           <div className="flex items-center space-x-4">
-            {isAuthenticated && user ? (
+            {mounted && isAuthenticated && user ? (
               <>
                 <Link href="/profile">
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
@@ -46,15 +59,15 @@ export function Navigation() {
                     <span className="font-medium">{user.username}</span>
                   </div>
                 </Link>
-                <OrganizationSwitcher />
+                {!isSuperAdmin() && <OrganizationSwitcher />}
                 {isSuperAdmin() && (
-                  <Link href="/admin/organizations">
+                  <Link href="/admin">
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex items-center space-x-2"
-                      title="Admin Settings"
-                      aria-label="Admin Settings"
+                      title="Admin Dashboard"
+                      aria-label="Admin Dashboard"
                     >
                       <Settings className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -71,13 +84,13 @@ export function Navigation() {
                   <span>Logout</span>
                 </Button>
               </>
-            ) : (
+            ) : mounted ? (
               <Link href="/login">
                 <Button variant="default" size="sm">
                   Login
                 </Button>
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

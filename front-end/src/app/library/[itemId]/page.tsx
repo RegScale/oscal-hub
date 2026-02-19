@@ -21,10 +21,14 @@ import {
   Tag,
   Save,
   X,
-  Clock
+  Clock,
+  MessageSquare,
+  Star
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
-import type { LibraryItem, LibraryVersion, OscalModelType } from '@/types/oscal';
+import type { LibraryItem, LibraryVersion, OscalModelType, RatingStats, LibraryComment } from '@/types/oscal';
+import { StarRating } from '@/components/ui/star-rating';
+import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
 import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
@@ -32,7 +36,7 @@ import { toast } from 'sonner';
 export default function LibraryItemDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   const itemId = params.itemId as string;
 
@@ -55,6 +59,14 @@ export default function LibraryItemDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
+  // Rating state
+  const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
+  const [isRating, setIsRating] = useState(false);
+
+  // Comments state
+  const [comments, setComments] = useState<LibraryComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
   // Track which itemId we've already incremented view count for
   const viewIncrementedRef = useRef<string | null>(null);
 
@@ -63,6 +75,8 @@ export default function LibraryItemDetailPage() {
       viewIncrementedRef.current = itemId;
       loadItem();
       loadVersions();
+      loadRatings();
+      loadComments();
     }
   }, [isAuthenticated, itemId]);
 
@@ -90,6 +104,53 @@ export default function LibraryItemDetailPage() {
     } catch (err) {
       console.error('Failed to load version history:', err);
     }
+  };
+
+  const loadRatings = async () => {
+    try {
+      const data = await apiClient.getLibraryItemRatings(itemId);
+      setRatingStats(data);
+    } catch (err) {
+      console.error('Failed to load ratings:', err);
+    }
+  };
+
+  const loadComments = async () => {
+    try {
+      setCommentsLoading(true);
+      const data = await apiClient.getLibraryComments(itemId);
+      setComments(data);
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleRatingChange = async (rating: number) => {
+    try {
+      setIsRating(true);
+      const newStats = await apiClient.rateLibraryItem(itemId, rating);
+      setRatingStats(newStats);
+      toast.success('Rating submitted successfully');
+    } catch (err) {
+      toast.error('Failed to submit rating');
+      console.error(err);
+    } finally {
+      setIsRating(false);
+    }
+  };
+
+  const handleCreateComment = async (content: string, parentCommentId?: string) => {
+    await apiClient.createLibraryComment(itemId, content, parentCommentId);
+  };
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    await apiClient.updateLibraryComment(itemId, commentId, content);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    await apiClient.deleteLibraryComment(itemId, commentId);
   };
 
   const handleSaveMetadata = async () => {
@@ -290,18 +351,22 @@ export default function LibraryItemDetailPage() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">
               <FileText className="h-4 w-4 mr-2" />
               Details
             </TabsTrigger>
+            <TabsTrigger value="comments">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Comments ({comments.length})
+            </TabsTrigger>
             <TabsTrigger value="versions">
               <History className="h-4 w-4 mr-2" />
-              Version History ({versions.length})
+              Versions ({versions.length})
             </TabsTrigger>
             <TabsTrigger value="upload">
               <Upload className="h-4 w-4 mr-2" />
-              Upload New Version
+              Upload
             </TabsTrigger>
           </TabsList>
 
@@ -417,6 +482,29 @@ export default function LibraryItemDetailPage() {
                         </div>
                       </div>
                     </div>
+                    {/* Rating Section */}
+                    <div className="pt-4 border-t">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Your Rating</h3>
+                      <div className="flex items-center gap-4">
+                        <StarRating
+                          rating={ratingStats?.userRating || 0}
+                          onRatingChange={handleRatingChange}
+                          size="lg"
+                        />
+                        {isRating && (
+                          <span className="text-sm text-muted-foreground">Submitting...</span>
+                        )}
+                      </div>
+                      {ratingStats && ratingStats.totalRatings > 0 && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span>
+                            {ratingStats.averageRating.toFixed(1)} average ({ratingStats.totalRatings}{' '}
+                            {ratingStats.totalRatings === 1 ? 'rating' : 'ratings'})
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -456,6 +544,36 @@ export default function LibraryItemDetailPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Comments Tab */}
+          <TabsContent value="comments" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Comments
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {commentsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading comments...</p>
+                  </div>
+                ) : (
+                  <CommentThread
+                    comments={comments}
+                    itemId={itemId}
+                    currentUsername={user?.username}
+                    onCommentAdded={loadComments}
+                    onCreateComment={handleCreateComment}
+                    onEditComment={handleEditComment}
+                    onDeleteComment={handleDeleteComment}
+                  />
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Version History Tab */}

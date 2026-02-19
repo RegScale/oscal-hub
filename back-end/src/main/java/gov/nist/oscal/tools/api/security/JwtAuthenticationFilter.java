@@ -1,5 +1,8 @@
 package gov.nist.oscal.tools.api.security;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -42,9 +45,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwt = authorizationHeader.substring(7);
             try {
                 username = jwtUtil.extractUsername(jwt);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("JWT token validated for user: " + username);
+                }
+            } catch (ExpiredJwtException e) {
+                logger.warn("JWT token has expired for request to " + request.getRequestURI() + ": " + e.getMessage());
+            } catch (SignatureException e) {
+                logger.warn("JWT signature validation failed for request to " + request.getRequestURI() + ": " + e.getMessage() + " - This may indicate the server was restarted with a different JWT secret");
+            } catch (MalformedJwtException e) {
+                logger.warn("Malformed JWT token for request to " + request.getRequestURI() + ": " + e.getMessage());
             } catch (Exception e) {
                 // Invalid token - continue without authentication
-                logger.warn("Invalid JWT token: " + e.getMessage());
+                logger.warn("Invalid JWT token for request to " + request.getRequestURI() + ": " + e.getMessage());
+            }
+        } else {
+            // Log when Authorization header is missing for protected endpoints
+            String uri = request.getRequestURI();
+            if (!uri.contains("/auth/") && !uri.contains("/health") && !uri.contains("/swagger") && !uri.contains("/v3/api-docs")) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("No Authorization header present for request to " + uri);
+                }
             }
         }
 

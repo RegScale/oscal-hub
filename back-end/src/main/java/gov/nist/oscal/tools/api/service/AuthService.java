@@ -74,6 +74,10 @@ public class AuthService {
     @Autowired
     private UserAccessRequestRepository accessRequestRepository;
 
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private SecurityPolicyService securityPolicyService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Validate password complexity using new PasswordValidationService
@@ -110,7 +114,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
         String token = jwtUtil.generateToken(userDetails);
 
-        return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getId());
+        return new AuthResponse(token, user);
     }
 
     @Transactional
@@ -164,12 +168,38 @@ public class AuthService {
             // Log audit event
             auditLogService.logAuthSuccess(username, user.getId());
 
-            // Generate token
+            // Check MFA requirements (safely handle null values)
+            boolean mfaGloballyRequired = false;
+            try {
+                mfaGloballyRequired = securityPolicyService.isMfaRequired();
+            } catch (Exception e) {
+                logger.warn("Could not check MFA policy, defaulting to not required: {}", e.getMessage());
+            }
+            boolean userHasMfaEnabled = Boolean.TRUE.equals(user.getMfaEnabled()) &&
+                                        Boolean.TRUE.equals(user.getMfaSetupCompleted());
+
+            // Case 1: MFA is globally required but user hasn't completed setup
+            if (mfaGloballyRequired && !userHasMfaEnabled) {
+                String mfaToken = jwtUtil.generateMfaSetupToken(username, user.getId());
+                logger.info("MFA setup required for user: {} (global policy)", username);
+                return AuthResponse.mfaSetupRequired(mfaToken, user);
+            }
+
+            // Case 2: User has MFA enabled - require verification
+            if (userHasMfaEnabled) {
+                String mfaToken = jwtUtil.generateMfaPartialToken(username, user.getId());
+                logger.info("MFA verification required for user: {}", username);
+                return AuthResponse.mfaRequired(mfaToken, user);
+            }
+
+            // Case 3: No MFA required - generate full token
             String token = jwtUtil.generateToken(userDetails);
 
-            return new AuthResponse(token, user.getUsername(), user.getEmail(), user.getId());
+            return new AuthResponse(token, user);
 
         } catch (AuthenticationException e) {
+            logger.error("Authentication failed for user {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
+
             // Record failed login attempt
             loginAttemptService.recordFailedLogin(username, ipAddress);
 

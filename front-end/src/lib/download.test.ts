@@ -49,10 +49,14 @@ describe('download utilities', () => {
   });
 
   describe('downloadFile', () => {
-    let createObjectURLSpy: ReturnType<typeof vi.fn>;
-    let revokeObjectURLSpy: ReturnType<typeof vi.fn>;
-    let appendChildSpy: ReturnType<typeof vi.fn>;
-    let removeChildSpy: ReturnType<typeof vi.fn>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let createObjectURLSpy: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let revokeObjectURLSpy: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let appendChildSpy: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let removeChildSpy: any;
     let clickSpy: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {

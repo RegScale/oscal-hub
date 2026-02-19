@@ -11,8 +11,8 @@ import {
 import type { OscalFormat } from '@/types/oscal';
 
 interface FormatSelectorProps {
-  fromFormat: OscalFormat;
-  toFormat: OscalFormat;
+  fromFormat: OscalFormat | '';
+  toFormat: OscalFormat | '';
   onFromFormatChange: (format: OscalFormat) => void;
   onToFormatChange: (format: OscalFormat) => void;
   disabled?: boolean;
@@ -36,12 +36,12 @@ export function FormatSelector({
       <label className="text-sm font-medium">Conversion Direction</label>
       <div className="flex items-center gap-3">
         <Select
-          value={fromFormat}
-          onValueChange={onFromFormatChange}
+          value={fromFormat || undefined}
+          onValueChange={(value) => onFromFormatChange(value as OscalFormat)}
           disabled={disabled}
         >
           <SelectTrigger className="flex-1">
-            <SelectValue />
+            <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>
             {FORMATS.map((format) => (
@@ -58,9 +58,13 @@ export function FormatSelector({
 
         <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
 
-        <Select value={toFormat} onValueChange={onToFormatChange} disabled={disabled}>
+        <Select
+          value={toFormat || undefined}
+          onValueChange={(value) => onToFormatChange(value as OscalFormat)}
+          disabled={disabled}
+        >
           <SelectTrigger className="flex-1">
-            <SelectValue />
+            <SelectValue placeholder="Target" />
           </SelectTrigger>
           <SelectContent>
             {FORMATS.map((format) => (

@@ -1,16 +1,55 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield, FileText } from 'lucide-react';
 import { Hero } from '@/components/Hero';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
+  const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [hasOrgAccess, setHasOrgAccess] = useState(false);
 
-  // Show loading state
-  if (isLoading) {
+  // Check auth status from localStorage on mount and navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+
+        // Check super admin status
+        if (userData.globalRole === 'SUPER_ADMIN') {
+          setIsSuperAdminUser(true);
+          router.push('/admin');
+          return;
+        }
+
+        // Check organization access
+        setHasOrgAccess(userData.organizationId != null);
+      } catch (e) {
+        setHasOrgAccess(false);
+      }
+    }
+    setCheckingAuth(false);
+  }, [router]);
+
+  // Also update when user from context changes
+  useEffect(() => {
+    if (user) {
+      setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
+      setHasOrgAccess(user.organizationId != null);
+    }
+  }, [user]);
+
+  // Show loading while checking auth or AuthContext is loading
+  if (isLoading || checkingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -32,11 +71,21 @@ export default function Dashboard() {
     );
   }
 
-  // Check if user has organization access
-  const hasOrganizationAccess = user?.organizationId != null;
+  // Super admin redirect is handled by useEffect above
+  // Show loading while redirect is happening
+  if (isSuperAdminUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting to admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show pending message for authenticated users without organization access
-  if (!hasOrganizationAccess) {
+  if (!hasOrgAccess) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-12 px-4">
@@ -96,6 +145,26 @@ export default function Dashboard() {
                   <CardTitle className="text-2xl mb-2">Library</CardTitle>
                   <CardDescription className="text-base">
                     Browse, share, and download example OSCAL documents from the community
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+            <Link
+              href="/artifacts"
+              className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
+              aria-label="Navigate to Artifacts page to create and share Markdown templates"
+            >
+            <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
+              <CardHeader className="space-y-4">
+                <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                  <FileText className="h-8 w-8 text-primary" aria-hidden="true" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl mb-2">Artifacts</CardTitle>
+                  <CardDescription className="text-base">
+                    Create and share Markdown templates with variables for documentation and compliance artifacts
                   </CardDescription>
                 </div>
               </CardHeader>

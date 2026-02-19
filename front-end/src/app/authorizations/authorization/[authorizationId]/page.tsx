@@ -24,13 +24,15 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  RefreshCcw
+  RefreshCcw,
+  Pen
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { AuthorizationResponse, LibraryItem } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
 import { Footer } from '@/components/Footer';
 import { MarkdownPreview } from '@/components/markdown-preview';
+import { DigitalSignatureStep } from '@/components/digital-signature-step';
 import { toast } from 'sonner';
 
 export default function AuthorizationDetailPage() {
@@ -67,6 +69,7 @@ export default function AuthorizationDetailPage() {
   // Digital signature state
   const [showCertDetails, setShowCertDetails] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [showSigningPanel, setShowSigningPanel] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && authorizationId) {
@@ -462,7 +465,7 @@ export default function AuthorizationDetailPage() {
             </div>
 
             {/* Digital Signature Section */}
-            {(authorization.signerCertificate || authorization.electronicSignatureImage) && (
+            {(authorization.signerCertificate || authorization.electronicSignatureImage || authorization.signatureTimestamp || authorization.digitalSignatureMethod) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold border-b pb-2">
                   {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronic Signature' : 'Digital Signature'}
@@ -488,8 +491,8 @@ export default function AuthorizationDetailPage() {
 
                       {/* Electronic Signature Image */}
                       {authorization.electronicSignatureImage && authorization.digitalSignatureMethod === 'ELECTRONIC' && (
-                        <div className="mb-4 p-4 bg-white rounded border-2 border-dashed border-gray-300">
-                          <Label className="text-xs text-slate-600 mb-2 block">Signature</Label>
+                        <div className="mb-4 p-4 bg-slate-800 rounded border-2 border-dashed border-slate-500">
+                          <Label className="text-xs text-slate-400 mb-2 block">Signature</Label>
                           <img
                             src={authorization.electronicSignatureImage}
                             alt="Electronic Signature"
@@ -536,42 +539,48 @@ export default function AuthorizationDetailPage() {
                       </div>
 
                       <div className="mt-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowCertDetails(!showCertDetails)}
-                        >
-                          {showCertDetails ? (
-                            <>
-                              <ChevronUp className="h-4 w-4 mr-2" />
-                              Hide Certificate Details
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-4 w-4 mr-2" />
-                              Show Certificate Details
-                            </>
-                          )}
-                        </Button>
+                        {/* Only show certificate details button for CAC/PIV signatures */}
+                        {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowCertDetails(!showCertDetails)}
+                          >
+                            {showCertDetails ? (
+                              <>
+                                <ChevronUp className="h-4 w-4 mr-2" />
+                                Hide Certificate Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4 mr-2" />
+                                Show Certificate Details
+                              </>
+                            )}
+                          </Button>
+                        )}
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleVerifySignature}
-                          disabled={verifying}
-                        >
-                          {verifying ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Verifying...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCcw className="h-4 w-4 mr-2" />
-                              Re-verify
-                            </>
-                          )}
-                        </Button>
+                        {/* Only show re-verify button for CAC/PIV signatures */}
+                        {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleVerifySignature}
+                            disabled={verifying}
+                          >
+                            {verifying ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCcw className="h-4 w-4 mr-2" />
+                                Re-verify
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
 
                       {showCertDetails && (
@@ -659,6 +668,64 @@ export default function AuthorizationDetailPage() {
                     </div>
                   </div>
                 </Card>
+              </div>
+            )}
+
+            {/* Sign/Update Signature Section */}
+            {!showSigningPanel && authorization.authorizedBy === user?.username && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="text-lg font-semibold">
+                    {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Authorization'}
+                  </h3>
+                </div>
+                <Card className="p-4 bg-slate-800/50 border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-300">
+                        {authorization.signatureTimestamp || authorization.digitalSignatureMethod
+                          ? 'You can update or replace the existing signature on this authorization.'
+                          : 'This authorization has not been signed yet. Add a digital or electronic signature.'}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowSigningPanel(true)}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Pen className="h-4 w-4 mr-2" />
+                      {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Now'}
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Signing Panel */}
+            {showSigningPanel && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="text-lg font-semibold">Sign Authorization</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSigningPanel(false)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+                <DigitalSignatureStep
+                  authorizationId={parseInt(authorizationId)}
+                  authorizationName={authorization.name}
+                  onSignatureComplete={async (result) => {
+                    toast.success(`Authorization signed by ${result.signerName || 'Unknown'}`);
+                    setShowSigningPanel(false);
+                    await loadAuthorization(); // Reload to show updated signature
+                  }}
+                  onSkip={() => {
+                    setShowSigningPanel(false);
+                  }}
+                />
               </div>
             )}
 

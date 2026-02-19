@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.repository;
 
 import gov.nist.oscal.tools.api.entity.Organization;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,4 +16,9 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     List<Organization> findByActiveTrue();
 
     boolean existsByName(String name);
+
+    /**
+     * Find newest organizations (ordered by creation date desc)
+     */
+    List<Organization> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

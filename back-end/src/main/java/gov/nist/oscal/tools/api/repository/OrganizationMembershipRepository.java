@@ -52,4 +52,38 @@ public interface OrganizationMembershipRepository extends JpaRepository<Organiza
     );
 
     boolean existsByUserAndOrganization(User user, Organization organization);
+
+    @Query("SELECT COUNT(m) FROM OrganizationMembership m WHERE m.organization.id = :orgId")
+    int countByOrganizationId(@Param("orgId") Long orgId);
+
+    /**
+     * Get the first organization name for a user (for analytics display)
+     */
+    @Query("SELECT m.organization.name FROM OrganizationMembership m WHERE m.user.id = :userId ORDER BY m.joinedAt ASC")
+    String findFirstOrganizationNameByUserId(@Param("userId") Long userId);
+
+    // ==================== Batch Query Optimizations ====================
+
+    /**
+     * Batch count members by organization - returns all org member counts in single query
+     * Prevents N+1 queries when loading organization summaries
+     * @return List of Object[] where [0] = organizationId (Long), [1] = memberCount (Long)
+     */
+    @Query("SELECT m.organization.id, COUNT(m) FROM OrganizationMembership m GROUP BY m.organization.id")
+    List<Object[]> countMembersByOrganization();
+
+    /**
+     * Batch count members by organization with status filter
+     * @return List of Object[] where [0] = organizationId (Long), [1] = memberCount (Long)
+     */
+    @Query("SELECT m.organization.id, COUNT(m) FROM OrganizationMembership m WHERE m.status = :status GROUP BY m.organization.id")
+    List<Object[]> countMembersByOrganizationAndStatus(@Param("status") MembershipStatus status);
+
+    /**
+     * Count members for multiple organizations at once
+     * @param orgIds List of organization IDs
+     * @return List of Object[] where [0] = organizationId (Long), [1] = memberCount (Long)
+     */
+    @Query("SELECT m.organization.id, COUNT(m) FROM OrganizationMembership m WHERE m.organization.id IN :orgIds GROUP BY m.organization.id")
+    List<Object[]> countMembersByOrganizationIds(@Param("orgIds") List<Long> orgIds);
 }

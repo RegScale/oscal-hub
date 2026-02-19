@@ -1,6 +1,8 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.service.AsyncValidationService;
+import gov.nist.oscal.tools.api.service.AsyncValidationService.AsyncOperationResult;
 import gov.nist.oscal.tools.api.service.BatchOperationService;
 import gov.nist.oscal.tools.api.service.ConversionService;
 import gov.nist.oscal.tools.api.service.ProfileResolutionService;
@@ -17,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -27,18 +31,21 @@ public class ValidationController {
     private final ConversionService conversionService;
     private final ProfileResolutionService profileResolutionService;
     private final BatchOperationService batchOperationService;
+    private final AsyncValidationService asyncValidationService;
 
     @Autowired
     public ValidationController(
         ValidationService validationService,
         ConversionService conversionService,
         ProfileResolutionService profileResolutionService,
-        BatchOperationService batchOperationService
+        BatchOperationService batchOperationService,
+        AsyncValidationService asyncValidationService
     ) {
         this.validationService = validationService;
         this.conversionService = conversionService;
         this.profileResolutionService = profileResolutionService;
         this.batchOperationService = batchOperationService;
+        this.asyncValidationService = asyncValidationService;
     }
 
     @Operation(
@@ -110,15 +117,76 @@ public class ValidationController {
         return ResponseEntity.ok(result);
     }
 
+    // ==================== Async Operations ====================
+
     @Operation(
-        summary = "Health check",
-        description = "Simple health check endpoint to verify the API is running"
+        summary = "Validate OSCAL document asynchronously",
+        description = "Start an async validation for large documents. Returns immediately with an operation ID for polling."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "API is healthy")
+        @ApiResponse(responseCode = "202", description = "Validation started, poll for results")
     })
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("OSCAL CLI API is running");
+    @PostMapping("/validate/async")
+    public ResponseEntity<Map<String, Object>> validateAsync(@Valid @RequestBody ValidationRequest request, Principal principal) {
+        String operationId = asyncValidationService.startAsyncValidation(request, principal.getName());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("operationId", operationId);
+        response.put("status", "PENDING");
+        response.put("message", "Validation started. Poll /api/async/" + operationId + " for results.");
+        response.put("pollUrl", "/api/async/" + operationId);
+
+        return ResponseEntity.accepted().body(response);
     }
+
+    @Operation(
+        summary = "Convert OSCAL document asynchronously",
+        description = "Start an async conversion for large documents. Returns immediately with an operation ID for polling."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "202", description = "Conversion started, poll for results")
+    })
+    @PostMapping("/convert/async")
+    public ResponseEntity<Map<String, Object>> convertAsync(@Valid @RequestBody ConversionRequest request, Principal principal) {
+        String operationId = asyncValidationService.startAsyncConversion(request, principal.getName());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("operationId", operationId);
+        response.put("status", "PENDING");
+        response.put("message", "Conversion started. Poll /api/async/" + operationId + " for results.");
+        response.put("pollUrl", "/api/async/" + operationId);
+
+        return ResponseEntity.accepted().body(response);
+    }
+
+    @Operation(
+        summary = "Get async operation status",
+        description = "Get the status and result of an async operation by its operation ID"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Operation found"),
+        @ApiResponse(responseCode = "404", description = "Operation not found or expired")
+    })
+    @GetMapping("/async/{operationId}")
+    public ResponseEntity<Map<String, Object>> getAsyncResult(@PathVariable String operationId) {
+        AsyncOperationResult<?> result = asyncValidationService.getOperationResult(operationId);
+        if (result == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("operationId", result.getOperationId());
+        response.put("status", result.getStatus().toString());
+        response.put("complete", result.isComplete());
+
+        if (result.getResult() != null) {
+            response.put("result", result.getResult());
+        }
+        if (result.getError() != null) {
+            response.put("error", result.getError());
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
 }

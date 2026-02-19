@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.security;
 
+import gov.nist.oscal.tools.api.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -213,6 +214,111 @@ public class JwtUtil {
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    // ========================================
+    // MFA Token Methods
+    // ========================================
+
+    /**
+     * Generate a full JWT token for a User entity.
+     * Used after MFA verification to issue a complete authentication token.
+     *
+     * @param user The authenticated user
+     * @return JWT token string
+     */
+    public String generateToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("globalRole", user.getGlobalRole() != null ? user.getGlobalRole().name() : "USER");
+        claims.put("mustChangePassword", user.getMustChangePassword() != null ? user.getMustChangePassword() : false);
+        claims.put("mfaEnabled", user.getMfaEnabled() != null ? user.getMfaEnabled() : false);
+
+        return createToken(claims, user.getUsername());
+    }
+
+    /**
+     * Generate a short-lived MFA setup token.
+     * Used during MFA setup flow to track the user completing setup.
+     * Valid for 10 minutes.
+     *
+     * @param username Username (token subject)
+     * @param userId User ID
+     * @return JWT token string (short-lived, 10 minutes)
+     */
+    public String generateMfaSetupToken(String username, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("tokenType", "mfa-setup");
+
+        Date now = new Date();
+        Date expirationDate = new Date(now.getTime() + 600000); // 10 minutes
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(username)
+                .issuedAt(now)
+                .expiration(expirationDate)
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Generate a short-lived MFA partial token.
+     * Used during login flow when MFA verification is required.
+     * Valid for 5 minutes.
+     *
+     * @param username Username (token subject)
+     * @param userId User ID
+     * @return JWT token string (short-lived, 5 minutes)
+     */
+    public String generateMfaPartialToken(String username, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("tokenType", "mfa-partial");
+
+        Date now = new Date();
+        Date expirationDate = new Date(now.getTime() + 300000); // 5 minutes
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(username)
+                .issuedAt(now)
+                .expiration(expirationDate)
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Check if the token is an MFA setup token.
+     *
+     * @param token JWT token to check
+     * @return true if token is a valid MFA setup token
+     */
+    public boolean isMfaSetupToken(String token) {
+        try {
+            String tokenType = extractClaim(token, claims -> claims.get("tokenType", String.class));
+            return "mfa-setup".equals(tokenType) && !isTokenExpired(token);
+        } catch (Exception e) {
+            logger.debug("Invalid MFA setup token: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if the token is an MFA partial token (awaiting MFA verification).
+     *
+     * @param token JWT token to check
+     * @return true if token is a valid MFA partial token
+     */
+    public boolean isMfaPartialToken(String token) {
+        try {
+            String tokenType = extractClaim(token, claims -> claims.get("tokenType", String.class));
+            return "mfa-partial".equals(tokenType) && !isTokenExpired(token);
+        } catch (Exception e) {
+            logger.debug("Invalid MFA partial token: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**

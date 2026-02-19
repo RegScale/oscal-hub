@@ -67,7 +67,7 @@ public class Authorization {
     @Column(name = "authorizing_official", length = 255)
     private String authorizingOfficial;
 
-    @OneToMany(mappedBy = "authorization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "authorization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ConditionOfApproval> conditions = new ArrayList<>();
 
     // Digital Signature Fields

@@ -488,7 +488,7 @@ describe('ApiClient', () => {
         });
 
         const request: BatchOperationRequest = {
-          operationType: 'validate',
+          operationType: 'VALIDATE',
           modelType: 'catalog',
           files: [
             { filename: 'catalog1.xml', content: '<catalog/>', format: 'xml' },
@@ -764,6 +764,356 @@ describe('ApiClient', () => {
 
       await apiClient.logout();
       expect(localStorageMock.getItem('token')).toBeNull();
+    });
+  });
+
+  // ========== AUDIT LOG TESTS ==========
+
+  describe('Audit Logs', () => {
+    beforeEach(() => {
+      localStorageMock.setItem('token', 'test-token');
+    });
+
+    describe('getAuditLogs', () => {
+      it('should retrieve paginated audit logs', async () => {
+        const mockResponse = {
+          content: [
+            { id: 1, eventType: 'AUTH_LOGIN_SUCCESS', username: 'testuser', outcome: 'SUCCESS' },
+            { id: 2, eventType: 'DATA_FILE_UPLOAD', username: 'admin', outcome: 'SUCCESS' },
+          ],
+          totalPages: 5,
+          totalElements: 100,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        const result = await apiClient.getAuditLogs({ page: 0, size: 50 });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs'),
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({
+              Authorization: 'Bearer test-token',
+            }),
+          })
+        );
+
+        expect(result.content).toHaveLength(2);
+        expect(result.totalElements).toBe(100);
+      });
+
+      it('should apply filters to audit log query', async () => {
+        const mockResponse = {
+          content: [{ id: 1, eventType: 'AUTH_LOGIN_SUCCESS', username: 'testuser' }],
+          totalPages: 1,
+          totalElements: 1,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        await apiClient.getAuditLogs({ username: 'testuser', riskLevel: 'HIGH' });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringMatching(/username=testuser/),
+          expect.any(Object)
+        );
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringMatching(/riskLevel=HIGH/),
+          expect.any(Object)
+        );
+      });
+    });
+
+    describe('getRawLogs', () => {
+      it('should retrieve raw API access logs', async () => {
+        const mockResponse = {
+          content: [
+            { id: 1, eventType: 'API_REQUEST', requestUrl: '/api/validate' },
+          ],
+          totalPages: 1,
+          totalElements: 1,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        const result = await apiClient.getRawLogs();
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/raw'),
+          expect.any(Object)
+        );
+
+        expect(result.content).toHaveLength(1);
+      });
+    });
+
+    describe('getSecurityLogs', () => {
+      it('should retrieve security-related logs', async () => {
+        const mockResponse = {
+          content: [
+            { id: 1, eventType: 'SECURITY_ACCOUNT_LOCKED', riskLevel: 'HIGH' },
+          ],
+          totalPages: 1,
+          totalElements: 1,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        const result = await apiClient.getSecurityLogs();
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/security'),
+          expect.any(Object)
+        );
+
+        expect(result.content).toHaveLength(1);
+      });
+    });
+
+    describe('getErrorLogs', () => {
+      it('should retrieve error logs', async () => {
+        const mockResponse = {
+          content: [
+            { id: 1, eventType: 'SYSTEM_ERROR', outcome: 'ERROR', errorMessage: 'Something went wrong' },
+          ],
+          totalPages: 1,
+          totalElements: 1,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        const result = await apiClient.getErrorLogs();
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/errors'),
+          expect.any(Object)
+        );
+
+        expect(result.content[0].outcome).toBe('ERROR');
+      });
+    });
+
+    describe('searchAuditLogs', () => {
+      it('should search audit logs by keyword', async () => {
+        const mockResponse = {
+          content: [
+            { id: 1, eventType: 'AUTH_LOGIN_SUCCESS', username: 'testuser' },
+          ],
+          totalPages: 1,
+          totalElements: 1,
+          size: 50,
+          number: 0,
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+        const result = await apiClient.searchAuditLogs('testuser');
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringMatching(/\/admin\/logs\/search.*q=testuser/),
+          expect.any(Object)
+        );
+
+        expect(result.content).toHaveLength(1);
+      });
+    });
+
+    describe('getAuditLogById', () => {
+      it('should retrieve a specific audit log by ID', async () => {
+        const mockLog = {
+          id: 123,
+          eventType: 'AUTH_LOGIN_SUCCESS',
+          username: 'testuser',
+          ipAddress: '192.168.1.1',
+          outcome: 'SUCCESS',
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockLog,
+        });
+
+        const result = await apiClient.getAuditLogById(123);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/123'),
+          expect.any(Object)
+        );
+
+        expect(result!.id).toBe(123);
+        expect(result!.username).toBe('testuser');
+      });
+
+      it('should throw error when log not found', async () => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+        });
+
+        await expect(apiClient.getAuditLogById(999)).rejects.toThrow();
+      });
+    });
+
+    describe('getAuditLogStats', () => {
+      it('should retrieve audit log statistics', async () => {
+        const mockStats = {
+          totalLogs: 1000,
+          logsToday: 50,
+          securityEventsToday: 10,
+          errorsToday: 5,
+          highRiskUnreviewed: 3,
+          byCategory: {
+            Authentication: 300,
+            'Data Access': 500,
+            Security: 100,
+          },
+          byRiskLevel: {
+            LOW: 800,
+            MEDIUM: 150,
+            HIGH: 50,
+          },
+          byOutcome: {
+            SUCCESS: 900,
+            FAILURE: 80,
+            ERROR: 20,
+          },
+        };
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockStats,
+        });
+
+        const result = await apiClient.getAuditLogStats();
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/stats'),
+          expect.any(Object)
+        );
+
+        expect(result.totalLogs).toBe(1000);
+        expect(result.byCategory.Authentication).toBe(300);
+      });
+    });
+
+    describe('exportLogsCsv', () => {
+      it('should call export CSV endpoint with authentication', async () => {
+        const mockBlob = new Blob(['test,data'], { type: 'text/csv' });
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(mockBlob),
+        });
+
+        // Mock URL and document methods
+        const mockUrl = 'blob:test-url';
+        const createObjectURL = vi.fn(() => mockUrl);
+        const revokeObjectURL = vi.fn();
+        Object.defineProperty(window, 'URL', {
+          value: { createObjectURL, revokeObjectURL },
+          writable: true,
+        });
+
+        const mockLink = {
+          href: '',
+          download: '',
+          click: vi.fn(),
+        };
+        vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+        vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
+        vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+
+        await apiClient.exportLogsCsv({ username: 'testuser', riskLevel: 'HIGH' });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/export/csv'),
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({
+              Authorization: 'Bearer mock-token',
+            }),
+          })
+        );
+        expect(mockLink.click).toHaveBeenCalled();
+      });
+
+      it('should throw error on failed export', async () => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          statusText: 'Forbidden',
+        });
+
+        await expect(apiClient.exportLogsCsv()).rejects.toThrow('Export failed: Forbidden');
+      });
+    });
+
+    describe('exportLogsJson', () => {
+      it('should call export JSON endpoint with authentication', async () => {
+        const mockBlob = new Blob(['{"id":1}'], { type: 'application/x-ndjson' });
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(mockBlob),
+        });
+
+        // Mock URL and document methods
+        const mockUrl = 'blob:test-url';
+        const createObjectURL = vi.fn(() => mockUrl);
+        const revokeObjectURL = vi.fn();
+        Object.defineProperty(window, 'URL', {
+          value: { createObjectURL, revokeObjectURL },
+          writable: true,
+        });
+
+        const mockLink = {
+          href: '',
+          download: '',
+          click: vi.fn(),
+        };
+        vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+        vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
+        vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+
+        await apiClient.exportLogsJson({ username: 'admin' });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/admin/logs/export/json'),
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({
+              Authorization: 'Bearer mock-token',
+            }),
+          })
+        );
+        expect(mockLink.click).toHaveBeenCalled();
+      });
     });
   });
 });

@@ -20,8 +20,10 @@ import {
   FileText,
   Calendar,
   User,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare
 } from 'lucide-react';
+import { StarRating } from '@/components/ui/star-rating';
 import { apiClient } from '@/lib/api-client';
 import type { LibraryItem, LibraryAnalytics, OscalModelType } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -325,6 +327,20 @@ export default function LibraryPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             {item.viewCount}
                           </div>
+                        </div>
+                      </div>
+                      {/* Rating and Comments */}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <StarRating
+                          rating={item.averageRating || 0}
+                          readonly
+                          size="sm"
+                          showCount
+                          totalRatings={item.totalRatings || 0}
+                        />
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          {item.commentCount || 0}
                         </div>
                       </div>
                       <Button

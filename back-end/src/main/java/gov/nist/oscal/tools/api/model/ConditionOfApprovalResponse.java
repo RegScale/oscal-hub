@@ -24,7 +24,14 @@ public class ConditionOfApprovalResponse {
 
     public ConditionOfApprovalResponse(ConditionOfApproval condition) {
         this.id = condition.getId();
-        this.authorizationId = condition.getAuthorization().getId();
+
+        // Handle lazy-loaded authorization
+        try {
+            this.authorizationId = condition.getAuthorization().getId();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.authorizationId = null;
+        }
+
         this.condition = condition.getCondition();
         this.conditionType = condition.getConditionType();
         this.dueDate = condition.getDueDate();

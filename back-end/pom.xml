@@ -112,6 +112,24 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- WebSocket support for real-time updates -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Caching support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <!-- Caffeine cache implementation -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
@@ -213,6 +231,13 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- TOTP (Time-based One-Time Password) for MFA -->
+        <dependency>
+            <groupId>dev.samstevens.totp</groupId>
+            <artifactId>totp</artifactId>
+            <version>1.7.1</version>
         </dependency>
 
         <!-- OpenAPI/Swagger Documentation -->

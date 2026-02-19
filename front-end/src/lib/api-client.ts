@@ -25,6 +25,10 @@ import type {
   LibraryVersionRequest,
   LibraryTag,
   LibraryAnalytics,
+  RatingStats,
+  RatingRequest,
+  LibraryComment,
+  CommentRequest,
   ServiceAccountTokenRequest,
   ServiceAccountTokenResponse,
   SspVisualizationData,
@@ -38,6 +42,31 @@ import type {
   ComponentDefinitionResponse,
   ReusableElementRequest,
   ReusableElementResponse,
+  AuditLog,
+  AuditLogStats,
+  SimpleHealthResponse,
+  DetailedHealthResponse,
+  ComponentHealth,
+  ComplianceSummary,
+  Soc2Control,
+  GapAnalysis,
+  SecurityPolicy,
+  SecurityPolicyUpdateRequest,
+  MfaSetupResponse,
+  MfaSetupCompleteRequest,
+  MfaSetupCompleteResponse,
+  MfaVerifyRequest,
+  MfaBackupCodeRequest,
+  MfaStatus,
+  Artifact,
+  ArtifactRequest,
+  ArtifactUpdateRequest,
+  ArtifactVersion,
+  ArtifactVersionRequest,
+  ArtifactTag,
+  ArtifactAnalytics,
+  ArtifactComment,
+  ArtifactVisibility,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -55,6 +84,27 @@ class ApiClient {
       : { 'Content-Type': 'application/json' };
   }
 
+  /**
+   * Handle authentication errors by clearing credentials and redirecting to login.
+   * This is called when the server returns 401 or 403 on authenticated endpoints,
+   * indicating the token is invalid or expired.
+   */
+  private handleAuthError(): void {
+    // Only handle if we thought we were authenticated
+    const hadToken = localStorage.getItem('token');
+    if (hadToken) {
+      console.warn('Authentication token is invalid or expired. Redirecting to login.');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentOrganization');
+
+      // Redirect to login page (only in browser environment)
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+  }
+
   private async fetchWithTimeout(
     url: string,
     options: RequestInit,
@@ -69,6 +119,17 @@ class ApiClient {
         signal: controller.signal,
       });
       clearTimeout(id);
+
+      // Check for auth errors on non-auth endpoints
+      // (auth endpoints like /login naturally return 401/403 for bad credentials)
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+
+      // Only logout on 401 (unauthorized/invalid token)
+      // 403 (forbidden) could be resource-level permissions, not token issues
+      if (!isAuthEndpoint && response.status === 401) {
+        this.handleAuthError();
+      }
+
       return response;
     } catch (error) {
       clearTimeout(id);
@@ -98,21 +159,25 @@ class ApiClient {
 
       const authResponse: AuthResponse = await response.json();
 
-      // Store token in localStorage
-      localStorage.setItem('token', authResponse.token);
-      localStorage.setItem('user', JSON.stringify({
-        userId: authResponse.userId,
-        username: authResponse.username,
-        email: authResponse.email,
-        street: authResponse.street,
-        city: authResponse.city,
-        state: authResponse.state,
-        zip: authResponse.zip,
-        title: authResponse.title,
-        organization: authResponse.organization,
-        phoneNumber: authResponse.phoneNumber,
-        logo: authResponse.logo,
-      }));
+      // Only store token if MFA is not required (token will be present)
+      // If MFA is required, mfaToken will be present instead of regular token
+      if (authResponse.token && !authResponse.mfaRequired && !authResponse.mfaSetupRequired) {
+        localStorage.setItem('token', authResponse.token ?? '');
+        localStorage.setItem('user', JSON.stringify({
+          userId: authResponse.userId,
+          username: authResponse.username,
+          email: authResponse.email,
+          globalRole: authResponse.globalRole,
+          street: authResponse.street,
+          city: authResponse.city,
+          state: authResponse.state,
+          zip: authResponse.zip,
+          title: authResponse.title,
+          organization: authResponse.organization,
+          phoneNumber: authResponse.phoneNumber,
+          logo: authResponse.logo,
+        }));
+      }
 
       return authResponse;
     } catch (error) {
@@ -144,7 +209,7 @@ class ApiClient {
       const authResponse: AuthResponse = await response.json();
 
       // Store token in localStorage
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token ?? '');
       localStorage.setItem('user', JSON.stringify({
         userId: authResponse.userId,
         username: authResponse.username,
@@ -237,11 +302,19 @@ class ApiClient {
       const authResponse: AuthResponse = await response.json();
 
       // Update token in localStorage
-      localStorage.setItem('token', authResponse.token);
+      localStorage.setItem('token', authResponse.token!);
+
+      // Preserve existing user data (especially globalRole, organizationId, etc.)
+      // and merge with refreshed data
+      const existingUser = localStorage.getItem('user');
+      const existingUserData = existingUser ? JSON.parse(existingUser) : {};
+
       localStorage.setItem('user', JSON.stringify({
+        ...existingUserData, // Preserve existing fields like organizationId, orgRole
         userId: authResponse.userId,
         username: authResponse.username,
         email: authResponse.email,
+        globalRole: authResponse.globalRole || existingUserData.globalRole, // Preserve if not in response
         street: authResponse.street,
         city: authResponse.city,
         state: authResponse.state,
@@ -264,6 +337,8 @@ class ApiClient {
   async updateProfile(updates: {
     email?: string;
     password?: string;
+    firstName?: string;
+    lastName?: string;
     street?: string;
     city?: string;
     state?: string;
@@ -1483,7 +1558,9 @@ class ApiClient {
         throw new Error(`Failed to search library: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to search library:', error);
       return [];
@@ -1508,7 +1585,9 @@ class ApiClient {
         throw new Error(`Failed to get library items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to get library items:', error);
       return [];
@@ -1533,7 +1612,9 @@ class ApiClient {
         throw new Error(`Failed to get library items by type: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to get library items by type:', error);
       return [];
@@ -1558,7 +1639,9 @@ class ApiClient {
         throw new Error(`Failed to get popular items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend may return paginated response or array
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error('Failed to get popular items:', error);
       return [];
@@ -1583,7 +1666,9 @@ class ApiClient {
         throw new Error(`Failed to get recent items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend may return paginated response or array
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error('Failed to get recent items:', error);
       return [];
@@ -1662,6 +1747,186 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to get popular tags:', error);
       return [];
+    }
+  }
+
+  // ========================
+  // Library Rating Methods
+  // ========================
+
+  /**
+   * Rate a library item (1-5 stars)
+   * Creates or updates the user's rating for the item
+   */
+  async rateLibraryItem(itemId: string, rating: number): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ rating } as RatingRequest),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to rate library item: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get rating statistics for a library item
+   */
+  async getLibraryItemRatings(itemId: string): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get library item ratings: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete the user's rating for a library item
+   */
+  async deleteLibraryItemRating(itemId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/ratings`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete library item rating: ${response.statusText}`);
+    }
+  }
+
+  // ========================
+  // Library Comment Methods
+  // ========================
+
+  /**
+   * Create a comment on a library item
+   * @param itemId The library item UUID
+   * @param content The comment content
+   * @param parentCommentId Optional parent comment ID for replies
+   */
+  async createLibraryComment(
+    itemId: string,
+    content: string,
+    parentCommentId?: string
+  ): Promise<LibraryComment> {
+    const request: CommentRequest = { content, parentCommentId };
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create comment: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get all comments for a library item (threaded)
+   */
+  async getLibraryComments(itemId: string): Promise<LibraryComment[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get comments: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get comment count for a library item
+   */
+  async getLibraryCommentCount(itemId: string): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get comment count: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Update a comment
+   */
+  async updateLibraryComment(
+    itemId: string,
+    commentId: string,
+    content: string
+  ): Promise<LibraryComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content } as CommentRequest),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update comment: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete a comment (soft delete)
+   */
+  async deleteLibraryComment(itemId: string, commentId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/library/${itemId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete comment: ${response.statusText}`);
     }
   }
 
@@ -2742,12 +3007,28 @@ class ApiClient {
 
       const result = await response.json();
 
+      // Get existing user data to preserve firstName/lastName
+      const existingUser = localStorage.getItem('user');
+      let firstName = '';
+      let lastName = '';
+      if (existingUser) {
+        try {
+          const parsed = JSON.parse(existingUser);
+          firstName = parsed.firstName || '';
+          lastName = parsed.lastName || '';
+        } catch (e) {
+          // ignore
+        }
+      }
+
       // Update token and user info in localStorage
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify({
         userId: result.userId,
         username: result.username,
         email: result.email,
+        firstName: result.firstName || firstName,
+        lastName: result.lastName || lastName,
         organizationId: result.organizationId,
         organizationName: result.organizationName,
         orgRole: result.orgRole,
@@ -2793,12 +3074,28 @@ class ApiClient {
 
       const result = await response.json();
 
+      // Get existing user data to preserve firstName/lastName
+      const existingUser = localStorage.getItem('user');
+      let firstName = '';
+      let lastName = '';
+      if (existingUser) {
+        try {
+          const parsed = JSON.parse(existingUser);
+          firstName = parsed.firstName || '';
+          lastName = parsed.lastName || '';
+        } catch (e) {
+          // ignore
+        }
+      }
+
       // Update token and user info in localStorage
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify({
         userId: result.userId,
         username: result.username,
         email: result.email,
+        firstName: result.firstName || firstName,
+        lastName: result.lastName || lastName,
         organizationId: result.organizationId,
         organizationName: result.organizationName,
         orgRole: result.orgRole,
@@ -2874,6 +3171,712 @@ class ApiClient {
     }
   }
 
+  // ========================================
+  // Super Admin API Methods
+  // ========================================
+
+  /**
+   * Get organizations summary with member counts and pending request counts
+   * Super Admin only
+   */
+  async getOrganizationsSummary(): Promise<Array<{
+    id: number;
+    name: string;
+    memberCount: number;
+    pendingRequestCount: number;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/organizations/summary`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get organizations summary: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get organizations summary:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all pending access requests across all organizations
+   * Super Admin only
+   */
+  async getAllPendingAccessRequests(): Promise<Array<{
+    id: number;
+    userId: number | null;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationId: number;
+    organizationName: string;
+    status: string;
+    message: string | null;
+    requestDate: string;
+    reviewedBy: number | null;
+    reviewedByUsername: string | null;
+    reviewedDate: string | null;
+    notes: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get pending access requests: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get pending access requests:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve an access request
+   * Super Admin only
+   */
+  async approveAccessRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests/${requestId}/approve`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve access request');
+      }
+    } catch (error) {
+      console.error('Failed to approve access request:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject an access request
+   * Super Admin only
+   */
+  async rejectAccessRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/access-requests/${requestId}/reject`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject access request');
+      }
+    } catch (error) {
+      console.error('Failed to reject access request:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Analytics API Methods
+  // ========================================
+
+  /**
+   * Get comprehensive analytics data for the super admin dashboard
+   * Super Admin only
+   */
+  async getAnalytics(): Promise<any> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/analytics`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get analytics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get summary statistics for quick dashboard header cards
+   * Super Admin only
+   */
+  async getAnalyticsSummary(): Promise<any> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/analytics/summary`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get analytics summary: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get analytics summary:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Admin Audit Logs API Methods
+  // ========================================
+
+  /**
+   * Get all audit logs with pagination and optional filters
+   * Super Admin only
+   */
+  async getAuditLogs(params: {
+    page?: number;
+    size?: number;
+    username?: string;
+    ipAddress?: string;
+    riskLevel?: string;
+    eventType?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', String(params.page || 0));
+      queryParams.append('size', String(params.size || 50));
+      if (params.username) queryParams.append('username', params.username);
+      if (params.ipAddress) queryParams.append('ipAddress', params.ipAddress);
+      if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+      if (params.eventType) queryParams.append('eventType', params.eventType);
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get audit logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size: 50, number: 0 };
+    }
+  }
+
+  /**
+   * Get raw access logs (API requests)
+   * Super Admin only
+   */
+  async getRawLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/raw?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get raw logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get raw logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get security logs (security events and high-risk events)
+   * Super Admin only
+   */
+  async getSecurityLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/security?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get security logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get security logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get error logs (failed and error events)
+   * Super Admin only
+   */
+  async getErrorLogs(page = 0, size = 50, filters?: { username?: string; riskLevel?: string }): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('size', size.toString());
+      if (filters?.username) queryParams.append('username', filters.username);
+      if (filters?.riskLevel) queryParams.append('riskLevel', filters.riskLevel);
+
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/errors?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get error logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get error logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Search audit logs by keyword
+   * Super Admin only
+   */
+  async searchAuditLogs(query: string, page = 0, size = 50): Promise<{
+    content: AuditLog[];
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/search?q=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search audit logs: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to search audit logs:', error);
+      return { content: [], totalPages: 0, totalElements: 0, size, number: page };
+    }
+  }
+
+  /**
+   * Get a single audit log by ID
+   * Super Admin only
+   */
+  async getAuditLogById(id: number): Promise<AuditLog | null> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/${id}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`Failed to get audit log: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit log:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get audit log statistics
+   * Super Admin only
+   */
+  async getAuditLogStats(): Promise<AuditLogStats> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/logs/stats`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get audit log stats: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get audit log stats:', error);
+      return {
+        totalLogs: 0,
+        logsToday: 0,
+        securityEventsToday: 0,
+        errorsToday: 0,
+        highRiskUnreviewed: 0,
+        byCategory: {},
+        byRiskLevel: {},
+        byOutcome: {},
+      };
+    }
+  }
+
+  /**
+   * Export audit logs to CSV with authentication
+   * Downloads the file through an authenticated request
+   * Super Admin only
+   */
+  async exportLogsCsv(params: {
+    username?: string;
+    riskLevel?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<void> {
+    const queryParams = new URLSearchParams();
+    if (params.username) queryParams.append('username', params.username);
+    if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+
+    const query = queryParams.toString();
+    const url = `${API_BASE_URL}/admin/logs/export/csv${query ? '?' + query : ''}`;
+
+    const response = await this.fetchWithTimeout(url, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    // Get the blob and trigger download
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+
+  /**
+   * Export audit logs to JSON Lines with authentication
+   * Downloads the file through an authenticated request
+   * Super Admin only
+   */
+  async exportLogsJson(params: {
+    username?: string;
+    riskLevel?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<void> {
+    const queryParams = new URLSearchParams();
+    if (params.username) queryParams.append('username', params.username);
+    if (params.riskLevel) queryParams.append('riskLevel', params.riskLevel);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+
+    const query = queryParams.toString();
+    const url = `${API_BASE_URL}/admin/logs/export/json${query ? '?' + query : ''}`;
+
+    const response = await this.fetchWithTimeout(url, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    // Get the blob and trigger download
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.jsonl`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+
+  // ========== Health Check Methods ==========
+
+  /**
+   * Get simple health status (public endpoint - no auth required).
+   * Used for basic monitoring and load balancers.
+   */
+  async getSimpleHealth(): Promise<SimpleHealthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        return {
+          status: 'DOWN',
+          timestamp: new Date().toISOString(),
+          version: 'unknown',
+        };
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return {
+        status: 'DOWN',
+        timestamp: new Date().toISOString(),
+        version: 'unknown',
+      };
+    }
+  }
+
+  /**
+   * Get detailed health status (requires SUPER_ADMIN auth).
+   * Returns comprehensive health information for admin dashboard.
+   */
+  async getDetailedHealth(): Promise<DetailedHealthResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/health/detailed`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get health status for a specific component (requires SUPER_ADMIN auth).
+   * @param component - Component name: database, storage, memory, diskspace, oscal
+   */
+  async getComponentHealth(component: string): Promise<ComponentHealth> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/health/component/${encodeURIComponent(component)}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Component health check failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Simple ping check (public endpoint - no auth required).
+   * Returns true if healthy, false if unhealthy.
+   */
+  async ping(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health/ping`, {
+        method: 'GET',
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Ping failed:', error);
+      return false;
+    }
+  }
+
+  // ========== Security Compliance Methods ==========
+
+  /**
+   * Get SOC 2 compliance summary (requires SUPER_ADMIN auth).
+   * Returns overall compliance statistics.
+   */
+  async getComplianceSummary(): Promise<ComplianceSummary> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/compliance-summary`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get compliance summary: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all SOC 2 controls (requires SUPER_ADMIN auth).
+   * Returns all controls with their implementation status.
+   */
+  async getAllControls(): Promise<Soc2Control[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/controls`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get controls: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get SOC 2 controls by category (requires SUPER_ADMIN auth).
+   * @param category - Category code: CC6, CC7, CC8, CC9, DATA, AUDIT
+   */
+  async getControlsByCategory(category: string): Promise<Soc2Control[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/controls/${encodeURIComponent(category)}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get controls for category ${category}: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get SOC 2 gap analysis (requires SUPER_ADMIN auth).
+   * Returns identified compliance gaps with recommendations.
+   */
+  async getGapAnalysis(): Promise<GapAnalysis[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security/gaps`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get gap analysis: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   // Mock implementations for development without backend
 
   private async mockValidate(
@@ -2947,6 +3950,875 @@ class ApiClient {
       timestamp: new Date().toISOString(),
     };
   }
+
+  // ========================================
+  // Security Policy API Methods
+  // ========================================
+
+  /**
+   * Get current security policy (Super Admin only)
+   */
+  async getSecurityPolicy(): Promise<SecurityPolicy> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to fetch security policy');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update security policy (Super Admin only)
+   */
+  async updateSecurityPolicy(request: SecurityPolicyUpdateRequest): Promise<SecurityPolicy> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to update security policy');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Trigger manual audit log cleanup (Super Admin only)
+   */
+  async triggerAuditLogCleanup(): Promise<{ message: string; deletedCount: number; retentionDays: number }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/security-policy/cleanup-logs`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      },
+      60000 // 60 seconds for cleanup operation
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to trigger audit log cleanup');
+    }
+
+    return response.json();
+  }
+
+  // ========================================
+  // MFA API Methods
+  // ========================================
+
+  /**
+   * Initiate MFA setup - generates QR code and secret
+   * @param mfaSetupToken Optional MFA setup token for users coming from login flow
+   */
+  async initiateMfaSetup(mfaSetupToken?: string): Promise<MfaSetupResponse> {
+    // Use the MFA setup token if provided (from login flow), otherwise use regular auth
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (mfaSetupToken) {
+      headers['Authorization'] = `Bearer ${mfaSetupToken}`;
+    } else {
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/setup/initiate`,
+      {
+        method: 'POST',
+        headers,
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to initiate MFA setup');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Complete MFA setup by verifying the first TOTP code
+   */
+  async completeMfaSetup(request: MfaSetupCompleteRequest): Promise<MfaSetupCompleteResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/setup/complete`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to complete MFA setup');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Verify TOTP code during login
+   */
+  async verifyMfaCode(request: MfaVerifyRequest): Promise<AuthResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/verify`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'MFA verification failed');
+    }
+
+    const authResponse: AuthResponse = await response.json();
+
+    // Store token after successful MFA verification
+    if (authResponse.token) {
+      localStorage.setItem('token', authResponse.token ?? '');
+      localStorage.setItem('user', JSON.stringify({
+        userId: authResponse.userId,
+        username: authResponse.username,
+        email: authResponse.email,
+        globalRole: authResponse.globalRole,
+      }));
+    }
+
+    return authResponse;
+  }
+
+  /**
+   * Verify backup code during login
+   */
+  async verifyBackupCode(request: MfaBackupCodeRequest): Promise<AuthResponse & { backupCodesRemaining?: number; warning?: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/verify-backup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Backup code verification failed');
+    }
+
+    const authResponse = await response.json();
+
+    // Store token after successful backup code verification
+    if (authResponse.token) {
+      localStorage.setItem('token', authResponse.token ?? '');
+      localStorage.setItem('user', JSON.stringify({
+        userId: authResponse.user?.id || authResponse.userId,
+        username: authResponse.user?.username || authResponse.username,
+        email: authResponse.user?.email || authResponse.email,
+        globalRole: authResponse.user?.globalRole || authResponse.globalRole,
+      }));
+    }
+
+    return authResponse;
+  }
+
+  /**
+   * Get MFA status for current user
+   */
+  async getMfaStatus(): Promise<MfaStatus> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/status`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to get MFA status');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get backup codes count
+   */
+  async getBackupCodesCount(): Promise<{ count: number }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/backup-codes/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to get backup codes count');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Regenerate backup codes (requires TOTP verification)
+   */
+  async regenerateBackupCodes(totpCode: string): Promise<{ backupCodes: string[] }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/backup-codes/regenerate?totpCode=${encodeURIComponent(totpCode)}`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to regenerate backup codes');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Disable MFA for current user (requires TOTP verification)
+   */
+  async disableMfa(totpCode: string): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/disable?totpCode=${encodeURIComponent(totpCode)}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to disable MFA');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Admin: Disable MFA for another user (Super Admin only)
+   */
+  async adminDisableMfa(userId: number): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/mfa/admin/users/${userId}/mfa`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to disable MFA for user');
+    }
+
+    return response.json();
+  }
+
+  // ========================================
+  // Artifact API Methods
+  // ========================================
+
+  /**
+   * Create a new artifact
+   */
+  async createArtifact(request: ArtifactRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create artifact');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact by ID
+   */
+  async getArtifact(artifactId: string): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update artifact metadata
+   */
+  async updateArtifact(artifactId: string, request: ArtifactUpdateRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete an artifact
+   */
+  async deleteArtifact(artifactId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Get artifact content (current version)
+   */
+  async getArtifactContent(artifactId: string): Promise<string> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/content`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact content: ${response.statusText}`);
+    }
+
+    // Backend returns JSON { content: "..." }
+    const data = await response.json();
+    return data.content || '';
+  }
+
+  /**
+   * Add new version to artifact
+   */
+  async addArtifactVersion(artifactId: string, request: ArtifactVersionRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/versions`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to add artifact version: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact version history
+   */
+  async getArtifactVersionHistory(artifactId: string): Promise<ArtifactVersion[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/versions`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact version history: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get specific artifact version content
+   */
+  async getArtifactVersionContent(versionId: string): Promise<string> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/versions/${versionId}/content`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact version content: ${response.statusText}`);
+    }
+
+    // Backend returns JSON { content: "..." }
+    const data = await response.json();
+    return data.content || '';
+  }
+
+  /**
+   * Get all artifacts visible to current user
+   */
+  async getAllArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get current user's own artifacts
+   */
+  async getMyArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/my`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get my artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get public artifacts only
+   */
+  async getPublicArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/public`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get public artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get artifacts for a specific organization
+   */
+  async getOrganizationArtifacts(organizationId: number): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/organization/${organizationId}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get organization artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Search artifacts
+   */
+  async searchArtifacts(params: {
+    keyword?: string;
+    tag?: string;
+    visibility?: ArtifactVisibility;
+    organizationId?: number;
+  }): Promise<Artifact[]> {
+    const queryParams = new URLSearchParams();
+    // Backend uses 'q' for keyword search
+    if (params.keyword) queryParams.append('q', params.keyword);
+    if (params.tag) queryParams.append('tag', params.tag);
+    if (params.visibility) queryParams.append('visibility', params.visibility);
+    if (params.organizationId) queryParams.append('organizationId', params.organizationId.toString());
+
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/search?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to search artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get most popular (downloaded) artifacts
+   */
+  async getMostPopularArtifacts(limit = 10): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/popular?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get popular artifacts: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get recently updated artifacts
+   */
+  async getRecentArtifacts(limit = 10): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/recent?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get recent artifacts: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact analytics
+   */
+  async getArtifactAnalytics(): Promise<ArtifactAnalytics> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/analytics`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact analytics: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all artifact tags
+   */
+  async getAllArtifactTags(): Promise<ArtifactTag[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/tags`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact tags: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get popular artifact tags
+   */
+  async getPopularArtifactTags(limit = 20): Promise<ArtifactTag[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/tags/popular?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get popular artifact tags: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Rate an artifact
+   */
+  async rateArtifact(artifactId: string, rating: number): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ rating }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to rate artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact rating stats
+   */
+  async getArtifactRatings(artifactId: string): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact ratings: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Remove user's rating from artifact
+   */
+  async deleteArtifactRating(artifactId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact rating: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Create a comment on an artifact
+   */
+  async createArtifactComment(
+    artifactId: string,
+    content: string,
+    parentCommentId?: string
+  ): Promise<ArtifactComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content, parentCommentId }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create artifact comment: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get comments for an artifact
+   */
+  async getArtifactComments(artifactId: string): Promise<ArtifactComment[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact comments: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get comment count for an artifact
+   */
+  async getArtifactCommentCount(artifactId: string): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact comment count: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.count;
+  }
+
+  /**
+   * Update an artifact comment
+   */
+  async updateArtifactComment(
+    artifactId: string,
+    commentId: string,
+    content: string
+  ): Promise<ArtifactComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update artifact comment: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete an artifact comment (soft delete)
+   */
+  async deleteArtifactComment(artifactId: string, commentId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact comment: ${response.statusText}`);
+    }
+  }
+
+  // ========================================
+  // Mock Implementations (for development)
+  // ========================================
 
   private async mockConvert(request: ConversionRequest): Promise<ConversionResult> {
     await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -65,6 +65,30 @@ This directory contains comprehensive documentation for the OSCAL Hub project fe
   - Updates to Hero.tsx splash page
   - Content overview and verification steps
 
+### Security & Compliance Documentation
+
+- **[SOC2-COMPLIANCE.md](SOC2-COMPLIANCE.md)** - SOC 2 Type II compliance documentation
+  - Trust Service Criteria mapping
+  - Control implementation status
+  - Gap analysis and recommendations
+  - Evidence collection guide
+  - Attestation preparation checklist
+
+- **[INCIDENT-RESPONSE.md](INCIDENT-RESPONSE.md)** - Incident response plan for GCP deployment
+  - Incident classification (P1-P4 severity levels)
+  - Response team roles and responsibilities
+  - Detection and alerting configuration
+  - Step-by-step response procedures
+  - Communication plan templates
+  - Runbooks for common incidents
+
+- **[DISASTER-RECOVERY.md](DISASTER-RECOVERY.md)** - Disaster recovery procedures for GCP
+  - RTO/RPO objectives by scenario
+  - Backup strategies (Cloud SQL, Cloud Storage, container images)
+  - Recovery procedures for various failure scenarios
+  - DR testing schedule and procedures
+  - Business continuity planning
+
 ### Technical Documentation
 
 - **[JAVA_SPRING_UPGRADE_PLAN.md](JAVA_SPRING_UPGRADE_PLAN.md)** - Java and Spring Boot upgrade planning
@@ -110,6 +134,11 @@ When adding new features or making significant changes:
 - Read [VARIABLE-DETECTION-SUMMARY.md](VARIABLE-DETECTION-SUMMARY.md) for how to use the template editor
 - Check [AUTHORIZATION-FEATURE-SUMMARY.md](AUTHORIZATION-FEATURE-SUMMARY.md) for complete usage examples
 
+### For Security & Compliance
+- Start with [SOC2-COMPLIANCE.md](SOC2-COMPLIANCE.md) for SOC 2 Type II control mapping
+- See [INCIDENT-RESPONSE.md](INCIDENT-RESPONSE.md) for incident response procedures
+- Review [DISASTER-RECOVERY.md](DISASTER-RECOVERY.md) for DR testing and recovery procedures
+
 ### For Maintenance
 - Refer to [JAVA_SPRING_UPGRADE_PLAN.md](JAVA_SPRING_UPGRADE_PLAN.md) for upgrade planning
 - Review [TEMPLATE-EDITOR-FIX.md](TEMPLATE-EDITOR-FIX.md) for technical implementation details
@@ -134,7 +163,10 @@ docs/
 │   ├── DIGITAL-SIGNATURE-USER-GUIDE.md
 │   └── USER-LOGO-FEATURE.md
 │
-├── Security & Production/
+├── Security & Compliance/
+│   ├── SOC2-COMPLIANCE.md                  # SOC 2 Type II controls
+│   ├── INCIDENT-RESPONSE.md                # Incident response plan
+│   ├── DISASTER-RECOVERY.md                # DR procedures
 │   ├── PRODUCTION-SECURITY-HARDENING-PLAN.md
 │   ├── SECURITY-HARDENING-SUMMARY.md
 │   ├── SECURITY-AUDIT-REPORT.md
@@ -174,4 +206,4 @@ docs/
 
 ---
 
-*Last Updated: October 19, 2025*
+*Last Updated: February 2025*
