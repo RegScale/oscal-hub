@@ -39,6 +39,7 @@ ENVIRONMENT="prod"
 SKIP_TERRAFORM=false
 SKIP_BUILD=false
 SKIP_DEPLOY=false
+IMAGE_TAG=$(date +%Y%m%d-%H%M%S)
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -170,9 +171,10 @@ if [ "$SKIP_BUILD" = false ]; then
 
   # Build locally and push to Artifact Registry (more reliable than Cloud Build)
   echo "Building image locally and pushing to Artifact Registry..."
-  ./build-and-push.sh "$PROJECT_ID" "$REGION"
+  echo "Image tag: $IMAGE_TAG"
+  ./build-and-push.sh "$PROJECT_ID" "$REGION" "$IMAGE_TAG"
 
-  print_success "Container images built and pushed"
+  print_success "Container images built and pushed with tag: $IMAGE_TAG"
 else
   print_warning "Skipping container builds (--skip-build)"
   print_warning "Make sure container images already exist in Artifact Registry!"
@@ -191,15 +193,14 @@ if [ "$SKIP_TERRAFORM" = false ]; then
   echo "Initializing Terraform..."
   terraform init
 
-  # Create terraform.tfvars if it doesn't exist
-  if [ ! -f "terraform.tfvars" ]; then
-    echo "Creating terraform.tfvars..."
-    cat > terraform.tfvars <<EOF
+  # Create/update terraform.tfvars with current image tag
+  echo "Creating terraform.tfvars with image tag: $IMAGE_TAG"
+  cat > terraform.tfvars <<EOF
 project_id  = "$PROJECT_ID"
 region      = "$REGION"
 environment = "$ENVIRONMENT"
+image_tag   = "$IMAGE_TAG"
 EOF
-  fi
 
   # Plan and apply
   echo "Planning infrastructure changes..."

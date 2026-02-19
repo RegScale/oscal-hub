@@ -174,7 +174,7 @@ module "oscal_app" {
   environment  = var.environment
   service_name = "oscal-tools"
 
-  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository}/oscal-tools:latest"
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository}/oscal-tools:${var.image_tag}"
 
   # Container port (Cloud Run sets PORT=8080, Next.js frontend listens on it)
   # Backend Spring Boot runs on port 8081

@@ -165,6 +165,11 @@ resource "google_cloud_run_domain_mapping" "custom_domain" {
   spec {
     route_name = "${var.service_name}-${var.environment}"
   }
+
+  # Prevent replacement if domain already exists - SSL provisioning takes 10-20 min
+  lifecycle {
+    ignore_changes = [metadata, spec]
+  }
 }
 
 resource "google_cloud_run_domain_mapping" "www_custom_domain" {
@@ -180,5 +185,10 @@ resource "google_cloud_run_domain_mapping" "www_custom_domain" {
 
   spec {
     route_name = "${var.service_name}-${var.environment}"
+  }
+
+  # Prevent replacement if domain already exists - SSL provisioning takes 10-20 min
+  lifecycle {
+    ignore_changes = [metadata, spec]
   }
 }

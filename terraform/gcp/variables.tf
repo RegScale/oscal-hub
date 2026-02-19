@@ -33,6 +33,12 @@ variable "artifact_registry_repository" {
   default     = "oscal-tools"
 }
 
+variable "image_tag" {
+  description = "Container image tag (use timestamp for unique deployments)"
+  type        = string
+  default     = "latest"
+}
+
 # ----------------------------------------------------------------------------
 # Database Configuration
 # ----------------------------------------------------------------------------
