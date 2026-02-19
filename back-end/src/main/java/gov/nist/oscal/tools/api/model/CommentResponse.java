@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.model;
 
+import gov.nist.oscal.tools.api.entity.ArtifactComment;
 import gov.nist.oscal.tools.api.entity.LibraryItemComment;
 import gov.nist.oscal.tools.api.entity.User;
 
@@ -43,24 +44,43 @@ public class CommentResponse {
         CommentResponse response = new CommentResponse();
         response.setCommentId(comment.getCommentId());
         response.setContent(comment.getContent());
-        response.setUsername(comment.getUser().getUsername());
-        response.setUserDisplayName(getUserDisplayName(comment.getUser()));
+
+        // Handle lazy-loaded user
+        try {
+            response.setUsername(comment.getUser().getUsername());
+            response.setUserDisplayName(getUserDisplayName(comment.getUser()));
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setUsername(null);
+            response.setUserDisplayName(null);
+        }
+
         response.setCreatedAt(comment.getCreatedAt());
         response.setUpdatedAt(comment.getUpdatedAt());
         response.setIsEdited(comment.isEdited());
 
-        if (comment.getParentComment() != null) {
-            response.setParentCommentId(comment.getParentComment().getCommentId());
+        // Handle lazy-loaded parentComment
+        try {
+            if (comment.getParentComment() != null) {
+                response.setParentCommentId(comment.getParentComment().getCommentId());
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            // Parent comment not loaded, leave as null
         }
 
-        if (loadReplies && comment.getReplies() != null) {
-            List<CommentResponse> replyResponses = comment.getReplies().stream()
-                    .filter(r -> !r.getDeleted())
-                    .map(r -> fromEntity(r, true))
-                    .collect(Collectors.toList());
-            response.setReplies(replyResponses);
-            response.setReplyCount(replyResponses.size());
-        } else {
+        // Handle lazy-loaded replies
+        try {
+            if (loadReplies && comment.getReplies() != null) {
+                List<CommentResponse> replyResponses = comment.getReplies().stream()
+                        .filter(r -> !r.getDeleted())
+                        .map(r -> fromEntity(r, true))
+                        .collect(Collectors.toList());
+                response.setReplies(replyResponses);
+                response.setReplyCount(replyResponses.size());
+            } else {
+                response.setReplies(new ArrayList<>());
+                response.setReplyCount(0);
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
             response.setReplies(new ArrayList<>());
             response.setReplyCount(0);
         }
@@ -75,6 +95,64 @@ public class CommentResponse {
             return user.getFirstName();
         }
         return user.getUsername();
+    }
+
+    /**
+     * Create a CommentResponse from an ArtifactComment entity without loading replies.
+     */
+    public static CommentResponse fromArtifactComment(ArtifactComment comment) {
+        return fromArtifactComment(comment, false);
+    }
+
+    /**
+     * Create a CommentResponse from an ArtifactComment entity with optional recursive reply loading.
+     */
+    public static CommentResponse fromArtifactComment(ArtifactComment comment, boolean loadReplies) {
+        CommentResponse response = new CommentResponse();
+        response.setCommentId(comment.getCommentId());
+        response.setContent(comment.getContent());
+
+        // Handle lazy-loaded user
+        try {
+            response.setUsername(comment.getUser().getUsername());
+            response.setUserDisplayName(getUserDisplayName(comment.getUser()));
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setUsername(null);
+            response.setUserDisplayName(null);
+        }
+
+        response.setCreatedAt(comment.getCreatedAt());
+        response.setUpdatedAt(comment.getUpdatedAt());
+        response.setIsEdited(comment.isEdited());
+
+        // Handle lazy-loaded parentComment
+        try {
+            if (comment.getParentComment() != null) {
+                response.setParentCommentId(comment.getParentComment().getCommentId());
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            // Parent comment not loaded, leave as null
+        }
+
+        // Handle lazy-loaded replies
+        try {
+            if (loadReplies && comment.getReplies() != null) {
+                List<CommentResponse> replyResponses = comment.getReplies().stream()
+                        .filter(r -> !r.getDeleted())
+                        .map(r -> fromArtifactComment(r, true))
+                        .collect(Collectors.toList());
+                response.setReplies(replyResponses);
+                response.setReplyCount(replyResponses.size());
+            } else {
+                response.setReplies(new ArrayList<>());
+                response.setReplyCount(0);
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setReplies(new ArrayList<>());
+            response.setReplyCount(0);
+        }
+
+        return response;
     }
 
     // Getters and Setters

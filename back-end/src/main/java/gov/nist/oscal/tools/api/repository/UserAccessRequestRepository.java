@@ -73,4 +73,13 @@ public interface UserAccessRequestRepository extends JpaRepository<UserAccessReq
            "WHERE r.status = 'PENDING' " +
            "ORDER BY r.requestDate DESC")
     List<UserAccessRequest> findAllPending();
+
+    // ==================== Batch Query Optimizations ====================
+
+    /**
+     * Batch count pending requests by organization - prevents N+1 queries
+     * @return List of Object[] where [0] = organizationId (Long), [1] = pendingCount (Long)
+     */
+    @Query("SELECT r.organization.id, COUNT(r) FROM UserAccessRequest r WHERE r.status = 'PENDING' GROUP BY r.organization.id")
+    List<Object[]> countPendingByOrganization();
 }

@@ -523,7 +523,7 @@ public class OrganizationController {
 
     @Operation(
         summary = "Get organizations summary",
-        description = "Retrieve all organizations with member counts and pending access request counts. Super Admin only."
+        description = "Retrieve all organizations with member counts and pending access request counts. Super Admin only. Uses optimized batch queries to prevent N+1 issues."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Organizations summary retrieved successfully"),
@@ -533,18 +533,30 @@ public class OrganizationController {
     @GetMapping("/organizations/summary")
     public ResponseEntity<List<OrganizationSummaryResponse>> getOrganizationsSummary() {
         List<Organization> organizations = organizationService.getAllOrganizations();
+
+        // Batch fetch all member counts in single query (prevents N+1)
+        Map<Long, Long> memberCountMap = organizationMembershipRepository.countMembersByOrganization().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        // Batch fetch all pending request counts in single query (prevents N+1)
+        Map<Long, Long> pendingCountMap = userAccessRequestRepository.countPendingByOrganization().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
         List<OrganizationSummaryResponse> response = organizations.stream()
-                .map(org -> {
-                    int memberCount = organizationMembershipRepository.countByOrganizationId(org.getId());
-                    long pendingCount = userAccessRequestService.getPendingRequestCount(org.getId());
-                    return new OrganizationSummaryResponse(
-                            org.getId(),
-                            org.getName(),
-                            memberCount,
-                            pendingCount
-                    );
-                })
+                .map(org -> new OrganizationSummaryResponse(
+                        org.getId(),
+                        org.getName(),
+                        memberCountMap.getOrDefault(org.getId(), 0L).intValue(),
+                        pendingCountMap.getOrDefault(org.getId(), 0L)
+                ))
                 .collect(Collectors.toList());
+
         return ResponseEntity.ok(response);
     }
 

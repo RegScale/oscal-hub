@@ -944,3 +944,96 @@ export interface MfaStatus {
   mfaSetupCompleted: boolean;
   backupCodesRemaining: number;
 }
+
+// Artifact Types
+export type ArtifactVisibility = 'PRIVATE' | 'ORGANIZATION' | 'PUBLIC';
+
+export interface ArtifactVersion {
+  versionId: string;
+  versionNumber: number;
+  contentSize: number;
+  uploadedBy: string;
+  uploadedAt: string; // ISO 8601 date string
+  changeDescription?: string;
+  extractedVariables: string[];
+}
+
+export interface Artifact {
+  artifactId: string;
+  title: string;
+  description?: string;
+  visibility: ArtifactVisibility;
+  organizationId?: number;
+  organizationName?: string;
+  createdBy: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  tags: string[];
+  currentVersion?: ArtifactVersion;
+  extractedVariables: string[];
+  downloadCount: number;
+  viewCount: number;
+  versionCount?: number;
+
+  // Rating and comment fields
+  averageRating?: number;
+  totalRatings?: number;
+  commentCount?: number;
+}
+
+export interface ArtifactRequest {
+  title: string;
+  description?: string;
+  visibility: ArtifactVisibility;
+  organizationId?: number;
+  content: string; // Markdown content
+  tags?: string[];
+}
+
+export interface ArtifactUpdateRequest {
+  title?: string;
+  description?: string;
+  visibility?: ArtifactVisibility;
+  organizationId?: number;
+  tags?: string[];
+}
+
+export interface ArtifactVersionRequest {
+  content: string; // Markdown content
+  changeDescription?: string;
+}
+
+export interface ArtifactTag {
+  name: string;
+  usageCount: number;
+}
+
+export interface ArtifactAnalytics {
+  totalArtifacts: number;
+  totalVersions: number;
+  totalTags: number;
+  artifactsByVisibility: Record<string, number>;
+  popularTags: Array<{
+    name: string;
+    count: number;
+  }>;
+  mostDownloaded: Array<{
+    artifactId: string;
+    title: string;
+    downloadCount: number;
+  }>;
+}
+
+// Artifact Comment (reuses LibraryComment structure)
+export interface ArtifactComment {
+  commentId: string;
+  content: string;
+  username: string;
+  userDisplayName?: string;
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  isEdited: boolean;
+  parentCommentId?: string;
+  replies: ArtifactComment[];
+  replyCount: number;
+}

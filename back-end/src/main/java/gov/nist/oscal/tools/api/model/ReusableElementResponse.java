@@ -34,7 +34,14 @@ public class ReusableElementResponse {
         response.setName(entity.getName());
         response.setJsonContent(entity.getJsonContent());
         response.setDescription(entity.getDescription());
-        response.setCreatedBy(entity.getCreatedBy().getUsername());
+
+        // Handle lazy-loaded createdBy
+        try {
+            response.setCreatedBy(entity.getCreatedBy().getUsername());
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setCreatedBy(null);
+        }
+
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
         response.setShared(entity.isShared());

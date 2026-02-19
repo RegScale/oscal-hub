@@ -15,6 +15,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -295,43 +299,65 @@ public class LibraryController {
     }
 
     @Operation(
-        summary = "Search library",
-        description = "Search library items by keyword, OSCAL type, or tag"
+        summary = "Search library (paginated)",
+        description = "Search library items by keyword, OSCAL type, or tag with pagination"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Search completed successfully")
     })
     @GetMapping("/search")
-    public ResponseEntity<List<LibraryItemResponse>> searchLibrary(
+    public ResponseEntity<PageResponse<LibraryItemResponse>> searchLibrary(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String oscalType,
-            @RequestParam(required = false) String tag) {
+            @RequestParam(required = false) String tag,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         try {
-            List<LibraryItem> items = libraryService.searchLibrary(q, oscalType, tag);
-            List<LibraryItemResponse> responses = items.stream()
-                    .map(LibraryItemResponse::fromEntity)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(enhanceListWithRatingAndComments(responses));
+            size = Math.min(size, 100);
+
+            Sort sort = sortDir.equalsIgnoreCase("asc")
+                    ? Sort.by(sortBy).ascending()
+                    : Sort.by(sortBy).descending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            Page<LibraryItem> itemPage = libraryService.searchLibraryPaged(q, oscalType, tag, pageable);
+            PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
+            response.setContent(enhanceListWithRatingAndComments(response.getContent()));
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @Operation(
-        summary = "Get all library items",
-        description = "Retrieve all items in the library"
+        summary = "Get all library items (paginated)",
+        description = "Retrieve all items in the library with pagination"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
     })
     @GetMapping
-    public ResponseEntity<List<LibraryItemResponse>> getAllLibraryItems() {
+    public ResponseEntity<PageResponse<LibraryItemResponse>> getAllLibraryItems(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         try {
-            List<LibraryItem> items = libraryService.getAllLibraryItems();
-            List<LibraryItemResponse> responses = items.stream()
-                    .map(LibraryItemResponse::fromEntity)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(enhanceListWithRatingAndComments(responses));
+            size = Math.min(size, 100);
+
+            Sort sort = sortDir.equalsIgnoreCase("asc")
+                    ? Sort.by(sortBy).ascending()
+                    : Sort.by(sortBy).descending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            Page<LibraryItem> itemPage = libraryService.getAllLibraryItemsPaged(pageable);
+            PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
+            response.setContent(enhanceListWithRatingAndComments(response.getContent()));
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error fetching all library items", e);
             return ResponseEntity.internalServerError().build();
@@ -339,20 +365,32 @@ public class LibraryController {
     }
 
     @Operation(
-        summary = "Get items by OSCAL type",
-        description = "Retrieve all library items of a specific OSCAL type"
+        summary = "Get items by OSCAL type (paginated)",
+        description = "Retrieve library items of a specific OSCAL type with pagination"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
     })
     @GetMapping("/type/{oscalType}")
-    public ResponseEntity<List<LibraryItemResponse>> getItemsByType(@PathVariable String oscalType) {
+    public ResponseEntity<PageResponse<LibraryItemResponse>> getItemsByType(
+            @PathVariable String oscalType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         try {
-            List<LibraryItem> items = libraryService.getLibraryItemsByOscalType(oscalType);
-            List<LibraryItemResponse> responses = items.stream()
-                    .map(LibraryItemResponse::fromEntity)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(enhanceListWithRatingAndComments(responses));
+            size = Math.min(size, 100);
+
+            Sort sort = sortDir.equalsIgnoreCase("asc")
+                    ? Sort.by(sortBy).ascending()
+                    : Sort.by(sortBy).descending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            Page<LibraryItem> itemPage = libraryService.getLibraryItemsByOscalTypePaged(oscalType, pageable);
+            PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
+            response.setContent(enhanceListWithRatingAndComments(response.getContent()));
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

@@ -28,18 +28,43 @@ public class AccessRequestResponse {
 
     public AccessRequestResponse(UserAccessRequest request) {
         this.id = request.getId();
-        this.userId = request.getUser() != null ? request.getUser().getId() : null;
-        this.username = request.getUser() != null ? request.getUser().getUsername() : request.getUsername();
-        this.email = request.getUser() != null ? request.getUser().getEmail() : request.getEmail();
+
+        // Handle lazy-loaded user
+        try {
+            this.userId = request.getUser() != null ? request.getUser().getId() : null;
+            this.username = request.getUser() != null ? request.getUser().getUsername() : request.getUsername();
+            this.email = request.getUser() != null ? request.getUser().getEmail() : request.getEmail();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.userId = null;
+            this.username = request.getUsername();
+            this.email = request.getEmail();
+        }
+
         this.firstName = request.getFirstName();
         this.lastName = request.getLastName();
-        this.organizationId = request.getOrganization().getId();
-        this.organizationName = request.getOrganization().getName();
+
+        // Handle lazy-loaded organization
+        try {
+            this.organizationId = request.getOrganization().getId();
+            this.organizationName = request.getOrganization().getName();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.organizationId = null;
+            this.organizationName = null;
+        }
+
         this.status = request.getStatus().toString();
         this.message = request.getMessage();
         this.requestDate = request.getRequestDate();
-        this.reviewedBy = request.getReviewedBy() != null ? request.getReviewedBy().getId() : null;
-        this.reviewedByUsername = request.getReviewedBy() != null ? request.getReviewedBy().getUsername() : null;
+
+        // Handle lazy-loaded reviewedBy
+        try {
+            this.reviewedBy = request.getReviewedBy() != null ? request.getReviewedBy().getId() : null;
+            this.reviewedByUsername = request.getReviewedBy() != null ? request.getReviewedBy().getUsername() : null;
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.reviewedBy = null;
+            this.reviewedByUsername = null;
+        }
+
         this.reviewedDate = request.getReviewedDate();
         this.notes = request.getNotes();
     }

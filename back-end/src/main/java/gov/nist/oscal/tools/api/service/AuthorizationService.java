@@ -176,6 +176,7 @@ public class AuthorizationService {
     /**
      * Get an authorization by ID
      */
+    @Transactional(readOnly = true)
     public Authorization getAuthorization(Long id) {
         return authorizationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
@@ -184,6 +185,7 @@ public class AuthorizationService {
     /**
      * Get all authorizations
      */
+    @Transactional(readOnly = true)
     public List<Authorization> getAllAuthorizations() {
         return authorizationRepository.findAll();
     }
@@ -191,6 +193,7 @@ public class AuthorizationService {
     /**
      * Get recently authorized systems
      */
+    @Transactional(readOnly = true)
     public List<Authorization> getRecentlyAuthorized(int limit) {
         List<Authorization> authorizations = authorizationRepository.findRecentlyAuthorized();
         return authorizations.stream().limit(limit).collect(Collectors.toList());
@@ -199,6 +202,7 @@ public class AuthorizationService {
     /**
      * Get authorizations for a specific SSP
      */
+    @Transactional(readOnly = true)
     public List<Authorization> getAuthorizationsBySsp(String sspItemId) {
         return authorizationRepository.findBySspItemId(sspItemId);
     }
@@ -206,6 +210,7 @@ public class AuthorizationService {
     /**
      * Get authorizations by user
      */
+    @Transactional(readOnly = true)
     public List<Authorization> getAuthorizationsByUser(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -215,6 +220,7 @@ public class AuthorizationService {
     /**
      * Search authorizations
      */
+    @Transactional(readOnly = true)
     public List<Authorization> searchAuthorizations(String searchTerm) {
         if (searchTerm == null || searchTerm.isEmpty()) {
             return getAllAuthorizations();

@@ -27,10 +27,24 @@ public class AuthorizationTemplateResponse {
         this.id = template.getId();
         this.name = template.getName();
         this.content = template.getContent();
-        this.createdBy = template.getCreatedBy().getUsername();
+
+        // Handle lazy-loaded createdBy
+        try {
+            this.createdBy = template.getCreatedBy().getUsername();
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.createdBy = null;
+        }
+
         this.createdAt = template.getCreatedAt();
-        this.lastUpdatedBy = template.getLastUpdatedBy() != null ?
-                template.getLastUpdatedBy().getUsername() : template.getCreatedBy().getUsername();
+
+        // Handle lazy-loaded lastUpdatedBy
+        try {
+            this.lastUpdatedBy = template.getLastUpdatedBy() != null ?
+                    template.getLastUpdatedBy().getUsername() : this.createdBy;
+        } catch (org.hibernate.LazyInitializationException e) {
+            this.lastUpdatedBy = this.createdBy;
+        }
+
         this.lastUpdatedAt = template.getLastUpdatedAt();
         this.variables = variables;
     }

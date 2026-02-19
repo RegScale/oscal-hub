@@ -58,6 +58,15 @@ import type {
   MfaVerifyRequest,
   MfaBackupCodeRequest,
   MfaStatus,
+  Artifact,
+  ArtifactRequest,
+  ArtifactUpdateRequest,
+  ArtifactVersion,
+  ArtifactVersionRequest,
+  ArtifactTag,
+  ArtifactAnalytics,
+  ArtifactComment,
+  ArtifactVisibility,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 
@@ -114,23 +123,11 @@ class ApiClient {
       // Check for auth errors on non-auth endpoints
       // (auth endpoints like /login naturally return 401/403 for bad credentials)
       const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
-      if (!isAuthEndpoint && (response.status === 401 || response.status === 403)) {
-        // Check if this is an authorization issue vs invalid token
-        // 403 on admin endpoints for non-admin users is expected, not a token issue
-        // Include health/detailed and health/component as admin-protected endpoints
-        const isAdminEndpoint = url.includes('/admin/') ||
-                                url.includes('/api/health/detailed') ||
-                                url.includes('/api/health/component/');
-        const user = localStorage.getItem('user');
-        const isSuperAdmin = user && JSON.parse(user).globalRole === 'SUPER_ADMIN';
 
-        // Only treat as auth error if:
-        // - It's a 401 (always means unauthorized/invalid token)
-        // - Or it's a 403 on a non-admin endpoint (token is invalid)
-        // - Or it's a 403 on admin endpoint but user should be admin
-        if (response.status === 401 || !isAdminEndpoint || isSuperAdmin) {
-          this.handleAuthError();
-        }
+      // Only logout on 401 (unauthorized/invalid token)
+      // 403 (forbidden) could be resource-level permissions, not token issues
+      if (!isAuthEndpoint && response.status === 401) {
+        this.handleAuthError();
       }
 
       return response;
@@ -1561,7 +1558,9 @@ class ApiClient {
         throw new Error(`Failed to search library: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to search library:', error);
       return [];
@@ -1586,7 +1585,9 @@ class ApiClient {
         throw new Error(`Failed to get library items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to get library items:', error);
       return [];
@@ -1611,7 +1612,9 @@ class ApiClient {
         throw new Error(`Failed to get library items by type: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns paginated response with content array
+      return data.content || [];
     } catch (error) {
       console.error('Failed to get library items by type:', error);
       return [];
@@ -1636,7 +1639,9 @@ class ApiClient {
         throw new Error(`Failed to get popular items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend may return paginated response or array
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error('Failed to get popular items:', error);
       return [];
@@ -1661,7 +1666,9 @@ class ApiClient {
         throw new Error(`Failed to get recent items: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Backend may return paginated response or array
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error('Failed to get recent items:', error);
       return [];
@@ -4247,6 +4254,566 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  // ========================================
+  // Artifact API Methods
+  // ========================================
+
+  /**
+   * Create a new artifact
+   */
+  async createArtifact(request: ArtifactRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create artifact');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact by ID
+   */
+  async getArtifact(artifactId: string): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update artifact metadata
+   */
+  async updateArtifact(artifactId: string, request: ArtifactUpdateRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete an artifact
+   */
+  async deleteArtifact(artifactId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Get artifact content (current version)
+   */
+  async getArtifactContent(artifactId: string): Promise<string> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/content`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact content: ${response.statusText}`);
+    }
+
+    // Backend returns JSON { content: "..." }
+    const data = await response.json();
+    return data.content || '';
+  }
+
+  /**
+   * Add new version to artifact
+   */
+  async addArtifactVersion(artifactId: string, request: ArtifactVersionRequest): Promise<Artifact> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/versions`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to add artifact version: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact version history
+   */
+  async getArtifactVersionHistory(artifactId: string): Promise<ArtifactVersion[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/versions`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact version history: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get specific artifact version content
+   */
+  async getArtifactVersionContent(versionId: string): Promise<string> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/versions/${versionId}/content`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact version content: ${response.statusText}`);
+    }
+
+    // Backend returns JSON { content: "..." }
+    const data = await response.json();
+    return data.content || '';
+  }
+
+  /**
+   * Get all artifacts visible to current user
+   */
+  async getAllArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get current user's own artifacts
+   */
+  async getMyArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/my`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get my artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get public artifacts only
+   */
+  async getPublicArtifacts(): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/public`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get public artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get artifacts for a specific organization
+   */
+  async getOrganizationArtifacts(organizationId: number): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/organization/${organizationId}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get organization artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Search artifacts
+   */
+  async searchArtifacts(params: {
+    keyword?: string;
+    tag?: string;
+    visibility?: ArtifactVisibility;
+    organizationId?: number;
+  }): Promise<Artifact[]> {
+    const queryParams = new URLSearchParams();
+    // Backend uses 'q' for keyword search
+    if (params.keyword) queryParams.append('q', params.keyword);
+    if (params.tag) queryParams.append('tag', params.tag);
+    if (params.visibility) queryParams.append('visibility', params.visibility);
+    if (params.organizationId) queryParams.append('organizationId', params.organizationId.toString());
+
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/search?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to search artifacts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Backend returns paginated response with content array
+    return data.content || [];
+  }
+
+  /**
+   * Get most popular (downloaded) artifacts
+   */
+  async getMostPopularArtifacts(limit = 10): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/popular?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get popular artifacts: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get recently updated artifacts
+   */
+  async getRecentArtifacts(limit = 10): Promise<Artifact[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/recent?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get recent artifacts: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact analytics
+   */
+  async getArtifactAnalytics(): Promise<ArtifactAnalytics> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/analytics`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact analytics: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all artifact tags
+   */
+  async getAllArtifactTags(): Promise<ArtifactTag[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/tags`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact tags: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get popular artifact tags
+   */
+  async getPopularArtifactTags(limit = 20): Promise<ArtifactTag[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/tags/popular?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get popular artifact tags: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Rate an artifact
+   */
+  async rateArtifact(artifactId: string, rating: number): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ rating }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to rate artifact: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get artifact rating stats
+   */
+  async getArtifactRatings(artifactId: string): Promise<RatingStats> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact ratings: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Remove user's rating from artifact
+   */
+  async deleteArtifactRating(artifactId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/ratings`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact rating: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Create a comment on an artifact
+   */
+  async createArtifactComment(
+    artifactId: string,
+    content: string,
+    parentCommentId?: string
+  ): Promise<ArtifactComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content, parentCommentId }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create artifact comment: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get comments for an artifact
+   */
+  async getArtifactComments(artifactId: string): Promise<ArtifactComment[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact comments: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get comment count for an artifact
+   */
+  async getArtifactCommentCount(artifactId: string): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/count`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get artifact comment count: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.count;
+  }
+
+  /**
+   * Update an artifact comment
+   */
+  async updateArtifactComment(
+    artifactId: string,
+    commentId: string,
+    content: string
+  ): Promise<ArtifactComment> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ content }),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update artifact comment: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete an artifact comment (soft delete)
+   */
+  async deleteArtifactComment(artifactId: string, commentId: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/artifacts/${artifactId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete artifact comment: ${response.statusText}`);
+    }
   }
 
   // ========================================

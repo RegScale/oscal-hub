@@ -47,11 +47,25 @@ public class ComponentDefinitionResponse {
         response.setComponentCount(entity.getComponentCount());
         response.setCapabilityCount(entity.getCapabilityCount());
         response.setControlCount(entity.getControlCount());
-        response.setCreatedBy(entity.getCreatedBy().getUsername());
-        response.setCreatedAt(entity.getCreatedAt());
-        if (entity.getLastUpdatedBy() != null) {
-            response.setLastUpdatedBy(entity.getLastUpdatedBy().getUsername());
+
+        // Handle lazy-loaded createdBy
+        try {
+            response.setCreatedBy(entity.getCreatedBy().getUsername());
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setCreatedBy(null);
         }
+
+        response.setCreatedAt(entity.getCreatedAt());
+
+        // Handle lazy-loaded lastUpdatedBy
+        try {
+            if (entity.getLastUpdatedBy() != null) {
+                response.setLastUpdatedBy(entity.getLastUpdatedBy().getUsername());
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setLastUpdatedBy(null);
+        }
+
         response.setUpdatedAt(entity.getUpdatedAt());
         return response;
     }

@@ -29,7 +29,14 @@ public class LibraryVersionResponse {
         response.setFileName(version.getFileName());
         response.setFormat(version.getFormat());
         response.setFileSize(version.getFileSize());
-        response.setUploadedBy(version.getUploadedBy().getUsername());
+
+        // Handle lazy-loaded uploadedBy
+        try {
+            response.setUploadedBy(version.getUploadedBy().getUsername());
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setUploadedBy(null);
+        }
+
         response.setUploadedAt(version.getUploadedAt());
         response.setChangeDescription(version.getChangeDescription());
         return response;

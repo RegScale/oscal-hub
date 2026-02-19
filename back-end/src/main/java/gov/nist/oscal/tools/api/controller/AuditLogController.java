@@ -10,23 +10,26 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -190,7 +193,8 @@ public class AuditLogController {
     // ========================================
 
     @GetMapping("/stats")
-    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs")
+    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs (cached for 1 minute)")
+    @Cacheable(value = "auditStats", key = "'stats'")
     public ResponseEntity<AuditLogStats> getStats() {
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
 
@@ -234,101 +238,137 @@ public class AuditLogController {
     // Export Endpoints
     // ========================================
 
+    /**
+     * Maximum number of records that can be exported at once.
+     * This prevents unbounded exports that could cause memory issues.
+     */
+    private static final int MAX_EXPORT_RECORDS = 100000;
+
     @GetMapping("/export/csv")
-    @Operation(summary = "Export logs to CSV", description = "Export audit logs to CSV format with current filters")
-    public void exportCsv(
-            HttpServletResponse response,
+    @Operation(summary = "Export logs to CSV",
+               description = "Export audit logs to CSV format with current filters. Maximum 100,000 records. Uses streaming for memory efficiency.")
+    public ResponseEntity<StreamingResponseBody> exportCsv(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String riskLevel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) throws IOException {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @Parameter(description = "Maximum records to export (default 100000)")
+            @RequestParam(defaultValue = "100000") int maxRecords) {
 
-        response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=\"audit-logs-" + LocalDate.now() + ".csv\"");
+        final int limit = Math.min(maxRecords, MAX_EXPORT_RECORDS);
 
-        PrintWriter writer = response.getWriter();
+        StreamingResponseBody stream = outputStream -> {
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
 
-        // CSV Header
-        writer.println("ID,Timestamp,Event Type,Category,Username,IP Address,Request URL,HTTP Method,Resource,Action,Outcome,Risk Level,Error Message,Processing Time (ms)");
+            // CSV Header
+            writer.println("ID,Timestamp,Event Type,Category,Username,IP Address,Request URL,HTTP Method,Resource,Action,Outcome,Risk Level,Error Message,Processing Time (ms)");
 
-        // Get all matching logs (paginated export)
-        int page = 0;
-        int pageSize = 1000;
-        Page<AuditEvent> logPage;
+            int page = 0;
+            int pageSize = 1000;
+            int totalExported = 0;
+            Page<AuditEvent> logPage;
 
-        do {
-            Pageable pageable = PageRequest.of(page, pageSize);
+            do {
+                Pageable pageable = PageRequest.of(page, pageSize);
+                logPage = fetchFilteredLogs(username, riskLevel, startDate, endDate, pageable);
 
-            if (username != null && !username.isBlank()) {
-                if (startDate != null && endDate != null) {
-                    logPage = auditEventRepository.findByUsernameAndTimestampBetweenOrderByTimestampDesc(
-                        username, startDate, endDate, pageable);
-                } else {
-                    logPage = auditEventRepository.findByUsernameOrderByTimestampDesc(username, pageable);
+                for (AuditEvent event : logPage.getContent()) {
+                    if (totalExported >= limit) break;
+                    writer.println(formatCsvRow(event));
+                    totalExported++;
+
+                    // Flush periodically for streaming
+                    if (totalExported % 1000 == 0) {
+                        writer.flush();
+                    }
                 }
-            } else if (riskLevel != null && !riskLevel.isBlank()) {
-                logPage = auditEventRepository.findByRiskLevelOrderByTimestampDesc(riskLevel, pageable);
-            } else if (startDate != null && endDate != null) {
-                logPage = auditEventRepository.findByTimestampBetweenOrderByTimestampDesc(startDate, endDate, pageable);
-            } else {
-                logPage = auditEventRepository.findAllByOrderByTimestampDesc(pageable);
-            }
 
-            for (AuditEvent event : logPage.getContent()) {
-                writer.println(formatCsvRow(event));
-            }
+                page++;
+            } while (logPage.hasNext() && totalExported < limit);
 
-            page++;
-        } while (logPage.hasNext());
+            writer.flush();
+        };
 
-        writer.flush();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audit-logs-" + LocalDate.now() + ".csv\"");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(stream);
     }
 
     @GetMapping("/export/json")
-    @Operation(summary = "Export logs to JSON Lines", description = "Export audit logs to JSON Lines format (SIEM-friendly)")
-    public void exportJson(
-            HttpServletResponse response,
+    @Operation(summary = "Export logs to JSON Lines",
+               description = "Export audit logs to JSON Lines format (SIEM-friendly). Maximum 100,000 records. Uses streaming for memory efficiency.")
+    public ResponseEntity<StreamingResponseBody> exportJson(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String riskLevel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) throws IOException {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @Parameter(description = "Maximum records to export (default 100000)")
+            @RequestParam(defaultValue = "100000") int maxRecords) {
 
-        response.setContentType("application/x-ndjson");
-        response.setHeader("Content-Disposition", "attachment; filename=\"audit-logs-" + LocalDate.now() + ".jsonl\"");
+        final int limit = Math.min(maxRecords, MAX_EXPORT_RECORDS);
 
-        PrintWriter writer = response.getWriter();
+        StreamingResponseBody stream = outputStream -> {
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
 
-        // Get all matching logs (paginated export)
-        int page = 0;
-        int pageSize = 1000;
-        Page<AuditEvent> logPage;
+            int page = 0;
+            int pageSize = 1000;
+            int totalExported = 0;
+            Page<AuditEvent> logPage;
 
-        do {
-            Pageable pageable = PageRequest.of(page, pageSize);
+            do {
+                Pageable pageable = PageRequest.of(page, pageSize);
+                logPage = fetchFilteredLogs(username, riskLevel, startDate, endDate, pageable);
 
-            if (username != null && !username.isBlank()) {
-                if (startDate != null && endDate != null) {
-                    logPage = auditEventRepository.findByUsernameAndTimestampBetweenOrderByTimestampDesc(
-                        username, startDate, endDate, pageable);
-                } else {
-                    logPage = auditEventRepository.findByUsernameOrderByTimestampDesc(username, pageable);
+                for (AuditEvent event : logPage.getContent()) {
+                    if (totalExported >= limit) break;
+                    writer.println(formatJsonLine(event));
+                    totalExported++;
+
+                    // Flush periodically for streaming
+                    if (totalExported % 1000 == 0) {
+                        writer.flush();
+                    }
                 }
-            } else if (riskLevel != null && !riskLevel.isBlank()) {
-                logPage = auditEventRepository.findByRiskLevelOrderByTimestampDesc(riskLevel, pageable);
-            } else if (startDate != null && endDate != null) {
-                logPage = auditEventRepository.findByTimestampBetweenOrderByTimestampDesc(startDate, endDate, pageable);
+
+                page++;
+            } while (logPage.hasNext() && totalExported < limit);
+
+            writer.flush();
+        };
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/x-ndjson"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audit-logs-" + LocalDate.now() + ".jsonl\"");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(stream);
+    }
+
+    /**
+     * Helper method to fetch filtered logs, avoiding code duplication.
+     */
+    private Page<AuditEvent> fetchFilteredLogs(String username, String riskLevel,
+                                                LocalDateTime startDate, LocalDateTime endDate,
+                                                Pageable pageable) {
+        if (username != null && !username.isBlank()) {
+            if (startDate != null && endDate != null) {
+                return auditEventRepository.findByUsernameAndTimestampBetweenOrderByTimestampDesc(
+                    username, startDate, endDate, pageable);
             } else {
-                logPage = auditEventRepository.findAllByOrderByTimestampDesc(pageable);
+                return auditEventRepository.findByUsernameOrderByTimestampDesc(username, pageable);
             }
-
-            for (AuditEvent event : logPage.getContent()) {
-                writer.println(formatJsonLine(event));
-            }
-
-            page++;
-        } while (logPage.hasNext());
-
-        writer.flush();
+        } else if (riskLevel != null && !riskLevel.isBlank()) {
+            return auditEventRepository.findByRiskLevelOrderByTimestampDesc(riskLevel, pageable);
+        } else if (startDate != null && endDate != null) {
+            return auditEventRepository.findByTimestampBetweenOrderByTimestampDesc(startDate, endDate, pageable);
+        } else {
+            return auditEventRepository.findAllByOrderByTimestampDesc(pageable);
+        }
     }
 
     // ========================================

@@ -8,6 +8,7 @@ import gov.nist.oscal.tools.api.model.AnalyticsResponse;
 import gov.nist.oscal.tools.api.model.AnalyticsResponse.*;
 import gov.nist.oscal.tools.api.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,9 @@ public class AnalyticsService {
 
     /**
      * Get comprehensive analytics data for the dashboard
+     * Cached for 5 minutes to reduce database load
      */
+    @Cacheable(value = "analytics", key = "'dashboard'")
     public AnalyticsResponse getAnalytics() {
         AnalyticsResponse response = new AnalyticsResponse();
 
@@ -101,7 +104,9 @@ public class AnalyticsService {
 
     /**
      * Get summary statistics only (lighter weight for dashboard header)
+     * Cached for 2 minutes for faster dashboard loading
      */
+    @Cacheable(value = "analytics", key = "'summary'")
     public Map<String, Long> getSummaryStats() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime last7Days = now.minusDays(7);

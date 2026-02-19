@@ -20,6 +20,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.http.MediaType;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -105,6 +107,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(authenticationEntryPoint())
+            )
             .authenticationProvider(authenticationProvider())
             // Add security headers filter first
             .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
@@ -118,6 +123,22 @@ public class SecurityConfig {
             );
 
         return http.build();
+    }
+
+    /**
+     * Custom AuthenticationEntryPoint to return 401 Unauthorized instead of 403 Forbidden
+     * when authentication is required but not provided or invalid.
+     * This follows REST API best practices where:
+     * - 401 = Authentication required/invalid
+     * - 403 = Authenticated but not authorized for this resource
+     */
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Authentication required or token invalid\"}");
+        };
     }
 
     @Bean
