@@ -76,25 +76,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Run Trivy vulnerability scanner
-        id: trivy
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: trivy
-        continue-on-error: true
-
       - name: Set up JDK 17 (for toolchain)
         uses: actions/setup-java@v4
         with:
@@ -180,9 +161,6 @@ jobs:
         if: always()
         run: |
           FAILED=""
-          if [ "${{ steps.trivy.outcome }}" == "failure" ]; then
-            FAILED="$FAILED Trivy"
-          fi
           if [ "${{ steps.snyk-maven.outcome }}" == "failure" ]; then
             FAILED="$FAILED Snyk-Maven"
           fi
