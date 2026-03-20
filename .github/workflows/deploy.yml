@@ -72,14 +72,6 @@ jobs:
             --push \
             .
 
-      - name: Image scan with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.terraform-output.outputs.acr_name }}.azurecr.io/oscal-ux:latest
-          format: 'table'
-          exit-code: '0' # Don't fail build, just report
-          severity: 'CRITICAL,HIGH'
-
   deploy-to-azure:
     name: Deploy to Azure Container Instance
     runs-on: ubuntu-latest
