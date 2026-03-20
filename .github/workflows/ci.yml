@@ -185,7 +185,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Snyk Maven results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
+        uses: github/codeql-action/upload-sarif@v4.34.1
         if: always() && hashFiles('snyk-maven.sarif') != ''
         with:
           sarif_file: snyk-maven.sarif
@@ -193,7 +193,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Snyk Node.js results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
+        uses: github/codeql-action/upload-sarif@v4.34.1
         if: always() && hashFiles('snyk-node.sarif') != ''
         with:
           sarif_file: snyk-node.sarif
@@ -201,7 +201,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Snyk Docker results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.31.9
+        uses: github/codeql-action/upload-sarif@v4.34.1
         if: always() && hashFiles('snyk-docker.sarif') != ''
         with:
           sarif_file: snyk-docker.sarif
