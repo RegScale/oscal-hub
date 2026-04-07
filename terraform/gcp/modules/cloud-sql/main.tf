@@ -57,7 +57,7 @@ resource "google_sql_database_instance" "postgres" {
 
     database_flags {
       name  = "shared_buffers"
-      value = "131072" # 128MB in 8kB pages (within db-g1-small limits)
+      value = "50000" # ~400MB in 8kB pages (within db-f1-micro limits: 13107-78643)
     }
 
     # Insights configuration for monitoring

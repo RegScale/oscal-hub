@@ -33,7 +33,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default values
-PROJECT_ID=""
+PROJECT_ID="oscal-hub"
 REGION="us-central1"
 ENVIRONMENT="prod"
 SKIP_TERRAFORM=false
@@ -80,11 +80,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate required arguments
-if [ -z "$PROJECT_ID" ]; then
-  echo -e "${RED}Error: --project-id is required${NC}"
-  exit 1
-fi
+# Project ID now defaults to oscal-hub (can be overridden with --project-id)
+echo -e "${GREEN}Using project: $PROJECT_ID${NC}"
 
 # ============================================================================
 # Helper Functions
@@ -181,94 +178,88 @@ else
 fi
 
 # ============================================================================
-# Step 3: Deploy Infrastructure with Terraform
+# Step 3: Deploy to Cloud Run (Update image only - preserves env vars)
 # ============================================================================
 
-if [ "$SKIP_TERRAFORM" = false ]; then
-  print_header "Step 3: Deploying Infrastructure with Terraform"
+print_header "Step 3: Deploying to Cloud Run"
 
-  cd terraform/gcp
+# Full image path that was just built
+FULL_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/oscal-tools/oscal-tools:${IMAGE_TAG}"
 
-  # Initialize Terraform
-  echo "Initializing Terraform..."
-  terraform init
+echo "Deploying image: $FULL_IMAGE"
+echo ""
 
-  # Create/update terraform.tfvars with current image tag
-  echo "Creating terraform.tfvars with image tag: $IMAGE_TAG"
-  cat > terraform.tfvars <<EOF
-project_id  = "$PROJECT_ID"
-region      = "$REGION"
-environment = "$ENVIRONMENT"
-image_tag   = "$IMAGE_TAG"
-EOF
+# Update the image and ensure DB_DDL_AUTO is set
+gcloud run services update oscal-tools-${ENVIRONMENT} \
+  --image="$FULL_IMAGE" \
+  --region=${REGION} \
+  --update-env-vars="DB_DDL_AUTO=update" \
+  --quiet
 
-  # Plan and apply
-  echo "Planning infrastructure changes..."
-  terraform plan -out=tfplan
+DEPLOY_STATUS=$?
 
-  echo "Applying Terraform plan automatically..."
-  if terraform apply -auto-approve tfplan; then
-    print_success "Infrastructure deployed successfully"
-  else
-    # Terraform may timeout waiting for domain SSL certificates (10-15 min)
-    # Check if the actual deployment succeeded despite timeout
-    CLOUD_RUN_STATUS=$(gcloud run services describe oscal-tools-${ENVIRONMENT} --region ${REGION} --format="value(status.conditions[0].status)" 2>/dev/null || echo "Unknown")
+if [ $DEPLOY_STATUS -ne 0 ]; then
+  print_error "Cloud Run update failed! Trying full deploy..."
 
-    if [ "$CLOUD_RUN_STATUS" = "True" ]; then
-      print_warning "Terraform timed out (likely waiting for domain SSL certificates)"
-      print_success "Cloud Run service deployed successfully"
-      print_warning "Domain SSL certificate provisioning continues in background (10-15 minutes)"
-      echo "Check status: gcloud run domain-mappings list --region ${REGION}"
-    else
-      print_error "Terraform deployment failed"
-      cd ../..
-      exit 1
-    fi
+  # Fallback: full deploy (for first-time deployments)
+  gcloud run deploy oscal-tools-${ENVIRONMENT} \
+    --image="$FULL_IMAGE" \
+    --region=${REGION} \
+    --platform=managed \
+    --allow-unauthenticated \
+    --quiet
+
+  DEPLOY_STATUS=$?
+  if [ $DEPLOY_STATUS -ne 0 ]; then
+    print_error "Deployment failed!"
+    exit 1
   fi
+fi
 
-  cd ../..
+print_success "Cloud Run deployment completed"
+
+# Verify deployment
+print_header "Verifying Deployment"
+
+# Wait a moment for the new revision to be ready
+sleep 5
+
+DEPLOYED_IMAGE=$(gcloud run services describe oscal-tools-${ENVIRONMENT} --region ${REGION} --format='value(spec.template.spec.containers[0].image)' 2>/dev/null)
+
+echo ""
+echo "Expected: $FULL_IMAGE"
+echo "Deployed: $DEPLOYED_IMAGE"
+echo ""
+
+if [[ "$DEPLOYED_IMAGE" == *"$IMAGE_TAG"* ]]; then
+  print_success "✓ Correct image is now running!"
 else
-  print_warning "Skipping Terraform deployment (--skip-terraform)"
+  print_error "Image mismatch! Something went wrong."
+  echo "The deployed image doesn't match what we built."
+  exit 1
 fi
 
 # ============================================================================
-# Step 4: Get Deployment URLs
+# Step 4: Get Deployment URL
 # ============================================================================
 
-print_header "Step 4: Getting Deployment URLs"
+print_header "Step 4: Deployment Summary"
 
-# Get backend and frontend URLs from Terraform output
-if [ -f "terraform/gcp/terraform.tfstate" ]; then
-  cd terraform/gcp
-  BACKEND_URL=$(terraform output -raw backend_url 2>/dev/null || echo "")
-  FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
-  cd ../..
-
-  if [ -n "$BACKEND_URL" ] && [ -n "$FRONTEND_URL" ]; then
-    print_success "Backend URL:  $BACKEND_URL"
-    print_success "Frontend URL: $FRONTEND_URL"
-  fi
-fi
-
-print_success "Deployment complete"
-
-# ============================================================================
-# Final Summary
-# ============================================================================
-
-print_header "Deployment Summary"
+# Get the service URL directly from Cloud Run
+SERVICE_URL=$(gcloud run services describe oscal-tools-${ENVIRONMENT} --region ${REGION} --format='value(status.url)' 2>/dev/null || echo "")
 
 echo -e "Project ID:   ${BLUE}$PROJECT_ID${NC}"
 echo -e "Region:       ${BLUE}$REGION${NC}"
 echo -e "Environment:  ${BLUE}$ENVIRONMENT${NC}"
+echo -e "Image Tag:    ${BLUE}$IMAGE_TAG${NC}"
 
-if [ -n "${BACKEND_URL:-}" ]; then
+if [ -n "$SERVICE_URL" ]; then
   echo -e "\n${GREEN}Your OSCAL Tools application is now deployed!${NC}"
-  echo -e "\nFrontend:  ${BLUE}$FRONTEND_URL${NC}"
-  echo -e "Backend:   ${BLUE}$BACKEND_URL${NC}"
+  echo -e "\nApplication URL: ${BLUE}$SERVICE_URL${NC}"
+  echo -e "API Endpoint:    ${BLUE}$SERVICE_URL/api${NC}"
   echo -e "\nNext steps:"
-  echo -e "1. Visit the frontend URL to access the application"
-  echo -e "2. View logs: ${BLUE}gcloud logging read \"resource.type=cloud_run_revision\"${NC}"
+  echo -e "1. Visit the URL above to access the application"
+  echo -e "2. View logs: ${BLUE}gcloud logging read 'resource.type=cloud_run_revision' --limit=50${NC}"
   echo -e "3. Monitor: ${BLUE}https://console.cloud.google.com/run?project=$PROJECT_ID${NC}"
 fi
 

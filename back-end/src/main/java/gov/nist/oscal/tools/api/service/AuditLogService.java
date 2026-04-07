@@ -47,6 +47,14 @@ public class AuditLogService {
     private final SiemForwardingService siemForwardingService;
 
     /**
+     * Self-reference for calling @Async methods through the Spring proxy.
+     * Without this, internal method calls bypass the proxy and @Async is ignored.
+     */
+    @Autowired
+    @Lazy
+    private AuditLogService self;
+
+    /**
      * Thread-safe storage of the last audit event hash for chain linking.
      * This creates a blockchain-like chain of audit events.
      */
@@ -148,53 +156,59 @@ public class AuditLogService {
     }
 
     /**
-     * Log a successful authentication event
+     * Log a successful authentication event.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logAuthSuccess(String username, Long userId) {
-        logEvent(AuditEventType.AUTH_LOGIN_SUCCESS, username, userId, "SUCCESS", null, "LOGIN", null);
+        self.logEvent(AuditEventType.AUTH_LOGIN_SUCCESS, username, userId, "SUCCESS", null, "LOGIN", null);
     }
 
     /**
-     * Log a failed authentication event
+     * Log a failed authentication event.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logAuthFailure(String username, String errorMessage) {
-        logFailure(AuditEventType.AUTH_LOGIN_FAILURE, username, errorMessage);
+        self.logFailure(AuditEventType.AUTH_LOGIN_FAILURE, username, errorMessage);
     }
 
     /**
-     * Log account lockout
+     * Log account lockout.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logAccountLockout(String username, Long userId, int failedAttempts) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("failedAttempts", failedAttempts);
-        logEvent(AuditEventType.SECURITY_ACCOUNT_LOCKED, username, userId, "SUCCESS",
+        self.logEvent(AuditEventType.SECURITY_ACCOUNT_LOCKED, username, userId, "SUCCESS",
                 username, "LOCK", metadata);
     }
 
     /**
-     * Log file upload
+     * Log file upload.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logFileUpload(String username, Long userId, String fileName, long fileSize) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("fileName", fileName);
         metadata.put("fileSize", fileSize);
-        logEvent(AuditEventType.DATA_FILE_UPLOAD, username, userId, "SUCCESS",
+        self.logEvent(AuditEventType.DATA_FILE_UPLOAD, username, userId, "SUCCESS",
                 fileName, "UPLOAD", metadata);
     }
 
     /**
-     * Log file access
+     * Log file access.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logFileAccess(String username, Long userId, String fileId) {
-        logEvent(AuditEventType.DATA_FILE_ACCESS, username, userId, "SUCCESS",
+        self.logEvent(AuditEventType.DATA_FILE_ACCESS, username, userId, "SUCCESS",
                 fileId, "READ", null);
     }
 
     /**
-     * Log file deletion
+     * Log file deletion.
+     * Uses self-reference to call through Spring proxy so @Async works.
      */
     public void logFileDelete(String username, Long userId, String fileId) {
-        logEvent(AuditEventType.DATA_FILE_DELETE, username, userId, "SUCCESS",
+        self.logEvent(AuditEventType.DATA_FILE_DELETE, username, userId, "SUCCESS",
                 fileId, "DELETE", null);
     }
 
