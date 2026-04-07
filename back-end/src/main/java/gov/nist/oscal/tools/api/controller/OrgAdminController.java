@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,7 +35,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/org-admin")
 @Tag(name = "Organization Admin", description = "APIs for organization administrators to manage users and access requests")
+@SuppressWarnings("unused")
 public class OrgAdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(OrgAdminController.class);
 
     @Autowired
     private UserAccessRequestService accessRequestService;
@@ -397,7 +402,8 @@ public class OrgAdminController {
         try {
             Map<String, Object> summary = orgAnalyticsService.getAnalyticsSummary(organizationId);
             return ResponseEntity.ok(summary);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
+            log.error("Failed to get analytics summary for org {}: {}", organizationId, e.getMessage(), e);
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);

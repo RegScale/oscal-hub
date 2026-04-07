@@ -120,7 +120,7 @@ public class OrgAnalyticsService {
     }
 
     private List<String> getOrgUsernames(Organization org) {
-        List<OrganizationMembership> memberships = membershipRepository.findByOrganization(org);
+        List<OrganizationMembership> memberships = membershipRepository.findByOrganizationWithUser(org);
         return memberships.stream()
                 .map(m -> m.getUser().getUsername())
                 .collect(Collectors.toList());
