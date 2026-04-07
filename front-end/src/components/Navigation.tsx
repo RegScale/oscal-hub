@@ -12,6 +12,7 @@ export function Navigation() {
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [isOrgAdminUser, setIsOrgAdminUser] = useState(false);
+  const [hasOrgContext, setHasOrgContext] = useState(false);
 
   // Check localStorage on mount to determine admin status
   useEffect(() => {
@@ -22,6 +23,7 @@ export function Navigation() {
         const userData = JSON.parse(storedUser);
         setIsSuperAdminUser(userData.globalRole === 'SUPER_ADMIN');
         setIsOrgAdminUser(userData.orgRole === 'ORG_ADMIN');
+        setHasOrgContext(!!userData.organizationId);
       } catch (e) {
         setIsSuperAdminUser(false);
         setIsOrgAdminUser(false);
@@ -34,6 +36,7 @@ export function Navigation() {
     if (user) {
       setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
       setIsOrgAdminUser(user.orgRole === 'ORG_ADMIN');
+      setHasOrgContext(!!user.organizationId);
     }
   }, [user]);
 
@@ -43,7 +46,7 @@ export function Navigation() {
   };
 
   const isOrgAdmin = () => {
-    return isOrgAdminUser || user?.orgRole === 'ORG_ADMIN';
+    return isOrgAdminUser || user?.orgRole === 'ORG_ADMIN' || hasOrgContext;
   };
 
   return (

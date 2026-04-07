@@ -47,8 +47,9 @@ export default function OrgAdminRequestsPage() {
       const userData = JSON.parse(storedUser);
       const isOrgAdmin = userData.orgRole === 'ORG_ADMIN';
       const isSuperAdmin = userData.globalRole === 'SUPER_ADMIN';
+      const hasOrgContext = !!userData.organizationId;
 
-      if (!isOrgAdmin && !isSuperAdmin) {
+      if (!isOrgAdmin && !isSuperAdmin && !hasOrgContext) {
         router.push('/');
         return;
       }

@@ -44,8 +44,11 @@ export default function OrgAdminDashboardPage() {
 
     const isOrgAdmin = userData.orgRole === 'ORG_ADMIN';
     const isSuperAdmin = userData.globalRole === 'SUPER_ADMIN';
+    const hasOrgContext = !!userData.organizationId;
 
-    if (!isOrgAdmin && !isSuperAdmin) {
+    // Allow access if: ORG_ADMIN, SUPER_ADMIN, or user has an org selected
+    // (backend enforces real authorization via @PreAuthorize)
+    if (!isOrgAdmin && !isSuperAdmin && !hasOrgContext) {
       router.push('/');
       return;
     }
