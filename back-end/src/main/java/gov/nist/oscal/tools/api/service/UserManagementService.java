@@ -46,7 +46,7 @@ public class UserManagementService {
     public List<OrganizationMembership> getOrganizationUsers(Long organizationId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new RuntimeException("Organization not found: " + organizationId));
-        return membershipRepository.findByOrganization(organization);
+        return membershipRepository.findByOrganizationWithUser(organization);
     }
 
     /**
@@ -55,7 +55,7 @@ public class UserManagementService {
     public List<OrganizationMembership> getActiveOrganizationUsers(Long organizationId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new RuntimeException("Organization not found: " + organizationId));
-        return membershipRepository.findByOrganizationAndStatus(organization, MembershipStatus.ACTIVE);
+        return membershipRepository.findByOrganizationAndStatusWithUser(organization, MembershipStatus.ACTIVE);
     }
 
     /**
