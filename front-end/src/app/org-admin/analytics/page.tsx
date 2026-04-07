@@ -200,7 +200,7 @@ export default function OrgAdminAnalyticsPage() {
                       outerRadius={90}
                       dataKey="count"
                       nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={(props: Record<string, unknown>) => `${props.name} ${(Number(props.percent) * 100).toFixed(0)}%`}
                       labelLine={true}
                     >
                       {analytics.operationsByType.map((_, index) => (
