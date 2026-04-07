@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2, ShieldCheck, KeyRound, Shield } from 'lucide-react';
+import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2, ShieldCheck, KeyRound, SlidersHorizontal } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { HealthStatus } from '@/types/oscal';
 
@@ -234,10 +234,10 @@ export default function AdminDashboardPage() {
             className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-teal-500 dark:hover:border-teal-400"
           >
             <div className="flex items-center justify-center w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-lg mb-6 group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 transition-colors">
-              <Shield className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+              <SlidersHorizontal className="w-8 h-8 text-teal-600 dark:text-teal-400" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Org Admin Panel
+              Setup - Admin Panel
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
               Manage org members, review access requests, and view org-scoped usage analytics.

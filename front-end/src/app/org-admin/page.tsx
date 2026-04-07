@@ -208,7 +208,7 @@ export default function OrgAdminDashboardPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Organization Admin
+            Setup - Admin Panel
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             {orgName ? `Managing ${orgName}` : 'Manage your organization'}
