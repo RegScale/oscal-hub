@@ -230,6 +230,7 @@ export default function AdminDashboardPage() {
           {/* Org Admin Panel Tile */}
           <button
             onClick={() => router.push('/org-admin')}
+            title="Manage organization members, review access requests, and view usage analytics"
             className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-teal-500 dark:hover:border-teal-400"
           >
             <div className="flex items-center justify-center w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-lg mb-6 group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 transition-colors">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2 } from 'lucide-react';
+import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 interface DashboardSummary {
@@ -12,12 +12,20 @@ interface DashboardSummary {
   operationsThisMonth: number;
 }
 
+interface OrgOption {
+  id: number;
+  name: string;
+}
+
 export default function OrgAdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [orgName, setOrgName] = useState('');
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
+  const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -26,32 +34,79 @@ export default function OrgAdminDashboardPage() {
       return;
     }
 
+    let userData: Record<string, unknown>;
     try {
-      const userData = JSON.parse(storedUser);
-      const isOrgAdmin = userData.orgRole === 'ORG_ADMIN';
-      const isSuperAdmin = userData.globalRole === 'SUPER_ADMIN';
-
-      if (!isOrgAdmin && !isSuperAdmin) {
-        router.push('/');
-        return;
-      }
-
-      const currentOrg = localStorage.getItem('currentOrganization');
-      if (currentOrg) {
-        const orgData = JSON.parse(currentOrg);
-        setOrgName(orgData.name || '');
-        fetchSummary(orgData.id);
-      } else if (userData.organizationId) {
-        setOrgName(userData.organizationName || '');
-        fetchSummary(userData.organizationId);
-      } else {
-        setError('No organization selected');
-        setLoading(false);
-      }
+      userData = JSON.parse(storedUser);
     } catch {
       router.push('/login');
+      return;
+    }
+
+    const isOrgAdmin = userData.orgRole === 'ORG_ADMIN';
+    const isSuperAdmin = userData.globalRole === 'SUPER_ADMIN';
+
+    if (!isOrgAdmin && !isSuperAdmin) {
+      router.push('/');
+      return;
+    }
+
+    // Try to find an org: currentOrganization > user's org > prompt to pick
+    const currentOrg = localStorage.getItem('currentOrganization');
+    if (currentOrg) {
+      try {
+        const orgData = JSON.parse(currentOrg);
+        setOrgName(orgData.name || '');
+        setSelectedOrgId(orgData.id);
+        fetchSummary(orgData.id);
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
+    if (userData.organizationId) {
+      setOrgName((userData.organizationName as string) || '');
+      setSelectedOrgId(userData.organizationId as number);
+      fetchSummary(userData.organizationId as number);
+      return;
+    }
+
+    // No org found — SUPER_ADMIN needs to pick one
+    if (isSuperAdmin) {
+      loadAvailableOrgs();
+    } else {
+      setError('No organization selected');
+      setLoading(false);
     }
   }, [router]);
+
+  const loadAvailableOrgs = async () => {
+    try {
+      const orgs = await apiClient.getOrganizationsSummary();
+      const orgOptions = orgs.map((o) => ({ id: o.id, name: o.name }));
+      setAvailableOrgs(orgOptions);
+      if (orgOptions.length === 1) {
+        // Auto-select if only one org
+        selectOrg(orgOptions[0]);
+      } else {
+        setNeedsOrgSelection(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Failed to load organizations:', err);
+      setError('Failed to load organizations. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const selectOrg = (org: OrgOption) => {
+    setSelectedOrgId(org.id);
+    setOrgName(org.name);
+    setNeedsOrgSelection(false);
+    // Persist selection so sub-pages also work
+    localStorage.setItem('currentOrganization', JSON.stringify({ id: org.id, name: org.name }));
+    fetchSummary(org.id);
+  };
 
   const fetchSummary = async (organizationId: number) => {
     try {
@@ -71,6 +126,43 @@ export default function OrgAdminDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  // Org selection screen for SUPER_ADMIN
+  if (needsOrgSelection) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Select Organization</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Choose which organization to manage</p>
+          </div>
+          {availableOrgs.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+              <p className="text-gray-500 dark:text-gray-400">No organizations found.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {availableOrgs.map((org) => (
+                <button
+                  key={org.id}
+                  onClick={() => selectOrg(org)}
+                  className="w-full flex items-center gap-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 p-5 text-left transition-all"
+                >
+                  <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{org.name}</h3>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-gray-400 ml-auto" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }

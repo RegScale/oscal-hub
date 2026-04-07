@@ -69,7 +69,8 @@ export default function OrgAdminRequestsPage() {
         setLoading(false);
       }
     } catch {
-      router.push('/login');
+      setError('Failed to load user data. Please try logging in again.');
+      setLoading(false);
     }
   }, [router]);
 
