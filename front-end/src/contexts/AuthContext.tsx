@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/api-client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh every 5 minutes if active
 
 export function AuthProvider({ children }: { children: ReactNode }) {
