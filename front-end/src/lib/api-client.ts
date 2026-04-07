@@ -4817,6 +4817,63 @@ class ApiClient {
   }
 
   // ========================================
+  // Super Admin User/Org Management Methods
+  // ========================================
+
+  async getAllUsers(): Promise<Array<{
+    id: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    globalRole: string;
+    enabled: boolean;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/users`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get all users');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get all users:', error);
+      throw error;
+    }
+  }
+
+  async addMemberToOrg(organizationId: number, userId: number, role: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/organizations/${organizationId}/members`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ userId, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add member to organization');
+      }
+    } catch (error) {
+      console.error('Failed to add member to organization:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
   // Org Admin API Methods
   // ========================================
 
