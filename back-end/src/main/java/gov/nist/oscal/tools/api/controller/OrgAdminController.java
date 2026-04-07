@@ -6,6 +6,7 @@ import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.model.AccessRequestResponse;
 import gov.nist.oscal.tools.api.model.ReviewAccessRequestRequest;
 import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.oscal.tools.api.service.OrgAnalyticsService;
 import gov.nist.oscal.tools.api.service.UserAccessRequestService;
 import gov.nist.oscal.tools.api.service.UserManagementService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +43,9 @@ public class OrgAdminController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrgAnalyticsService orgAnalyticsService;
 
     // ========================================================================
     // Access Request Management
@@ -367,6 +371,54 @@ public class OrgAdminController {
             response.put("email", result.get("email"));
 
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    // ========================================================================
+    // Analytics
+    // ========================================================================
+
+    @Operation(
+        summary = "Get analytics summary",
+        description = "Retrieve a summary of organization analytics including member count, pending requests, logins and operations this month. ORG_ADMIN role required."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Analytics summary retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Organization not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - ORG_ADMIN role required")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @GetMapping("/analytics/summary")
+    public ResponseEntity<?> getAnalyticsSummary(@RequestParam Long organizationId) {
+        try {
+            Map<String, Object> summary = orgAnalyticsService.getAnalyticsSummary(organizationId);
+            return ResponseEntity.ok(summary);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Get full analytics",
+        description = "Retrieve full organization analytics including active users, logins, operations, daily trends, operation breakdown, and top users. ORG_ADMIN role required."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Analytics retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Organization not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied - ORG_ADMIN role required")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @GetMapping("/analytics")
+    public ResponseEntity<?> getAnalytics(@RequestParam Long organizationId) {
+        try {
+            Map<String, Object> analytics = orgAnalyticsService.getFullAnalytics(organizationId);
+            return ResponseEntity.ok(analytics);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
