@@ -27,6 +27,8 @@ describe('Accept invite page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({ user: null, isAuthenticated: false });
+    // Reset localStorage
+    localStorage.clear();
   });
 
   it('shows expired state on 410', async () => {
@@ -65,6 +67,32 @@ describe('Accept invite page', () => {
         { username: 'tm', password: 'CorrectH0rse!Batt' }
       )
     );
+  });
+
+  it('new user accept with returned JWT → stores token in localStorage', async () => {
+    // Mock location.href assignment
+    const originalHref = window.location.href;
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { href: originalHref },
+    });
+
+    vi.mocked(apiClient.getInvitation).mockResolvedValue({
+      email: 'newuser@example.com',
+      organizationName: 'Acme',
+      inviterName: 'admin',
+    });
+    vi.mocked(apiClient.acceptInvitation).mockResolvedValue({
+      token: 'jwt-abc-123',
+      userId: 42,
+      username: 'newuser',
+    });
+    render(<AcceptInvitePage />);
+    await screen.findByLabelText(/username/i);
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'newuser' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'CorrectH0rse!Batt' } });
+    fireEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    await waitFor(() => expect(localStorage.getItem('token')).toBe('jwt-abc-123'));
   });
 
   it('logged-in user → one-click accept', async () => {

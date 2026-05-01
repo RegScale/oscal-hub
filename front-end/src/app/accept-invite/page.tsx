@@ -64,7 +64,14 @@ export default function AcceptInvitePage() {
     setSubmitError('');
     try {
       const body = isAuthenticated ? {} : { username, password };
-      await apiClient.acceptInvitation(token, body);
+      const result = await apiClient.acceptInvitation(token, body);
+      // For new users the backend returns a JWT — store it so AuthContext picks it up.
+      if (!isAuthenticated && result?.token) {
+        localStorage.setItem('token', result.token);
+        // Hard-reload so AuthContext re-reads localStorage and hydrates the session.
+        window.location.href = '/';
+        return;
+      }
       router.push('/');
     } catch (e: any) {
       setSubmitError(e?.message || 'Failed to accept invitation.');
