@@ -32,11 +32,11 @@ public class EmailAuditLogger {
 
     public void recordFailure(String template, String recipientEmail, Throwable t) {
         logger.warn("email_send template={} recipient_hash={} status=failure error={}",
-            template, hash(recipientEmail), t.getMessage());
+            template, hash(recipientEmail), t.toString());
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("template", template);
         metadata.put("recipient", recipientEmail);
-        metadata.put("error", t.getMessage());
+        metadata.put("error", t.toString());
         auditLogService.logEvent(AuditEventType.EMAIL_SEND_FAILURE, "system", null,
             "FAILURE", "EMAIL", template, metadata);
     }

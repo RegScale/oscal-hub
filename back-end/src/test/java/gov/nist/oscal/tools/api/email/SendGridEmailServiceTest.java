@@ -72,6 +72,21 @@ class SendGridEmailServiceTest {
     }
 
     @Test
+    void doesNotPropagateAuditFailures() throws IOException {
+        // Make SendGrid call throw, then make recordFailure throw too:
+        when(sendGrid.api(any())).thenThrow(new IOException("boom"));
+        org.mockito.Mockito.doThrow(new RuntimeException("audit down"))
+            .when(audit).recordFailure(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(Throwable.class));
+        User u = new User();
+        u.setUsername("travis");
+        u.setEmail("t@example.com");
+
+        assertDoesNotThrow(() -> service.sendWelcome(u));
+    }
+
+    @Test
     void buildsInvitationLinkWithToken() throws IOException {
         Organization org = new Organization();
         org.setName("Acme");

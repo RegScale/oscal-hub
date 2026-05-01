@@ -124,9 +124,17 @@ public class SendGridEmailService implements EmailService {
 
             Response resp = client.api(req);
             String messageId = resp.getHeaders() == null ? null : resp.getHeaders().get("X-Message-Id");
-            audit.recordSuccess(template, to, messageId);
+            try {
+                audit.recordSuccess(template, to, messageId);
+            } catch (Exception auditEx) {
+                logger.error("audit recordSuccess failed for template={} to={}", template, to, auditEx);
+            }
         } catch (Exception e) {
-            audit.recordFailure(template, to, e);
+            try {
+                audit.recordFailure(template, to, e);
+            } catch (Exception auditEx) {
+                logger.error("audit recordFailure failed for template={} to={}", template, to, auditEx);
+            }
         }
     }
 
