@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { User, LogOut, Settings, SlidersHorizontal } from 'lucide-react';
+import { User, LogOut, Settings, Cog } from 'lucide-react';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 export function Navigation() {
@@ -80,7 +80,7 @@ export function Navigation() {
                       title="Setup - Admin Panel"
                       aria-label="Setup - Admin Panel"
                     >
-                      <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                      <Cog className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </Link>
                 )}
