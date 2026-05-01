@@ -41,7 +41,7 @@ Throughout this plan, any command shown for `mvn`, `npm`, `npx`, or the dev scri
 - `back-end/src/main/java/gov/nist/oscal/tools/api/model/CreateInvitationRequest.java`
 - `back-end/src/main/java/gov/nist/oscal/tools/api/model/InvitationResponse.java`
 - `back-end/src/main/java/gov/nist/oscal/tools/api/model/AcceptInvitationRequest.java`
-- `back-end/src/main/resources/db/migration/V1.18__create_invitations_table.sql`
+- `back-end/src/main/resources/db/migration/V1.19__create_invitations_table.sql`
 - `back-end/src/main/resources/email-templates/_layout.html`
 - `back-end/src/main/resources/email-templates/welcome.html` (+ `.txt`)
 - `back-end/src/main/resources/email-templates/access-request-acknowledged.html` (+ `.txt`)
@@ -1805,13 +1805,13 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ### Task 9: Backend — Invitation entity, migration, repository
 
 **Files:**
-- Create: `back-end/src/main/resources/db/migration/V1.18__create_invitations_table.sql`
+- Create: `back-end/src/main/resources/db/migration/V1.19__create_invitations_table.sql`
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/entity/Invitation.java`
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/repository/InvitationRepository.java`
 
 - [ ] **Step 1: Write the Flyway migration**
 
-`back-end/src/main/resources/db/migration/V1.18__create_invitations_table.sql`:
+`back-end/src/main/resources/db/migration/V1.19__create_invitations_table.sql`:
 
 ```sql
 -- V1.18: Invitations for teammate onboarding by email
@@ -1932,7 +1932,7 @@ Print: **"USER ACTION: please run `./stop.sh && ./dev.sh` and report whether the
 - [ ] **Step 5: Commit**
 
 ```bash
-git add back-end/src/main/resources/db/migration/V1.18__create_invitations_table.sql \
+git add back-end/src/main/resources/db/migration/V1.19__create_invitations_table.sql \
         back-end/src/main/java/gov/nist/oscal/tools/api/entity/Invitation.java \
         back-end/src/main/java/gov/nist/oscal/tools/api/repository/InvitationRepository.java
 git commit -m "feat(invitations): add Invitation entity, migration, repository
