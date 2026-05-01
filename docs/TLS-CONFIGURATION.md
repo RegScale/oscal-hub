@@ -186,7 +186,7 @@ HTTP_PORT=8080
 **3. Start with Staging Profile**
 
 ```bash
-SPRING_PROFILES_ACTIVE=staging ./start.sh
+SPRING_PROFILES_ACTIVE=staging ./dev.sh
 ```
 
 ### Staging Configuration Files
@@ -324,7 +324,7 @@ SECURITY_REQUIRE_HTTPS=true
 **8. Start Application**
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod ./start.sh
+SPRING_PROFILES_ACTIVE=prod ./dev.sh
 ```
 
 ### Production Configuration Files
@@ -653,7 +653,7 @@ sudo tail -f /var/log/nginx/error.log
 sudo nginx -T | grep proxy_pass
 
 # Restart backend
-./stop.sh && ./start.sh
+./stop.sh && ./dev.sh
 ```
 
 ### Problem: TLS Handshake Failed

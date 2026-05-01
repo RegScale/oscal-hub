@@ -32,8 +32,7 @@ oscal-cli/
 ├── pom.xml             # Parent Maven POM (aggregator)
 ├── Dockerfile          # Multi-stage Docker build
 ├── docker-compose.yml  # Docker Compose configuration
-├── dev.sh              # Quick development startup
-├── start.sh            # Production-like startup
+├── dev.sh              # Local startup (PostgreSQL via Docker, backend, frontend)
 └── stop.sh             # Stop all servers
 ```
 
@@ -53,7 +52,7 @@ The user handles all builds, compilations, and deployments. Your role is to:
 ❌ **DO NOT**:
 - Run `mvn clean install` or any Maven build commands
 - Run `npm run build` or any frontend build commands
-- Run `./dev.sh`, `./start.sh`, or any startup scripts
+- Run `./dev.sh` or any startup scripts
 - Execute any build-related Bash commands
 - Attempt to compile or package the application
 
@@ -134,11 +133,8 @@ cd front-end && npm test
 ### Option 1: Development Mode (Recommended for Development)
 
 ```bash
-# From project root - starts both back-end and front-end in dev mode
+# From project root - starts PostgreSQL (via Docker), back-end, and front-end
 ./dev.sh
-
-# Or use the production-like startup script
-./start.sh
 
 # Stop all servers
 ./stop.sh

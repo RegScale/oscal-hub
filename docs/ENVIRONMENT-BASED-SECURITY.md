@@ -68,7 +68,7 @@ export SPRING_PROFILES_ACTIVE=dev
 export SPRING_PROFILES_ACTIVE=staging
 export JWT_SECRET="staging-secret-here"
 export DB_PASSWORD="staging-password"
-./start.sh
+./dev.sh
 ```
 
 ---
