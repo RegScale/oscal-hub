@@ -293,12 +293,6 @@
             <version>${bucket4j.version}</version>
         </dependency>
 
-        <!-- Caffeine Cache for rate limiting storage -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-
         <!-- Spring Boot Actuator for monitoring and health checks -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
