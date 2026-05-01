@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
     back: vi.fn(),
   }),
   usePathname: () => '/login',
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 // Mock apiClient
