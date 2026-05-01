@@ -1,12 +1,83 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield, FileText } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield, FileText, Building2, Search } from 'lucide-react';
 import { Hero } from '@/components/Hero';
+import { EmptyState } from '@/components/empty-state';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api-client';
+
+// ---------------------------------------------------------------------------
+// CreateOrgModal — small inline modal for self-serve org creation
+// ---------------------------------------------------------------------------
+function CreateOrgModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setNameError('Organization name is required.'); return; }
+    setNameError('');
+    setSubmitting(true);
+    try {
+      await apiClient.createMyOrganization({ name: name.trim() });
+      onSuccess();
+    } catch (err: any) {
+      if (err?.field === 'name' || err?.code === 'ORGANIZATION_NAME_IN_USE') {
+        setNameError(err.message || 'That organization name is already taken.');
+      } else {
+        setNameError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-org-modal-title"
+    >
+      <div className="bg-background rounded-xl shadow-xl p-8 w-full max-w-md mx-4">
+        <h2 id="create-org-modal-title" className="text-xl font-semibold mb-4">Create your organization</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="org-name" className="block text-sm font-medium mb-1">
+              Organization name
+            </label>
+            <Input
+              id="org-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Acme Corp"
+              disabled={submitting}
+              aria-describedby={nameError ? 'org-name-error' : undefined}
+            />
+            {nameError && (
+              <p id="org-name-error" className="text-sm text-destructive mt-1">{nameError}</p>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create organization'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -14,6 +85,10 @@ export default function Dashboard() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [hasOrgAccess, setHasOrgAccess] = useState(false);
+  // Onboarding state
+  const [pendingRequests, setPendingRequests] = useState<Array<{ organizationName: string }>>([]);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Check auth status from localStorage on mount and navigation
   useEffect(() => {
@@ -47,6 +122,21 @@ export default function Dashboard() {
       setHasOrgAccess(user.organizationId != null);
     }
   }, [user]);
+
+  // Load pending requests once we know the user has no org access
+  useEffect(() => {
+    if (!isAuthenticated || hasOrgAccess || checkingAuth || pendingLoaded) return;
+    let cancelled = false;
+    apiClient.getMyPendingRequests().then((reqs) => {
+      if (!cancelled) {
+        setPendingRequests(reqs);
+        setPendingLoaded(true);
+      }
+    }).catch(() => {
+      if (!cancelled) setPendingLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, hasOrgAccess, checkingAuth, pendingLoaded]);
 
   // Show loading while checking auth or AuthContext is loading
   if (isLoading || checkingAuth) {
@@ -84,39 +174,117 @@ export default function Dashboard() {
     );
   }
 
-  // Show pending message for authenticated users without organization access
+  // Three-branch empty state for authenticated users without organization access
   if (!hasOrgAccess) {
+    // While loading pending requests, show spinner
+    if (!pendingLoaded) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading…</p>
+          </div>
+        </div>
+      );
+    }
+
+    const hasPending = pendingRequests.length > 0;
+    const firstPendingOrg = hasPending ? pendingRequests[0].organizationName : null;
+
+    function handleOrgCreated() {
+      // Refresh the page so the new org context is picked up
+      window.location.reload();
+    }
+
+    // Branch A: Has pending request → show status + CTA to create own org
+    if (hasPending) {
+      return (
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto py-12 px-4">
+            <EmptyState
+              title="Access request pending"
+              description={`Your request to join ${firstPendingOrg} is awaiting admin review. You'll be notified by email when it's approved.`}
+              primary={{
+                label: 'Create your own organization',
+                onClick: () => setShowCreateModal(true),
+              }}
+              secondary={{
+                label: 'Request access to another org',
+                onClick: () => router.push('/request-access'),
+              }}
+            />
+            {showCreateModal && (
+              <CreateOrgModal
+                onClose={() => setShowCreateModal(false)}
+                onSuccess={handleOrgCreated}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Branch B: No memberships, no pending requests → "Get started" with two cards
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <Card className="text-center p-8">
-              <div className="mb-6">
-                <svg
-                  className="mx-auto h-16 w-16 text-yellow-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <CardTitle className="text-2xl mb-4">Access Request Pending</CardTitle>
-              <CardDescription className="text-base mb-6">
-                Your access request is pending approval from the organization administrator.
-                You will be notified via email once your request has been reviewed.
-              </CardDescription>
-              <div className="text-sm text-muted-foreground">
-                Please check back later or contact your organization administrator for more information.
-              </div>
-            </Card>
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <h1 className="text-3xl font-bold mb-3">Welcome to OSCAL Hub</h1>
+              <p className="text-muted-foreground text-lg">
+                Get started by creating your own organization or requesting access to an existing one.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Create org card */}
+              <button
+                className="text-left block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl"
+                onClick={() => setShowCreateModal(true)}
+                data-testid="create-org-card"
+              >
+                <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
+                  <CardHeader className="space-y-4">
+                    <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                      <Building2 className="h-8 w-8 text-primary" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl mb-2">Create an organization</CardTitle>
+                      <CardDescription className="text-base">
+                        Start fresh. Create a new organization and become its administrator — invite your team later.
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </button>
+
+              {/* Request access card */}
+              <Link
+                href="/request-access"
+                className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl"
+                data-testid="request-access-card"
+              >
+                <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
+                  <CardHeader className="space-y-4">
+                    <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                      <Search className="h-8 w-8 text-primary" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl mb-2">Request access</CardTitle>
+                      <CardDescription className="text-base">
+                        Find an existing organization and submit an access request for an administrator to approve.
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
           </div>
+          {showCreateModal && (
+            <CreateOrgModal
+              onClose={() => setShowCreateModal(false)}
+              onSuccess={handleOrgCreated}
+            />
+          )}
         </div>
       </div>
     );

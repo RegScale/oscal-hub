@@ -2993,6 +2993,32 @@ class ApiClient {
   }
 
   /**
+   * Self-serve: create a new organization (current user becomes ORG_ADMIN)
+   */
+  async createMyOrganization(data: { name: string }): Promise<{ id: number; name: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/organizations`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      },
+      5000
+    );
+    if (!response.ok) {
+      if (response.status === 409) {
+        const errBody = await response.json();
+        const err = new Error(errBody.message || 'Conflict');
+        (err as any).field = errBody.field || 'name';
+        (err as any).code = errBody.error;
+        throw err;
+      }
+      throw new Error('Failed to create organization');
+    }
+    return response.json();
+  }
+
+  /**
    * Select organization after initial login (generates full JWT with org context)
    */
   async selectOrganization(organizationId: number): Promise<{

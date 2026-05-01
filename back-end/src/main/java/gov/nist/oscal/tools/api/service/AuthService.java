@@ -85,6 +85,10 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private OrganizationService organizationService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Validate password complexity using new PasswordValidationService
@@ -120,32 +124,9 @@ public class AuthService {
         // Self-serve org creation: if organizationName was provided, create org + ORG_ADMIN membership
         String orgName = request.getOrganizationName();
         if (orgName != null && !orgName.isBlank()) {
-            String trimmedName = orgName.trim();
-            if (organizationRepository.existsByNameIgnoreCase(trimmedName)) {
-                throw new OrganizationNameInUseException(trimmedName);
-            }
-            Organization org = new Organization();
-            org.setName(trimmedName);
-            org.setActive(true);
-            org.setCreatedAt(LocalDateTime.now());
-            try {
-                org = organizationRepository.save(org);
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                throw new OrganizationNameInUseException(trimmedName);
-            }
-
-            OrganizationMembership membership = new OrganizationMembership(user, org, OrganizationRole.ORG_ADMIN);
-            membershipRepository.save(membership);
-
+            Organization org = organizationService.createOrganizationForUser(orgName, user);
             logger.info("User {} created organization {} (ID: {}) on registration",
                 user.getUsername(), org.getName(), org.getId());
-
-            // Audit the privilege-grant: org creation with ORG_ADMIN membership
-            Map<String, Object> orgMeta = new HashMap<>();
-            orgMeta.put("organizationId", org.getId());
-            orgMeta.put("organizationName", org.getName());
-            auditLogService.logEvent(AuditEventType.ORG_CREATED,
-                user.getUsername(), user.getId(), "SUCCESS", "ORG_ADMIN", "CREATE", orgMeta);
         }
 
         // Send welcome email (non-fatal if it fails)
