@@ -1,8 +1,10 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.model.AuthRequest;
@@ -77,6 +79,9 @@ public class AuthService {
     @Autowired
     @org.springframework.context.annotation.Lazy
     private SecurityPolicyService securityPolicyService;
+
+    @Autowired
+    private EmailService emailService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -643,9 +648,25 @@ public class AuthService {
         accessRequest.setStatus(UserAccessRequest.RequestStatus.PENDING);
         accessRequest.setRequestDate(LocalDateTime.now());
 
-        accessRequestRepository.save(accessRequest);
+        UserAccessRequest savedRequest = accessRequestRepository.save(accessRequest);
 
         logger.info("Access request created for {} to organization {} (ID: {})",
                 request.getEmail(), organization.getName(), organization.getId());
+
+        try {
+            emailService.sendAccessRequestAcknowledged(savedRequest);
+            List<OrganizationMembership> adminMemberships = membershipRepository
+                    .findByOrganizationIdAndRoleAndStatus(
+                            savedRequest.getOrganization().getId(),
+                            OrganizationRole.ORG_ADMIN,
+                            MembershipStatus.ACTIVE);
+            List<User> admins = adminMemberships.stream()
+                    .map(OrganizationMembership::getUser)
+                    .collect(Collectors.toList());
+            emailService.sendAccessRequestPendingForAdmins(savedRequest, admins);
+        } catch (Exception e) {
+            logger.warn("Failed to send access-request emails for request {}: {}",
+                    savedRequest.getId(), e.getMessage());
+        }
     }
 }

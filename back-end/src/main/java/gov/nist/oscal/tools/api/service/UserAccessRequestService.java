@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
@@ -45,6 +46,9 @@ public class UserAccessRequestService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
 
     /**
      * Create a new access request for an existing user
@@ -190,6 +194,12 @@ public class UserAccessRequestService {
         request = accessRequestRepository.save(request);
         logger.info("Approved access request: {}", requestId);
 
+        try {
+            emailService.sendAccessRequestApproved(request, reviewer);
+        } catch (Exception e) {
+            logger.warn("Failed to send approved email for request {}: {}", request.getId(), e.getMessage());
+        }
+
         return request;
     }
 
@@ -217,6 +227,12 @@ public class UserAccessRequestService {
 
         request = accessRequestRepository.save(request);
         logger.info("Rejected access request: {}", requestId);
+
+        try {
+            emailService.sendAccessRequestRejected(request, reviewer, notes);
+        } catch (Exception e) {
+            logger.warn("Failed to send rejected email for request {}: {}", request.getId(), e.getMessage());
+        }
 
         return request;
     }
