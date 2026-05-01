@@ -112,7 +112,7 @@ Throughout this plan, any command shown for `mvn`, `npm`, `npx`, or the dev scri
 - Modify: `back-end/src/main/resources/application.properties`
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/email/EmailService.java`
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/email/NoOpEmailService.java`
-- Create: `back-end/src/main/java/gov/nist/oscal/tools/api/config/EmailConfig.java`
+- (Note: `EmailConfig.java` is created in Task 3, not here, because it depends on classes added in Tasks 2 and 3.)
 
 - [ ] **Step 1: Add SendGrid dependency to `back-end/pom.xml`**
 
@@ -192,42 +192,9 @@ public class NoOpEmailService implements EmailService {
 }
 ```
 
-- [ ] **Step 5: Create `EmailConfig.java`**
+- [ ] **Step 5: (skipped — `EmailConfig.java` is created in Task 3)**
 
-```java
-package gov.nist.oscal.tools.api.config;
-
-import gov.nist.oscal.tools.api.email.EmailAuditLogger;
-import gov.nist.oscal.tools.api.email.EmailService;
-import gov.nist.oscal.tools.api.email.NoOpEmailService;
-import gov.nist.oscal.tools.api.email.SendGridEmailService;
-import gov.nist.oscal.tools.api.email.TemplateRenderer;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-public class EmailConfig {
-
-    @Bean
-    public EmailService emailService(
-        @Value("${email.enabled:true}") boolean enabled,
-        @Value("${email.sendgrid.api-key:}") String apiKey,
-        @Value("${email.sendgrid.from-email}") String fromEmail,
-        @Value("${email.sendgrid.from-name}") String fromName,
-        @Value("${app.base-url}") String baseUrl,
-        TemplateRenderer renderer,
-        EmailAuditLogger audit
-    ) {
-        if (!enabled || apiKey == null || apiKey.isBlank()) {
-            return new NoOpEmailService();
-        }
-        return new SendGridEmailService(apiKey, fromEmail, fromName, baseUrl, renderer, audit);
-    }
-}
-```
-
-> Note: `SendGridEmailService`, `TemplateRenderer`, and `EmailAuditLogger` are created in Tasks 2 and 3. The compile order is: dependency added (this task) → renderer (Task 2) → SendGrid impl (Task 3). Until Task 3, `EmailConfig` will not compile because `SendGridEmailService` does not exist. To avoid a broken intermediate commit, **do not commit this file until Task 3 finishes** — only commit `pom.xml`, `application.properties`, `EmailService.java`, and `NoOpEmailService.java` here. Stage `EmailConfig.java` to a local working file but leave it unstaged.
+> Note: `EmailConfig.java` depends on `SendGridEmailService`, `TemplateRenderer`, and `EmailAuditLogger` — all of which land in Task 3. Maven compiles every file under `src/main/java`, so even an unstaged `EmailConfig.java` would break this task's build. Defer creation of `EmailConfig.java` until Task 3 instead.
 
 - [ ] **Step 6: USER ACTION — verify backend compiles**
 
@@ -417,11 +384,12 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task 3: SendGridEmailService + EmailAuditLogger + tests
+### Task 3: SendGridEmailService + EmailAuditLogger + EmailConfig + tests
 
 **Files:**
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/email/EmailAuditLogger.java`
 - Create: `back-end/src/main/java/gov/nist/oscal/tools/api/email/SendGridEmailService.java`
+- Create: `back-end/src/main/java/gov/nist/oscal/tools/api/config/EmailConfig.java` (deferred from Task 1)
 - Create: `back-end/src/test/java/gov/nist/oscal/tools/api/email/SendGridEmailServiceTest.java`
 - Modify: `back-end/src/main/java/gov/nist/oscal/tools/api/model/AuditEventType.java`
 
@@ -751,6 +719,45 @@ Repeat for the other five templates with one-line placeholder content matching v
 - [ ] **Step 6: USER ACTION — run the SendGrid service tests**
 
 Print: **"USER ACTION: please run `cd back-end && mvn test -Dtest=SendGridEmailServiceTest,TemplateRendererTest` and paste the output."** Wait for confirmation that all tests pass.
+
+- [ ] **Step 6.5: Create `EmailConfig.java` (deferred from Task 1)**
+
+Create `back-end/src/main/java/gov/nist/oscal/tools/api/config/EmailConfig.java`:
+
+```java
+package gov.nist.oscal.tools.api.config;
+
+import gov.nist.oscal.tools.api.email.EmailAuditLogger;
+import gov.nist.oscal.tools.api.email.EmailService;
+import gov.nist.oscal.tools.api.email.NoOpEmailService;
+import gov.nist.oscal.tools.api.email.SendGridEmailService;
+import gov.nist.oscal.tools.api.email.TemplateRenderer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class EmailConfig {
+
+    @Bean
+    public EmailService emailService(
+        @Value("${email.enabled:true}") boolean enabled,
+        @Value("${email.sendgrid.api-key:}") String apiKey,
+        @Value("${email.sendgrid.from-email}") String fromEmail,
+        @Value("${email.sendgrid.from-name}") String fromName,
+        @Value("${app.base-url}") String baseUrl,
+        TemplateRenderer renderer,
+        EmailAuditLogger audit
+    ) {
+        if (!enabled || apiKey == null || apiKey.isBlank()) {
+            return new NoOpEmailService();
+        }
+        return new SendGridEmailService(apiKey, fromEmail, fromName, baseUrl, renderer, audit);
+    }
+}
+```
+
+All three referenced helper classes now exist (TemplateRenderer from Task 2; SendGridEmailService and EmailAuditLogger from Steps 1–4 of this task), so this compiles cleanly.
 
 - [ ] **Step 7: Commit**
 
