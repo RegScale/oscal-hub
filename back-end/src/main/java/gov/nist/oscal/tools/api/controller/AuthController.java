@@ -57,6 +57,12 @@ public class AuthController {
         try {
             AuthResponse response = authService.register(request);
             return ResponseEntity.ok(response);
+        } catch (gov.nist.oscal.tools.api.exception.OrganizationNameInUseException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "ORGANIZATION_NAME_IN_USE");
+            error.put("field", "organizationName");
+            error.put("message", "That organization name is already taken. Try another.");
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(error);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

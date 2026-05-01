@@ -115,6 +115,33 @@ public class AuthService {
         auditLogService.logEvent(gov.nist.oscal.tools.api.model.AuditEventType.AUTH_REGISTER_SUCCESS,
             user.getUsername(), user.getId(), "SUCCESS", null, "REGISTER", null);
 
+        // Self-serve org creation: if organizationName was provided, create org + ORG_ADMIN membership
+        String orgName = request.getOrganizationName();
+        if (orgName != null && !orgName.isBlank()) {
+            String trimmedName = orgName.trim();
+            if (organizationRepository.existsByName(trimmedName)) {
+                throw new gov.nist.oscal.tools.api.exception.OrganizationNameInUseException(trimmedName);
+            }
+            Organization org = new Organization();
+            org.setName(trimmedName);
+            org.setActive(true);
+            org.setCreatedAt(LocalDateTime.now());
+            org = organizationRepository.save(org);
+
+            OrganizationMembership membership = new OrganizationMembership(user, org, OrganizationRole.ORG_ADMIN);
+            membershipRepository.save(membership);
+
+            logger.info("User {} created organization {} (ID: {}) on registration",
+                user.getUsername(), org.getName(), org.getId());
+        }
+
+        // Send welcome email (non-fatal if it fails)
+        try {
+            emailService.sendWelcome(user);
+        } catch (Exception e) {
+            logger.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
+
         // Generate token
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
         String token = jwtUtil.generateToken(userDetails);
