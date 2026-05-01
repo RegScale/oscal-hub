@@ -167,15 +167,41 @@ public class UserAccessRequestService {
 
         // If user doesn't exist in the request, check if they registered separately
         if (user == null) {
-            // Try to find existing user by username
-            user = userRepository.findByUsername(request.getUsername()).orElse(null);
+            // Try to find existing user by username first
+            if (request.getUsername() != null) {
+                user = userRepository.findByUsername(request.getUsername()).orElse(null);
+            }
+
+            // Fall back to email — covers the case where the requester registered
+            // separately under a different username (same email, different account)
+            if (user == null && request.getEmail() != null) {
+                user = userRepository.findByEmailIgnoreCase(request.getEmail()).orElse(null);
+                if (user != null) {
+                    logger.info("Found existing user {} by email for access request {}",
+                        user.getUsername(), request.getId());
+                }
+            }
 
             // If user still not found, create new account
             if (user == null) {
                 user = createUserFromRequest(request);
             } else {
-                logger.info("Found existing user {} for access request", user.getUsername());
+                logger.info("Linking access request {} to existing user {}",
+                    request.getId(), user.getUsername());
             }
+        }
+
+        // Guard against duplicate membership if this user already belongs to the org
+        if (membershipRepository.findByUserIdAndOrganizationId(
+                user.getId(), request.getOrganization().getId()).isPresent()) {
+            logger.info("User {} is already a member of org {} — approving request without creating membership",
+                user.getUsername(), request.getOrganization().getId());
+            request.setStatus(RequestStatus.APPROVED);
+            request.setReviewedBy(reviewer);
+            request.setReviewedDate(LocalDateTime.now());
+            request.setNotes(notes);
+            request.setUser(user);
+            return accessRequestRepository.save(request);
         }
 
         // Create organization membership
