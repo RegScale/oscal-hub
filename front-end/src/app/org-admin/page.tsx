@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2 } from 'lucide-react';
+import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 interface DashboardSummary {
@@ -199,6 +199,7 @@ export default function OrgAdminDashboardPage() {
   const quickLinks = [
     { label: 'Manage Users', description: 'View and manage organization members', href: '/org-admin/users', icon: Users, color: 'blue' },
     { label: 'Access Requests', description: 'Review pending access requests', href: '/org-admin/requests', icon: ClipboardCheck, color: 'green' },
+    { label: 'Invitations', description: 'Invite teammates and manage pending invitations', href: '/org-admin/invitations', icon: Mail, color: 'yellow' },
     { label: 'Usage Analytics', description: 'View organization usage metrics', href: '/org-admin/analytics', icon: Activity, color: 'purple' },
   ];
 
