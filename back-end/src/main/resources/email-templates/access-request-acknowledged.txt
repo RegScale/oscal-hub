@@ -1,1 +1,7 @@
-Hi ${firstName}, your request to join ${orgName} was received.
+Hi ${firstName},
+
+We received your request to join ${orgName}. An administrator will review it shortly. You'll get another email when a decision is made.
+
+In the meantime, you can sign in and create your own organization to start using OSCAL Hub right away.
+
+— OSCAL Hub
