@@ -19,6 +19,13 @@ echo "✓ Docker OK"
 # Load .env
 [ -f .env ] && source .env
 
+# Pass through SendGrid config if set in the user's shell
+[ -n "$SENDGRID_API_KEY" ] && export SENDGRID_API_KEY
+[ -n "$SENDGRID_FROM_EMAIL" ] && export SENDGRID_FROM_EMAIL
+[ -n "$SENDGRID_FROM_NAME" ] && export SENDGRID_FROM_NAME
+[ -n "$APP_BASE_URL" ] && export APP_BASE_URL
+[ -n "$EMAIL_ENABLED" ] && export EMAIL_ENABLED
+
 # Start PostgreSQL
 echo "Starting PostgreSQL..."
 docker-compose -f docker-compose-postgres.yml up -d --remove-orphans
