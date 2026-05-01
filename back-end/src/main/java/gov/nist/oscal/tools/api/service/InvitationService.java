@@ -38,6 +38,7 @@ public class InvitationService {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmailService emailService;
     @Autowired private AuditLogService auditLogService;
+    @Autowired private PasswordValidationService passwordValidationService;
 
     @Transactional
     public Invitation createInvitation(Long orgId, String email, Invitation.Role role, User inviter) {
@@ -102,6 +103,16 @@ public class InvitationService {
 
         // Find or create user
         User user = userRepo.findByEmailIgnoreCase(inv.getEmail()).orElseGet(() -> {
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                throw new IllegalArgumentException(
+                    "username and password are required for first-time invite acceptance");
+            }
+            try {
+                passwordValidationService.validatePassword(password, username);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                    "Password does not meet complexity requirements: " + e.getMessage());
+            }
             User u = new User();
             u.setEmail(inv.getEmail());
             u.setUsername(username);

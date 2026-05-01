@@ -92,6 +92,8 @@ class InvitationControllerTest {
         // Username for @WithMockUser must match a user we can look up
         admin.setUsername("org-admin-user");
         userRepo.save(admin);
+        // Give admin the ORG_ADMIN membership so per-org check passes
+        memRepo.save(new OrganizationMembership(admin, org, OrganizationMembership.OrganizationRole.ORG_ADMIN));
 
         CreateInvitationRequest req = new CreateInvitationRequest();
         req.setEmail("invited-" + System.nanoTime() + "@example.com");
@@ -104,6 +106,29 @@ class InvitationControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.email").value(req.getEmail()))
             .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    @WithMockUser(username = "org-admin-wrong-org", roles = {"ORG_ADMIN"})
+    void createInvitation_orgAdmin_wrongOrg_returns403() throws Exception {
+        Organization org = makeOrg();
+        Organization otherOrg = makeOrg();
+        User admin = makeUser("admin");
+        admin.setUsername("org-admin-wrong-org");
+        userRepo.save(admin);
+        // Admin is only a member of otherOrg, not org
+        memRepo.save(new OrganizationMembership(admin, otherOrg, OrganizationMembership.OrganizationRole.ORG_ADMIN));
+
+        CreateInvitationRequest req = new CreateInvitationRequest();
+        req.setEmail("invited-" + System.nanoTime() + "@example.com");
+        req.setOrganizationId(org.getId());
+        req.setRole(Invitation.Role.USER);
+
+        mockMvc.perform(post("/api/org-admin/invitations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value("FORBIDDEN"));
     }
 
     @Test
@@ -128,6 +153,8 @@ class InvitationControllerTest {
         User admin = makeUser("admin");
         admin.setUsername("org-admin-conflict");
         userRepo.save(admin);
+        // Give admin the ORG_ADMIN membership so per-org check passes
+        memRepo.save(new OrganizationMembership(admin, org, OrganizationMembership.OrganizationRole.ORG_ADMIN));
 
         // Create an existing active member with a distinct email
         User existingMember = makeUser("existing");
@@ -204,7 +231,26 @@ class InvitationControllerTest {
                 .content(objectMapper.writeValueAsString(req)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.userId").isNumber())
-            .andExpect(jsonPath("$.username").value(req.getUsername()));
+            .andExpect(jsonPath("$.username").value(req.getUsername()))
+            .andExpect(jsonPath("$.token").isString());
+    }
+
+    @Test
+    void acceptInvitation_missingPassword_returns400() throws Exception {
+        Organization org = makeOrg();
+        User admin = makeUser("admin");
+        Invitation inv = makePendingInvitation(org, admin,
+            "nopw-" + System.nanoTime() + "@example.com");
+
+        AcceptInvitationRequest req = new AcceptInvitationRequest();
+        req.setUsername("someuser-" + System.nanoTime());
+        // password intentionally omitted
+
+        mockMvc.perform(post("/api/invitations/" + inv.getToken() + "/accept")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION"));
     }
 
     @Test
