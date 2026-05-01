@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -84,6 +85,22 @@ class SendGridEmailServiceTest {
         u.setEmail("t@example.com");
 
         assertDoesNotThrow(() -> service.sendWelcome(u));
+    }
+
+    @Test
+    void treatsNon2xxAsFailure() throws IOException {
+        Response bad = new Response();
+        bad.setStatusCode(401);
+        bad.setBody("unauthorized");
+        when(sendGrid.api(any())).thenReturn(bad);
+
+        User u = new User();
+        u.setUsername("travis");
+        u.setEmail("t@example.com");
+        service.sendWelcome(u);
+
+        verify(audit, times(1)).recordFailure(eq("welcome"), eq("t@example.com"), any());
+        verify(audit, never()).recordSuccess(eq("welcome"), eq("t@example.com"), any());
     }
 
     @Test

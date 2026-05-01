@@ -106,7 +106,7 @@ public class SendGridEmailService implements EmailService {
     private void send(String template, String to, String subject, Map<String, String> vars) {
         try {
             String html = renderer.renderFromClasspath("email-templates/" + template + ".html", vars);
-            String text = renderer.renderFromClasspath("email-templates/" + template + ".txt", vars);
+            String text = renderer.renderTextFromClasspath("email-templates/" + template + ".txt", vars);
 
             Mail mail = new Mail();
             mail.setFrom(new Email(fromEmail, fromName));
@@ -123,6 +123,10 @@ public class SendGridEmailService implements EmailService {
             req.setBody(mail.build());
 
             Response resp = client.api(req);
+            int statusCode = resp.getStatusCode();
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new RuntimeException("SendGrid returned status " + statusCode + ": " + resp.getBody());
+            }
             String messageId = resp.getHeaders() == null ? null : resp.getHeaders().get("X-Message-Id");
             try {
                 audit.recordSuccess(template, to, messageId);

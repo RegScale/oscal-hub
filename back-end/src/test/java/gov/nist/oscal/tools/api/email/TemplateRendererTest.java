@@ -63,4 +63,22 @@ class TemplateRendererTest {
             "email-templates/test-fixture.html", Map.of("name", "Travis"));
         assertTrue(out.contains("Travis"));
     }
+
+    @Test
+    void renderTextDoesNotEscapeHtmlEntities() {
+        String out = renderer.renderText("Hello ${name}", Map.of("name", "Tom & Jerry"));
+        assertEquals("Hello Tom & Jerry", out);
+    }
+
+    @Test
+    void renderTextStillTreatsDollarAndBackslashLiterally() {
+        String out = renderer.renderText("${v}", Map.of("v", "$1 \\n"));
+        assertEquals("$1 \\n", out);
+    }
+
+    @Test
+    void renderTextRejectsNullTemplate() {
+        assertThrows(IllegalArgumentException.class,
+            () -> renderer.renderText(null, Map.of()));
+    }
 }
