@@ -279,6 +279,13 @@
             <version>${postgres-socket-factory.version}</version>
         </dependency>
 
+        <!-- SendGrid transactional email -->
+        <dependency>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.10.2</version>
+        </dependency>
+
         <!-- Rate Limiting -->
         <dependency>
             <groupId>com.bucket4j</groupId>
