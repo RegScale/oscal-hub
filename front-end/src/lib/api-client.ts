@@ -5237,6 +5237,102 @@ class ApiClient {
   }
 
   // ========================================
+  // Invitation Methods
+  // ========================================
+
+  async getInvitation(token: string): Promise<{ email: string; organizationName: string; inviterName: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/invitations/${encodeURIComponent(token)}`,
+      { method: 'GET' },
+      5000
+    );
+    if (!response.ok) {
+      const err = new Error(response.status === 410 ? 'INVITATION_EXPIRED' : 'INVITATION_NOT_FOUND');
+      (err as any).status = response.status;
+      throw err;
+    }
+    return response.json();
+  }
+
+  async acceptInvitation(token: string, data?: { username?: string; password?: string }): Promise<{ userId: number; username: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/invitations/${encodeURIComponent(token)}/accept`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data ?? {}),
+      },
+      10000
+    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error((body as any).message || `accept failed (${response.status})`);
+      (err as any).status = response.status;
+      throw err;
+    }
+    return response.json();
+  }
+
+  async listInvitations(organizationId: number, status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED' = 'PENDING'): Promise<unknown[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations?organizationId=${organizationId}&status=${status}`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+      if (!response.ok) throw new Error('Failed to list invitations');
+      return response.json();
+    } catch (error) {
+      console.error('Failed to list invitations:', error);
+      throw error;
+    }
+  }
+
+  async createInvitation(data: { organizationId: number; email: string; role?: 'USER' | 'ORG_ADMIN' }): Promise<unknown> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(data),
+        },
+        5000
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          const err = new Error((body as any).message || 'Conflict');
+          (err as any).code = (body as any).error;
+          (err as any).field = (body as any).field || 'email';
+          throw err;
+        }
+        throw new Error((body as any).message || 'Failed to create invitation');
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Failed to create invitation:', error);
+      throw error;
+    }
+  }
+
+  async revokeInvitation(id: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations/${id}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        5000
+      );
+      if (!response.ok && response.status !== 204) {
+        throw new Error('Failed to revoke invitation');
+      }
+    } catch (error) {
+      console.error('Failed to revoke invitation:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
   // Mock Implementations (for development)
   // ========================================
 
