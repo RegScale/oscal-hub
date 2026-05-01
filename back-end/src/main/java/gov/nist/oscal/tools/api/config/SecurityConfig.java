@@ -94,6 +94,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/mfa/setup/initiate", "/api/auth/mfa/setup/complete").permitAll()
                 .requestMatchers("/api/auth/mfa/verify", "/api/auth/mfa/verify-backup").permitAll()
                 .requestMatchers("/api/files/org-logos/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
