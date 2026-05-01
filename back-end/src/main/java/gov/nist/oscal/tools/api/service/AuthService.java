@@ -7,6 +7,8 @@ import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
+import gov.nist.oscal.tools.api.exception.OrganizationNameInUseException;
+import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
@@ -112,27 +114,38 @@ public class AuthService {
         logger.info("New user registered: {} (ID: {})", user.getUsername(), user.getId());
 
         // Log audit event
-        auditLogService.logEvent(gov.nist.oscal.tools.api.model.AuditEventType.AUTH_REGISTER_SUCCESS,
+        auditLogService.logEvent(AuditEventType.AUTH_REGISTER_SUCCESS,
             user.getUsername(), user.getId(), "SUCCESS", null, "REGISTER", null);
 
         // Self-serve org creation: if organizationName was provided, create org + ORG_ADMIN membership
         String orgName = request.getOrganizationName();
         if (orgName != null && !orgName.isBlank()) {
             String trimmedName = orgName.trim();
-            if (organizationRepository.existsByName(trimmedName)) {
-                throw new gov.nist.oscal.tools.api.exception.OrganizationNameInUseException(trimmedName);
+            if (organizationRepository.existsByNameIgnoreCase(trimmedName)) {
+                throw new OrganizationNameInUseException(trimmedName);
             }
             Organization org = new Organization();
             org.setName(trimmedName);
             org.setActive(true);
             org.setCreatedAt(LocalDateTime.now());
-            org = organizationRepository.save(org);
+            try {
+                org = organizationRepository.save(org);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                throw new OrganizationNameInUseException(trimmedName);
+            }
 
             OrganizationMembership membership = new OrganizationMembership(user, org, OrganizationRole.ORG_ADMIN);
             membershipRepository.save(membership);
 
             logger.info("User {} created organization {} (ID: {}) on registration",
                 user.getUsername(), org.getName(), org.getId());
+
+            // Audit the privilege-grant: org creation with ORG_ADMIN membership
+            Map<String, Object> orgMeta = new HashMap<>();
+            orgMeta.put("organizationId", org.getId());
+            orgMeta.put("organizationName", org.getName());
+            auditLogService.logEvent(AuditEventType.ORG_CREATED,
+                user.getUsername(), user.getId(), "SUCCESS", "ORG_ADMIN", "CREATE", orgMeta);
         }
 
         // Send welcome email (non-fatal if it fails)
@@ -460,7 +473,7 @@ public class AuthService {
         metadata.put("role", membership.getRole().toString());
 
         auditLogService.logEvent(
-                gov.nist.oscal.tools.api.model.AuditEventType.AUTH_ORG_SELECTION,
+                AuditEventType.AUTH_ORG_SELECTION,
                 user.getUsername(),
                 user.getId(),
                 "SUCCESS",
@@ -576,7 +589,7 @@ public class AuthService {
 
         // Log audit event
         auditLogService.logEvent(
-                gov.nist.oscal.tools.api.model.AuditEventType.CONFIG_PASSWORD_CHANGE,
+                AuditEventType.CONFIG_PASSWORD_CHANGE,
                 user.getUsername(),
                 user.getId(),
                 "SUCCESS",

@@ -410,7 +410,18 @@ public enum AuditEventType {
     INVITATION_REVOKED("Invitation", "Invitation revoked", "LOW"),
 
     /** Invitation expired at use time. Risk Level: LOW */
-    INVITATION_EXPIRED("Invitation", "Invitation expired at use time", "LOW");
+    INVITATION_EXPIRED("Invitation", "Invitation expired at use time", "LOW"),
+
+    // ========================================
+    // Organization Events (ORG_*)
+    // ========================================
+
+    /**
+     * New organization created via self-serve registration
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: LONG (compliance, privilege-grant traceability)</p>
+     */
+    ORG_CREATED("Organization", "Organization created", "LOW");
 
     // ========================================
     // Enum Fields

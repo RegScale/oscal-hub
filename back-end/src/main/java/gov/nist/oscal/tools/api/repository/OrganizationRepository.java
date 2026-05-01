@@ -17,6 +17,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     boolean existsByName(String name);
 
+    boolean existsByNameIgnoreCase(String name);
+
     /**
      * Find newest organizations (ordered by creation date desc)
      */

@@ -89,6 +89,24 @@ class AuthServiceRegisterWithOrgTest {
     }
 
     @Test
+    void registerWithCaseDifferentOrgNameStillCollides() {
+        long suffix = System.nanoTime();
+        Organization existing = new Organization();
+        existing.setName("MixedCase " + suffix);
+        existing.setActive(true);
+        existing.setCreatedAt(java.time.LocalDateTime.now());
+        orgRepo.save(existing);
+
+        RegisterRequest r = new RegisterRequest();
+        r.setUsername("user-" + suffix);
+        r.setEmail("u-" + suffix + "@example.com");
+        r.setPassword("CorrectH0rse!Batt");
+        r.setOrganizationName("mixedcase " + suffix);  // different case
+
+        assertThrows(OrganizationNameInUseException.class, () -> authService.register(r));
+    }
+
+    @Test
     void registerSendsWelcomeEmail() {
         long suffix = System.nanoTime();
         RegisterRequest r = new RegisterRequest();
