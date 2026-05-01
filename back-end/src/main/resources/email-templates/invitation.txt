@@ -1,0 +1,3 @@
+${inviterName} invited you to join ${orgName} on OSCAL Hub.
+Accept: ${acceptUrl}
+Expires ${expiresAt}.

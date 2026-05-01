@@ -1,0 +1,1 @@
+Your request to join ${orgName} was approved by ${approverName}. Sign in: ${loginUrl}
