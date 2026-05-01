@@ -16,6 +16,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [organizationName, setOrganizationName] = useState('');
+  const [orgNameFieldError, setOrgNameFieldError] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,7 +46,17 @@ export default function LoginPage() {
           setIsLoading(false);
           return;
         }
-        await register(username, password, email);
+        try {
+          await register(username, password, email, organizationName.trim() || undefined);
+        } catch (err: unknown) {
+          const e = err as { field?: string; message?: string };
+          if (e?.field === 'organizationName') {
+            setOrgNameFieldError(e.message || 'That name is taken');
+            setIsLoading(false);
+            return;
+          }
+          throw err;
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -148,6 +160,26 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="organizationName">Organization name</Label>
+                  <Input
+                    id="organizationName"
+                    type="text"
+                    value={organizationName}
+                    onChange={(e) => { setOrganizationName(e.target.value); setOrgNameFieldError(''); }}
+                    placeholder="Your organization or workspace"
+                    autoComplete="organization"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You&apos;ll be the admin. You can invite teammates or rename later.
+                  </p>
+                  {orgNameFieldError && (
+                    <p className="text-xs text-destructive">{orgNameFieldError}</p>
+                  )}
+                </div>
+              )}
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Please wait...' : isLogin ? 'Login' : 'Create Account'}
               </Button>
@@ -159,6 +191,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError('');
+                  setOrgNameFieldError('');
                 }}
                 className="text-primary hover:underline"
               >
@@ -167,6 +200,23 @@ export default function LoginPage() {
                   : 'Already have an account? Login'}
               </button>
             </div>
+
+            {!isLogin && (
+              <div className="mt-3 text-center text-sm">
+                <a
+                  href="/request-access"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (email) sessionStorage.setItem('pendingRegistration.email', email);
+                    if (username) sessionStorage.setItem('pendingRegistration.username', username);
+                    window.location.href = '/request-access';
+                  }}
+                  className="text-muted-foreground underline"
+                >
+                  Looking to join an existing organization? Request access
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -189,19 +189,35 @@ class ApiClient {
   /**
    * Register new user
    */
-  async register(username: string, password: string, email: string): Promise<AuthResponse> {
+  async register(username: string, password: string, email: string, organizationName?: string): Promise<AuthResponse> {
     try {
+      const body: Record<string, unknown> = { username, password, email };
+      if (organizationName && organizationName.trim()) {
+        body.organizationName = organizationName.trim();
+      }
+
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/auth/register`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, email } as RegisterRequest),
+          body: JSON.stringify(body),
         },
         5000
       );
 
       if (!response.ok) {
+        if (response.status === 409) {
+          const data = await response.json();
+          if (data?.field) {
+            const err = new Error(data.message || 'Conflict');
+            (err as any).field = data.field;
+            (err as any).code = data.error;
+            throw err;
+          }
+          const error = data;
+          throw new Error(error.error || 'Registration failed');
+        }
         const error = await response.json();
         throw new Error(error.error || 'Registration failed');
       }
