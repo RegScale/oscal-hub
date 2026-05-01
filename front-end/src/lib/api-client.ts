@@ -5254,7 +5254,7 @@ class ApiClient {
     return response.json();
   }
 
-  async acceptInvitation(token: string, data?: { username?: string; password?: string }): Promise<{ userId: number; username: string }> {
+  async acceptInvitation(token: string, data?: { username?: string; password?: string }): Promise<{ userId: number; username: string; token?: string }> {
     const response = await this.fetchWithTimeout(
       `${API_BASE_URL}/invitations/${encodeURIComponent(token)}/accept`,
       {

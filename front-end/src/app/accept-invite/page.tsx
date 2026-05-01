@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,18 @@ interface Invite {
 }
 
 export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-md mx-auto mt-12">
+        <Card><CardContent className="p-6">Loading…</CardContent></Card>
+      </div>
+    }>
+      <AcceptInviteContent />
+    </Suspense>
+  );
+}
+
+function AcceptInviteContent() {
   const search = useSearchParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
