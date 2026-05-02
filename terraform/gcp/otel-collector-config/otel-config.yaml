@@ -59,6 +59,21 @@ processors:
         statements:
           - replace_pattern(attributes["http.url"], "(?i)(token|secret|password|key)=[^&]+", "$$1=REDACTED")
 
+  # Drop OTel-emitted JVM memory metrics that collide with Cloud Run's
+  # auto-published container memory metrics in Managed Prometheus. The
+  # collision causes "value type for metric conflicts with the existing
+  # value type" rejections on ~10% of metric points per batch. Cloud Run
+  # already provides container/memory/* and container/cpu/* metrics, so
+  # the OTel runtime-telemetry-java duplicates add no signal.
+  filter/drop_runtime_jvm_memory:
+    error_mode: ignore
+    metrics:
+      metric:
+        - 'name == "jvm.memory.used"'
+        - 'name == "jvm.memory.committed"'
+        - 'name == "jvm.memory.limit"'
+        - 'name == "jvm.memory.used_after_last_gc"'
+
   tail_sampling:
     decision_wait: 10s
     num_traces: 50000
@@ -94,7 +109,7 @@ service:
       exporters: [googlecloud]
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, resourcedetection, batch]
+      processors: [memory_limiter, resourcedetection, filter/drop_runtime_jvm_memory, batch]
       exporters: [googlemanagedprometheus]
     logs:
       receivers: [otlp]
