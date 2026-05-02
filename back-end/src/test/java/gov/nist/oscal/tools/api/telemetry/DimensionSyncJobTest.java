@@ -140,8 +140,8 @@ class DimensionSyncJobTest {
 
         boolean hasOrgMerge = cap.getAllValues().stream()
                 .anyMatch(q -> q.getQuery().toUpperCase().contains("MERGE")
-                        && q.getQuery().contains("organizations"));
-        assertTrue(hasOrgMerge, "MERGE for organizations table must be issued");
+                        && q.getQuery().contains(".orgs"));
+        assertTrue(hasOrgMerge, "MERGE for orgs table must be issued");
     }
 
     // -------------------------------------------------------------------------

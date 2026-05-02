@@ -31,26 +31,27 @@ import java.util.stream.Collectors;
  *
  * <p>Entity field mapping (Postgres → BigQuery):
  * <pre>
- * users:
- *   id            → user_id  (STRING)
- *   username      → username (STRING)
- *   email         → email    (STRING)
- *   first_name    → first_name (STRING, nullable)
- *   last_name     → last_name  (STRING, nullable)
- *   global_role   → global_role (STRING)
- *   enabled       → active   (BOOL)
- *   created_at    → created_at (TIMESTAMP)
- *   last_login    → last_login (TIMESTAMP, nullable)
- *   (synthetic)   → synced_at  (TIMESTAMP)
+ * users (BQ table: users):
+ *   id                       → user_id       (STRING, REQUIRED)
+ *   username                 → username       (STRING)
+ *   email                    → email          (STRING)
+ *   first_name               → first_name     (STRING, nullable)
+ *   last_name                → last_name      (STRING, nullable)
+ *   organizationMemberships  → org_id_primary (STRING, primary org or null)
+ *   global_role              → roles_global   (STRING, REPEATED — single-element array)
+ *   enabled                  → active         (BOOL)
+ *   created_at               → created_at     (TIMESTAMP)
+ *   last_login               → last_login     (TIMESTAMP, nullable)
+ *   (synthetic)              → synced_at      (TIMESTAMP, REQUIRED)
  *
- * organizations:
- *   id          → org_id      (STRING)
+ * orgs (BQ table: orgs):
+ *   id          → org_id      (STRING, REQUIRED)
  *   name        → name        (STRING)
  *   description → description (STRING, nullable)
  *   active      → active      (BOOL)
+ *   (synthetic) → member_count (INT64, always 0 — count not tracked in dimsync)
  *   created_at  → created_at  (TIMESTAMP)
- *   updated_at  → updated_at  (TIMESTAMP, nullable)
- *   (synthetic) → synced_at   (TIMESTAMP)
+ *   (synthetic) → synced_at   (TIMESTAMP, REQUIRED)
  * </pre>
  */
 @Service
@@ -95,28 +96,40 @@ public class DimensionSyncJob {
 
     int syncUsers(Instant now) throws Exception {
         List<User> all = userRepo.findAll();
-        String nowStr = now.toString();
 
         for (User u : all) {
+            // Derive primary org ID from the first membership (if any).
+            String primaryOrgId = u.getOrganizationMemberships() != null
+                    && !u.getOrganizationMemberships().isEmpty()
+                    ? String.valueOf(u.getOrganizationMemberships().iterator().next()
+                            .getOrganization().getId())
+                    : null;
+
+            // roles_global is a REPEATED STRING column in BQ — wrap the single role in an array.
+            String[] rolesGlobal = u.getGlobalRole() != null
+                    ? new String[]{u.getGlobalRole().name()}
+                    : new String[]{};
+
             String mergeQuery = String.format(
                     "MERGE `%s.%s.users` T\n" +
                     "USING (SELECT @user_id AS user_id) S\n" +
                     "ON T.user_id = S.user_id\n" +
                     "WHEN MATCHED THEN\n" +
                     "  UPDATE SET\n" +
-                    "    username    = @username,\n" +
-                    "    email       = @email,\n" +
-                    "    first_name  = @first_name,\n" +
-                    "    last_name   = @last_name,\n" +
-                    "    global_role = @global_role,\n" +
-                    "    active      = @active,\n" +
-                    "    last_login  = @last_login,\n" +
-                    "    synced_at   = @synced_at\n" +
+                    "    username       = @username,\n" +
+                    "    email          = @email,\n" +
+                    "    first_name     = @first_name,\n" +
+                    "    last_name      = @last_name,\n" +
+                    "    org_id_primary = @org_id_primary,\n" +
+                    "    roles_global   = @roles_global,\n" +
+                    "    active         = @active,\n" +
+                    "    last_login     = @last_login,\n" +
+                    "    synced_at      = @synced_at\n" +
                     "WHEN NOT MATCHED THEN\n" +
                     "  INSERT (user_id, username, email, first_name, last_name,\n" +
-                    "          global_role, active, created_at, last_login, synced_at)\n" +
+                    "          org_id_primary, roles_global, active, created_at, last_login, synced_at)\n" +
                     "  VALUES (@user_id, @username, @email, @first_name, @last_name,\n" +
-                    "          @global_role, @active, @created_at, @last_login, @synced_at)",
+                    "          @org_id_primary, @roles_global, @active, @created_at, @last_login, @synced_at)",
                     project, dataset);
 
             QueryJobConfiguration q = QueryJobConfiguration.newBuilder(mergeQuery)
@@ -125,8 +138,8 @@ public class DimensionSyncJob {
                     .addNamedParameter("email", QueryParameterValue.string(u.getEmail()))
                     .addNamedParameter("first_name", QueryParameterValue.string(nullSafe(u.getFirstName())))
                     .addNamedParameter("last_name", QueryParameterValue.string(nullSafe(u.getLastName())))
-                    .addNamedParameter("global_role", QueryParameterValue.string(
-                            u.getGlobalRole() != null ? u.getGlobalRole().name() : "USER"))
+                    .addNamedParameter("org_id_primary", QueryParameterValue.string(primaryOrgId))
+                    .addNamedParameter("roles_global", QueryParameterValue.array(rolesGlobal, String.class))
                     .addNamedParameter("active", QueryParameterValue.bool(Boolean.TRUE.equals(u.getEnabled())))
                     .addNamedParameter("created_at", QueryParameterValue.timestamp(toMicros(
                             u.getCreatedAt() != null ? u.getCreatedAt().toInstant(java.time.ZoneOffset.UTC) : now)))
@@ -179,20 +192,23 @@ public class DimensionSyncJob {
         List<Organization> all = orgRepo.findAll();
 
         for (Organization o : all) {
+            // BQ table is `orgs` (not `organizations`); columns: org_id, name, description,
+            // active, member_count (INT64), created_at, synced_at.  There is no updated_at column.
+            // member_count is not readily available here; write 0 as a placeholder.
             String mergeQuery = String.format(
-                    "MERGE `%s.%s.organizations` T\n" +
+                    "MERGE `%s.%s.orgs` T\n" +
                     "USING (SELECT @org_id AS org_id) S\n" +
                     "ON T.org_id = S.org_id\n" +
                     "WHEN MATCHED THEN\n" +
                     "  UPDATE SET\n" +
-                    "    name        = @name,\n" +
-                    "    description = @description,\n" +
-                    "    active      = @active,\n" +
-                    "    updated_at  = @updated_at,\n" +
-                    "    synced_at   = @synced_at\n" +
+                    "    name         = @name,\n" +
+                    "    description  = @description,\n" +
+                    "    active       = @active,\n" +
+                    "    member_count = @member_count,\n" +
+                    "    synced_at    = @synced_at\n" +
                     "WHEN NOT MATCHED THEN\n" +
-                    "  INSERT (org_id, name, description, active, created_at, updated_at, synced_at)\n" +
-                    "  VALUES (@org_id, @name, @description, @active, @created_at, @updated_at, @synced_at)",
+                    "  INSERT (org_id, name, description, active, member_count, created_at, synced_at)\n" +
+                    "  VALUES (@org_id, @name, @description, @active, @member_count, @created_at, @synced_at)",
                     project, dataset);
 
             QueryJobConfiguration q = QueryJobConfiguration.newBuilder(mergeQuery)
@@ -200,12 +216,9 @@ public class DimensionSyncJob {
                     .addNamedParameter("name", QueryParameterValue.string(o.getName()))
                     .addNamedParameter("description", QueryParameterValue.string(nullSafe(o.getDescription())))
                     .addNamedParameter("active", QueryParameterValue.bool(Boolean.TRUE.equals(o.getActive())))
+                    .addNamedParameter("member_count", QueryParameterValue.int64(0L))
                     .addNamedParameter("created_at", QueryParameterValue.timestamp(toMicros(
                             o.getCreatedAt() != null ? o.getCreatedAt().toInstant(java.time.ZoneOffset.UTC) : now)))
-                    .addNamedParameter("updated_at", QueryParameterValue.timestamp(
-                            o.getUpdatedAt() != null
-                                    ? toMicros(o.getUpdatedAt().toInstant(java.time.ZoneOffset.UTC))
-                                    : null))
                     .addNamedParameter("synced_at", QueryParameterValue.timestamp(toMicros(now)))
                     .build();
 
@@ -226,7 +239,7 @@ public class DimensionSyncJob {
                 currentIds.toArray(new String[0]), String.class);
 
         String updateQuery = String.format(
-                "UPDATE `%s.%s.organizations`\n" +
+                "UPDATE `%s.%s.orgs`\n" +
                 "SET active=false, synced_at=@synced_at\n" +
                 "WHERE active=true AND org_id NOT IN UNNEST(@current_ids)",
                 project, dataset);
