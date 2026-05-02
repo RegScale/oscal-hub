@@ -16,7 +16,7 @@ resource "google_pubsub_subscription" "events_to_bq" {
   bigquery_config {
     table            = var.bigquery_table
     use_table_schema = true
-    write_metadata   = true
+    write_metadata   = false  # our events table has its own event_id/event_time/etc; Pub/Sub metadata not needed
   }
 
   ack_deadline_seconds = 60

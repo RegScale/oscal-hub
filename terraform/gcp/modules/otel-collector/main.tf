@@ -44,6 +44,18 @@ resource "google_cloud_run_v2_service" "collector" {
         container_port = 4317 # OTLP/gRPC primary
       }
 
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      dynamic "env" {
+        for_each = var.events_topic_name != "" ? [1] : []
+        content {
+          name  = "OTEL_EVENTS_TOPIC"
+          value = var.events_topic_name
+        }
+      }
+
       resources {
         limits = {
           cpu    = "1"

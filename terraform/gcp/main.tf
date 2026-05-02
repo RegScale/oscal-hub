@@ -71,6 +71,8 @@ resource "google_project_service" "apis" {
     "cloudtrace.googleapis.com",       # Cloud Trace
     "monitoring.googleapis.com",       # Cloud Monitoring + Managed Prometheus
     "pubsub.googleapis.com",           # Pub/Sub (used by Phase 2)
+    "cloudscheduler.googleapis.com",   # Cloud Scheduler (Phase 2 dimsync)
+    "bigquery.googleapis.com",         # BigQuery (Phase 2 analytics)
   ])
 
   project = var.project_id
