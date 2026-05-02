@@ -4,7 +4,6 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import io.opentelemetry.api.baggage.Baggage;
-import io.opentelemetry.api.baggage.BaggageBuilder;
 import io.opentelemetry.context.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -100,7 +99,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Build OTel baggage with user/org identity for downstream propagation
                 Long userId = jwtUtil.extractUserId(jwt);
                 Long orgId = jwtUtil.extractOrganizationId(jwt);
-                BaggageBuilder builder = Baggage.builder();
+                var builder = Baggage.current().toBuilder();
                 if (userId != null) {
                     builder.put("user.id", String.valueOf(userId));
                 }

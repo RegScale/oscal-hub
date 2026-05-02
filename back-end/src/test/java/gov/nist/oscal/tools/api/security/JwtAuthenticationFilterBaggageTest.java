@@ -64,7 +64,7 @@ class JwtAuthenticationFilterBaggageTest {
             }
         };
 
-        filter.doFilter(req, resp, chain);
+        filter.doFilterInternal(req, resp, chain);
 
         Baggage b = captured.get();
         assertEquals("456", b.getEntryValue("user.id"));
@@ -86,7 +86,7 @@ class JwtAuthenticationFilterBaggageTest {
             }
         };
 
-        filter.doFilter(req, resp, chain);
+        filter.doFilterInternal(req, resp, chain);
 
         Baggage b = captured.get();
         assertEquals(0, b.size());
