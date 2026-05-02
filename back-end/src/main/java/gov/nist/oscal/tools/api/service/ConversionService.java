@@ -9,6 +9,7 @@ import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 import gov.nist.secauto.metaschema.databind.io.ISerializer;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import gov.nist.secauto.oscal.lib.model.*;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class ConversionService {
         this.fileStorageService = fileStorageService;
     }
 
+    @WithSpan("oscal.convert_internal")
     public ConversionResult convert(ConversionRequest request, String username) {
         long startTime = System.currentTimeMillis();
         ConversionResult result = new ConversionResult(

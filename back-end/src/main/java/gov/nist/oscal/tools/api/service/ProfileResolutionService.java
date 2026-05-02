@@ -6,6 +6,7 @@ import gov.nist.oscal.tools.api.model.ProfileResolutionResult;
 import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import gov.nist.secauto.oscal.lib.model.Profile;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ public class ProfileResolutionService {
         this.bindingContext = OscalBindingContext.instance();
     }
 
+    @WithSpan("oscal.profile.resolve_internal")
     public ProfileResolutionResult resolveProfile(ProfileResolutionRequest request, String username) {
         try {
             // Step 1: Validate that the content is a valid profile
