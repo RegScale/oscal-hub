@@ -111,7 +111,7 @@ public class FileStorageService {
      * @throws MalwareDetectedException if malware is detected in the file
      */
     @WithSpan("oscal.storage.upload")
-    public SavedFile saveFile(String content, @SpanAttribute("oscal.storage.file-name") String fileName, OscalModelType modelType, OscalFormat format, @SpanAttribute("oscal.storage.username") String username) {
+    public SavedFile saveFile(String content, @SpanAttribute("oscal.storage.file-name") String fileName, OscalModelType modelType, OscalFormat format, String username) {
         // Scan file for malware before saving
         fileValidationService.scanForViruses(content, fileName);
 
@@ -359,7 +359,7 @@ public class FileStorageService {
      * Get file content by ID for a specific user
      */
     @WithSpan("oscal.storage.download")
-    public String getFileContent(@SpanAttribute("oscal.storage.file-id") String fileId, @SpanAttribute("oscal.storage.username") String username) {
+    public String getFileContent(@SpanAttribute("oscal.storage.file-id") String fileId, String username) {
         if (useLocalStorage) {
             return getFileContentLocally(fileId, username);
         }
