@@ -55,6 +55,14 @@ resource "google_cloud_run_v2_service" "service" {
         }
       }
 
+      dynamic "env" {
+        for_each = var.db_ddl_auto != "" ? [1] : []
+        content {
+          name  = "DB_DDL_AUTO"
+          value = var.db_ddl_auto
+        }
+      }
+
       # CORS_ALLOWED_ORIGINS (set to frontend URL)
       dynamic "env" {
         for_each = var.cors_allowed_origins != "" ? [1] : []
@@ -101,6 +109,25 @@ resource "google_cloud_run_v2_service" "service" {
         period_seconds        = 30
         failure_threshold     = 3
       }
+
+      # Cloud SQL Unix-socket mount, kept in sync with the volumes block below.
+      dynamic "volume_mounts" {
+        for_each = length(var.cloud_sql_connections) > 0 ? [1] : []
+        content {
+          name       = "cloudsql"
+          mount_path = "/cloudsql"
+        }
+      }
+    }
+
+    dynamic "volumes" {
+      for_each = length(var.cloud_sql_connections) > 0 ? [1] : []
+      content {
+        name = "cloudsql"
+        cloud_sql_instance {
+          instances = var.cloud_sql_connections
+        }
+      }
     }
 
     # Service account
@@ -109,10 +136,10 @@ resource "google_cloud_run_v2_service" "service" {
     # Timeout for requests
     timeout = "${var.request_timeout_seconds}s"
 
-    # Cloud SQL connections (annotations are a map, not a block)
-    annotations = length(var.cloud_sql_connections) > 0 ? {
-      "run.googleapis.com/cloudsql-instances" = join(",", var.cloud_sql_connections)
-    } : {}
+    # Cloud SQL connections are configured via the `volumes.cloud_sql_instance`
+    # block above. The provider sets the matching `run.googleapis.com/cloudsql-instances`
+    # annotation server-side, so we do not declare it here (it's a system
+    # annotation and would otherwise show as perpetual drift in plans).
   }
 
   traffic {

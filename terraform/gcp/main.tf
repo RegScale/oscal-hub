@@ -28,12 +28,12 @@ terraform {
     }
   }
 
-  # Store Terraform state in GCS bucket (recommended for production)
-  # Uncomment and configure after initial setup
-  # backend "gcs" {
-  #   bucket = "oscal-tools-terraform-state"
-  #   prefix = "terraform/state"
-  # }
+  # State lives in GCS. Bucket is supplied at `terraform init` time via
+  # `-backend-config="bucket=..."` so the same config works for any project /
+  # environment. See docs/CICD-BOOTSTRAP.md.
+  backend "gcs" {
+    prefix = "terraform/state"
+  }
 }
 
 # ============================================================================#
@@ -41,15 +41,13 @@ terraform {
 # ============================================================================#
 
 provider "google" {
-  project     = var.project_id
-  region      = var.region
-  credentials = fileexists("${path.module}/terraform-key.json") ? file("${path.module}/terraform-key.json") : null
+  project = var.project_id
+  region  = var.region
 }
 
 provider "google-beta" {
-  project     = var.project_id
-  region      = var.region
-  credentials = fileexists("${path.module}/terraform-key.json") ? file("${path.module}/terraform-key.json") : null
+  project = var.project_id
+  region  = var.region
 }
 
 # ============================================================================#
@@ -198,7 +196,8 @@ module "oscal_app" {
 
   secret_environment_variables = {}
 
-  db_url = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${module.database.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  db_url      = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${module.database.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  db_ddl_auto = "update"
 
   cloud_sql_connections = [module.database.instance_connection_name]
   vpc_connector_id      = null  # Using public IP, no VPC connector needed

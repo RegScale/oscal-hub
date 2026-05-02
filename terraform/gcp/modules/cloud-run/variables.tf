@@ -69,6 +69,15 @@ variable "db_url" {
   default     = ""
 }
 
+# Emitted in its own env block after DB_URL so TF order matches Cloud Run's
+# insertion order (DB_DDL_AUTO was originally added via gcloud --update-env-vars
+# after the service existed, and Cloud Run preserves insertion order on update).
+variable "db_ddl_auto" {
+  description = "Hibernate hbm2ddl.auto value (e.g. update, validate, none); empty disables the env var"
+  type        = string
+  default     = ""
+}
+
 variable "cors_allowed_origins" {
   description = "CORS allowed origins"
   type        = string
