@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * <p>Entity field mapping (Postgres → BigQuery):
  * <pre>
  * users:
- *   id            → user_id  (INT64)
+ *   id            → user_id  (STRING)
  *   username      → username (STRING)
  *   email         → email    (STRING)
  *   first_name    → first_name (STRING, nullable)
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  *   (synthetic)   → synced_at  (TIMESTAMP)
  *
  * organizations:
- *   id          → org_id      (INT64)
+ *   id          → org_id      (STRING)
  *   name        → name        (STRING)
  *   description → description (STRING, nullable)
  *   active      → active      (BOOL)
@@ -120,7 +120,7 @@ public class DimensionSyncJob {
                     project, dataset);
 
             QueryJobConfiguration q = QueryJobConfiguration.newBuilder(mergeQuery)
-                    .addNamedParameter("user_id", QueryParameterValue.int64(u.getId()))
+                    .addNamedParameter("user_id", QueryParameterValue.string(String.valueOf(u.getId())))
                     .addNamedParameter("username", QueryParameterValue.string(u.getUsername()))
                     .addNamedParameter("email", QueryParameterValue.string(u.getEmail()))
                     .addNamedParameter("first_name", QueryParameterValue.string(nullSafe(u.getFirstName())))
@@ -146,11 +146,13 @@ public class DimensionSyncJob {
 
     int tombstoneUsers(Instant now) throws Exception {
         List<User> all = userRepo.findAll();
-        List<Long> currentIds = all.stream().map(User::getId).collect(Collectors.toList());
+        List<String> currentIds = all.stream()
+                .map(u -> String.valueOf(u.getId()))
+                .collect(Collectors.toList());
 
         // Build an ARRAY literal of current user IDs for the NOT IN UNNEST(...) clause.
         QueryParameterValue idsParam = QueryParameterValue.array(
-                currentIds.toArray(new Long[0]), Long.class);
+                currentIds.toArray(new String[0]), String.class);
 
         String updateQuery = String.format(
                 "UPDATE `%s.%s.users`\n" +
@@ -194,7 +196,7 @@ public class DimensionSyncJob {
                     project, dataset);
 
             QueryJobConfiguration q = QueryJobConfiguration.newBuilder(mergeQuery)
-                    .addNamedParameter("org_id", QueryParameterValue.int64(o.getId()))
+                    .addNamedParameter("org_id", QueryParameterValue.string(String.valueOf(o.getId())))
                     .addNamedParameter("name", QueryParameterValue.string(o.getName()))
                     .addNamedParameter("description", QueryParameterValue.string(nullSafe(o.getDescription())))
                     .addNamedParameter("active", QueryParameterValue.bool(Boolean.TRUE.equals(o.getActive())))
@@ -216,10 +218,12 @@ public class DimensionSyncJob {
 
     int tombstoneOrgs(Instant now) throws Exception {
         List<Organization> all = orgRepo.findAll();
-        List<Long> currentIds = all.stream().map(Organization::getId).collect(Collectors.toList());
+        List<String> currentIds = all.stream()
+                .map(o -> String.valueOf(o.getId()))
+                .collect(Collectors.toList());
 
         QueryParameterValue idsParam = QueryParameterValue.array(
-                currentIds.toArray(new Long[0]), Long.class);
+                currentIds.toArray(new String[0]), String.class);
 
         String updateQuery = String.format(
                 "UPDATE `%s.%s.organizations`\n" +
