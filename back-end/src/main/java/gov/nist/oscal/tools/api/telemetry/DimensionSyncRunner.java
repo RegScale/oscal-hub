@@ -31,12 +31,27 @@ public class DimensionSyncRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        int exitCode;
         try {
             job.run();
-            System.exit(0);
+            log.info("dimsync runner: job.run() returned successfully");
+            exitCode = 0;
         } catch (Exception e) {
             log.error("dimsync failed", e);
-            System.exit(1);
+            exitCode = 1;
         }
+        // Stop Logback explicitly so console + JSON encoders flush, and so the
+        // OTel agent's logback bridge gets a chance to flush log records to the
+        // collector before the JVM exits. Without this, log lines emitted near
+        // the end of the run can be silently dropped on System.exit.
+        try {
+            org.slf4j.ILoggerFactory factory = org.slf4j.LoggerFactory.getILoggerFactory();
+            if (factory instanceof ch.qos.logback.classic.LoggerContext lc) {
+                lc.stop();
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+        System.exit(exitCode);
     }
 }

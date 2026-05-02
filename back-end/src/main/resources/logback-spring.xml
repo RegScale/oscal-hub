@@ -10,6 +10,14 @@
     <!-- Spring Boot defaults -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
+    <!-- Explicit logger levels for our telemetry logger names. The "gcp" profile -->
+    <!-- overrides root to WARN, which would otherwise filter INFO-level events    -->
+    <!-- emitted by TelemetryService. This block guarantees they pass through      -->
+    <!-- regardless of the active profile's root level.                            -->
+    <logger name="oscal-hub" level="INFO"/>
+    <logger name="oscal-hub.events" level="INFO"/>
+    <logger name="gov.nist.oscal.tools.api.telemetry" level="DEBUG"/>
+
     <!-- JSON appender for Cloud Logging structured ingestion. -->
     <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
