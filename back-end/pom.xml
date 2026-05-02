@@ -43,6 +43,7 @@
         <azure-sdk-bom.version>1.3.3</azure-sdk-bom.version>
         <aws-sdk-bom.version>2.40.13</aws-sdk-bom.version>
         <google-cloud-bom.version>26.73.0</google-cloud-bom.version>
+        <opentelemetry-bom.version>1.46.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
@@ -103,11 +104,11 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- OpenTelemetry BOM - manages all OTel API versions -->
+            <!-- OpenTelemetry BOM - manages all io.opentelemetry:* (core API) versions -->
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-bom</artifactId>
-                <version>1.46.0</version>
+                <version>${opentelemetry-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
