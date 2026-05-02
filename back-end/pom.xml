@@ -102,6 +102,15 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- OpenTelemetry BOM - manages all OTel API versions -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>1.46.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -303,6 +312,33 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- OpenTelemetry: API used by custom telemetry code -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+
+        <!-- OpenTelemetry: @WithSpan annotation processed by the Java agent -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-instrumentation-annotations</artifactId>
+            <version>2.10.0</version>
+        </dependency>
+
+        <!-- OpenTelemetry: Micrometer 1.5+ → OTel metrics bridge -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-micrometer-1.5</artifactId>
+            <version>2.10.0-alpha</version>
+        </dependency>
+
+        <!-- JSON Logback encoder for Cloud Logging structured output -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
         </dependency>
 
         <!-- Testing -->
