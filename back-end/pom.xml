@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>4.0.6</version>
         <relativePath/>
     </parent>
 
@@ -41,15 +41,15 @@
 
         <!-- Cloud SDK BOM versions -->
         <azure-sdk-bom.version>1.3.3</azure-sdk-bom.version>
-        <aws-sdk-bom.version>2.40.13</aws-sdk-bom.version>
+        <aws-sdk-bom.version>2.41.0</aws-sdk-bom.version>
         <google-cloud-bom.version>26.73.0</google-cloud-bom.version>
         <opentelemetry-bom.version>1.46.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>2.7.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
         <bucket4j.version>8.10.1</bucket4j.version>
-        <org-json.version>20250517</org-json.version>
+        <org-json.version>20251224</org-json.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <postgres-socket-factory.version>1.27.1</postgres-socket-factory.version>
     </properties>
@@ -122,10 +122,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- AOP support for @Telemetry and other aspects -->
+        <!-- AOP support for @Telemetry and other aspects (renamed from spring-boot-starter-aop in Spring Boot 4) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
 
         <!-- WebSocket support for real-time updates -->
@@ -194,6 +194,16 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Spring Boot 4 defaults to Jackson 3 (tools.jackson). The
+             spring-boot-jackson2 module restores the legacy
+             com.fasterxml.jackson.databind.ObjectMapper bean that the rest
+             of the codebase depends on. Deprecated path; remove once a
+             full Jackson 3 migration is complete. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
         <!-- org.json - Override transitive dependency to fix CVE-2023-5072 -->
@@ -361,6 +371,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Boot 4 split @WebMvcTest support out of starter-test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
@@ -370,6 +387,18 @@
 
     <build>
         <plugins>
+            <!-- Force the "test" Spring profile for every test run so
+                 application-test.properties (H2, Flyway off) is layered on
+                 top of the production application.properties. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

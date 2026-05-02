@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.tomcat.servlet.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -92,7 +92,7 @@ public class HttpsConfig {
             logger.info("HTTP requests on port {} will redirect to HTTPS port {}", httpPort, serverPort);
 
             // Add HTTP connector for redirect
-            factory.addAdditionalTomcatConnectors(createHttpConnector());
+            factory.addAdditionalConnectors(createHttpConnector());
 
             // Add redirect security constraint
             factory.addContextCustomizers(context -> {

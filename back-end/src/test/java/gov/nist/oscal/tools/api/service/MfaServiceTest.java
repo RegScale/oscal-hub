@@ -46,6 +46,11 @@ class MfaServiceTest {
 
     @BeforeEach
     void setUp() {
+        // applicationName is set via @Value in production; @InjectMocks
+        // leaves it null, which the ZXing QR generator rejects.
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                mfaService, "applicationName", "OSCAL Hub");
+
         testUser = new User();
         testUser.setId(1L);
         testUser.setUsername("testuser");
@@ -72,7 +77,7 @@ class MfaServiceTest {
         assertTrue(setupData.qrCodeDataUri().startsWith("data:image/png;base64,"));
         assertNotNull(setupData.secret());
         assertNotNull(setupData.formattedSecret());
-        assertTrue(setupData.formattedSecret().contains("-")); // Formatted with dashes
+        assertTrue(setupData.formattedSecret().contains(" ")); // Formatted in groups of 4, space-separated
 
         verify(userRepository).save(argThat(user -> user.getMfaSecret() != null));
     }
@@ -123,16 +128,14 @@ class MfaServiceTest {
     }
 
     @Test
-    void testVerifyTotpCode_mfaNotEnabled_returnsFalse() {
+    void testVerifyTotpCode_mfaNotEnabled_throwsException() {
         // Given
         testUser.setMfaEnabled(false);
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
-        // When
-        boolean result = mfaService.verifyTotpCode(1L, "123456");
-
-        // Then
-        assertFalse(result);
+        // When & Then — service throws when MFA isn't enabled, so the
+        // verification path is never reached.
+        assertThrows(RuntimeException.class, () -> mfaService.verifyTotpCode(1L, "123456"));
     }
 
     // ========== BACKUP CODE TESTS ==========
@@ -141,7 +144,7 @@ class MfaServiceTest {
     void testGenerateBackupCodes_generatesCorrectCount() {
         // Given
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(backupCodeRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(backupCodeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
         List<String> codes = mfaService.generateBackupCodes(1L);
@@ -150,14 +153,14 @@ class MfaServiceTest {
         assertNotNull(codes);
         assertEquals(10, codes.size());
 
-        // Verify codes are properly formatted (8 chars with hyphen: XXXX-XXXX)
+        // Codes are digit-only (generateRandomCode() emits 0-9), formatted as XXXX-XXXX.
         for (String code : codes) {
-            assertTrue(code.matches("[A-Z0-9]{4}-[A-Z0-9]{4}"), "Code should be formatted as XXXX-XXXX");
+            assertTrue(code.matches("[0-9]{4}-[0-9]{4}"), "Code should be formatted as XXXX-XXXX: " + code);
         }
 
-        // Verify old codes were deleted
+        // Verify old codes were deleted and each new code was persisted individually.
         verify(backupCodeRepository).deleteByUserId(1L);
-        verify(backupCodeRepository).saveAll(anyList());
+        verify(backupCodeRepository, times(10)).save(any());
     }
 
     @Test

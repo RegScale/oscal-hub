@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -39,7 +38,6 @@ import java.util.Set;
  *   <li>Processing Time</li>
  * </ul>
  */
-@Component
 @Order(1)
 public class RequestLoggingFilter extends OncePerRequestFilter {
 

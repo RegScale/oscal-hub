@@ -12,8 +12,8 @@ import gov.nist.oscal.tools.api.service.SiemForwardingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +30,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 
 @WebMvcTest(AuditLogController.class)
 class AuditLogControllerTest {
@@ -40,25 +41,25 @@ class AuditLogControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private AuditEventRepository auditEventRepository;
 
-    @MockBean
+    @MockitoBean
     private SiemForwardingService siemForwardingService;
 
-    @MockBean
+    @MockitoBean
     private JwtUtil jwtUtil;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitService rateLimitService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitConfig rateLimitConfig;
 
-    @MockBean
+    @MockitoBean
     private SecurityHeadersConfig securityHeadersConfig;
 
     private AuditEvent testEvent1;
@@ -83,7 +84,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetAllLogs_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1, testEvent2));
         when(auditEventRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);
@@ -100,7 +101,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetAllLogs_withUsernameFilter_returnsFilteredResults() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
         when(auditEventRepository.findByUsernameOrderByTimestampDesc(eq("testuser"), any(Pageable.class)))
@@ -116,7 +117,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetAllLogs_withRiskLevelFilter_returnsFilteredResults() throws Exception {
         testEvent1.setRiskLevel("HIGH");
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
@@ -153,7 +154,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetRawLogs_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
         when(auditEventRepository.findRawLogs(any(Pageable.class))).thenReturn(page);
@@ -170,7 +171,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetSecurityLogs_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
         when(auditEventRepository.findAllSecurityEvents(any(Pageable.class))).thenReturn(page);
@@ -187,7 +188,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetErrorLogs_superAdmin_success() throws Exception {
         AuditEvent errorEvent = new AuditEvent(AuditEventType.SYSTEM_ERROR, "system", "ERROR");
         errorEvent.setId(3L);
@@ -209,7 +210,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testSearchLogs_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
         when(auditEventRepository.searchByKeyword(eq("testuser"), any(Pageable.class))).thenReturn(page);
@@ -227,7 +228,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetLogById_found_returnsLog() throws Exception {
         when(auditEventRepository.findById(1L)).thenReturn(Optional.of(testEvent1));
 
@@ -240,7 +241,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetLogById_notFound_returns404() throws Exception {
         when(auditEventRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -255,7 +256,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetStats_superAdmin_success() throws Exception {
         when(auditEventRepository.count()).thenReturn(1000L);
         when(auditEventRepository.countEventsSince(any(LocalDateTime.class))).thenReturn(50L);
@@ -282,7 +283,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testExportCsv_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1, testEvent2));
         when(auditEventRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);
@@ -296,12 +297,20 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testExportJson_superAdmin_success() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1, testEvent2));
         when(auditEventRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);
 
-        mockMvc.perform(get("/api/admin/logs/export/json"))
+        // exportJson returns a StreamingResponseBody. Spring MVC starts the
+        // response asynchronously, so we have to dispatch the async result
+        // before the StreamingResponseBody body actually runs and the mock
+        // is invoked. Without asyncDispatch the verify() below would race.
+        var mvcResult = mockMvc.perform(get("/api/admin/logs/export/json"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/x-ndjson"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("audit-logs-")));
@@ -323,7 +332,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetSiemStatus_superAdmin_success() throws Exception {
         SiemForwardingService.SiemStatus status = new SiemForwardingService.SiemStatus(
                 true, true, 1000L, 5L, 50L, 1L, 10,
@@ -342,7 +351,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testTestSiemConnection_success_returns200() throws Exception {
         SiemForwardingService.TestResult result = new SiemForwardingService.TestResult(true, "Connection successful");
         when(siemForwardingService.testConnection()).thenReturn(result);
@@ -357,7 +366,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testTestSiemConnection_failure_returns503() throws Exception {
         SiemForwardingService.TestResult result = new SiemForwardingService.TestResult(false, "Connection refused");
         when(siemForwardingService.testConnection()).thenReturn(result);
@@ -372,7 +381,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testFlushSiemQueue_success() throws Exception {
         when(siemForwardingService.manualFlush()).thenReturn(25);
 
@@ -386,7 +395,7 @@ class AuditLogControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testFlushSiemQueue_emptyQueue() throws Exception {
         when(siemForwardingService.manualFlush()).thenReturn(0);
 
@@ -423,7 +432,7 @@ class AuditLogControllerTest {
     // ========================================
 
     @Test
-    @WithMockUser(authorities = "SUPER_ADMIN")
+    @WithMockUser(roles = "SUPER_ADMIN")
     void testGetAllLogs_pageSizeExceedsMax_cappedAt100() throws Exception {
         Page<AuditEvent> page = new PageImpl<>(Arrays.asList(testEvent1));
         when(auditEventRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);

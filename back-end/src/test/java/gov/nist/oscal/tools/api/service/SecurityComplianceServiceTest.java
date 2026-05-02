@@ -228,14 +228,14 @@ class SecurityComplianceServiceTest {
     }
 
     @Test
-    void testGetGapAnalysis_containsMalwareScanningGap() {
-        // Act
+    void testGetGapAnalysis_malwareScanningResolved() {
+        // CC9.1 (Malware Scanning) was a tracked gap until ClamAV integration
+        // landed; the service now exposes it as an implemented control with no
+        // outstanding gap entry. See docs/MALWARE-SCANNING.md.
         List<GapAnalysis> gaps = securityComplianceService.getGapAnalysis();
-
-        // Assert - CC9.1 (Malware Scanning) should be identified as a gap
         boolean hasMalwareGap = gaps.stream()
                 .anyMatch(g -> "CC9.1".equals(g.getControlId()));
-        assertTrue(hasMalwareGap, "Should identify malware scanning (CC9.1) as a gap");
+        assertFalse(hasMalwareGap, "CC9.1 (malware scanning) should no longer appear in the gap list");
     }
 
     @Test
@@ -277,14 +277,14 @@ class SecurityComplianceServiceTest {
     }
 
     @Test
-    void testControls_havePartialStatus() {
-        // Act
+    void testControls_haveNoPartialStatus() {
+        // The service used to ship a few PARTIAL controls; every catalogued
+        // control is now either fully IMPLEMENTED or a tracked GAP. Lock that
+        // invariant in.
         List<Soc2Control> controls = securityComplianceService.getAllControls();
-
-        // Assert - should have at least one PARTIAL control
         boolean hasPartial = controls.stream()
                 .anyMatch(c -> c.getStatus() == ControlStatus.PARTIAL);
-        assertTrue(hasPartial, "Should have at least one PARTIAL control");
+        assertFalse(hasPartial, "All controls should be IMPLEMENTED or GAP — no partial status remaining");
     }
 
     @Test

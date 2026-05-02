@@ -1,8 +1,10 @@
 package gov.nist.oscal.tools.api.config;
 
 import gov.nist.oscal.tools.api.filter.RateLimitFilter;
+import gov.nist.oscal.tools.api.filter.RequestLoggingFilter;
 import gov.nist.oscal.tools.api.filter.SecurityHeadersFilter;
 import gov.nist.oscal.tools.api.security.JwtAuthenticationFilter;
+import gov.nist.oscal.tools.api.service.AuditLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,14 +39,28 @@ public class SecurityConfig {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    // Filter beans declared explicitly rather than via @Component so that
+    // controller @WebMvcTest slices don't auto-load them (which would force
+    // every web slice test to mock all of the filters' transitive deps).
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter();
+    }
 
-    @Autowired
-    private RateLimitFilter rateLimitFilter;
+    @Bean
+    public RateLimitFilter rateLimitFilter() {
+        return new RateLimitFilter();
+    }
 
-    @Autowired
-    private SecurityHeadersFilter securityHeadersFilter;
+    @Bean
+    public SecurityHeadersFilter securityHeadersFilter() {
+        return new SecurityHeadersFilter();
+    }
+
+    @Bean
+    public RequestLoggingFilter requestLoggingFilter(AuditLogService auditLogService) {
+        return new RequestLoggingFilter(auditLogService);
+    }
 
     // CORS Configuration from application.properties
     @Value("${cors.allowed-origins}")
@@ -66,8 +82,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
@@ -78,7 +93,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter,
+                                                   RateLimitFilter rateLimitFilter,
+                                                   SecurityHeadersFilter securityHeadersFilter) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             // CSRF protection disabled intentionally - this is a stateless REST API using JWT tokens
