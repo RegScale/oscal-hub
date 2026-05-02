@@ -181,3 +181,19 @@ variable "alert_notification_channels" {
   type        = list(string)
   default     = []
 }
+
+# ----------------------------------------------------------------------------
+# OpenTelemetry Configuration
+# ----------------------------------------------------------------------------
+
+variable "otel_enabled" {
+  type        = bool
+  default     = false
+  description = "When true, the API service exports telemetry via JAVA_TOOL_OPTIONS attaching the OTel agent."
+}
+
+variable "otel_collector_image" {
+  type        = string
+  default     = ""
+  description = "Fully-qualified image of the otel-collector image (set by CI; empty disables module)."
+}

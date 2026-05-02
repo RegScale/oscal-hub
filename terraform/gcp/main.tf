@@ -181,21 +181,35 @@ module "oscal_app" {
   # Backend Spring Boot runs on port 8081
   container_port = 8080
 
-  environment_variables = {
-    # Spring Boot backend settings
-    SPRING_PROFILES_ACTIVE = "gcp"
-    GCP_PROJECT_ID         = var.project_id
-    DB_USERNAME            = var.db_username
-    DB_PASSWORD            = random_password.db_password.result
-    JWT_SECRET             = random_password.jwt_secret.result
-    GCS_BUCKET_BUILD       = module.storage.build_bucket_name
-    BACKEND_PORT           = "8081"
+  environment_variables = merge(
+    {
+      # Spring Boot backend settings
+      SPRING_PROFILES_ACTIVE = "gcp"
+      GCP_PROJECT_ID         = var.project_id
+      DB_USERNAME            = var.db_username
+      DB_PASSWORD            = random_password.db_password.result
+      JWT_SECRET             = random_password.jwt_secret.result
+      GCS_BUCKET_BUILD       = module.storage.build_bucket_name
+      BACKEND_PORT           = "8081"
 
-    # Next.js frontend settings
-    NODE_ENV = "production"
-    # Note: NEXT_PUBLIC_* variables are baked into the build at Docker build time
-    # They cannot be changed at runtime and are set in the Dockerfile
-  }
+      # Next.js frontend settings
+      NODE_ENV = "production"
+      # Note: NEXT_PUBLIC_* variables are baked into the build at Docker build time
+      # They cannot be changed at runtime and are set in the Dockerfile
+    },
+    var.otel_enabled && length(module.otel_collector) > 0 ? {
+      JAVA_TOOL_OPTIONS                                                 = "-javaagent:/otel/opentelemetry-javaagent.jar"
+      OTEL_SERVICE_NAME                                                 = "oscal-api"
+      OTEL_RESOURCE_ATTRIBUTES                                          = "service.namespace=oscal-hub,deployment.environment=${var.environment}"
+      OTEL_EXPORTER_OTLP_PROTOCOL                                       = "grpc"
+      OTEL_EXPORTER_OTLP_ENDPOINT                                       = module.otel_collector[0].collector_url
+      OTEL_TRACES_SAMPLER                                               = "parentbased_always_on"
+      OTEL_LOGS_EXPORTER                                                = "otlp"
+      OTEL_METRICS_EXPORTER                                             = "otlp"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES = "true"
+      OTEL_INSTRUMENTATION_MICROMETER_ENABLED                           = "true"
+    } : {}
+  )
 
   secret_environment_variables = {}
 
@@ -222,6 +236,23 @@ module "oscal_app" {
     module.database,
     module.storage
   ]
+}
+
+# ============================================================================#
+# OpenTelemetry Collector (conditionally deployed when otel_collector_image is set)
+# ============================================================================#
+
+module "otel_collector" {
+  count  = var.otel_collector_image != "" ? 1 : 0
+  source = "./modules/otel-collector"
+
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  image               = var.otel_collector_image
+  api_service_account = module.oscal_app.service_account_email
+
+  depends_on = [google_project_service.apis]
 }
 
 # ============================================================================#
