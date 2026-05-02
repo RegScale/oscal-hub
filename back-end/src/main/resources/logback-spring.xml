@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Copy OTel baggage to MDC before each log event is encoded -->
+    <turboFilter class="gov.nist.oscal.tools.api.telemetry.BaggageMdcInsertingFilter"/>
+
+    <!-- Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- JSON appender for Cloud Logging structured ingestion. -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</pattern>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <logLevel>
+                    <fieldName>severity</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <threadName/>
+                <message/>
+                <stackTrace/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "logging.googleapis.com/trace": "projects/${GCP_PROJECT_ID:-unknown}/traces/%mdc{trace_id}",
+                            "logging.googleapis.com/spanId": "%mdc{span_id}",
+                            "logging.googleapis.com/trace_sampled": "%mdc{trace_flags}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Plain console appender for local dev -->
+    <appender name="PLAIN_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN:-%d{ISO8601} [%thread] %-5level %logger{36} traceId=%mdc{trace_id} userId=%mdc{user.id} orgId=%mdc{org.id} - %msg%n}</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="!cloud">
+        <root level="INFO">
+            <appender-ref ref="PLAIN_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="cloud">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>
