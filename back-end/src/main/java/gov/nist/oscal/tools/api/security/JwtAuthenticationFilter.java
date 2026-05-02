@@ -3,6 +3,9 @@ package gov.nist.oscal.tools.api.security;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import io.opentelemetry.api.baggage.Baggage;
+import io.opentelemetry.api.baggage.BaggageBuilder;
+import io.opentelemetry.context.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -69,6 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // Validate token and set authentication
+        Baggage baggage = Baggage.empty();
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
@@ -92,9 +96,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+                // Build OTel baggage with user/org identity for downstream propagation
+                Long userId = jwtUtil.extractUserId(jwt);
+                Long orgId = jwtUtil.extractOrganizationId(jwt);
+                BaggageBuilder builder = Baggage.builder();
+                if (userId != null) {
+                    builder.put("user.id", String.valueOf(userId));
+                }
+                if (orgId != null) {
+                    builder.put("org.id", String.valueOf(orgId));
+                }
+                if (globalRole != null && !globalRole.isEmpty()) {
+                    builder.put("user.role.global", globalRole);
+                }
+                if (orgRole != null && !orgRole.isEmpty()) {
+                    builder.put("user.role.org", orgRole);
+                }
+                baggage = builder.build();
             }
         }
 
-        chain.doFilter(request, response);
+        try (Scope scope = baggage.makeCurrent()) {
+            chain.doFilter(request, response);
+        }
     }
 }
