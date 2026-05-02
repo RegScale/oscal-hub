@@ -281,6 +281,12 @@
             <artifactId>google-cloud-storage</artifactId>
         </dependency>
 
+        <!-- Google Cloud BigQuery (version managed by libraries-bom) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-bigquery</artifactId>
+        </dependency>
+
         <!-- Override transitive commons-lang3 to fix SNYK-JAVA-ORGAPACHECOMMONS-10734078 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
