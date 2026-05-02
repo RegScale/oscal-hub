@@ -25,15 +25,6 @@ resource "google_project_iam_member" "dimsync_sql_client" {
   member  = "serviceAccount:${google_service_account.dimsync.email}"
 }
 
-# Optional: secret access if a DB password secret is configured
-resource "google_secret_manager_secret_iam_member" "dimsync_secret_access" {
-  count     = var.db_password_secret != "" ? 1 : 0
-  project   = var.project_id
-  secret_id = var.db_password_secret
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.dimsync.email}"
-}
-
 resource "google_cloud_run_v2_job" "dimsync" {
   name     = "dimsync-${var.environment}"
   location = var.region
@@ -65,22 +56,17 @@ resource "google_cloud_run_v2_job" "dimsync" {
           value = var.project_id
         }
         dynamic "env" {
-          for_each = var.db_user != "" ? [1] : []
+          for_each = var.db_username != "" ? [1] : []
           content {
-            name  = "DB_USER"
-            value = var.db_user
+            name  = "DB_USERNAME"
+            value = var.db_username
           }
         }
         dynamic "env" {
-          for_each = var.db_password_secret != "" ? [1] : []
+          for_each = var.db_password != "" ? [1] : []
           content {
-            name = "DB_PASSWORD"
-            value_source {
-              secret_key_ref {
-                secret  = var.db_password_secret
-                version = "latest"
-              }
-            }
+            name  = "DB_PASSWORD"
+            value = var.db_password
           }
         }
 

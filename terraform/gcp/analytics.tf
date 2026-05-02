@@ -35,4 +35,6 @@ module "dimsync" {
   db_url               = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${module.database.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
   bigquery_dataset_id  = module.analytics_bigquery.dataset_id
   cloud_sql_connection = module.database.instance_connection_name
+  db_username          = var.db_username
+  db_password          = random_password.db_password.result
 }

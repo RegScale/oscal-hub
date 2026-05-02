@@ -6,14 +6,15 @@ variable "image" {
   description = "Same Cloud Run image as the API service."
 }
 variable "db_url"  { type = string }
-variable "db_user" {
+variable "db_username" {
   type    = string
   default = ""
 }
-variable "db_password_secret" {
+variable "db_password" {
   type        = string
   default     = ""
-  description = "Secret Manager secret name (not full path) holding the DB password. Empty disables."
+  sensitive   = true
+  description = "DB password passed as a direct env var (matches Phase 1 API service pattern; Secret Manager not used)."
 }
 variable "bigquery_dataset_id" { type = string }
 variable "cloud_sql_connection" {
