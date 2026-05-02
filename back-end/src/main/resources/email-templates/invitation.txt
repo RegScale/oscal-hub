@@ -1,0 +1,7 @@
+${inviterName} invited you to join ${orgName} on OSCAL Hub.
+
+Accept: ${acceptUrl}
+
+This invitation expires on ${expiresAt}. If you don't already have an OSCAL Hub account, you'll be prompted to create one when you click the link.
+
+— OSCAL Hub

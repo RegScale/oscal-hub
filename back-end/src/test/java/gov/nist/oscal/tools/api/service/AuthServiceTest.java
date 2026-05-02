@@ -5,10 +5,15 @@
 
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.email.EmailService;
+import gov.nist.oscal.tools.api.entity.Organization;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
+import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
+import gov.nist.oscal.tools.api.repository.OrganizationRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,6 +71,15 @@ class AuthServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private OrganizationRepository organizationRepository;
+
+    @Mock
+    private OrganizationMembershipRepository membershipRepository;
 
     @InjectMocks
     private AuthService authService;

@@ -5,6 +5,7 @@ import gov.nist.oscal.tools.api.model.*;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import gov.nist.secauto.metaschema.databind.io.Format;
 import gov.nist.secauto.metaschema.databind.io.IDeserializer;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class ValidationService {
         this.fileStorageService = fileStorageService;
     }
 
+    @WithSpan("oscal.validate_internal")
     public ValidationResult validate(ValidationRequest request, String username) {
         long startTime = System.currentTimeMillis();
         ValidationResult result = new ValidationResult();

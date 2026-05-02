@@ -6,6 +6,8 @@ import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.service.LibraryCommentService;
 import gov.nist.oscal.tools.api.service.LibraryRatingService;
 import gov.nist.oscal.tools.api.service.LibraryService;
+import gov.nist.oscal.tools.api.telemetry.EventNames;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -35,14 +37,17 @@ public class LibraryController {
     private final LibraryService libraryService;
     private final LibraryRatingService ratingService;
     private final LibraryCommentService commentService;
+    private final TelemetryService telemetryService;
 
     @Autowired
     public LibraryController(LibraryService libraryService,
                             LibraryRatingService ratingService,
-                            LibraryCommentService commentService) {
+                            LibraryCommentService commentService,
+                            TelemetryService telemetryService) {
         this.libraryService = libraryService;
         this.ratingService = ratingService;
         this.commentService = commentService;
+        this.telemetryService = telemetryService;
     }
 
     /**
@@ -130,6 +135,16 @@ public class LibraryController {
                     request.getTags(),
                     principal.getName()
             );
+
+            try {
+                telemetryService.emit(EventNames.LIBRARY_ITEM_UPLOADED, Map.of(
+                        "item_kind", request.getOscalType() != null ? request.getOscalType() : "",
+                        "format", request.getFormat() != null ? request.getFormat() : "",
+                        "bytes", (long) (request.getFileContent() != null ? request.getFileContent().length() : 0)
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(LibraryItemResponse.fromEntity(item));
@@ -229,6 +244,14 @@ public class LibraryController {
     public ResponseEntity<Map<String, String>> getLibraryItemContent(@PathVariable String itemId) {
         try {
             String content = libraryService.getCurrentVersionContent(itemId);
+            try {
+                telemetryService.emit(EventNames.LIBRARY_ITEM_DOWNLOADED, Map.of(
+                        "item_id", itemId,
+                        "bytes", (long) (content != null ? content.length() : 0)
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             return ResponseEntity.ok(Map.of("content", content));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
@@ -287,6 +310,13 @@ public class LibraryController {
     public ResponseEntity<Void> deleteLibraryItem(@PathVariable String itemId, Principal principal) {
         try {
             libraryService.deleteLibraryItem(itemId, principal.getName());
+            try {
+                telemetryService.emit(EventNames.LIBRARY_ITEM_DELETED, Map.of(
+                        "item_id", itemId
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             if (e.getMessage().contains("Only the creator")) {

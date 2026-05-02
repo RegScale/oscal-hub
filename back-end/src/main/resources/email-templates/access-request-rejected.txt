@@ -1,0 +1,8 @@
+Your request to join ${orgName} was not approved.
+
+Reason from admin:
+${reason}
+
+You can still create your own organization or request access to a different one.
+
+— OSCAL Hub

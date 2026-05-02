@@ -17,6 +17,7 @@ import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthService;
 import gov.nist.oscal.tools.api.service.FileValidationService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,9 @@ class AuthControllerTest {
 
     @MockBean
     private SecurityHeadersConfig securityHeadersConfig;
+
+    @MockBean
+    private TelemetryService telemetryService;
 
     private User testUser;
 

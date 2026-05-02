@@ -6,9 +6,12 @@ import gov.nist.oscal.tools.api.model.SecurityPolicyUpdateRequest;
 import gov.nist.oscal.tools.api.repository.SecurityPolicyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -30,42 +33,59 @@ public class SecurityPolicyService {
 
     private final SecurityPolicyRepository securityPolicyRepository;
 
+    /**
+     * Self-reference for calling @Transactional methods through the Spring proxy.
+     * Without this, internal method calls bypass the proxy and @Transactional is ignored.
+     */
+    @Autowired
+    @Lazy
+    private SecurityPolicyService self;
+
     public SecurityPolicyService(SecurityPolicyRepository securityPolicyRepository) {
         this.securityPolicyRepository = securityPolicyRepository;
     }
 
     /**
      * Get the current security policy.
-     * If no policy exists, creates a default one.
+     * If no policy exists, creates a default one in a separate transaction.
      *
      * @return the security policy
      */
     @Cacheable("securityPolicy")
     public SecurityPolicy getPolicy() {
         return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
-                .orElseGet(this::createDefaultPolicy);
+                .orElseGet(() -> self.createDefaultPolicy());
     }
 
     /**
      * Create and save a default security policy.
      * Called when no policy exists in the database.
+     * Uses REQUIRES_NEW to run in a separate transaction, preventing concurrent
+     * creation attempts from marking the parent transaction for rollback.
      *
      * @return the newly created default policy
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SecurityPolicy createDefaultPolicy() {
-        // Double-check if another thread created it
+        // Double-check if another thread created it (handles race conditions)
         return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
                 .orElseGet(() -> {
-                    logger.info("Creating default security policy");
-                    SecurityPolicy policy = new SecurityPolicy();
-                    policy.setId(SecurityPolicy.SINGLETON_ID);
-                    policy.setMfaRequired(false);
-                    policy.setPasswordMinLength(10);
-                    policy.setPasswordMaxLength(128);
-                    policy.setPasswordRotationDays(0);
-                    policy.setAuditLogRetentionDays(90);
-                    return securityPolicyRepository.save(policy);
+                    try {
+                        logger.info("Creating default security policy");
+                        SecurityPolicy policy = new SecurityPolicy();
+                        policy.setId(SecurityPolicy.SINGLETON_ID);
+                        policy.setMfaRequired(false);
+                        policy.setPasswordMinLength(10);
+                        policy.setPasswordMaxLength(128);
+                        policy.setPasswordRotationDays(0);
+                        policy.setAuditLogRetentionDays(90);
+                        return securityPolicyRepository.save(policy);
+                    } catch (Exception e) {
+                        // Another thread might have created it, try to fetch again
+                        logger.warn("Failed to create default policy (likely concurrent creation): {}", e.getMessage());
+                        return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
+                                .orElseThrow(() -> new RuntimeException("Failed to create or fetch security policy", e));
+                    }
                 });
     }
 
@@ -112,12 +132,14 @@ public class SecurityPolicyService {
     /**
      * Check if MFA is required globally.
      * Returns false if policy cannot be loaded (fail-safe).
+     * Uses a separate transaction to avoid affecting the caller's transaction.
      *
      * @return true if MFA is required for all users
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public boolean isMfaRequired() {
         try {
-            SecurityPolicy policy = getPolicy();
+            SecurityPolicy policy = securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID).orElse(null);
             return policy != null && Boolean.TRUE.equals(policy.getMfaRequired());
         } catch (Exception e) {
             logger.warn("Could not check MFA requirement, defaulting to false: {}", e.getMessage());

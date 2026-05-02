@@ -525,4 +525,29 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
      */
     @Query("SELECT COUNT(DISTINCT a.username) FROM AuditEvent a WHERE a.username IS NOT NULL AND a.timestamp >= :since")
     long countUniqueUsersSince(@Param("since") LocalDateTime since);
+
+    // ========================================
+    // Organization-scoped analytics queries
+    // ========================================
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.eventType = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since")
+    long countLoginsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since")
+    long countOperationsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.eventType = 'AUTH_LOGIN_FAILURE' AND a.timestamp >= :since")
+    long countFailedLoginsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(DISTINCT a.username) FROM AuditEvent a WHERE a.username IN :usernames AND a.timestamp >= :since")
+    long countActiveUsersByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT CAST(a.timestamp AS date), COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.eventType = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since GROUP BY CAST(a.timestamp AS date) ORDER BY CAST(a.timestamp AS date)")
+    List<Object[]> countLoginsPerDayByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT a.eventType, COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since GROUP BY a.eventType ORDER BY COUNT(a) DESC")
+    List<Object[]> countOperationsByTypeByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
+    List<Object[]> countTopUsersByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
 }

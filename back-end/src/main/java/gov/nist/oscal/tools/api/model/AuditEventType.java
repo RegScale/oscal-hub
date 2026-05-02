@@ -384,7 +384,44 @@ public enum AuditEventType {
      * <p>Risk Level: MEDIUM</p>
      * <p>Retention: MEDIUM (2 years)</p>
      */
-    API_REQUEST_ERROR("Data Access", "API request error", "MEDIUM");
+    API_REQUEST_ERROR("Data Access", "API request error", "MEDIUM"),
+
+    // ========================================
+    // Email Events (EMAIL_*)
+    // ========================================
+
+    /** Transactional email sent successfully. Risk Level: LOW */
+    EMAIL_SEND_SUCCESS("Email", "Transactional email sent", "LOW"),
+
+    /** Transactional email failed to send. Risk Level: MEDIUM */
+    EMAIL_SEND_FAILURE("Email", "Transactional email failed to send", "MEDIUM"),
+
+    // ========================================
+    // Invitation Events (INVITATION_*)
+    // ========================================
+
+    /** Invitation created. Risk Level: LOW */
+    INVITATION_CREATED("Invitation", "Invitation created", "LOW"),
+
+    /** Invitation accepted. Risk Level: LOW */
+    INVITATION_ACCEPTED("Invitation", "Invitation accepted", "LOW"),
+
+    /** Invitation revoked. Risk Level: LOW */
+    INVITATION_REVOKED("Invitation", "Invitation revoked", "LOW"),
+
+    /** Invitation expired at use time. Risk Level: LOW */
+    INVITATION_EXPIRED("Invitation", "Invitation expired at use time", "LOW"),
+
+    // ========================================
+    // Organization Events (ORG_*)
+    // ========================================
+
+    /**
+     * New organization created via self-serve registration
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: LONG (compliance, privilege-grant traceability)</p>
+     */
+    ORG_CREATED("Organization", "Organization created", "LOW");
 
     // ========================================
     // Enum Fields

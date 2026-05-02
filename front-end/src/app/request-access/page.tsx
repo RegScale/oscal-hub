@@ -46,6 +46,14 @@ export default function RequestAccessPage() {
       }
     }
 
+    // Pre-fill from sessionStorage handoff (from signup form)
+    const savedEmail = sessionStorage.getItem('pendingRegistration.email');
+    const savedUsername = sessionStorage.getItem('pendingRegistration.username');
+    if (savedEmail) setEmail(savedEmail);
+    if (savedUsername) setUsername(savedUsername);
+    sessionStorage.removeItem('pendingRegistration.email');
+    sessionStorage.removeItem('pendingRegistration.username');
+
     // Pre-select organization from URL query parameter
     const urlParams = new URLSearchParams(window.location.search);
     const orgIdParam = urlParams.get('org');

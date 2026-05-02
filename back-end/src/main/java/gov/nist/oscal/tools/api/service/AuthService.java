@@ -1,10 +1,14 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
+import gov.nist.oscal.tools.api.exception.OrganizationNameInUseException;
+import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
@@ -78,6 +82,13 @@ public class AuthService {
     @org.springframework.context.annotation.Lazy
     private SecurityPolicyService securityPolicyService;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private OrganizationService organizationService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Validate password complexity using new PasswordValidationService
@@ -107,8 +118,23 @@ public class AuthService {
         logger.info("New user registered: {} (ID: {})", user.getUsername(), user.getId());
 
         // Log audit event
-        auditLogService.logEvent(gov.nist.oscal.tools.api.model.AuditEventType.AUTH_REGISTER_SUCCESS,
+        auditLogService.logEvent(AuditEventType.AUTH_REGISTER_SUCCESS,
             user.getUsername(), user.getId(), "SUCCESS", null, "REGISTER", null);
+
+        // Self-serve org creation: if organizationName was provided, create org + ORG_ADMIN membership
+        String orgName = request.getOrganizationName();
+        if (orgName != null && !orgName.isBlank()) {
+            Organization org = organizationService.createOrganizationForUser(orgName, user);
+            logger.info("User {} created organization {} (ID: {}) on registration",
+                user.getUsername(), org.getName(), org.getId());
+        }
+
+        // Send welcome email (non-fatal if it fails)
+        try {
+            emailService.sendWelcome(user);
+        } catch (Exception e) {
+            logger.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
 
         // Generate token
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
@@ -428,7 +454,7 @@ public class AuthService {
         metadata.put("role", membership.getRole().toString());
 
         auditLogService.logEvent(
-                gov.nist.oscal.tools.api.model.AuditEventType.AUTH_ORG_SELECTION,
+                AuditEventType.AUTH_ORG_SELECTION,
                 user.getUsername(),
                 user.getId(),
                 "SUCCESS",
@@ -544,7 +570,7 @@ public class AuthService {
 
         // Log audit event
         auditLogService.logEvent(
-                gov.nist.oscal.tools.api.model.AuditEventType.CONFIG_PASSWORD_CHANGE,
+                AuditEventType.CONFIG_PASSWORD_CHANGE,
                 user.getUsername(),
                 user.getId(),
                 "SUCCESS",
@@ -643,9 +669,25 @@ public class AuthService {
         accessRequest.setStatus(UserAccessRequest.RequestStatus.PENDING);
         accessRequest.setRequestDate(LocalDateTime.now());
 
-        accessRequestRepository.save(accessRequest);
+        UserAccessRequest savedRequest = accessRequestRepository.save(accessRequest);
 
         logger.info("Access request created for {} to organization {} (ID: {})",
                 request.getEmail(), organization.getName(), organization.getId());
+
+        try {
+            emailService.sendAccessRequestAcknowledged(savedRequest);
+            List<OrganizationMembership> adminMemberships = membershipRepository
+                    .findByOrganizationIdAndRoleAndStatus(
+                            savedRequest.getOrganization().getId(),
+                            OrganizationRole.ORG_ADMIN,
+                            MembershipStatus.ACTIVE);
+            List<User> admins = adminMemberships.stream()
+                    .map(OrganizationMembership::getUser)
+                    .collect(Collectors.toList());
+            emailService.sendAccessRequestPendingForAdmins(savedRequest, admins);
+        } catch (Exception e) {
+            logger.warn("Failed to send access-request emails for request {}: {}",
+                    savedRequest.getId(), e.getMessage());
+        }
     }
 }

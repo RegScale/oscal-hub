@@ -11,6 +11,8 @@ import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.OscalModelType;
 import gov.nist.oscal.tools.api.model.SavedFile;
 import gov.nist.oscal.tools.api.util.PathSanitizer;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,7 +110,8 @@ public class FileStorageService {
      *
      * @throws MalwareDetectedException if malware is detected in the file
      */
-    public SavedFile saveFile(String content, String fileName, OscalModelType modelType, OscalFormat format, String username) {
+    @WithSpan("oscal.storage.upload")
+    public SavedFile saveFile(String content, @SpanAttribute("oscal.storage.file-name") String fileName, OscalModelType modelType, OscalFormat format, String username) {
         // Scan file for malware before saving
         fileValidationService.scanForViruses(content, fileName);
 
@@ -355,7 +358,8 @@ public class FileStorageService {
     /**
      * Get file content by ID for a specific user
      */
-    public String getFileContent(String fileId, String username) {
+    @WithSpan("oscal.storage.download")
+    public String getFileContent(@SpanAttribute("oscal.storage.file-id") String fileId, String username) {
         if (useLocalStorage) {
             return getFileContentLocally(fileId, username);
         }

@@ -7,6 +7,8 @@ import gov.nist.oscal.tools.api.service.BatchOperationService;
 import gov.nist.oscal.tools.api.service.ConversionService;
 import gov.nist.oscal.tools.api.service.ProfileResolutionService;
 import gov.nist.oscal.tools.api.service.ValidationService;
+import gov.nist.oscal.tools.api.telemetry.EventNames;
+import gov.nist.oscal.tools.api.telemetry.Telemetry;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,6 +57,7 @@ public class ValidationController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Validation completed (check 'valid' field in response)")
     })
+    @Telemetry(EventNames.OSCAL_VALIDATE)
     @PostMapping("/validate")
     public ResponseEntity<ValidationResult> validate(@Valid @RequestBody ValidationRequest request, Principal principal) {
         ValidationResult result = validationService.validate(request, principal.getName());
@@ -68,6 +71,7 @@ public class ValidationController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Conversion completed (check 'success' field in response)")
     })
+    @Telemetry(EventNames.OSCAL_CONVERT)
     @PostMapping("/convert")
     public ResponseEntity<ConversionResult> convert(@Valid @RequestBody ConversionRequest request, Principal principal) {
         ConversionResult result = conversionService.convert(request, principal.getName());
@@ -81,6 +85,7 @@ public class ValidationController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Profile resolution attempted (check 'success' field in response)")
     })
+    @Telemetry(EventNames.OSCAL_RESOLVE)
     @PostMapping("/profile/resolve")
     public ResponseEntity<ProfileResolutionResult> resolveProfile(@Valid @RequestBody ProfileResolutionRequest request, Principal principal) {
         ProfileResolutionResult result = profileResolutionService.resolveProfile(request, principal.getName());

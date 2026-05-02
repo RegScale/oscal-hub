@@ -241,7 +241,7 @@ describe('AuthContext', () => {
 
       expect(screen.getByTestId('is-authenticated').textContent).toBe('true');
       expect(screen.getByTestId('username').textContent).toBe('newuser');
-      expect(apiClient.register).toHaveBeenCalledWith('newuser', 'password', 'new@example.com');
+      expect(apiClient.register).toHaveBeenCalledWith('newuser', 'password', 'new@example.com', undefined);
       expect(mockPush).toHaveBeenCalledWith('/select-organization');
     });
 

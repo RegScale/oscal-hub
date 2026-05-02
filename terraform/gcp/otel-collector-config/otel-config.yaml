@@ -1,0 +1,129 @@
+# OpenTelemetry Collector configuration for OSCAL Hub — Phase 2.
+# Receives OTLP from backend service; exports traces to Cloud Trace,
+# metrics to Cloud Monitoring (Managed Prometheus), logs to Cloud Logging.
+# Log records carrying an event.name attribute are additionally routed to
+# Pub/Sub for downstream BigQuery analytics (Phase 2 events pipeline).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - https://*.run.app
+            # Add custom-domain origins here once configured.
+
+processors:
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 384
+    spike_limit_mib: 64
+
+  resourcedetection:
+    detectors: [gcp, env]
+    timeout: 2s
+    override: false
+
+  # Promote OTel baggage entries to span attributes so they are queryable
+  # in Cloud Trace. The Java OTel SDK's BaggageSpanProcessor copies baggage
+  # entries onto spans as attributes["baggage.<key>"]; we re-key them to
+  # well-known names here so Cloud Trace filters are consistent.
+  transform/baggage_to_attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["user.id"], attributes["baggage.user.id"]) where attributes["baggage.user.id"] != nil
+          - set(attributes["org.id"], attributes["baggage.org.id"]) where attributes["baggage.org.id"] != nil
+          - set(attributes["user.role.global"], attributes["baggage.user.role.global"]) where attributes["baggage.user.role.global"] != nil
+          - set(attributes["user.role.org"], attributes["baggage.user.role.org"]) where attributes["baggage.user.role.org"] != nil
+
+  # Strip likely-PII patterns from http.url. Belt-and-suspenders; the
+  # application should not emit these, but we scrub at the collector too.
+  # Uses transform (not attributes) because the regex replace function
+  # (replace_pattern) lives in the transform processor.
+  transform/redact:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - replace_pattern(attributes["http.url"], "(?i)(token|secret|password|key)=[^&]+", "$$1=REDACTED")
+    log_statements:
+      - context: log
+        statements:
+          - replace_pattern(attributes["http.url"], "(?i)(token|secret|password|key)=[^&]+", "$$1=REDACTED")
+
+  # Drop OTel-emitted JVM memory metrics that collide with Cloud Run's
+  # auto-published container memory metrics in Managed Prometheus. The
+  # collision causes "value type for metric conflicts with the existing
+  # value type" rejections on ~10% of metric points per batch. Cloud Run
+  # already provides container/memory/* and container/cpu/* metrics, so
+  # the OTel runtime-telemetry-java duplicates add no signal.
+  filter/drop_runtime_jvm_memory:
+    error_mode: ignore
+    metrics:
+      metric:
+        - 'name == "jvm.memory.used"'
+        - 'name == "jvm.memory.committed"'
+        - 'name == "jvm.memory.limit"'
+        - 'name == "jvm.memory.used_after_last_gc"'
+
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-always
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: baseline-25pct
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 25
+
+exporters:
+  googlecloud:
+    log:
+      default_log_name: oscal-hub-collector
+  googlemanagedprometheus: {}
+
+# Routing connector and Pub/Sub exporter intentionally removed. The original
+# Phase 2 design routed event-tagged log records to Pub/Sub for BigQuery
+# subscription, but OTLP-shaped messages don't match the events table's flat
+# schema (rejected to DLQ). The Cloud Logging → BigQuery sink path is simpler
+# and works without record reshaping.
+
+service:
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/baggage_to_attrs, transform/redact, tail_sampling, batch]
+      exporters: [googlecloud]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, filter/drop_runtime_jvm_memory, batch]
+      exporters: [googlemanagedprometheus]
+    # All logs flow to Cloud Logging. The Cloud Logging → BigQuery sink
+    # (configured via terraform/gcp/events-sink.tf) picks records carrying an
+    # `event.name` attribute and writes them to the analytics dataset. The
+    # earlier Pub/Sub→BQ direct subscription was removed because OTLP-shaped
+    # log records don't match a flat BQ schema.
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/redact, batch]
+      exporters: [googlecloud]

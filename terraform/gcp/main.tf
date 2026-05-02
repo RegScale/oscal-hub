@@ -28,12 +28,12 @@ terraform {
     }
   }
 
-  # Store Terraform state in GCS bucket (recommended for production)
-  # Uncomment and configure after initial setup
-  # backend "gcs" {
-  #   bucket = "oscal-tools-terraform-state"
-  #   prefix = "terraform/state"
-  # }
+  # State lives in GCS. Bucket is supplied at `terraform init` time via
+  # `-backend-config="bucket=..."` so the same config works for any project /
+  # environment. See docs/CICD-BOOTSTRAP.md.
+  backend "gcs" {
+    prefix = "terraform/state"
+  }
 }
 
 # ============================================================================#
@@ -41,15 +41,13 @@ terraform {
 # ============================================================================#
 
 provider "google" {
-  project     = var.project_id
-  region      = var.region
-  credentials = fileexists("${path.module}/terraform-key.json") ? file("${path.module}/terraform-key.json") : null
+  project = var.project_id
+  region  = var.region
 }
 
 provider "google-beta" {
-  project     = var.project_id
-  region      = var.region
-  credentials = fileexists("${path.module}/terraform-key.json") ? file("${path.module}/terraform-key.json") : null
+  project = var.project_id
+  region  = var.region
 }
 
 # ============================================================================#
@@ -70,6 +68,11 @@ resource "google_project_service" "apis" {
     "cloudbuild.googleapis.com",       # Cloud Build
     "artifactregistry.googleapis.com", # Artifact Registry
     "cloudkms.googleapis.com",         # Cloud KMS (for encryption)
+    "cloudtrace.googleapis.com",       # Cloud Trace
+    "monitoring.googleapis.com",       # Cloud Monitoring + Managed Prometheus
+    "pubsub.googleapis.com",           # Pub/Sub (used by Phase 2)
+    "cloudscheduler.googleapis.com",   # Cloud Scheduler (Phase 2 dimsync)
+    "bigquery.googleapis.com",         # BigQuery (Phase 2 analytics)
   ])
 
   project = var.project_id
@@ -174,31 +177,57 @@ module "oscal_app" {
   environment  = var.environment
   service_name = "oscal-tools"
 
-  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository}/oscal-tools:latest"
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository}/oscal-tools:${var.image_tag}"
 
   # Container port (Cloud Run sets PORT=8080, Next.js frontend listens on it)
   # Backend Spring Boot runs on port 8081
   container_port = 8080
 
-  environment_variables = {
-    # Spring Boot backend settings
-    SPRING_PROFILES_ACTIVE = "gcp"
-    GCP_PROJECT_ID         = var.project_id
-    DB_USERNAME            = var.db_username
-    DB_PASSWORD            = random_password.db_password.result
-    JWT_SECRET             = random_password.jwt_secret.result
-    GCS_BUCKET_BUILD       = module.storage.build_bucket_name
-    BACKEND_PORT           = "8081"
+  environment_variables = merge(
+    {
+      # Spring Boot backend settings
+      SPRING_PROFILES_ACTIVE = "gcp"
+      GCP_PROJECT_ID         = var.project_id
+      DB_USERNAME            = var.db_username
+      DB_PASSWORD            = random_password.db_password.result
+      JWT_SECRET             = random_password.jwt_secret.result
+      GCS_BUCKET_BUILD       = module.storage.build_bucket_name
+      BACKEND_PORT           = "8081"
 
-    # Next.js frontend settings
-    NODE_ENV = "production"
-    # Note: NEXT_PUBLIC_* variables are baked into the build at Docker build time
-    # They cannot be changed at runtime and are set in the Dockerfile
-  }
+      # Next.js frontend settings
+      NODE_ENV = "production"
+      # Note: NEXT_PUBLIC_* variables are baked into the build at Docker build time
+      # They cannot be changed at runtime and are set in the Dockerfile
+    },
+    var.otel_enabled && length(module.otel_collector) > 0 ? {
+      JAVA_TOOL_OPTIONS                                                 = "-javaagent:/otel/opentelemetry-javaagent.jar"
+      OTEL_SERVICE_NAME                                                 = "oscal-api"
+      OTEL_RESOURCE_ATTRIBUTES                                          = "service.namespace=oscal-hub,deployment.environment=${var.environment}"
+      OTEL_EXPORTER_OTLP_PROTOCOL                                       = "grpc"
+      OTEL_EXPORTER_OTLP_ENDPOINT                                       = module.otel_collector[0].collector_url
+      OTEL_TRACES_SAMPLER                                               = "parentbased_always_on"
+      OTEL_LOGS_EXPORTER                                                = "otlp"
+      OTEL_METRICS_EXPORTER                                             = "otlp"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES   = "true"
+      # Capture MDC keys as OTel log record attributes — required for our
+      # event.name + payload attributes (set via MDC in TelemetryService) to
+      # reach the collector's routing connector.
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES         = "*"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_KEY_VALUE_PAIR_ATTRIBUTES = "true"
+      OTEL_INSTRUMENTATION_MICROMETER_ENABLED                           = "true"
+      # Copies baggage entries onto every span as attributes. Per OTel
+      # Java agent v2.x: otel.java.experimental.span-attributes.copy-from-baggage.include.
+      # `*` means copy all baggage keys; restrict if cardinality becomes a concern.
+      OTEL_JAVA_EXPERIMENTAL_SPAN_ATTRIBUTES_COPY_FROM_BAGGAGE_INCLUDE   = "*"
+      # Same for log records — flows user.id/org.id into Cloud Logging
+      OTEL_JAVA_EXPERIMENTAL_LOG_ATTRIBUTES_COPY_FROM_BAGGAGE_INCLUDE    = "*"
+    } : {}
+  )
 
   secret_environment_variables = {}
 
-  db_url = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${module.database.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  db_url      = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${module.database.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  db_ddl_auto = "update"
 
   cloud_sql_connections = [module.database.instance_connection_name]
   vpc_connector_id      = null  # Using public IP, no VPC connector needed
@@ -220,6 +249,25 @@ module "oscal_app" {
     module.database,
     module.storage
   ]
+}
+
+# ============================================================================#
+# OpenTelemetry Collector (conditionally deployed when otel_collector_image is set)
+# ============================================================================#
+
+module "otel_collector" {
+  count  = var.otel_collector_image != "" ? 1 : 0
+  source = "./modules/otel-collector"
+
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  image               = var.otel_collector_image
+  api_service_account = module.oscal_app.service_account_email
+
+  events_topic_name = length(module.analytics_pubsub) > 0 ? module.analytics_pubsub[0].topic_name : ""
+
+  depends_on = [google_project_service.apis]
 }
 
 # ============================================================================#

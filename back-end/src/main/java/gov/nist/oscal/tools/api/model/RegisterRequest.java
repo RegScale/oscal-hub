@@ -18,6 +18,9 @@ public class RegisterRequest {
     @Email(message = "Email must be valid")
     private String email;
 
+    @Size(max = 255, message = "Organization name must be 255 characters or fewer")
+    private String organizationName;
+
     public RegisterRequest() {
     }
 
@@ -49,5 +52,13 @@ public class RegisterRequest {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getOrganizationName() {
+        return organizationName;
+    }
+
+    public void setOrganizationName(String organizationName) {
+        this.organizationName = organizationName;
     }
 }

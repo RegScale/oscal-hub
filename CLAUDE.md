@@ -32,8 +32,7 @@ oscal-cli/
 ├── pom.xml             # Parent Maven POM (aggregator)
 ├── Dockerfile          # Multi-stage Docker build
 ├── docker-compose.yml  # Docker Compose configuration
-├── dev.sh              # Quick development startup
-├── start.sh            # Production-like startup
+├── dev.sh              # Local startup (PostgreSQL via Docker, backend, frontend)
 └── stop.sh             # Stop all servers
 ```
 
@@ -53,7 +52,7 @@ The user handles all builds, compilations, and deployments. Your role is to:
 ❌ **DO NOT**:
 - Run `mvn clean install` or any Maven build commands
 - Run `npm run build` or any frontend build commands
-- Run `./dev.sh`, `./start.sh`, or any startup scripts
+- Run `./dev.sh` or any startup scripts
 - Execute any build-related Bash commands
 - Attempt to compile or package the application
 
@@ -134,11 +133,8 @@ cd front-end && npm test
 ### Option 1: Development Mode (Recommended for Development)
 
 ```bash
-# From project root - starts both back-end and front-end in dev mode
+# From project root - starts PostgreSQL (via Docker), back-end, and front-end
 ./dev.sh
-
-# Or use the production-like startup script
-./start.sh
 
 # Stop all servers
 ./stop.sh
@@ -374,88 +370,65 @@ The repository includes simplified installation scripts for end users in the `in
 
 ## CI/CD and Deployment
 
-The project uses GitHub Actions for continuous integration and deployment.
+GitHub Actions on GCP. Two workflows drive the pipeline:
 
-### GCP Deployment (Current)
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `.github/workflows/ci.yml` | PR + push to `main` | Backend + frontend tests, Trivy/Snyk security scans |
+| `.github/workflows/gcp-deploy.yml` | PR + push to `main` | PR: `terraform plan` (commented on PR). Push: build image → `terraform apply` → health check |
 
-**Workflow**: `.github/workflows/gcp-deploy.yml`
+Branch protection on `main` requires PR review + green CI before merge, so a
+push to `main` only happens after approval. That approval is the deploy gate.
 
-The application automatically deploys to Google Cloud Platform (Cloud Run) when a PR is merged to the `main` branch:
+### Architecture
 
-1. **Build and Test**: Compiles backend (Maven) and frontend (npm), runs all tests
-2. **Build and Push**: Creates Docker images and pushes to GCP Artifact Registry
-3. **Deploy**: Deploys backend and frontend as separate Cloud Run services
-4. **Health Checks**: Verifies deployment health via API endpoints
-5. **Cleanup**: Removes old container images (keeps last 5 versions)
+- **Single combined Cloud Run service** `oscal-tools-prod` running both Spring
+  Boot backend and Next.js frontend out of the top-level `Dockerfile`.
+- **Infra as code** in `terraform/gcp/` — Cloud Run service, Cloud SQL
+  PostgreSQL, Cloud Storage buckets. State lives in a GCS bucket.
+- **Auth** via Workload Identity Federation — no long-lived service-account
+  keys in GitHub secrets.
 
-**Environments**:
-- **prod**: Automatically deployed on push to `main`
-- **staging/dev**: Manual deployment via workflow dispatch
+### GitHub variables (set during bootstrap)
 
-**Required GitHub Secrets**:
-- `GCP_SA_KEY`: Service account key JSON for authentication
-- `GCP_PROJECT_ID`: Your GCP project ID (can also be a variable)
+| Name | Example |
+|---|---|
+| `GCP_PROJECT_ID` | `oscal-hub` |
+| `GCP_REGION` | `us-central1` |
+| `GCP_WIF_PROVIDER` | `projects/123/locations/global/workloadIdentityPools/github/providers/github-provider` |
+| `GCP_DEPLOY_SA` | `gh-deploy@oscal-hub.iam.gserviceaccount.com` |
+| `TF_STATE_BUCKET` | `oscal-hub-tfstate` |
 
-**Optional GitHub Variables**:
-- `GCP_REGION`: Deployment region (default: `us-central1`)
+No GitHub secrets required for deploy. (The old `GCP_SA_KEY` secret is
+unused and can be deleted.)
 
-**Deployment Outputs**:
-- Backend URL: `https://oscal-backend-{environment}-{region}.a.run.app`
-- Frontend URL: `https://oscal-frontend-{environment}-{region}.a.run.app`
+### One-time setup
 
-**Complete Setup Guide**: See `docs/GCP-DEPLOYMENT-SETUP.md` for detailed instructions on:
-- Creating GCP service account
-- Enabling required APIs
-- Configuring GitHub secrets
-- Troubleshooting deployment issues
-- Cost optimization tips
-- Custom domain setup
+See **`docs/CICD-BOOTSTRAP.md`** for the bootstrap procedure: state bucket,
+WIF pool/provider, deploy service account + IAM, GitHub variables, branch
+protection, state migration, and troubleshooting.
 
-### Azure Deployment (Legacy)
+### Manual deployment (escape hatch)
 
-**Workflow**: `.github/workflows/azure-deploy.yml` (deprecated)
-
-The Azure deployment workflow is retained for reference but should be disabled when using GCP deployment. To disable:
+`deploy-gcp.sh` still works for emergency manual deploys (image swap only,
+preserves env vars). Prefer the GitHub Actions flow for any change you want
+tracked in git history.
 
 ```bash
-# Rename the file to prevent it from running
-mv .github/workflows/azure-deploy.yml .github/workflows/azure-deploy.yml.disabled
+./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment prod
 ```
 
-### Manual Deployment
-
-For manual deployments to GCP, use the local deployment script:
+### Monitoring deployments
 
 ```bash
-# Deploy to GCP (requires gcloud CLI and Terraform)
-./deploy-gcp.sh --project-id YOUR_PROJECT_ID --region us-central1 --environment prod
-```
+# Service URL
+gcloud run services describe oscal-tools-prod --region us-central1 --format='value(status.url)'
 
-See the script's `--help` option for all available flags.
+# Recent logs
+gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=oscal-tools-prod' --limit 50
 
-### Monitoring Deployments
-
-**View Cloud Run services**:
-```bash
-gcloud run services list --platform managed --region us-central1
-```
-
-**View deployment logs**:
-```bash
-# Backend logs
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=oscal-backend-prod" --limit 50
-
-# Frontend logs
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=oscal-frontend-prod" --limit 50
-```
-
-**Check deployment status**:
-```bash
-# Get backend URL
-gcloud run services describe oscal-backend-prod --region us-central1 --format 'value(status.url)'
-
-# Get frontend URL
-gcloud run services describe oscal-frontend-prod --region us-central1 --format 'value(status.url)'
+# Deployed image
+gcloud run services describe oscal-tools-prod --region us-central1 --format='value(spec.template.spec.containers[0].image)'
 ```
 
 ## Code Architecture

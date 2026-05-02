@@ -10,11 +10,8 @@ This guide explains how to use the startup and shutdown scripts for the OSCAL HU
 ## Quick Reference
 
 ```bash
-# Start development environment
+# Start development environment (PostgreSQL via Docker, backend, frontend)
 ./dev.sh
-
-# Start production-like environment
-./start.sh
 
 # Stop everything (servers + Docker containers)
 ./stop.sh
@@ -49,24 +46,6 @@ The application consists of three main components:
 - Backend: http://localhost:8080/api
 - Frontend: http://localhost:3000
 - pgAdmin: http://localhost:5050 (if started)
-
-### `start.sh` - Production-like Mode
-
-**What it does:**
-- Similar to `dev.sh` but with production builds
-- More comprehensive health checks
-- Writes logs to separate files
-- Waits for services to be fully ready before proceeding
-
-**When to use:**
-- Testing production builds locally
-- Verifying production configurations
-- Performance testing
-
-**Log files:**
-- `backend-build.log` - Maven build output
-- `backend.log` - Backend runtime logs
-- `frontend.log` - Frontend runtime logs
 
 ### `stop.sh` - Comprehensive Shutdown (NEW)
 
@@ -150,7 +129,7 @@ docker info
 
 The project uses multiple Docker Compose files:
 
-- **`docker-compose-postgres.yml`** - Standalone PostgreSQL + pgAdmin (used by dev.sh/start.sh)
+- **`docker-compose-postgres.yml`** - Standalone PostgreSQL + pgAdmin (used by dev.sh)
 - **`docker-compose.yml`** - Full stack in containers (postgres + oscal-ux + pgadmin)
 - **`docker-compose.prod.yml`** - Production configuration
 - **`docker-compose-monitoring.yml`** - Monitoring tools

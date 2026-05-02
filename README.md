@@ -58,7 +58,7 @@ Built on top of [Metaschema Java Tools](https://github.com/metaschema-framework/
 
 ### Installation
 
-#### Option 1: Automated Setup (Recommended)
+#### Automated Setup (Recommended)
 
 Run the development startup script:
 
@@ -67,23 +67,12 @@ Run the development startup script:
 ```
 
 This will:
-- Build the backend
+- Verify Docker Desktop is running and start PostgreSQL via `docker-compose-postgres.yml`
+- Build the backend (`mvn package -DskipTests`)
 - Start the Spring Boot API server
-- Install frontend dependencies
+- Install frontend dependencies (if `node_modules` is missing)
 - Start the Next.js development server
-
-#### Option 2: Production-like Setup
-
-For a production-like environment with build verification:
-
-```bash
-./start.sh
-```
-
-This provides:
-- Clean build with error checking
-- Separate log files for troubleshooting
-- Automatic dependency installation
+- Wait for `/api/health` and the frontend to come up before handing off
 
 ### Access the Application
 
@@ -409,7 +398,7 @@ cp .env.example .env
 # Edit .env with your cloud provider credentials (see Cloud Deployment section above)
 ```
 
-The `.env` file is gitignored and won't be committed. The startup scripts (`./dev.sh` and `./start.sh`) automatically load variables from this file.
+The `.env` file is gitignored and won't be committed. The `./dev.sh` startup script automatically loads variables from this file.
 
 **Local Filesystem Fallback:**
 

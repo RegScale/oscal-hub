@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Settings, Cog } from 'lucide-react';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 export function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [isOrgAdminUser, setIsOrgAdminUser] = useState(false);
+  const [hasOrgContext, setHasOrgContext] = useState(false);
 
-  // Check localStorage on mount to determine super admin status
+  // Check localStorage on mount to determine admin status
   useEffect(() => {
     setMounted(true);
     const storedUser = localStorage.getItem('user');
@@ -20,8 +22,11 @@ export function Navigation() {
       try {
         const userData = JSON.parse(storedUser);
         setIsSuperAdminUser(userData.globalRole === 'SUPER_ADMIN');
+        setIsOrgAdminUser(userData.orgRole === 'ORG_ADMIN');
+        setHasOrgContext(!!userData.organizationId);
       } catch (e) {
         setIsSuperAdminUser(false);
+        setIsOrgAdminUser(false);
       }
     }
   }, []);
@@ -30,12 +35,18 @@ export function Navigation() {
   useEffect(() => {
     if (user) {
       setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
+      setIsOrgAdminUser(user.orgRole === 'ORG_ADMIN');
+      setHasOrgContext(!!user.organizationId);
     }
   }, [user]);
 
   // Check if user is super admin
   const isSuperAdmin = () => {
     return isSuperAdminUser || user?.globalRole === 'SUPER_ADMIN';
+  };
+
+  const isOrgAdmin = () => {
+    return isOrgAdminUser || user?.orgRole === 'ORG_ADMIN' || hasOrgContext;
   };
 
   return (
@@ -60,6 +71,19 @@ export function Navigation() {
                   </div>
                 </Link>
                 {!isSuperAdmin() && <OrganizationSwitcher />}
+                {!isSuperAdmin() && isOrgAdmin() && (
+                  <Link href="/org-admin">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                      title="Setup - Admin Panel"
+                      aria-label="Setup - Admin Panel"
+                    >
+                      <Cog className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </Link>
+                )}
                 {isSuperAdmin() && (
                   <Link href="/admin">
                     <Button

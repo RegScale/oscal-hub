@@ -189,19 +189,35 @@ class ApiClient {
   /**
    * Register new user
    */
-  async register(username: string, password: string, email: string): Promise<AuthResponse> {
+  async register(username: string, password: string, email: string, organizationName?: string): Promise<AuthResponse> {
     try {
+      const body: Record<string, unknown> = { username, password, email };
+      if (organizationName && organizationName.trim()) {
+        body.organizationName = organizationName.trim();
+      }
+
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/auth/register`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, email } as RegisterRequest),
+          body: JSON.stringify(body),
         },
         5000
       );
 
       if (!response.ok) {
+        if (response.status === 409) {
+          const data = await response.json();
+          if (data?.field) {
+            const err = new Error(data.message || 'Conflict');
+            (err as any).field = data.field;
+            (err as any).code = data.error;
+            throw err;
+          }
+          const error = data;
+          throw new Error(error.error || 'Registration failed');
+        }
         const error = await response.json();
         throw new Error(error.error || 'Registration failed');
       }
@@ -2977,6 +2993,32 @@ class ApiClient {
   }
 
   /**
+   * Self-serve: create a new organization (current user becomes ORG_ADMIN)
+   */
+  async createMyOrganization(data: { name: string }): Promise<{ id: number; name: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/organizations`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      },
+      5000
+    );
+    if (!response.ok) {
+      if (response.status === 409) {
+        const errBody = await response.json();
+        const err = new Error(errBody.message || 'Conflict');
+        (err as any).field = errBody.field || 'name';
+        (err as any).code = errBody.error;
+        throw err;
+      }
+      throw new Error('Failed to create organization');
+    }
+    return response.json();
+  }
+
+  /**
    * Select organization after initial login (generates full JWT with org context)
    */
   async selectOrganization(organizationId: number): Promise<{
@@ -4813,6 +4855,480 @@ class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to delete artifact comment: ${response.statusText}`);
+    }
+  }
+
+  // ========================================
+  // Super Admin User/Org Management Methods
+  // ========================================
+
+  async getAllUsers(): Promise<Array<{
+    id: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    globalRole: string;
+    enabled: boolean;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/users`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get all users');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get all users:', error);
+      throw error;
+    }
+  }
+
+  async addMemberToOrg(organizationId: number, userId: number, role: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/admin/organizations/${organizationId}/members`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ userId, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add member to organization');
+      }
+    } catch (error) {
+      console.error('Failed to add member to organization:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Org Admin API Methods
+  // ========================================
+
+  async getOrgUsers(organizationId: number): Promise<Array<{
+    userId: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    status: string;
+    joinedAt: string;
+    updatedAt: string;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users?organizationId=${organizationId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get organization users');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get organization users:', error);
+      throw error;
+    }
+  }
+
+  async lockOrgUser(organizationId: number, userId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users/${userId}/lock?organizationId=${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to lock user');
+      }
+    } catch (error) {
+      console.error('Failed to lock user:', error);
+      throw error;
+    }
+  }
+
+  async unlockOrgUser(organizationId: number, userId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users/${userId}/unlock?organizationId=${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to unlock user');
+      }
+    } catch (error) {
+      console.error('Failed to unlock user:', error);
+      throw error;
+    }
+  }
+
+  async deactivateOrgUser(organizationId: number, userId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users/${userId}/deactivate?organizationId=${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to deactivate user');
+      }
+    } catch (error) {
+      console.error('Failed to deactivate user:', error);
+      throw error;
+    }
+  }
+
+  async reactivateOrgUser(organizationId: number, userId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users/${userId}/reactivate?organizationId=${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reactivate user');
+      }
+    } catch (error) {
+      console.error('Failed to reactivate user:', error);
+      throw error;
+    }
+  }
+
+  async resetOrgUserPassword(organizationId: number, userId: number): Promise<{ tempPassword: string; username: string; email: string }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/users/${userId}/reset-password?organizationId=${organizationId}`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reset password');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      throw error;
+    }
+  }
+
+  async getOrgPendingRequests(organizationId: number): Promise<Array<{
+    id: number;
+    userId: number | null;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationId: number;
+    organizationName: string;
+    status: string;
+    message: string | null;
+    requestDate: string;
+    reviewedBy: number | null;
+    reviewedByUsername: string | null;
+    reviewedDate: string | null;
+    notes: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/access-requests?organizationId=${organizationId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get pending requests: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get pending requests:', error);
+      throw error;
+    }
+  }
+
+  async getOrgAllRequests(organizationId: number): Promise<Array<{
+    id: number;
+    userId: number | null;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationId: number;
+    organizationName: string;
+    status: string;
+    message: string | null;
+    requestDate: string;
+    reviewedBy: number | null;
+    reviewedByUsername: string | null;
+    reviewedDate: string | null;
+    notes: string | null;
+  }>> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/access-requests/all?organizationId=${organizationId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get access requests: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get access requests:', error);
+      throw error;
+    }
+  }
+
+  async approveOrgRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/access-requests/${requestId}/approve`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve access request');
+      }
+    } catch (error) {
+      console.error('Failed to approve access request:', error);
+      throw error;
+    }
+  }
+
+  async rejectOrgRequest(requestId: number, notes?: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/access-requests/${requestId}/reject`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ notes }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject access request');
+      }
+    } catch (error) {
+      console.error('Failed to reject access request:', error);
+      throw error;
+    }
+  }
+
+  async getOrgAnalytics(organizationId: number): Promise<{
+    activeUsersLast7Days: number;
+    totalLoginsLast30Days: number;
+    totalOperationsLast30Days: number;
+    failedLoginsLast30Days: number;
+    loginsPerDay: Array<{ date: string; count: number }>;
+    operationsByType: Array<{ name: string; count: number }>;
+    topUsers: Array<{ username: string; operationCount: number }>;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/analytics?organizationId=${organizationId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get org analytics: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get org analytics:', error);
+      throw error;
+    }
+  }
+
+  async getOrgAnalyticsSummary(organizationId: number): Promise<{
+    totalMembers: number;
+    pendingRequests: number;
+    loginsThisMonth: number;
+    operationsThisMonth: number;
+  }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/analytics/summary?organizationId=${organizationId}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get org analytics summary: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get org analytics summary:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Invitation Methods
+  // ========================================
+
+  async getInvitation(token: string): Promise<{ email: string; organizationName: string; inviterName: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/invitations/${encodeURIComponent(token)}`,
+      { method: 'GET' },
+      5000
+    );
+    if (!response.ok) {
+      const err = new Error(response.status === 410 ? 'INVITATION_EXPIRED' : 'INVITATION_NOT_FOUND');
+      (err as any).status = response.status;
+      throw err;
+    }
+    return response.json();
+  }
+
+  async acceptInvitation(token: string, data?: { username?: string; password?: string }): Promise<{ userId: number; username: string; token?: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/invitations/${encodeURIComponent(token)}/accept`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data ?? {}),
+      },
+      10000
+    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error((body as any).message || `accept failed (${response.status})`);
+      (err as any).status = response.status;
+      throw err;
+    }
+    return response.json();
+  }
+
+  async listInvitations(organizationId: number, status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED' = 'PENDING'): Promise<unknown[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations?organizationId=${organizationId}&status=${status}`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+      if (!response.ok) throw new Error('Failed to list invitations');
+      return response.json();
+    } catch (error) {
+      console.error('Failed to list invitations:', error);
+      throw error;
+    }
+  }
+
+  async createInvitation(data: { organizationId: number; email: string; role?: 'USER' | 'ORG_ADMIN' }): Promise<unknown> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(data),
+        },
+        5000
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          const err = new Error((body as any).message || 'Conflict');
+          (err as any).code = (body as any).error;
+          (err as any).field = (body as any).field || 'email';
+          throw err;
+        }
+        throw new Error((body as any).message || 'Failed to create invitation');
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Failed to create invitation:', error);
+      throw error;
+    }
+  }
+
+  async revokeInvitation(id: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/org-admin/invitations/${id}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        5000
+      );
+      if (!response.ok && response.status !== 204) {
+        throw new Error('Failed to revoke invitation');
+      }
+    } catch (error) {
+      console.error('Failed to revoke invitation:', error);
+      throw error;
     }
   }
 

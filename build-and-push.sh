@@ -26,7 +26,9 @@ PROJECT_ID="${1:-oscal-hub}"
 REGION="${2:-us-central1}"
 REPOSITORY="oscal-tools"
 IMAGE_NAME="oscal-tools"
-TAG="${3:-latest}"
+# Use timestamp tag for unique deployments, plus 'latest' as alias
+TIMESTAMP_TAG=$(date +%Y%m%d-%H%M%S)
+TAG="${3:-$TIMESTAMP_TAG}"
 
 echo "=========================================="
 echo "  Build and Push to Artifact Registry"
@@ -101,6 +103,14 @@ if [ $PUSH_STATUS -ne 0 ]; then
     echo "    Ensure you have 'Artifact Registry Writer' role"
     exit 1
 fi
+
+print_success "Image pushed with tag: ${TAG}"
+
+# Also tag and push as 'latest' for Terraform compatibility
+LATEST_PATH="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:latest"
+print_step "Tagging and pushing as 'latest'..."
+docker tag ${IMAGE_PATH} ${LATEST_PATH}
+docker push ${LATEST_PATH}
 
 print_success "Image pushed successfully!"
 echo ""

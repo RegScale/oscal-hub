@@ -43,6 +43,7 @@
         <azure-sdk-bom.version>1.3.3</azure-sdk-bom.version>
         <aws-sdk-bom.version>2.40.13</aws-sdk-bom.version>
         <google-cloud-bom.version>26.73.0</google-cloud-bom.version>
+        <opentelemetry-bom.version>1.46.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
@@ -102,6 +103,15 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- OpenTelemetry BOM - manages all io.opentelemetry:* (core API) versions -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>${opentelemetry-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -110,6 +120,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- AOP support for @Telemetry and other aspects -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
         <!-- WebSocket support for real-time updates -->
@@ -265,6 +281,12 @@
             <artifactId>google-cloud-storage</artifactId>
         </dependency>
 
+        <!-- Google Cloud BigQuery (version managed by libraries-bom) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-bigquery</artifactId>
+        </dependency>
+
         <!-- Override transitive commons-lang3 to fix SNYK-JAVA-ORGAPACHECOMMONS-10734078 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -279,17 +301,18 @@
             <version>${postgres-socket-factory.version}</version>
         </dependency>
 
+        <!-- SendGrid transactional email -->
+        <dependency>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.10.2</version>
+        </dependency>
+
         <!-- Rate Limiting -->
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
             <version>${bucket4j.version}</version>
-        </dependency>
-
-        <!-- Caffeine Cache for rate limiting storage -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
         </dependency>
 
         <!-- Spring Boot Actuator for monitoring and health checks -->
@@ -302,6 +325,33 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- OpenTelemetry: API used by custom telemetry code -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+
+        <!-- OpenTelemetry: @WithSpan annotation processed by the Java agent -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-instrumentation-annotations</artifactId>
+            <version>2.10.0</version>
+        </dependency>
+
+        <!-- OpenTelemetry: Micrometer 1.5+ → OTel metrics bridge -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-micrometer-1.5</artifactId>
+            <version>2.10.0-alpha</version>
+        </dependency>
+
+        <!-- JSON Logback encoder for Cloud Logging structured output -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
         </dependency>
 
         <!-- Testing -->

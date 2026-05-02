@@ -1,0 +1,129 @@
+{
+  "displayName": "OSCAL Hub — CS Pipeline Health",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "width": 6, "height": 4,
+        "widget": {
+          "title": "Pub/Sub publish rate (otel-events)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"pubsub.googleapis.com/topic/send_message_operation_count\" resource.type=\"pubsub_topic\" resource.label.\"topic_id\"=monitoring.regex.full_match(\"otel-events-.*\")",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
+              }
+            }]
+          }
+        }
+      },
+      {
+        "xPos": 6, "width": 6, "height": 4,
+        "widget": {
+          "title": "Pub/Sub backlog age (oldest unacked)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"pubsub.googleapis.com/subscription/oldest_unacked_message_age\" resource.type=\"pubsub_subscription\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MAX",
+                    "crossSeriesReducer": "REDUCE_MAX",
+                    "groupByFields": ["resource.label.subscription_id"]
+                  }
+                }
+              }
+            }]
+          }
+        }
+      },
+      {
+        "yPos": 4, "width": 6, "height": 4,
+        "widget": {
+          "title": "DLQ depth (otel-events-dlq)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"pubsub.googleapis.com/topic/num_unacked_messages_by_region\" resource.type=\"pubsub_topic\" resource.label.\"topic_id\"=monitoring.regex.full_match(\"otel-events-dlq-.*\")",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MAX",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
+              }
+            }]
+          }
+        }
+      },
+      {
+        "yPos": 4, "xPos": 6, "width": 6, "height": 4,
+        "widget": {
+          "title": "BigQuery streaming insert errors (otel-events-bq)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"pubsub.googleapis.com/subscription/dead_letter_message_count\" resource.type=\"pubsub_subscription\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
+              }
+            }]
+          }
+        }
+      },
+      {
+        "yPos": 8, "width": 6, "height": 4,
+        "widget": {
+          "title": "DimSync Job executions (success vs failure)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"run.googleapis.com/job/completed_execution_count\" resource.type=\"cloud_run_job\" resource.label.\"job_name\"=monitoring.regex.full_match(\"dimsync-.*\")",
+                  "aggregation": {
+                    "alignmentPeriod": "3600s",
+                    "perSeriesAligner": "ALIGN_SUM",
+                    "crossSeriesReducer": "REDUCE_SUM",
+                    "groupByFields": ["metric.label.result"]
+                  }
+                }
+              }
+            }]
+          }
+        }
+      },
+      {
+        "yPos": 8, "xPos": 6, "width": 6, "height": 4,
+        "widget": {
+          "title": "BigQuery jobs in flight (analytics)",
+          "xyChart": {
+            "dataSets": [{
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"bigquery.googleapis.com/job/num_in_flight\" resource.type=\"bigquery_project\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MEAN"
+                  }
+                }
+              }
+            }]
+          }
+        }
+      }
+    ]
+  }
+}

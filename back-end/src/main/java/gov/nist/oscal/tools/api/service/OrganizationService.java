@@ -16,6 +16,8 @@ import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.OrganizationNameInUseException;
+import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
@@ -34,8 +36,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Service for managing organizations in the multi-tenant system
@@ -60,6 +65,9 @@ public class OrganizationService {
 
     @Autowired
     private FileValidationService fileValidationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     @Value("${storage.provider:azure}")
     private String storageProvider;
@@ -219,6 +227,42 @@ public class OrganizationService {
             logger.info("  3. ~/.aws/credentials file configured");
             useCloudStorage = false;
         }
+    }
+
+    /**
+     * Self-serve organization creation: creates org + ORG_ADMIN membership for the given user.
+     * Used by both the registration flow (via AuthService) and the self-serve endpoint.
+     */
+    @Transactional
+    public Organization createOrganizationForUser(String name, User user) {
+        String trimmedName = name.trim();
+        if (organizationRepository.existsByNameIgnoreCase(trimmedName)) {
+            throw new OrganizationNameInUseException(trimmedName);
+        }
+        Organization org = new Organization();
+        org.setName(trimmedName);
+        org.setActive(true);
+        org.setCreatedAt(LocalDateTime.now());
+        try {
+            org = organizationRepository.save(org);
+        } catch (DataIntegrityViolationException e) {
+            throw new OrganizationNameInUseException(trimmedName);
+        }
+
+        OrganizationMembership membership = new OrganizationMembership(
+            user, org, OrganizationRole.ORG_ADMIN);
+        membershipRepository.save(membership);
+
+        logger.info("User {} created organization {} (ID: {}) via self-serve",
+            user.getUsername(), org.getName(), org.getId());
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("organizationId", org.getId());
+        meta.put("organizationName", org.getName());
+        auditLogService.logEvent(AuditEventType.ORG_CREATED, user.getUsername(), user.getId(),
+            "SUCCESS", "ORG_ADMIN", "CREATE", meta);
+
+        return org;
     }
 
     /**

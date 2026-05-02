@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/api-client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh every 5 minutes if active
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router, pathname]);
 
   // Refresh token if session is still active
+  const refreshFailCountRef = useRef<number>(0);
   const refreshTokenIfNeeded = useCallback(async () => {
     if (!token || !user) return;
 
@@ -53,14 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Refresh token
+    // Refresh token — tolerate transient failures
     try {
       await apiClient.refreshToken();
       updateActivity();
-      console.log('Token refreshed successfully');
+      refreshFailCountRef.current = 0;
     } catch (error) {
-      console.error('Failed to refresh token:', error);
-      handleSessionExpiration();
+      refreshFailCountRef.current += 1;
+      console.warn(`Token refresh failed (attempt ${refreshFailCountRef.current}):`, error);
+      // Only log out after 3 consecutive failures (15 minutes of failed refreshes)
+      if (refreshFailCountRef.current >= 3) {
+        console.error('Token refresh failed 3 times consecutively, logging out');
+        handleSessionExpiration();
+      }
     }
   }, [token, user, isSessionExpired, handleSessionExpiration, updateActivity]);
 
@@ -179,9 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (username: string, password: string, email: string) => {
+  const register = async (username: string, password: string, email: string, organizationName?: string) => {
     try {
-      const response = await apiClient.register(username, password, email);
+      const response = await apiClient.register(username, password, email, organizationName);
       const userData = {
         userId: response.userId,
         username: response.username,

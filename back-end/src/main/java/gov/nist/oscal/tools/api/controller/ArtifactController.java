@@ -8,6 +8,8 @@ import gov.nist.oscal.tools.api.model.PageResponse;
 import gov.nist.oscal.tools.api.service.ArtifactCommentService;
 import gov.nist.oscal.tools.api.service.ArtifactRatingService;
 import gov.nist.oscal.tools.api.service.ArtifactService;
+import gov.nist.oscal.tools.api.telemetry.EventNames;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -37,14 +39,17 @@ public class ArtifactController {
     private final ArtifactService artifactService;
     private final ArtifactRatingService ratingService;
     private final ArtifactCommentService commentService;
+    private final TelemetryService telemetryService;
 
     @Autowired
     public ArtifactController(ArtifactService artifactService,
                              ArtifactRatingService ratingService,
-                             ArtifactCommentService commentService) {
+                             ArtifactCommentService commentService,
+                             TelemetryService telemetryService) {
         this.artifactService = artifactService;
         this.ratingService = ratingService;
         this.commentService = commentService;
+        this.telemetryService = telemetryService;
     }
 
     /**
@@ -133,6 +138,16 @@ public class ArtifactController {
                     request.getTags(),
                     principal.getName()
             );
+
+            try {
+                telemetryService.emit(EventNames.ARTIFACT_UPLOADED, Map.of(
+                        "artifact_id", artifact.getArtifactId() != null ? artifact.getArtifactId() : "",
+                        "visibility", request.getVisibility() != null ? request.getVisibility().name() : "",
+                        "bytes", (long) (request.getContent() != null ? request.getContent().length() : 0)
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ArtifactResponse.fromEntity(artifact));
@@ -245,6 +260,14 @@ public class ArtifactController {
             Principal principal) {
         try {
             String content = artifactService.getCurrentVersionContent(artifactId, principal.getName());
+            try {
+                telemetryService.emit(EventNames.ARTIFACT_DOWNLOADED, Map.of(
+                        "artifact_id", artifactId,
+                        "bytes", (long) (content != null ? content.length() : 0)
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             return ResponseEntity.ok(Map.of("content", content));
         } catch (RuntimeException e) {
             logger.error("Error getting artifact content {}: {}", artifactId, e.getMessage());

@@ -1,0 +1,8 @@
+${requesterName} (${requesterEmail}) has requested access to ${orgName}.
+
+Message:
+${message}
+
+Review at: ${requestsUrl}
+
+— OSCAL Hub

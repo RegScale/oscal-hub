@@ -1,399 +1,280 @@
-name: Deploy to Google Cloud Run
+name: Deploy to GCP
+
+# Strategy:
+#   PR  -> tf fmt + validate + plan, comment plan on PR (no infra changes)
+#   main-> build + push image, then tf apply with new image_tag, then health check
+#
+# Branch protection on `main` enforces "PR approved + CI green" before merge,
+# so a push event here only happens after human review.
+#
+# One-time setup is documented in docs/CICD-BOOTSTRAP.md (GCS state bucket,
+# Workload Identity Federation pool/provider, deploy SA, GitHub vars).
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'back-end/**'
+      - 'front-end/**'
+      - 'cli/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+      - 'terraform/gcp/**'
+      - '.github/workflows/gcp-deploy.yml'
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'prod'
-        type: choice
-        options:
-          - dev
-          - staging
-          - prod
+
+concurrency:
+  # Serialize anything touching infra; let PR plans run in parallel per branch.
+  group: gcp-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write          # required by google-github-actions/auth (WIF)
+  pull-requests: write     # required to post the plan comment
 
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION || 'us-central1' }}
-  ARTIFACT_REGISTRY_REPO: oscal-tools
+  TF_VERSION: '1.9.8'
+  TF_WORKING_DIR: terraform/gcp
+  ARTIFACT_REPO: oscal-tools
+  IMAGE_NAME: oscal-tools
 
 jobs:
-  # Job 1: Build and Test
-  build-and-test:
-    name: Build and Test
+  # ---------------------------------------------------------------------------
+  # PR: terraform plan, no apply
+  # ---------------------------------------------------------------------------
+  terraform-plan:
+    name: Terraform Plan
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17 (for toolchain)
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          mvn-toolchain-vendor: 'temurin'
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          mvn-toolchain-vendor: 'temurin'
-          cache: 'maven'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'front-end/package-lock.json'
-
-      - name: Build Backend
-        run: |
-          cd back-end
-          mvn clean package -DskipTests
-
-      - name: Build Frontend
-        run: |
-          cd front-end
-          npm ci --legacy-peer-deps
-          npm run build
-
-      - name: Run Backend Tests
-        run: |
-          cd back-end
-          mvn test
-
-  # Job 2: Build and Push Docker Images to Artifact Registry
-  build-and-push:
-    name: Build and Push Container Images
-    runs-on: ubuntu-latest
-    needs: build-and-test
-
-    outputs:
-      backend-image: ${{ steps.image-tags.outputs.backend-image }}
-      frontend-image: ${{ steps.image-tags.outputs.frontend-image }}
-      environment: ${{ steps.env.outputs.environment }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Determine environment
-        id: env
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
-          else
-            echo "environment=dev" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ env.PROJECT_ID }}
+        uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker to use gcloud as credential helper
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform init
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          terraform plan -no-color -input=false -lock-timeout=5m \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -var="region=${{ vars.GCP_REGION }}" \
+            -var="image_tag=${{ github.event.pull_request.head.sha }}" \
+            -out=tfplan 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Comment plan on PR
+        uses: actions/github-script@v7
+        env:
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const planPath = path.join('${{ env.TF_WORKING_DIR }}', 'plan.txt');
+            let plan = fs.existsSync(planPath) ? fs.readFileSync(planPath, 'utf8') : '(plan output missing)';
+            // GitHub comment cap is 65535 chars; trim aggressively.
+            const MAX = 60000;
+            if (plan.length > MAX) {
+              plan = plan.slice(0, MAX) + '\n...[truncated, see workflow logs]';
+            }
+            const body = [
+              '### Terraform Plan',
+              '',
+              `- fmt: \`${process.env.FMT_OUTCOME}\``,
+              `- validate: \`${process.env.VALIDATE_OUTCOME}\``,
+              `- plan: \`${process.env.PLAN_OUTCOME}\``,
+              '',
+              '<details><summary>Show plan</summary>',
+              '',
+              '```hcl',
+              plan,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            // Replace prior plan comment from this workflow rather than spamming.
+            const marker = '### Terraform Plan';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body && c.body.startsWith(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail job if plan failed
+        if: steps.plan.outcome != 'success'
+        run: exit 1
+
+  # ---------------------------------------------------------------------------
+  # main / manual: build image, push, apply, health-check
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build and Push Image
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      image_uri: ${{ steps.meta.outputs.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Compute image metadata
+        id: meta
+        run: |
+          TAG="${GITHUB_SHA}"
+          URI="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "uri=${URI}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.ARTIFACT_REGISTRY_REPO }} \
-            --location=${{ env.REGION }} 2>/dev/null || \
-          gcloud artifacts repositories create ${{ env.ARTIFACT_REGISTRY_REPO }} \
-            --repository-format=docker \
-            --location=${{ env.REGION }} \
-            --description="OSCAL Tools container images"
-
-      - name: Get backend URL for frontend build
-        id: get-backend-url
-        run: |
-          # For new deployments, use a predictable URL pattern
-          BACKEND_URL="https://oscal-backend-${{ steps.env.outputs.environment }}-$(echo ${{ env.REGION }} | sed 's/-//g').a.run.app/api"
-          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
-
-      - name: Build and push backend image
+      - name: Build and push combined image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.backend.cloudrun
+          file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ github.sha }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ steps.env.outputs.environment }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:latest
+            ${{ steps.meta.outputs.uri }}
+            ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile.frontend.cloudrun
-          push: true
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ steps.get-backend-url.outputs.backend-url }}
-          tags: |
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ github.sha }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ steps.env.outputs.environment }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Set image tags output
-        id: image-tags
-        run: |
-          echo "backend-image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "frontend-image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
-
-  # Job 3: Deploy to Cloud Run
-  deploy-to-gcp:
-    name: Deploy to Cloud Run
-    runs-on: ubuntu-latest
+  terraform-apply:
+    name: Terraform Apply
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: build-and-push
-
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
     outputs:
-      backend-url: ${{ steps.deploy-backend.outputs.url }}
-      frontend-url: ${{ steps.deploy-frontend.outputs.url }}
-
+      app_url: ${{ steps.outputs.outputs.app_url }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Deploy backend to Cloud Run
-        id: deploy-backend
+      - name: Terraform init
         run: |
-          SERVICE_NAME="oscal-backend-${{ needs.build-and-push.outputs.environment }}"
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
 
-          gcloud run deploy $SERVICE_NAME \
-            --image ${{ needs.build-and-push.outputs.backend-image }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=gcp,GCP_PROJECT_ID=${{ env.PROJECT_ID }}" \
-            --max-instances 10 \
-            --min-instances 0 \
-            --cpu 1 \
-            --memory 2Gi \
-            --timeout 300s \
-            --concurrency 80 \
-            --port 8080
-
-          # Get the URL of the deployed service
-          BACKEND_URL=$(gcloud run services describe $SERVICE_NAME \
-            --region ${{ env.REGION }} \
-            --format 'value(status.url)')
-
-          echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
-          echo "Backend deployed to: $BACKEND_URL"
-
-      - name: Deploy frontend to Cloud Run
-        id: deploy-frontend
+      - name: Terraform apply
         run: |
-          SERVICE_NAME="oscal-frontend-${{ needs.build-and-push.outputs.environment }}"
+          terraform apply -auto-approve -input=false -lock-timeout=10m \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -var="region=${{ vars.GCP_REGION }}" \
+            -var="image_tag=${{ needs.build-and-push.outputs.image_tag }}"
 
-          gcloud run deploy $SERVICE_NAME \
-            --image ${{ needs.build-and-push.outputs.frontend-image }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,NEXT_PUBLIC_API_URL=${{ steps.deploy-backend.outputs.url }}/api" \
-            --max-instances 10 \
-            --min-instances 0 \
-            --cpu 1 \
-            --memory 512Mi \
-            --timeout 60s \
-            --concurrency 80 \
-            --port 3000
-
-          # Get the URL of the deployed service
-          FRONTEND_URL=$(gcloud run services describe $SERVICE_NAME \
-            --region ${{ env.REGION }} \
-            --format 'value(status.url)')
-
-          echo "url=$FRONTEND_URL" >> $GITHUB_OUTPUT
-          echo "Frontend deployed to: $FRONTEND_URL"
-
-      - name: Display Deployment Info
+      - name: Capture outputs
+        id: outputs
         run: |
-          echo "### Deployment Complete! :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ needs.build-and-push.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend URL:** ${{ steps.deploy-frontend.outputs.url }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Backend API URL:** ${{ steps.deploy-backend.outputs.url }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Backend Image:** ${{ needs.build-and-push.outputs.backend-image }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend Image:** ${{ needs.build-and-push.outputs.frontend-image }}" >> $GITHUB_STEP_SUMMARY
+          APP_URL=$(terraform output -raw app_url)
+          echo "app_url=${APP_URL}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Deployment"
+            echo ""
+            echo "- **Image:** \`${{ needs.build-and-push.outputs.image_uri }}\`"
+            echo "- **App URL:** ${APP_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-  # Job 4: Health Checks
-  health-checks:
-    name: Run Health Checks
+  health-check:
+    name: Health Check
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: terraform-apply
     runs-on: ubuntu-latest
-    needs: deploy-to-gcp
-
     steps:
-      - name: Wait for deployment to stabilize
-        run: sleep 30
-
-      - name: Health check - Backend
+      - name: Wait for revision to roll out and probe /api/health
+        env:
+          APP_URL: ${{ needs.terraform-apply.outputs.app_url }}
         run: |
-          BACKEND_URL="${{ needs.deploy-to-gcp.outputs.backend-url }}"
-
-          echo "Checking backend health at: $BACKEND_URL/actuator/health"
-
-          for i in {1..20}; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/actuator/health || echo "000")
-            echo "Health check attempt $i: HTTP $HTTP_CODE"
-
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Backend is healthy!"
-              break
+          set -euo pipefail
+          echo "Probing ${APP_URL}/api/health"
+          for i in $(seq 1 30); do
+            CODE=$(curl -fsS -o /dev/null -w '%{http_code}' "${APP_URL}/api/health" || echo 000)
+            echo "attempt ${i}: HTTP ${CODE}"
+            if [ "${CODE}" = "200" ]; then
+              echo "Healthy."
+              exit 0
             fi
-
-            if [ $i -eq 20 ]; then
-              echo "❌ Backend health check failed after 20 attempts"
-              exit 1
-            fi
-
-            sleep 15
+            sleep 10
           done
-
-      - name: Health check - Frontend
-        run: |
-          FRONTEND_URL="${{ needs.deploy-to-gcp.outputs.frontend-url }}"
-
-          echo "Checking frontend at: $FRONTEND_URL"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $FRONTEND_URL || echo "000")
-          echo "Frontend check: HTTP $HTTP_CODE"
-
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
-            echo "✅ Frontend is responding!"
-          else
-            echo "⚠️ Frontend returned HTTP $HTTP_CODE"
-            exit 1
-          fi
-
-      - name: Test API endpoint
-        run: |
-          BACKEND_URL="${{ needs.deploy-to-gcp.outputs.backend-url }}"
-
-          echo "Testing API health endpoint..."
-          RESPONSE=$(curl -s $BACKEND_URL/api/health)
-          echo "Response: $RESPONSE"
-
-      - name: Deployment Summary
-        run: |
-          echo "========================================="
-          echo "       Deployment Successful! 🎉"
-          echo "========================================="
-          echo ""
-          echo "🌐 Frontend: ${{ needs.deploy-to-gcp.outputs.frontend-url }}"
-          echo "🔌 Backend API: ${{ needs.deploy-to-gcp.outputs.backend-url }}"
-          echo "❤️ Health Check: ${{ needs.deploy-to-gcp.outputs.backend-url }}/actuator/health"
-          echo ""
-          echo "Next steps:"
-          echo "1. Visit the application URL above"
-          echo "2. Login with your credentials"
-          echo "3. Verify all features work correctly"
-          echo "4. Monitor Cloud Run logs for any errors"
-          echo ""
-          echo "View logs: gcloud logging read 'resource.type=cloud_run_revision' --limit 50"
-          echo "Monitor: https://console.cloud.google.com/run?project=${{ env.PROJECT_ID }}"
-          echo ""
-          echo "========================================="
-
-      - name: Post summary to GitHub
-        run: |
-          echo "### Health Checks Complete :white_check_mark:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend URL:** ${{ needs.deploy-to-gcp.outputs.frontend-url }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Backend URL:** ${{ needs.deploy-to-gcp.outputs.backend-url }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All services are healthy and responding correctly." >> $GITHUB_STEP_SUMMARY
-
-  # Job 5: Cleanup Old Images (Optional)
-  cleanup-old-images:
-    name: Cleanup Old Container Images
-    runs-on: ubuntu-latest
-    needs: [build-and-push, deploy-to-gcp, health-checks]
-    if: success()
-
-    steps:
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Cleanup old backend images (keep last 5)
-        run: |
-          echo "Cleaning up old backend images..."
-
-          # List all tags except latest, dev, staging, prod (environment tags)
-          gcloud artifacts docker tags list \
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend \
-            --format="get(tag)" \
-            --filter="tag!~^(latest|dev|staging|prod)$" \
-            --sort-by="~CREATE_TIME" \
-            --limit=999 | tail -n +6 | while read tag; do
-              if [ -n "$tag" ]; then
-                echo "Deleting old tag: $tag"
-                gcloud artifacts docker images delete \
-                  ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-backend:$tag \
-                  --quiet || echo "Failed to delete $tag"
-              fi
-            done
-
-          echo "✅ Backend cleanup complete"
-
-      - name: Cleanup old frontend images (keep last 5)
-        run: |
-          echo "Cleaning up old frontend images..."
-
-          # List all tags except latest, dev, staging, prod (environment tags)
-          gcloud artifacts docker tags list \
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend \
-            --format="get(tag)" \
-            --filter="tag!~^(latest|dev|staging|prod)$" \
-            --sort-by="~CREATE_TIME" \
-            --limit=999 | tail -n +6 | while read tag; do
-              if [ -n "$tag" ]; then
-                echo "Deleting old tag: $tag"
-                gcloud artifacts docker images delete \
-                  ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/oscal-frontend:$tag \
-                  --quiet || echo "Failed to delete $tag"
-              fi
-            done
-
-          echo "✅ Frontend cleanup complete"
+          echo "Health check did not reach 200 after 5 minutes." >&2
+          exit 1

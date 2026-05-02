@@ -1,0 +1,11 @@
+Welcome to OSCAL Hub, ${username}.
+
+Your account is ready. Sign in at ${loginUrl}.
+
+What you can do next:
+  - Upload and validate OSCAL documents
+  - Convert between XML, JSON, and YAML
+  - Resolve OSCAL profiles into catalogs
+  - Invite teammates to your organization
+
+— OSCAL Hub

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Resolve GCP project id from env or default to "unknown" so the JSON appender's trace correlation field is always parseable. -->
+    <property name="GCP_PROJECT_ID" value="${GCP_PROJECT_ID:-unknown}"/>
+
+    <!-- Copy OTel baggage to MDC before each log event is encoded -->
+    <turboFilter class="gov.nist.oscal.tools.api.telemetry.BaggageMdcInsertingFilter"/>
+
+    <!-- Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Explicit logger levels for our telemetry logger names. The "gcp" profile -->
+    <!-- overrides root to WARN, which would otherwise filter INFO-level events    -->
+    <!-- emitted by TelemetryService. This block guarantees they pass through      -->
+    <!-- regardless of the active profile's root level.                            -->
+    <logger name="oscal-hub" level="INFO"/>
+    <logger name="oscal-hub.events" level="INFO"/>
+    <logger name="gov.nist.oscal.tools.api.telemetry" level="DEBUG"/>
+
+    <!-- JSON appender for Cloud Logging structured ingestion. -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</pattern>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <logLevel>
+                    <fieldName>severity</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <threadName/>
+                <message/>
+                <stackTrace/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "logging.googleapis.com/trace": "projects/${GCP_PROJECT_ID}/traces/%mdc{trace_id}",
+                            "logging.googleapis.com/spanId": "%mdc{span_id}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Plain console appender for local dev -->
+    <appender name="PLAIN_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN:-%d{ISO8601} [%thread] %-5level %logger{36} traceId=%mdc{trace_id} userId=%mdc{user.id} orgId=%mdc{org.id} - %msg%n}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Cloud profiles use the JSON appender for Cloud Logging structured ingestion. -->
+    <!-- The active prod profile is "gcp" (set in application.properties); "cloud" and -->
+    <!-- "dimsync" are also recognised so the dimsync Cloud Run Job and any explicit  -->
+    <!-- "cloud" profile activator both pick up the JSON appender. -->
+    <springProfile name="gcp | cloud | dimsync">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Local dev and tests fall through to the plain console. -->
+    <springProfile name="!gcp &amp; !cloud &amp; !dimsync">
+        <root level="INFO">
+            <appender-ref ref="PLAIN_CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

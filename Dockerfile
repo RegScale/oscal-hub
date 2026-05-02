@@ -82,6 +82,14 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN npm run build
 
 # =============================================================================
+# Stage: Fetch OpenTelemetry Java agent (pinned version)
+# =============================================================================
+FROM curlimages/curl:8.10.1 AS otel-agent
+ARG OTEL_AGENT_VERSION=2.27.0
+RUN curl -fsSL -o /tmp/opentelemetry-javaagent.jar \
+    "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar"
+
+# =============================================================================
 # Stage 4: Runtime - Combine both applications (SECURITY HARDENED)
 # =============================================================================
 FROM eclipse-temurin:25-jre-jammy
@@ -114,6 +122,10 @@ RUN groupadd -g 10001 oscalgroup && \
     useradd -u 10001 -g oscalgroup -s /bin/false -m -d /home/oscaluser oscaluser
 
 WORKDIR /app
+
+# OpenTelemetry agent — attached at runtime via JAVA_TOOL_OPTIONS env var
+COPY --from=otel-agent /tmp/opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
+
 RUN mkdir -p \
         /app/data \
         /app/logs \

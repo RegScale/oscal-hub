@@ -108,23 +108,6 @@ Starts **only the application** (no monitoring) with hot-reload for development:
 - Don't need monitoring/observability
 - Want faster startup times
 
-### start.sh - Production-like Mode
-
-Starts **only the application** with Docker Compose:
-- Frontend + backend in production mode
-- PostgreSQL database
-- pgAdmin
-
-**Usage**:
-```bash
-./start.sh
-```
-
-**When to use**:
-- Testing production build locally
-- Don't need monitoring stack
-- Want to match production environment
-
 ### stop.sh - Stop Application Only
 
 Stops application services (not monitoring).
@@ -253,8 +236,8 @@ docker-compose -f docker-compose-monitoring.yml logs -f
 
 **Test production build locally**:
 ```bash
-# 1. Build production image
-./start.sh
+# 1. Build and run with Docker Compose
+docker-compose up --build
 
 # 2. Test the application
 curl http://localhost:8080/api/health
@@ -263,7 +246,7 @@ curl http://localhost:8080/api/health
 ./coverage.sh
 
 # 4. Clean up
-./stop.sh
+docker-compose down
 ```
 
 ### Debugging Workflow
@@ -311,7 +294,6 @@ docker-compose logs -f postgres
 |--------|-----|----|-----------| ------|-----------|
 | `start-all.sh` | ✅ | ✅ | ✅ | Production | ❌ |
 | `dev.sh` | ✅ | ✅ | ❌ | Development | ✅ |
-| `start.sh` | ✅ | ✅ | ❌ | Production | ❌ |
 | `local-deploy.sh` | ✅ | ✅ | ❌ | Production | ❌ |
 
 ## Environment Variables
@@ -512,9 +494,6 @@ See `docs/LOCAL-DEPLOYMENT-GUIDE.md` for production-ready local deployment.
 
 # Development mode (app only, hot reload)
 ./dev.sh
-
-# Production mode (app only)
-./start.sh
 ```
 
 **Access points**:
