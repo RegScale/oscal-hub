@@ -322,15 +322,15 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibrary("NIST", null, null))
-                .thenReturn(Arrays.asList(item));
+        when(libraryService.searchLibraryPaged(eq("NIST"), eq(null), eq(null), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
         mockMvc.perform(get("/api/library/search")
                 .param("q", "NIST"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].title").value("NIST Catalog"));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("NIST Catalog"));
     }
 
     @Test
@@ -349,14 +349,14 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibrary(null, "catalog", null))
-                .thenReturn(Arrays.asList(item));
+        when(libraryService.searchLibraryPaged(eq(null), eq("catalog"), eq(null), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
         mockMvc.perform(get("/api/library/search")
                 .param("oscalType", "catalog"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.content.length()").value(1));
     }
 
     // ========== GET ALL ITEMS TESTS ==========
@@ -383,13 +383,13 @@ class LibraryControllerTest {
         item2.setTags(new HashSet<>());
         item2.setVersions(new HashSet<>());
 
-        when(libraryService.getAllLibraryItems())
-                .thenReturn(Arrays.asList(item1, item2));
+        when(libraryService.getAllLibraryItemsPaged(any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item1, item2)));
 
         // Act & Assert
         mockMvc.perform(get("/api/library"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.content.length()").value(2));
     }
 
     // ========== GET BY TYPE TESTS ==========
@@ -410,13 +410,13 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.getLibraryItemsByOscalType("catalog"))
-                .thenReturn(Arrays.asList(item));
+        when(libraryService.getLibraryItemsByOscalTypePaged(eq("catalog"), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
         mockMvc.perform(get("/api/library/type/catalog"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.content.length()").value(1));
     }
 
     // ========== ANALYTICS TESTS ==========
@@ -722,13 +722,13 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibrary(null, null, "nist"))
-                .thenReturn(Arrays.asList(item));
+        when(libraryService.searchLibraryPaged(eq(null), eq(null), eq("nist"), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
         mockMvc.perform(get("/api/library/search").param("tag", "nist"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.content.length()").value(1));
     }
 
     @Test

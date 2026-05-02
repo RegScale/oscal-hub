@@ -79,8 +79,14 @@ class LibraryRatingServiceTest {
 
     @Test
     void testRateItem_newRating_createsRating() {
-        // Arrange
-        when(ratingRepository.findByItemIdAndUser(TEST_ITEM_ID, testUser)).thenReturn(Optional.empty());
+        // Arrange — first lookup is the upsert check (no rating yet); second
+        // lookup happens inside getRatingStats() after save and should return
+        // the freshly persisted rating.
+        LibraryItemRating persistedRating = new LibraryItemRating(testItem, testUser, 4);
+        persistedRating.setId(1L);
+        when(ratingRepository.findByItemIdAndUser(TEST_ITEM_ID, testUser))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(persistedRating));
         when(ratingRepository.save(any(LibraryItemRating.class))).thenAnswer(invocation -> {
             LibraryItemRating rating = invocation.getArgument(0);
             rating.setId(1L);

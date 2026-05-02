@@ -17,6 +17,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
 
 import java.time.LocalDateTime;
 
@@ -38,6 +41,12 @@ class SecurityPolicyServiceTest {
 
     @BeforeEach
     void setUp() {
+        // The service injects itself via @Autowired @Lazy SecurityPolicyService self
+        // to invoke @Transactional methods through the Spring proxy. @InjectMocks
+        // can't satisfy that field, so wire it manually to the same instance for
+        // these unit tests (transactional semantics aren't being exercised here).
+        ReflectionTestUtils.setField(securityPolicyService, "self", securityPolicyService);
+
         testPolicy = new SecurityPolicy();
         testPolicy.setId(1L);
         testPolicy.setMfaRequired(false);
@@ -54,7 +63,7 @@ class SecurityPolicyServiceTest {
     @Test
     void testGetPolicy_returnsPolicy() {
         // Given
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         SecurityPolicy result = securityPolicyService.getPolicy();
@@ -79,6 +88,7 @@ class SecurityPolicyServiceTest {
         request.setPasswordRotationDays(90);
         request.setAuditLogRetentionDays(180);
 
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
         when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
         when(securityPolicyRepository.save(any(SecurityPolicy.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -107,6 +117,7 @@ class SecurityPolicyServiceTest {
         request.setPasswordRotationDays(0);
         request.setAuditLogRetentionDays(90);
 
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
         when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
 
         // When & Then
@@ -123,7 +134,7 @@ class SecurityPolicyServiceTest {
     void testIsMfaRequired_whenEnabled_returnsTrue() {
         // Given
         testPolicy.setMfaRequired(true);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         boolean result = securityPolicyService.isMfaRequired();
@@ -136,7 +147,7 @@ class SecurityPolicyServiceTest {
     void testIsMfaRequired_whenDisabled_returnsFalse() {
         // Given
         testPolicy.setMfaRequired(false);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         boolean result = securityPolicyService.isMfaRequired();
@@ -151,7 +162,7 @@ class SecurityPolicyServiceTest {
     void testIsPasswordExpired_rotationDisabled_returnsFalse() {
         // Given
         testPolicy.setPasswordRotationDays(0); // Disabled
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(LocalDateTime.now().minusDays(365)); // Old password
@@ -167,7 +178,7 @@ class SecurityPolicyServiceTest {
     void testIsPasswordExpired_noPasswordChangeDate_returnsTrue() {
         // Given
         testPolicy.setPasswordRotationDays(90);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(null); // Never changed
@@ -183,7 +194,7 @@ class SecurityPolicyServiceTest {
     void testIsPasswordExpired_passwordExpired_returnsTrue() {
         // Given
         testPolicy.setPasswordRotationDays(90);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(LocalDateTime.now().minusDays(100)); // 100 days ago
@@ -199,7 +210,7 @@ class SecurityPolicyServiceTest {
     void testIsPasswordExpired_passwordNotExpired_returnsFalse() {
         // Given
         testPolicy.setPasswordRotationDays(90);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(LocalDateTime.now().minusDays(30)); // 30 days ago
@@ -217,7 +228,7 @@ class SecurityPolicyServiceTest {
     void testGetDaysUntilPasswordExpires_rotationDisabled_returnsMinusOne() {
         // Given
         testPolicy.setPasswordRotationDays(0); // Disabled
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(LocalDateTime.now());
@@ -233,7 +244,7 @@ class SecurityPolicyServiceTest {
     void testGetDaysUntilPasswordExpires_noPasswordChangeDate_returnsZero() {
         // Given
         testPolicy.setPasswordRotationDays(90);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(null);
@@ -249,7 +260,7 @@ class SecurityPolicyServiceTest {
     void testGetDaysUntilPasswordExpires_returnsCorrectDays() {
         // Given
         testPolicy.setPasswordRotationDays(90);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         User user = new User();
         user.setPasswordChangedAt(LocalDateTime.now().minusDays(30)); // 30 days ago, 60 days left
@@ -268,7 +279,7 @@ class SecurityPolicyServiceTest {
     void testGetAuditLogRetentionDays_returnsConfiguredValue() {
         // Given
         testPolicy.setAuditLogRetentionDays(180);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         int result = securityPolicyService.getAuditLogRetentionDays();
@@ -281,7 +292,7 @@ class SecurityPolicyServiceTest {
     void testGetPasswordMinLength_returnsConfiguredValue() {
         // Given
         testPolicy.setPasswordMinLength(12);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         int result = securityPolicyService.getPasswordMinLength();
@@ -294,7 +305,7 @@ class SecurityPolicyServiceTest {
     void testGetPasswordMaxLength_returnsConfiguredValue() {
         // Given
         testPolicy.setPasswordMaxLength(64);
-        when(securityPolicyRepository.getPolicy()).thenReturn(testPolicy);
+        when(securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)).thenReturn(Optional.of(testPolicy));
 
         // When
         int result = securityPolicyService.getPasswordMaxLength();

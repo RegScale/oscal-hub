@@ -54,6 +54,9 @@ class FileStorageServiceTest {
     @Mock
     private BlobClient blobClient;
 
+    @Mock
+    private FileValidationService fileValidationService;
+
     private FileStorageService service;
 
     @BeforeEach
@@ -64,6 +67,7 @@ class FileStorageServiceTest {
         // Force local storage mode by not setting connection string
         ReflectionTestUtils.setField(service, "connectionString", "");
         ReflectionTestUtils.setField(service, "containerName", "oscal-files");
+        ReflectionTestUtils.setField(service, "fileValidationService", fileValidationService);
 
         // Initialize the service (will use local storage)
         service.init();
@@ -416,6 +420,7 @@ class FileStorageServiceTest {
     void testSaveFile_azureStorage_success() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -447,6 +452,7 @@ class FileStorageServiceTest {
     void testListFiles_azureStorage_returnsFiles() {
         // Given: Service configured for Azure with files
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -494,6 +500,7 @@ class FileStorageServiceTest {
     void testListFiles_azureStorage_emptyResult() {
         // Given: Service configured for Azure with no files
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -513,6 +520,7 @@ class FileStorageServiceTest {
     void testGetFileContent_azureStorage_success() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -543,6 +551,7 @@ class FileStorageServiceTest {
     void testGetFileContent_azureStorage_fileNotFound() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -560,6 +569,7 @@ class FileStorageServiceTest {
     void testGetFile_azureStorage_success() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -600,6 +610,7 @@ class FileStorageServiceTest {
     void testDeleteFile_azureStorage_success() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -629,6 +640,7 @@ class FileStorageServiceTest {
     void testDeleteFile_azureStorage_fileNotFound() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -648,6 +660,7 @@ class FileStorageServiceTest {
     void testSaveFile_azureStorage_withNullModelType() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -667,6 +680,7 @@ class FileStorageServiceTest {
     void testListFiles_azureStorage_handlesInvalidBlobName() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -690,6 +704,7 @@ class FileStorageServiceTest {
     void testGetFile_azureStorage_withoutMetadata_usesDetection() {
         // Given: Service configured for Azure
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 
@@ -724,6 +739,7 @@ class FileStorageServiceTest {
     void testListFiles_azureStorage_handlesException() {
         // Given: Service configured for Azure that throws exception
         FileStorageService azureService = new FileStorageService();
+        ReflectionTestUtils.setField(azureService, "fileValidationService", fileValidationService);
         ReflectionTestUtils.setField(azureService, "useLocalStorage", false);
         ReflectionTestUtils.setField(azureService, "containerClient", containerClient);
 

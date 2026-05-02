@@ -196,6 +196,16 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- Spring Boot 4 defaults to Jackson 3 (tools.jackson). The
+             spring-boot-jackson2 module restores the legacy
+             com.fasterxml.jackson.databind.ObjectMapper bean that the rest
+             of the codebase depends on. Deprecated path; remove once a
+             full Jackson 3 migration is complete. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+
         <!-- org.json - Override transitive dependency to fix CVE-2023-5072 -->
         <dependency>
             <groupId>org.json</groupId>
@@ -377,6 +387,18 @@
 
     <build>
         <plugins>
+            <!-- Force the "test" Spring profile for every test run so
+                 application-test.properties (H2, Flyway off) is layered on
+                 top of the production application.properties. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

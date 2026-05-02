@@ -673,9 +673,10 @@ describe('ApiClient', () => {
           { id: 'item-2', title: 'Custom Profile' },
         ];
 
+        // Backend returns a Spring Data Page; the client unwraps `.content`.
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: async () => mockItems,
+          json: async () => ({ content: mockItems }),
         });
 
         const result = await apiClient.getAllLibraryItems();
@@ -692,7 +693,7 @@ describe('ApiClient', () => {
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: async () => mockResults,
+          json: async () => ({ content: mockResults }),
         });
 
         const result = await apiClient.searchLibrary({ q: 'NIST' });
@@ -973,13 +974,14 @@ describe('ApiClient', () => {
         expect(result!.username).toBe('testuser');
       });
 
-      it('should throw error when log not found', async () => {
+      it('should resolve to null when log not found', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 404,
         });
 
-        await expect(apiClient.getAuditLogById(999)).rejects.toThrow();
+        // 404 is treated as "missing", not an error — the client returns null.
+        await expect(apiClient.getAuditLogById(999)).resolves.toBeNull();
       });
     });
 
@@ -1058,7 +1060,7 @@ describe('ApiClient', () => {
           expect.objectContaining({
             method: 'GET',
             headers: expect.objectContaining({
-              Authorization: 'Bearer mock-token',
+              Authorization: 'Bearer test-token',
             }),
           })
         );
@@ -1108,7 +1110,7 @@ describe('ApiClient', () => {
           expect.objectContaining({
             method: 'GET',
             headers: expect.objectContaining({
-              Authorization: 'Bearer mock-token',
+              Authorization: 'Bearer test-token',
             }),
           })
         );
