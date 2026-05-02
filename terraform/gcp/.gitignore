@@ -9,6 +9,7 @@ tfplan
 terraform-key.json
 *.json
 !terraform.tfvars.json
+!dashboards/*.json
 
 # Override files
 override.tf
