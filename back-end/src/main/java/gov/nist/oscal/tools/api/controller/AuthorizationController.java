@@ -4,6 +4,8 @@ import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
 import gov.nist.oscal.tools.api.service.DigitalSignatureService;
+import gov.nist.oscal.tools.api.telemetry.EventNames;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -21,6 +23,7 @@ import java.security.Principal;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,13 +35,16 @@ public class AuthorizationController {
 
     private final AuthorizationService authorizationService;
     private final DigitalSignatureService digitalSignatureService;
+    private final TelemetryService telemetryService;
 
     @Autowired
     public AuthorizationController(
             AuthorizationService authorizationService,
-            DigitalSignatureService digitalSignatureService) {
+            DigitalSignatureService digitalSignatureService,
+            TelemetryService telemetryService) {
         this.authorizationService = authorizationService;
         this.digitalSignatureService = digitalSignatureService;
+        this.telemetryService = telemetryService;
     }
 
     @Operation(
@@ -70,6 +76,16 @@ public class AuthorizationController {
                     request.getEditedContent(),
                     request.getConditions()
             );
+
+            try {
+                telemetryService.emit(EventNames.AUTHORIZATION_CREATED, Map.of(
+                        "authorization_id", authorization.getId() != null ? String.valueOf(authorization.getId()) : "",
+                        "template_id", request.getTemplateId() != null ? String.valueOf(request.getTemplateId()) : "",
+                        "ssp_item_id", request.getSspItemId() != null ? request.getSspItemId() : ""
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new AuthorizationResponse(authorization));
@@ -290,6 +306,15 @@ public class AuthorizationController {
             logger.info("Authorization {} signed successfully by {}",
                     request.getAuthorizationId(), result.getSignerName());
 
+            try {
+                telemetryService.emit(EventNames.AUTHORIZATION_APPROVED, Map.of(
+                        "authorization_id", String.valueOf(request.getAuthorizationId()),
+                        "signature_method", "CAC_PIV"
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
+
             return ResponseEntity.ok(result);
 
         } catch (jakarta.persistence.EntityNotFoundException e) {
@@ -348,6 +373,15 @@ public class AuthorizationController {
 
             logger.info("Authorization {} signed electronically by {}",
                     request.getAuthorizationId(), request.getSignerName());
+
+            try {
+                telemetryService.emit(EventNames.AUTHORIZATION_APPROVED, Map.of(
+                        "authorization_id", String.valueOf(request.getAuthorizationId()),
+                        "signature_method", "ELECTRONIC"
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             SignatureResult result = new SignatureResult(true, "Electronic signature saved successfully");
             result.setSignerName(request.getSignerName());

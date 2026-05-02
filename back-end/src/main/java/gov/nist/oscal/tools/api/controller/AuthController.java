@@ -12,6 +12,8 @@ import gov.nist.oscal.tools.api.model.ServiceAccountTokenResponse;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.AuthService;
 import gov.nist.oscal.tools.api.service.FileValidationService;
+import gov.nist.oscal.tools.api.telemetry.EventNames;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.springframework.http.HttpStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -45,6 +48,9 @@ public class AuthController {
 
     @Autowired
     private FileValidationService fileValidationService;
+
+    @Autowired
+    private TelemetryService telemetryService;
 
     @Operation(
         summary = "Register new user",
@@ -84,14 +90,42 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest request) {
         try {
             AuthResponse response = authService.login(request);
+            try {
+                telemetryService.emit(EventNames.AUTH_LOGIN_SUCCEEDED, Map.of(
+                        "user_id", response.getUserId() != null ? String.valueOf(response.getUserId()) : "",
+                        "mfa_required", Boolean.toString(Boolean.TRUE.equals(response.getMfaRequired()))
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             logger.error("Login failed for user {}: {} - {}", request.getUsername(), e.getClass().getSimpleName(), e.getMessage(), e);
+            try {
+                telemetryService.emit(EventNames.AUTH_LOGIN_FAILED, Map.of(
+                        "attempted_username_sha256", sha256(request.getUsername()),
+                        "reason", "bad_credentials"
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage() != null && e.getMessage().contains("locked")
                 ? e.getMessage()
                 : "Invalid username or password");
             return ResponseEntity.status(401).body(error);
+        }
+    }
+
+    private static String sha256(String s) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] h = md.digest(s == null ? new byte[0] : s.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : h) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "sha256-error";
         }
     }
 

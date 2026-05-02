@@ -12,11 +12,13 @@ import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.model.BatchOperationRequest.BatchOperationType;
 import gov.nist.oscal.tools.api.model.BatchOperationRequest.FileContent;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.service.AsyncValidationService;
 import gov.nist.oscal.tools.api.service.BatchOperationService;
 import gov.nist.oscal.tools.api.service.ConversionService;
 import gov.nist.oscal.tools.api.service.ProfileResolutionService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.service.ValidationService;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -74,6 +76,12 @@ class ValidationControllerTest {
 
     @MockBean
     private SecurityHeadersConfig securityHeadersConfig;
+
+    @MockBean
+    private AsyncValidationService asyncValidationService;
+
+    @MockBean
+    private TelemetryService telemetryService;
 
     // ========== VALIDATE ENDPOINT TESTS ==========
 

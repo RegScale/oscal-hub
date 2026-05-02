@@ -7,8 +7,11 @@ import gov.nist.oscal.tools.api.entity.LibraryVersion;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.service.LibraryCommentService;
+import gov.nist.oscal.tools.api.service.LibraryRatingService;
 import gov.nist.oscal.tools.api.service.LibraryService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
+import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -42,6 +45,12 @@ class LibraryControllerTest {
     private LibraryService libraryService;
 
     @MockBean
+    private LibraryRatingService libraryRatingService;
+
+    @MockBean
+    private LibraryCommentService libraryCommentService;
+
+    @MockBean
     private JwtUtil jwtUtil;
 
     @MockBean
@@ -55,6 +64,9 @@ class LibraryControllerTest {
 
     @MockBean
     private SecurityHeadersConfig securityHeadersConfig;
+
+    @MockBean
+    private TelemetryService telemetryService;
 
     // ========== CREATE LIBRARY ITEM TESTS ==========
 
