@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>4.0.6</version>
         <relativePath/>
     </parent>
 
@@ -47,7 +47,7 @@
 
         <!-- Other dependency versions -->
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>2.7.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
         <bucket4j.version>8.10.1</bucket4j.version>
         <org-json.version>20251224</org-json.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
@@ -122,10 +122,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- AOP support for @Telemetry and other aspects -->
+        <!-- AOP support for @Telemetry and other aspects (renamed from spring-boot-starter-aop in Spring Boot 4) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
 
         <!-- WebSocket support for real-time updates -->
@@ -358,6 +358,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot 4 split @WebMvcTest support out of starter-test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 

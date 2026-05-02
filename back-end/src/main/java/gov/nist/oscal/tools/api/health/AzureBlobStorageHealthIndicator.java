@@ -2,8 +2,8 @@ package gov.nist.oscal.tools.api.health;
 
 import gov.nist.oscal.tools.api.service.AzureBlobService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 /**

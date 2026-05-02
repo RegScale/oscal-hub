@@ -50,7 +50,7 @@ public class WebSocketNotificationService {
         message.put("timestamp", System.currentTimeMillis());
 
         String destination = "/topic/batch/" + operationId;
-        messagingTemplate.convertAndSend(destination, message);
+        messagingTemplate.convertAndSend(destination, (Object) message);
         logger.debug("Sent batch progress for {}: {}/{} ({})", operationId, completed, total, status);
     }
 
@@ -76,7 +76,7 @@ public class WebSocketNotificationService {
         }
 
         String destination = "/topic/async/" + operationId;
-        messagingTemplate.convertAndSend(destination, message);
+        messagingTemplate.convertAndSend(destination, (Object) message);
         logger.debug("Sent async status for {}: {}", operationId, status);
     }
 
@@ -115,7 +115,7 @@ public class WebSocketNotificationService {
         message.put("timestamp", System.currentTimeMillis());
 
         String destination = "/topic/async/" + operationId;
-        messagingTemplate.convertAndSend(destination, message);
+        messagingTemplate.convertAndSend(destination, (Object) message);
     }
 
     /**
@@ -132,7 +132,7 @@ public class WebSocketNotificationService {
         notification.put("message", message);
         notification.put("timestamp", System.currentTimeMillis());
 
-        messagingTemplate.convertAndSend("/topic/notifications", notification);
+        messagingTemplate.convertAndSend("/topic/notifications", (Object) notification);
         logger.info("Broadcast notification: {} - {}", type, title);
     }
 }

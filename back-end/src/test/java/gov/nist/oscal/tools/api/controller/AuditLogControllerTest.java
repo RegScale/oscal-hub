@@ -12,8 +12,8 @@ import gov.nist.oscal.tools.api.service.SiemForwardingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -40,25 +40,25 @@ class AuditLogControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private AuditEventRepository auditEventRepository;
 
-    @MockBean
+    @MockitoBean
     private SiemForwardingService siemForwardingService;
 
-    @MockBean
+    @MockitoBean
     private JwtUtil jwtUtil;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitService rateLimitService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitConfig rateLimitConfig;
 
-    @MockBean
+    @MockitoBean
     private SecurityHeadersConfig securityHeadersConfig;
 
     private AuditEvent testEvent1;

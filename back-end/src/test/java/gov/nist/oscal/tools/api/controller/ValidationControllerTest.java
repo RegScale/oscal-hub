@@ -21,9 +21,9 @@ import gov.nist.oscal.tools.api.service.ValidationService;
 import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -50,37 +50,37 @@ class ValidationControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private ValidationService validationService;
 
-    @MockBean
+    @MockitoBean
     private ConversionService conversionService;
 
-    @MockBean
+    @MockitoBean
     private ProfileResolutionService profileResolutionService;
 
-    @MockBean
+    @MockitoBean
     private BatchOperationService batchOperationService;
 
-    @MockBean
+    @MockitoBean
     private JwtUtil jwtUtil;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitService rateLimitService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitConfig rateLimitConfig;
 
-    @MockBean
+    @MockitoBean
     private SecurityHeadersConfig securityHeadersConfig;
 
-    @MockBean
+    @MockitoBean
     private AsyncValidationService asyncValidationService;
 
-    @MockBean
+    @MockitoBean
     private TelemetryService telemetryService;
 
     // ========== VALIDATE ENDPOINT TESTS ==========

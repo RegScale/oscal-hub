@@ -11,8 +11,8 @@ import gov.nist.oscal.tools.api.service.AuthorizationTemplateService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -38,22 +38,22 @@ class AuthorizationTemplateControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private AuthorizationTemplateService templateService;
 
-    @MockBean
+    @MockitoBean
     private JwtUtil jwtUtil;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitService rateLimitService;
 
-    @MockBean
+    @MockitoBean
     private RateLimitConfig rateLimitConfig;
 
-    @MockBean
+    @MockitoBean
     private SecurityHeadersConfig securityHeadersConfig;
 
     private User createMockUser(String username) {
