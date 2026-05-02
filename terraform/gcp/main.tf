@@ -258,6 +258,8 @@ module "otel_collector" {
   image               = var.otel_collector_image
   api_service_account = module.oscal_app.service_account_email
 
+  events_topic_name = length(module.analytics_pubsub) > 0 ? module.analytics_pubsub[0].topic_name : ""
+
   depends_on = [google_project_service.apis]
 }
 

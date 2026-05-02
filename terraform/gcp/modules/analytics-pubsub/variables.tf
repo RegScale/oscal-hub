@@ -15,5 +15,6 @@ variable "bigquery_table" {
 
 variable "publisher_sa" {
   type        = string
-  description = "Service account email allowed to publish to the topic."
+  default     = ""
+  description = "Service account email allowed to publish to the topic. When empty, the IAM binding is skipped (the otel-collector module handles it via events_topic_name)."
 }

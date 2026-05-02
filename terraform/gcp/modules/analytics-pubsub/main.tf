@@ -27,7 +27,11 @@ resource "google_pubsub_subscription" "events_to_bq" {
   }
 }
 
+# Optional — only created when publisher_sa is explicitly provided.
+# When the otel-collector module is used, it handles the IAM binding itself
+# via its events_topic_name variable, avoiding a circular dependency.
 resource "google_pubsub_topic_iam_member" "publisher" {
+  count   = var.publisher_sa != "" ? 1 : 0
   project = var.project_id
   topic   = google_pubsub_topic.events.name
   role    = "roles/pubsub.publisher"
