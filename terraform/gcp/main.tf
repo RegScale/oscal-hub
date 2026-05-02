@@ -208,7 +208,12 @@ module "oscal_app" {
       OTEL_METRICS_EXPORTER                                             = "otlp"
       OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES = "true"
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED                           = "true"
-      OTEL_JAVA_EXPERIMENTAL_BAGGAGE_SPAN_PROCESSOR_ENABLED             = "true"
+      # Copies baggage entries onto every span as attributes. Per OTel
+      # Java agent v2.x: otel.java.experimental.span-attributes.copy-from-baggage.include.
+      # `*` means copy all baggage keys; restrict if cardinality becomes a concern.
+      OTEL_JAVA_EXPERIMENTAL_SPAN_ATTRIBUTES_COPY_FROM_BAGGAGE_INCLUDE   = "*"
+      # Same for log records — flows user.id/org.id into Cloud Logging
+      OTEL_JAVA_EXPERIMENTAL_LOG_ATTRIBUTES_COPY_FROM_BAGGAGE_INCLUDE    = "*"
     } : {}
   )
 
