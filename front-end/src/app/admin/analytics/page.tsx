@@ -115,7 +115,8 @@ export default function AnalyticsDashboardPage() {
     fetchAnalytics();
   }, [router]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: unknown) => {
+    if (typeof dateString !== 'string' && typeof dateString !== 'number') return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
@@ -353,7 +354,7 @@ export default function AnalyticsDashboardPage() {
                           paddingAngle={2}
                           dataKey="count"
                           nameKey="name"
-                          label={(props: Record<string, unknown>) => `${props.name || ''} (${((Number(props.percent) || 0) * 100).toFixed(0)}%)`}
+                          label={(props: any) => `${props.name || ''} (${((Number(props.percent) || 0) * 100).toFixed(0)}%)`}
                           labelLine={false}
                         >
                           {(analytics.operationsByType ?? []).map((_, index) => (
@@ -396,7 +397,7 @@ export default function AnalyticsDashboardPage() {
                           paddingAngle={2}
                           dataKey="count"
                           nameKey="name"
-                          label={(props: Record<string, unknown>) => `${props.name || ''} (${((Number(props.percent) || 0) * 100).toFixed(0)}%)`}
+                          label={(props: any) => `${props.name || ''} (${((Number(props.percent) || 0) * 100).toFixed(0)}%)`}
                           labelLine={false}
                         >
                           {(analytics.formatPreferences ?? []).map((_, index) => (
