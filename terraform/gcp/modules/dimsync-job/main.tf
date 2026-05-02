@@ -39,6 +39,13 @@ resource "google_cloud_run_v2_job" "dimsync" {
       containers {
         image = var.image
 
+        # Bypass docker-entrypoint.sh (which is web-server-aware and waits
+        # for backend HTTP on port 8081). For batch jobs we just run the JVM
+        # directly so DimensionSyncRunner.run() can complete and exit cleanly
+        # without entrypoint timeouts mid-run.
+        command = ["java"]
+        args    = ["-jar", "/app/backend.jar"]
+
         env {
           name  = "SPRING_PROFILES_ACTIVE"
           value = "dimsync"

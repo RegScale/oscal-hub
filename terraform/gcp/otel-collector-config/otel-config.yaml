@@ -98,30 +98,12 @@ exporters:
     log:
       default_log_name: oscal-hub-collector
   googlemanagedprometheus: {}
-  googlecloudpubsub:
-    project: "${env:GCP_PROJECT_ID}"
-    topic: "projects/${env:GCP_PROJECT_ID}/topics/${env:OTEL_EVENTS_TOPIC}"
-  # Diagnostic: log every log record's full structure to stdout so we can see
-  # what attributes/scope/body the collector actually receives. Phase 4 task:
-  # remove once routing is verified.
-  debug:
-    verbosity: detailed
 
-# The routing connector (v0.151.0+) replaces the deprecated routing processor.
-# It acts as both an exporter for the ingest pipeline and a receiver for the
-# two downstream pipelines, splitting the log stream based on OTTL conditions.
-connectors:
-  routing/events:
-    # Propagate errors so we see if a condition has a syntax problem.
-    error_mode: propagate
-    default_pipelines: [logs/default]
-    table:
-      # Single condition: match by instrumentation scope (SLF4J logger name).
-      # Verified via debug exporter that records carry InstrumentationScope
-      # "oscal-hub.events". This is the cleanest, most reliable match.
-      - context: log
-        condition: instrumentation_scope.name == "oscal-hub.events"
-        pipelines: [logs/events]
+# Routing connector and Pub/Sub exporter intentionally removed. The original
+# Phase 2 design routed event-tagged log records to Pub/Sub for BigQuery
+# subscription, but OTLP-shaped messages don't match the events table's flat
+# schema (rejected to DLQ). The Cloud Logging → BigQuery sink path is simpler
+# and works without record reshaping.
 
 service:
   telemetry:
@@ -136,18 +118,12 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, filter/drop_runtime_jvm_memory, batch]
       exporters: [googlemanagedprometheus]
-    # logs/ingest: all log records pass through shared processors once, then
-    # enter the routing connector which decides which downstream pipeline to use.
-    # Debug exporter logs full structure of every record for diagnosis.
-    logs/ingest:
+    # All logs flow to Cloud Logging. The Cloud Logging → BigQuery sink
+    # (configured via terraform/gcp/events-sink.tf) picks records carrying an
+    # `event.name` attribute and writes them to the analytics dataset. The
+    # earlier Pub/Sub→BQ direct subscription was removed because OTLP-shaped
+    # log records don't match a flat BQ schema.
+    logs:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, transform/redact, batch]
-      exporters: [routing/events, debug]
-    # logs/default: records without event.name go to Cloud Logging.
-    logs/default:
-      receivers: [routing/events]
       exporters: [googlecloud]
-    # logs/events: records with event.name go to Pub/Sub for BigQuery analytics.
-    logs/events:
-      receivers: [routing/events]
-      exporters: [googlecloudpubsub]
