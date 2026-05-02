@@ -1,0 +1,102 @@
+# OpenTelemetry Collector configuration for OSCAL Hub — Phase 1.
+# Receives OTLP from backend service; exports traces to Cloud Trace,
+# metrics to Cloud Monitoring (Managed Prometheus), logs to Cloud Logging.
+# Phase 2 will add the events pipeline (Pub/Sub).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - https://*.run.app
+            # Add custom-domain origins here once configured.
+
+processors:
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 384
+    spike_limit_mib: 64
+
+  resourcedetection:
+    detectors: [gcp, env]
+    timeout: 2s
+    override: false
+
+  # Promote OTel baggage entries to span attributes so they are queryable
+  # in Cloud Trace. The Java OTel SDK's BaggageSpanProcessor copies baggage
+  # entries onto spans as attributes["baggage.<key>"]; we re-key them to
+  # well-known names here so Cloud Trace filters are consistent.
+  transform/baggage_to_attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["user.id"], attributes["baggage.user.id"]) where attributes["baggage.user.id"] != nil
+          - set(attributes["org.id"], attributes["baggage.org.id"]) where attributes["baggage.org.id"] != nil
+          - set(attributes["user.role.global"], attributes["baggage.user.role.global"]) where attributes["baggage.user.role.global"] != nil
+          - set(attributes["user.role.org"], attributes["baggage.user.role.org"]) where attributes["baggage.user.role.org"] != nil
+
+  # Strip likely-PII patterns from http.url. Belt-and-suspenders; the
+  # application should not emit these, but we scrub at the collector too.
+  # Uses transform (not attributes) because the regex replace function
+  # (replace_pattern) lives in the transform processor.
+  transform/redact:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - replace_pattern(attributes["http.url"], "(?i)(token|secret|password|key)=[^&]+", "$$1=REDACTED")
+    log_statements:
+      - context: log
+        statements:
+          - replace_pattern(attributes["http.url"], "(?i)(token|secret|password|key)=[^&]+", "$$1=REDACTED")
+
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-always
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: baseline-25pct
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 25
+
+exporters:
+  googlecloud:
+    log:
+      default_log_name: oscal-hub-collector
+  googlemanagedprometheus: {}
+
+service:
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/baggage_to_attrs, transform/redact, tail_sampling, batch]
+      exporters: [googlecloud]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [googlemanagedprometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/redact, batch]
+      exporters: [googlecloud]
