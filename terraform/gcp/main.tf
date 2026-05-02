@@ -208,6 +208,7 @@ module "oscal_app" {
       OTEL_METRICS_EXPORTER                                             = "otlp"
       OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES = "true"
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED                           = "true"
+      OTEL_JAVA_EXPERIMENTAL_BAGGAGE_SPAN_PROCESSOR_ENABLED             = "true"
     } : {}
   )
 

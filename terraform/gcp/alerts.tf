@@ -41,6 +41,9 @@ resource "google_monitoring_alert_policy" "high_5xx_rate" {
   notification_channels = local.notification_channels
 }
 
+# threshold_value 5000 = 5000 milliseconds = 5 seconds.
+# Cloud Run request_latencies distribution metric reports in milliseconds.
+# Verify at smoke test that values shown in Cloud Monitoring match expectation.
 resource "google_monitoring_alert_policy" "p99_latency" {
   project      = var.project_id
   display_name = "p99 latency > 5s on validate/convert/resolve"
@@ -89,22 +92,24 @@ resource "google_monitoring_alert_policy" "sql_connection_saturation" {
   notification_channels = local.notification_channels
 }
 
-resource "google_monitoring_alert_policy" "run_concurrency" {
+resource "google_monitoring_alert_policy" "run_cpu_high" {
   project      = var.project_id
-  display_name = "Cloud Run concurrency utilization > 80%"
+  display_name = "Cloud Run CPU utilization > 80% (5min)"
   combiner     = "OR"
   enabled      = true
 
   conditions {
-    display_name = "container concurrency"
+    display_name = "container CPU utilization"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/container/instance_count\" resource.type=\"cloud_run_revision\""
+      filter          = "metric.type=\"run.googleapis.com/container/cpu/utilizations\" resource.type=\"cloud_run_revision\""
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0.8
       aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_MEAN"
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_MEAN"
+        cross_series_reducer = "REDUCE_MEAN"
+        group_by_fields      = ["resource.label.service_name"]
       }
     }
   }
@@ -112,25 +117,3 @@ resource "google_monitoring_alert_policy" "run_concurrency" {
   notification_channels = local.notification_channels
 }
 
-resource "google_monitoring_alert_policy" "auth_failed_burst" {
-  project      = var.project_id
-  display_name = "Failed login burst > 50/min"
-  combiner     = "OR"
-  enabled      = true
-
-  conditions {
-    display_name = "auth_failed_burst"
-    condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/oscal_auth_login_failed\""
-      duration        = "300s"
-      comparison      = "COMPARISON_GT"
-      threshold_value = 50
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_RATE"
-      }
-    }
-  }
-
-  notification_channels = local.notification_channels
-}
