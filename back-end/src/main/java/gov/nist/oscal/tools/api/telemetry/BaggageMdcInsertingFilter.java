@@ -15,11 +15,16 @@ import org.slf4j.Marker;
  */
 public class BaggageMdcInsertingFilter extends TurboFilter {
 
+    private static final java.util.List<String> MANAGED_KEYS =
+        java.util.List.of("user.id", "org.id", "user.role.global", "user.role.org");
+
     @Override
     public FilterReply decide(Marker marker, Logger logger, Level level,
                               String format, Object[] params, Throwable t) {
-        Baggage current = Baggage.current();
-        current.forEach((key, entry) -> MDC.put(key, entry.getValue()));
+        // Clear managed keys first so a thread recycled from an authenticated
+        // request never leaks identity into an unauthenticated one.
+        MANAGED_KEYS.forEach(MDC::remove);
+        Baggage.current().forEach((key, entry) -> MDC.put(key, entry.getValue()));
         return FilterReply.NEUTRAL;
     }
 }

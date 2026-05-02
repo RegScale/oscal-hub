@@ -1,6 +1,5 @@
 package gov.nist.oscal.tools.api.telemetry;
 
-import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.core.spi.FilterReply;
 import io.opentelemetry.api.baggage.Baggage;
@@ -36,11 +35,22 @@ class BaggageMdcInsertingFilterTest {
     }
 
     @Test
-    void leavesMdcEmptyWhenBaggageIsEmpty() {
-        BaggageMdcInsertingFilter filter = new BaggageMdcInsertingFilter();
-        FilterReply reply = filter.decide(null, null, Level.INFO, "test", null, null);
-        assertEquals(FilterReply.NEUTRAL, reply);
-        assertNull(MDC.get("user.id"));
-        assertNull(MDC.get("org.id"));
+    void clearsManagedMdcKeysWhenBaggageIsEmpty() {
+        // Simulate a dirty thread recycled from a prior authenticated request.
+        MDC.put("user.id", "stale-456");
+        MDC.put("org.id", "stale-123");
+        MDC.put("user.role.global", "stale-USER");
+        MDC.put("user.role.org", "stale-ORG_ADMIN");
+        try {
+            BaggageMdcInsertingFilter filter = new BaggageMdcInsertingFilter();
+            FilterReply reply = filter.decide(null, null, Level.INFO, "test", null, null);
+            assertEquals(FilterReply.NEUTRAL, reply);
+            assertNull(MDC.get("user.id"));
+            assertNull(MDC.get("org.id"));
+            assertNull(MDC.get("user.role.global"));
+            assertNull(MDC.get("user.role.org"));
+        } finally {
+            MDC.clear();
+        }
     }
 }

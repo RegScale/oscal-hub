@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!-- Resolve GCP project id from env or default to "unknown" so the JSON appender's trace correlation field is always parseable. -->
+    <property name="GCP_PROJECT_ID" value="${GCP_PROJECT_ID:-unknown}"/>
+
     <!-- Copy OTel baggage to MDC before each log event is encoded -->
     <turboFilter class="gov.nist.oscal.tools.api.telemetry.BaggageMdcInsertingFilter"/>
 
@@ -29,9 +32,8 @@
                 <pattern>
                     <pattern>
                         {
-                            "logging.googleapis.com/trace": "projects/${GCP_PROJECT_ID:-unknown}/traces/%mdc{trace_id}",
-                            "logging.googleapis.com/spanId": "%mdc{span_id}",
-                            "logging.googleapis.com/trace_sampled": "%mdc{trace_flags}"
+                            "logging.googleapis.com/trace": "projects/${GCP_PROJECT_ID}/traces/%mdc{trace_id}",
+                            "logging.googleapis.com/spanId": "%mdc{span_id}"
                         }
                     </pattern>
                 </pattern>
