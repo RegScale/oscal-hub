@@ -64,8 +64,25 @@ resource "google_cloud_run_v2_service" "collector" {
   }
 }
 
-# Allow only the API service account to invoke (publish telemetry to) the
-# collector. The browser will be allowed in Phase 3 via a different binding.
+# Phase 1: allow unauthenticated invocation of the collector.
+# The OTel Java agent's gRPC exporter doesn't send Cloud Run ID tokens
+# natively; service-to-service auth requires either a custom auth
+# extension or a sidecar token-injecting proxy. For Phase 1 we accept
+# the trade-off: the collector's blast radius is low — its dedicated GSA
+# only has write-only roles (cloudtrace.agent, monitoring.metricWriter,
+# logging.logWriter), no read scope. An attacker who guesses the URL
+# can only spam telemetry data, not exfiltrate anything. Phase 4
+# hardening will add a GCP auth extension or VPC-only ingress.
+resource "google_cloud_run_service_iam_member" "all_users_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloud_run_v2_service.collector.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Keep the API service binding too (defense in depth — if Phase 4 strips
+# allUsers, the API service still works).
 resource "google_cloud_run_service_iam_member" "api_invoker" {
   project  = var.project_id
   location = var.region
