@@ -1,7 +1,8 @@
-# OpenTelemetry Collector configuration for OSCAL Hub — Phase 1.
+# OpenTelemetry Collector configuration for OSCAL Hub — Phase 2.
 # Receives OTLP from backend service; exports traces to Cloud Trace,
 # metrics to Cloud Monitoring (Managed Prometheus), logs to Cloud Logging.
-# Phase 2 will add the events pipeline (Pub/Sub).
+# Log records carrying an event.name attribute are additionally routed to
+# Pub/Sub for downstream BigQuery analytics (Phase 2 events pipeline).
 
 receivers:
   otlp:
@@ -97,6 +98,20 @@ exporters:
     log:
       default_log_name: oscal-hub-collector
   googlemanagedprometheus: {}
+  googlecloudpubsub:
+    project: "${env:GCP_PROJECT_ID}"
+    topic: "projects/${env:GCP_PROJECT_ID}/topics/${env:OTEL_EVENTS_TOPIC}"
+
+# The routing connector (v0.151.0+) replaces the deprecated routing processor.
+# It acts as both an exporter for the ingest pipeline and a receiver for the
+# two downstream pipelines, splitting the log stream based on OTTL conditions.
+connectors:
+  routing/events:
+    error_mode: ignore
+    default_pipelines: [logs/default]
+    table:
+      - condition: attributes["event.name"] != nil
+        pipelines: [logs/events]
 
 service:
   telemetry:
@@ -111,7 +126,17 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, filter/drop_runtime_jvm_memory, batch]
       exporters: [googlemanagedprometheus]
-    logs:
+    # logs/ingest: all log records pass through shared processors once, then
+    # enter the routing connector which decides which downstream pipeline to use.
+    logs/ingest:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, transform/redact, batch]
+      exporters: [routing/events]
+    # logs/default: records without event.name go to Cloud Logging.
+    logs/default:
+      receivers: [routing/events]
       exporters: [googlecloud]
+    # logs/events: records with event.name go to Pub/Sub for BigQuery analytics.
+    logs/events:
+      receivers: [routing/events]
+      exporters: [googlecloudpubsub]

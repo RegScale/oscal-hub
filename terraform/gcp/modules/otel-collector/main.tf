@@ -90,3 +90,13 @@ resource "google_cloud_run_service_iam_member" "api_invoker" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.api_service_account}"
 }
+
+# Allow the collector to publish to the analytics Pub/Sub topic.
+# Optional — only created when events_topic_name is provided.
+resource "google_pubsub_topic_iam_member" "publisher" {
+  count   = var.events_topic_name != "" ? 1 : 0
+  project = var.project_id
+  topic   = var.events_topic_name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_service_account.collector.email}"
+}

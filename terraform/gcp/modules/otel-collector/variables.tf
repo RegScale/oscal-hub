@@ -29,3 +29,9 @@ variable "api_service_account" {
   type        = string
   description = "Service account email of the API service that will publish OTLP to the collector."
 }
+
+variable "events_topic_name" {
+  type        = string
+  description = "Pub/Sub topic name for OTel events. When empty, the publisher IAM binding is skipped."
+  default     = ""
+}
