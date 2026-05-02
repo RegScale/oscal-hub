@@ -68,6 +68,9 @@ resource "google_project_service" "apis" {
     "cloudbuild.googleapis.com",       # Cloud Build
     "artifactregistry.googleapis.com", # Artifact Registry
     "cloudkms.googleapis.com",         # Cloud KMS (for encryption)
+    "cloudtrace.googleapis.com",       # Cloud Trace
+    "monitoring.googleapis.com",       # Cloud Monitoring + Managed Prometheus
+    "pubsub.googleapis.com",           # Pub/Sub (used by Phase 2)
   ])
 
   project = var.project_id
