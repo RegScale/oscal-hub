@@ -48,15 +48,20 @@
         </encoder>
     </appender>
 
-    <springProfile name="!cloud">
+    <!-- Cloud profiles use the JSON appender for Cloud Logging structured ingestion. -->
+    <!-- The active prod profile is "gcp" (set in application.properties); "cloud" and -->
+    <!-- "dimsync" are also recognised so the dimsync Cloud Run Job and any explicit  -->
+    <!-- "cloud" profile activator both pick up the JSON appender. -->
+    <springProfile name="gcp | cloud | dimsync">
         <root level="INFO">
-            <appender-ref ref="PLAIN_CONSOLE"/>
+            <appender-ref ref="JSON_CONSOLE"/>
         </root>
     </springProfile>
 
-    <springProfile name="cloud">
+    <!-- Local dev and tests fall through to the plain console. -->
+    <springProfile name="!gcp &amp; !cloud &amp; !dimsync">
         <root level="INFO">
-            <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="PLAIN_CONSOLE"/>
         </root>
     </springProfile>
 

@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -79,7 +80,12 @@ public class DimensionSyncJob {
 
     /**
      * Entry point called by {@link DimensionSyncRunner}.
+     *
+     * <p>{@code @Transactional(readOnly = true)} keeps the JPA session open for the
+     * full sync so that lazy collections (e.g. {@code User.organizationMemberships})
+     * can be safely walked while building the dimension rows.
      */
+    @Transactional(readOnly = true)
     public void run() throws Exception {
         Instant now = Instant.now();
         int users = syncUsers(now);
