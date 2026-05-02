@@ -85,7 +85,8 @@ export default function OrgAdminAnalyticsPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: unknown) => {
+    if (typeof dateStr !== 'string' && typeof dateStr !== 'number') return '';
     const date = new Date(dateStr);
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
@@ -200,7 +201,7 @@ export default function OrgAdminAnalyticsPage() {
                       outerRadius={90}
                       dataKey="count"
                       nameKey="name"
-                      label={(props: Record<string, unknown>) => `${props.name} ${(Number(props.percent) * 100).toFixed(0)}%`}
+                      label={(props: any) => `${props.name} ${(Number(props.percent) * 100).toFixed(0)}%`}
                       labelLine={true}
                     >
                       {analytics.operationsByType.map((_, index) => (
