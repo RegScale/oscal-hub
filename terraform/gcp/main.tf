@@ -208,7 +208,12 @@ module "oscal_app" {
       OTEL_TRACES_SAMPLER                                               = "parentbased_always_on"
       OTEL_LOGS_EXPORTER                                                = "otlp"
       OTEL_METRICS_EXPORTER                                             = "otlp"
-      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES = "true"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_LOG_ATTRIBUTES   = "true"
+      # Capture MDC keys as OTel log record attributes — required for our
+      # event.name + payload attributes (set via MDC in TelemetryService) to
+      # reach the collector's routing connector.
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES         = "*"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_KEY_VALUE_PAIR_ATTRIBUTES = "true"
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED                           = "true"
       # Copies baggage entries onto every span as attributes. Per OTel
       # Java agent v2.x: otel.java.experimental.span-attributes.copy-from-baggage.include.
