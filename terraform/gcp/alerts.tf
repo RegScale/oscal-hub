@@ -105,9 +105,13 @@ resource "google_monitoring_alert_policy" "run_cpu_high" {
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0.8
+      # Cloud Run CPU utilization is a DELTA+DISTRIBUTION metric, so the
+      # aligner must collapse it to a scalar. ALIGN_PERCENTILE_99 picks the
+      # 99th-percentile value within each alignment period, which catches
+      # spikes that ALIGN_MEAN would smooth over.
       aggregations {
         alignment_period     = "60s"
-        per_series_aligner   = "ALIGN_MEAN"
+        per_series_aligner   = "ALIGN_PERCENTILE_99"
         cross_series_reducer = "REDUCE_MEAN"
         group_by_fields      = ["resource.label.service_name"]
       }
