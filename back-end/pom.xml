@@ -51,9 +51,9 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <jjwt.version>0.13.0</jjwt.version>
         <org-json.version>20251224</org-json.version>
-        <poi-ooxml.version>5.4.0</poi-ooxml.version>
         <postgres-socket-factory.version>1.28.3</postgres-socket-factory.version>
         <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
+        <tika.version>3.3.0</tika.version>
     </properties>
 
     <repositories>
@@ -199,11 +199,16 @@
             <version>${anthropic-java.version}</version>
         </dependency>
 
-        <!-- Apache POI for document processing (DOCX extraction) -->
+        <!-- Apache Tika for multi-format document extraction (PDF, Word, HTML, Excel, etc.) -->
         <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>${poi-ooxml.version}</version>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>${tika.version}</version>
         </dependency>
 
         <!-- JSON Support -->
