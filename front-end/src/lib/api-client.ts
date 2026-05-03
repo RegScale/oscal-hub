@@ -69,6 +69,15 @@ import type {
   ArtifactVisibility,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
+import type {
+  CatalogRequest,
+  CatalogResponse,
+  ProfileBuildRequest,
+  ProfileBuildResponse,
+  OscalDocumentRequest,
+  OscalDocumentResponse,
+  GenericOscalModelSlug,
+} from '@/types/oscal-models';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
@@ -5362,3 +5371,203 @@ class ApiClient {
 
 // Export singleton instance
 export const apiClient = new ApiClient();
+
+// ========================================
+// Catalog Builder API Methods
+// ========================================
+const CATALOG_BASE = `${API_BASE_URL}/build/catalogs`;
+const PROFILE_BUILD_BASE = `${API_BASE_URL}/build/profiles`;
+
+function buildAuthHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 15000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status}): ${response.statusText}`);
+    }
+    if (response.status === 204) return undefined as unknown as T;
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export const catalogBuilderApi = {
+  async create(request: CatalogRequest): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(CATALOG_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(catalogId: number, request: Partial<CatalogRequest>): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(catalogId: number): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(catalogId: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${CATALOG_BASE}/${catalogId}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(): Promise<CatalogResponse[]> {
+    return fetchJson<CatalogResponse[]>(CATALOG_BASE, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(searchTerm?: string): Promise<CatalogResponse[]> {
+    const qs = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    return fetchJson<CatalogResponse[]>(`${CATALOG_BASE}/search${qs}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(catalogId: number): Promise<void> {
+    await fetchJson<void>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async statistics(): Promise<Record<string, unknown>> {
+    return fetchJson<Record<string, unknown>>(`${CATALOG_BASE}/statistics`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+};
+
+const OSCAL_DOCS_BASE = `${API_BASE_URL}/build/oscal-documents`;
+
+/**
+ * Unified API for OSCAL models that share the generic builder
+ * (SSP, Assessment Plan, Assessment Results, POA&M).
+ */
+export const oscalDocumentApi = {
+  async create(request: OscalDocumentRequest): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(OSCAL_DOCS_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(id: number, request: Partial<OscalDocumentRequest>): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(id: number): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(id: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${OSCAL_DOCS_BASE}/${id}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(modelType: GenericOscalModelSlug): Promise<OscalDocumentResponse[]> {
+    return fetchJson<OscalDocumentResponse[]>(`${OSCAL_DOCS_BASE}?modelType=${encodeURIComponent(modelType)}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(modelType: GenericOscalModelSlug, q?: string): Promise<OscalDocumentResponse[]> {
+    const params = new URLSearchParams({ modelType });
+    if (q) params.set('q', q);
+    return fetchJson<OscalDocumentResponse[]>(`${OSCAL_DOCS_BASE}/search?${params.toString()}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(id: number): Promise<void> {
+    await fetchJson<void>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+};
+
+export const profileBuilderApi = {
+  async create(request: ProfileBuildRequest): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(PROFILE_BUILD_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(profileId: number, request: Partial<ProfileBuildRequest>): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(profileId: number): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(profileId: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${PROFILE_BUILD_BASE}/${profileId}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(): Promise<ProfileBuildResponse[]> {
+    return fetchJson<ProfileBuildResponse[]>(PROFILE_BUILD_BASE, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(searchTerm?: string): Promise<ProfileBuildResponse[]> {
+    const qs = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    return fetchJson<ProfileBuildResponse[]>(`${PROFILE_BUILD_BASE}/search${qs}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(profileId: number): Promise<void> {
+    await fetchJson<void>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async statistics(): Promise<Record<string, unknown>> {
+    return fetchJson<Record<string, unknown>>(`${PROFILE_BUILD_BASE}/statistics`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+};

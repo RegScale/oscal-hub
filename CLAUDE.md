@@ -141,8 +141,14 @@ cd front-end && npm test
 ```
 
 This will start:
-- **Back-end API**: http://localhost:8080/api
-- **Front-end UI**: http://localhost:3000
+- **Back-end API**: http://localhost:8090/api
+- **Front-end UI**: http://localhost:3010
+
+> **Why 8090 / 3010?** The dev defaults differ from production (8080 / 3000)
+> so OSCAL Hub can run alongside the trust-center app, which reserves
+> 80/443/4200/5433/6379/8000 and aggressively kills processes occupying
+> those ports. Production still uses 8080 / 3000. Override locally with
+> `SERVER_PORT=` and `FRONTEND_PORT=` env vars.
 
 ### Option 2: Run CLI Only
 
@@ -202,7 +208,7 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 1. **Refresh the browser** - Clear cache and reload (Cmd/Ctrl + Shift + R)
 2. **Log out and log back in** - Get a fresh JWT token
 3. **Check localStorage** - Verify token exists: `localStorage.getItem('token')`
-4. **Verify backend is running** - Check `http://localhost:8080/api/health`
+4. **Verify backend is running** - Check `http://localhost:8090/api/health`
 
 #### After Adding New Features
 
@@ -223,7 +229,7 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 
 # 3. In browser:
 #    - Hard refresh (Cmd/Ctrl + Shift + R)
-#    - Navigate to http://localhost:3000
+#    - Navigate to http://localhost:3010
 #    - Log in with your credentials
 #    - Try the new feature
 ```
@@ -234,16 +240,16 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 
 ```bash
 # Check if backend is responding
-curl http://localhost:8080/api/health
+curl http://localhost:8090/api/health
 
 # Test an authenticated endpoint (should return 403)
-curl -I http://localhost:8080/api/visualization/ssp
+curl -I http://localhost:8090/api/visualization/ssp
 
 # Test with authentication (replace TOKEN with actual JWT)
 curl -H "Authorization: Bearer TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"content":"...","format":"JSON"}' \
-     http://localhost:8080/api/visualization/ssp
+     http://localhost:8090/api/visualization/ssp
 ```
 
 #### Check Frontend Authentication State
@@ -269,7 +275,7 @@ console.log('Auth header:', token ? `Bearer ${token}` : 'No token');
 **Key settings**:
 - **JWT Secret**: Generated on server startup (stored in application properties)
 - **Token Expiration**: 24 hours (configurable in `application.properties`)
-- **CORS**: Allows `http://localhost:3000` and `http://localhost:3001`
+- **CORS** (dev): Allows `http://localhost:3010`, `http://localhost:3001`, `http://localhost:3000`
 - **Session Management**: Stateless (no server-side sessions)
 
 ### Health Check Endpoints
@@ -304,11 +310,11 @@ If you're getting 403 errors on a valid endpoint:
 2. **Verify endpoint exists**:
    ```bash
    # Should return 403, not 404
-   curl -I http://localhost:8080/api/your-new-endpoint
+   curl -I http://localhost:8090/api/your-new-endpoint
    ```
 
 3. **Test with Swagger UI**:
-   - Navigate to `http://localhost:8080/swagger-ui.html`
+   - Navigate to `http://localhost:8090/swagger-ui.html`
    - Click "Authorize" button
    - Enter token in format: `Bearer YOUR_TOKEN_HERE`
    - Try the endpoint
