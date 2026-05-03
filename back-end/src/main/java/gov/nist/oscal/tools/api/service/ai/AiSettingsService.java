@@ -14,7 +14,7 @@ import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
-public class AiSettingsService {
+public class AiSettingsService implements AiSettingsServiceFacade {
 
     private static final Logger log = LoggerFactory.getLogger(AiSettingsService.class);
 
@@ -66,6 +66,11 @@ public class AiSettingsService {
                 .filter(OrgAiSettings::isEnabled)
                 .orElseThrow(() -> new IllegalStateException("AI not enabled for org " + organizationId));
         return encryption.decrypt(s.getAnthropicKeyEncrypted());
+    }
+
+    @Override
+    public String requireApiKey(Long organizationId) {
+        return getDecryptedKey(organizationId);
     }
 
     @Transactional(readOnly = true)
