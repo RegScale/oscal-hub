@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -79,6 +79,30 @@ export default function BuildPage() {
   const [editingProfile, setEditingProfile] = useState<ProfileBuildResponse | null>(null);
   const [editingComponent, setEditingComponent] = useState<ComponentDefinitionResponse | null>(null);
   const [editingDoc, setEditingDoc] = useState<OscalDocumentResponse | null>(null);
+  const [aiDraftCatalog, setAiDraftCatalog] = useState<{ catalog: unknown } | null>(null);
+
+  // One-shot: read ?aiDraft=<sessionId>&section=catalogs from URL, hydrate from sessionStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const aiDraft = params.get('aiDraft');
+    const sec = params.get('section');
+    if (aiDraft && sec === 'catalogs') {
+      const raw = sessionStorage.getItem(`aiDraft:${aiDraft}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as { catalog: unknown };
+          setAiDraftCatalog(parsed);
+          setSection('catalogs');
+          setMode('create');
+          setEditingCatalog(null);
+          sessionStorage.removeItem(`aiDraft:${aiDraft}`);
+        } catch {
+          // ignore malformed draft
+        }
+      }
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -119,6 +143,7 @@ export default function BuildPage() {
     setEditingProfile(null);
     setEditingComponent(null);
     setEditingDoc(null);
+    setAiDraftCatalog(null);
     setReloadKey((k) => k + 1);
   };
 
@@ -244,10 +269,12 @@ export default function BuildPage() {
             ) : (
               <CatalogBuilderWizard
                 editingCatalog={editingCatalog}
+                initialCatalog={aiDraftCatalog}
                 onSaveComplete={onSaveComplete}
                 onCancel={() => {
                   setMode('list');
                   setEditingCatalog(null);
+                  setAiDraftCatalog(null);
                 }}
               />
             )}

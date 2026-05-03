@@ -39,6 +39,7 @@ import type { Catalog, CatalogResponse, Control } from '@/types/oscal-models';
 
 interface CatalogBuilderWizardProps {
   editingCatalog?: CatalogResponse | null;
+  initialCatalog?: { catalog: unknown } | null;
   onSaveComplete?: () => void;
   onCancel?: () => void;
 }
@@ -51,7 +52,7 @@ const STEPS = [
   { id: 5, title: 'Review & Save', description: 'Preview JSON and save' },
 ];
 
-export function CatalogBuilderWizard({ editingCatalog, onSaveComplete, onCancel }: CatalogBuilderWizardProps) {
+export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveComplete, onCancel }: CatalogBuilderWizardProps) {
   const [step, setStep] = useState(1);
   const [catalog, setCatalog] = useState<Catalog>(() => emptyCatalog());
   const [isSaving, setIsSaving] = useState(false);
@@ -62,6 +63,20 @@ export function CatalogBuilderWizard({ editingCatalog, onSaveComplete, onCancel 
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [isDraft, setIsDraft] = useState<boolean>(editingCatalog?.draft ?? true);
+
+  // Hydrate from AI draft when provided and not in edit mode
+  useEffect(() => {
+    if (editingCatalog) return; // edit mode takes precedence
+    if (!initialCatalog) return;
+    try {
+      const next = parseCatalog(initialCatalog);
+      setCatalog(next);
+      setStep(1);
+      setError(null);
+    } catch {
+      // ignore malformed AI draft — form stays empty
+    }
+  }, [initialCatalog, editingCatalog]);
 
   useEffect(() => {
     let cancelled = false;
