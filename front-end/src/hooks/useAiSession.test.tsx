@@ -1,45 +1,69 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useAiSession } from './useAiSession';
 
-class MockEventSource {
-  static instances: MockEventSource[] = [];
-  url: string;
-  listeners: Record<string, ((e: MessageEvent) => void)[]> = {};
-  closed = false;
-  onerror: ((e: Event) => void) | null = null;
-  constructor(url: string) {
-    this.url = url;
-    MockEventSource.instances.push(this);
-  }
-  addEventListener(type: string, fn: (e: MessageEvent) => void) {
-    (this.listeners[type] ||= []).push(fn);
-  }
-  emit(type: string, data: unknown) {
-    (this.listeners[type] || []).forEach((fn) =>
-      fn(new MessageEvent(type, { data: JSON.stringify(data) })),
-    );
-  }
-  close() { this.closed = true; }
+function sseResponse(chunks: string[]): Response {
+  const encoder = new TextEncoder();
+  let i = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (i < chunks.length) {
+        controller.enqueue(encoder.encode(chunks[i]));
+        i += 1;
+      } else {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 }
 
 beforeEach(() => {
-  MockEventSource.instances = [];
-  vi.stubGlobal('EventSource', MockEventSource as unknown as typeof EventSource);
+  vi.stubGlobal('localStorage', {
+    getItem: () => 'fake-jwt',
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  });
 });
 
 describe('useAiSession', () => {
-  it('starts empty and accumulates events', () => {
+  it('accumulates progress events from the stream', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse(['event: progress\ndata: {"message":"hi"}\n\n']),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
     const { result } = renderHook(() => useAiSession('abc'));
-    expect(result.current.events).toEqual([]);
-    act(() => MockEventSource.instances[0].emit('progress', { message: 'hi' }));
-    expect(result.current.events).toHaveLength(1);
+
+    await waitFor(() => {
+      expect(result.current.events).toHaveLength(1);
+    });
+    expect(result.current.events[0]).toEqual({ type: 'progress', data: { message: 'hi' } });
   });
 
-  it('marks complete on complete event', () => {
+  it('marks complete on complete event and captures finalDocument', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse(['event: complete\ndata: {"document":{"ok":true}}\n\n']),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
     const { result } = renderHook(() => useAiSession('abc'));
-    act(() => MockEventSource.instances[0].emit('complete', { document: { ok: true } }));
-    expect(result.current.isComplete).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true);
+    });
     expect(result.current.finalDocument).toEqual({ ok: true });
+  });
+
+  it('captures error on 401 from the stream endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useAiSession('abc'));
+
+    await waitFor(() => {
+      expect(result.current.error).toContain('401');
+    });
+    expect(result.current.isComplete).toBe(true);
   });
 });

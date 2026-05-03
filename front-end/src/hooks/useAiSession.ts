@@ -27,60 +27,107 @@ export interface UseAiSessionState {
   cancel: () => void;
 }
 
+// Parse one SSE event block. Block is the text between two consecutive `\n\n`
+// separators in the stream. Returns null if the block has no `data:` line.
+function parseSseBlock(block: string): { event: string; data: string } | null {
+  let event = 'message';
+  const dataLines: string[] = [];
+  for (const line of block.split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+  }
+  if (dataLines.length === 0) return null;
+  return { event, data: dataLines.join('\n') };
+}
+
 export function useAiSession(sessionId: string | null): UseAiSessionState {
   const [events, setEvents] = useState<AiEvent[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalDocument, setFinalDocument] = useState<unknown | null>(null);
-  const sourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
-    const url = `${API_BASE_URL}/ai/sessions/${sessionId}/stream`;
-    const source = new EventSource(url, { withCredentials: false });
-    sourceRef.current = source;
 
-    const handle = (type: AiEventType) => (e: MessageEvent) => {
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    (async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       try {
-        const data = JSON.parse(e.data);
-        setEvents((prev) => [...prev, { type, data }]);
-        if (type === 'complete') {
-          setFinalDocument((data as { document?: unknown }).document ?? null);
+        const res = await fetch(`${API_BASE_URL}/ai/sessions/${sessionId}/stream`, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          signal: ac.signal,
+        });
+        if (!res.ok) {
+          setError(`Stream failed: HTTP ${res.status}`);
           setIsComplete(true);
-          source.close();
+          return;
         }
-        if (type === 'error') {
-          setError((data as { message?: string }).message ?? 'Unknown error');
+        if (!res.body) {
+          setError('Stream returned no body');
           setIsComplete(true);
-          source.close();
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE event blocks are separated by a blank line (\n\n).
+          let sep: number;
+          while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const block = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            const parsed = parseSseBlock(block);
+            if (!parsed) continue;
+            let data: Record<string, unknown> = {};
+            try {
+              data = JSON.parse(parsed.data) as Record<string, unknown>;
+            } catch {
+              data = { raw: parsed.data };
+            }
+            const type = parsed.event as AiEventType;
+            setEvents((prev) => [...prev, { type, data }]);
+            if (type === 'complete') {
+              setFinalDocument((data as { document?: unknown }).document ?? null);
+              setIsComplete(true);
+              ac.abort();
+            } else if (type === 'error') {
+              setError((data as { message?: string }).message ?? 'Unknown error');
+              setIsComplete(true);
+              ac.abort();
+            }
+          }
         }
       } catch (err) {
-        console.error('Failed to parse SSE event', err);
+        if ((err as Error).name === 'AbortError') return;
+        setError('Stream interrupted: ' + ((err as Error).message ?? 'unknown'));
+        setIsComplete(true);
       }
-    };
-
-    const types: AiEventType[] = [
-      'session_started', 'progress', 'tool_call', 'tool_result',
-      'awaiting_input', 'chunk', 'partial_document', 'complete', 'error',
-    ];
-    types.forEach((t) => source.addEventListener(t, handle(t)));
-
-    source.onerror = () => {
-      setError('Stream interrupted');
-      source.close();
-    };
+    })();
 
     return () => {
-      source.close();
+      ac.abort();
     };
   }, [sessionId]);
 
   const cancel = useCallback(() => {
-    sourceRef.current?.close();
+    abortRef.current?.abort();
     if (sessionId) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       fetch(`${API_BASE_URL}/ai/sessions/${sessionId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       }).catch(() => {});
     }
   }, [sessionId]);

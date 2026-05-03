@@ -13,7 +13,7 @@ interface WizardOption {
 
 const OPTIONS: WizardOption[] = [
   { kind: 'SMOKE', title: 'Smoke Test', description: 'Diagnostic round-trip — confirms AI is reachable.', available: true },
-  { kind: 'CATALOG', title: 'Build Catalog from PDF', description: 'Coming next plan.', available: false },
+  { kind: 'CATALOG', title: 'Build Catalog from Source', description: 'Drop a PDF, Word doc, HTML, or paste text — AI drafts an OSCAL catalog you can review and save.', available: true },
   { kind: 'COMPONENT_DEF', title: 'Build Component-definition', description: 'Coming next plan.', available: false },
   { kind: 'PROFILE', title: 'Build Profile', description: 'Coming later plan.', available: false },
   { kind: 'SSP', title: 'Draft SSP', description: 'Coming later plan.', available: false },
