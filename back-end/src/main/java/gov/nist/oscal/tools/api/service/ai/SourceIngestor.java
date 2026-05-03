@@ -1,13 +1,10 @@
 package gov.nist.oscal.tools.api.service.ai;
 
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.ByteArrayInputStream;
 import java.net.URI;
 
 @Service
@@ -17,7 +14,12 @@ public class SourceIngestor {
     private static final long MAX_PDF_BYTES = 32L * 1024 * 1024;
     private static final long MAX_TEXT_CHARS = 1_500_000;
 
+    private final DocumentNormalizer normalizer;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    public SourceIngestor(DocumentNormalizer normalizer) {
+        this.normalizer = normalizer;
+    }
 
     public IngestedSource ingestText(String text) {
         if (text == null) text = "";
@@ -36,19 +38,21 @@ public class SourceIngestor {
     }
 
     public IngestedSource ingestDocx(byte[] bytes) {
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes));
-             XWPFWordExtractor extractor = new XWPFWordExtractor(doc)) {
-            String text = extractor.getText();
-            return ingestText(text);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to read .docx: " + e.getMessage(), e);
+        NormalizedDoc d = normalizer.normalize(bytes, "input.docx");
+        return ingestText(d.plainText());
+    }
+
+    public IngestedSource ingestAny(byte[] bytes, String filename) {
+        if (filename != null && filename.toLowerCase().endsWith(".pdf")) {
+            return ingestPdf(filename, bytes);
         }
+        NormalizedDoc d = normalizer.normalize(bytes, filename);
+        return ingestText(d.plainText());
     }
 
     public IngestedSource ingestUrl(String url) {
         try {
             String body = restTemplate.getForObject(URI.create(url), String.class);
-            // Best-effort HTML->text strip. For richer extraction, a follow-up plan can swap in jsoup.
             String text = body == null ? "" : body.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
             return ingestText(text);
         } catch (Exception e) {

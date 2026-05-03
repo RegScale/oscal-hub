@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SourceIngestorTest {
 
-    private final SourceIngestor ingestor = new SourceIngestor();
+    private final SourceIngestor ingestor = new SourceIngestor(new DocumentNormalizer());
 
     @Test
     void plainTextPassesThrough() {
