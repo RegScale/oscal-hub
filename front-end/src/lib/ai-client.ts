@@ -87,6 +87,31 @@ export const aiClient = {
     return res.json();
   },
 
+  async startSessionWithUpload(
+    organizationId: number,
+    wizardKind: WizardKind,
+    file: File,
+    prompt?: string,
+    mode: SessionMode = 'STREAMING',
+  ): Promise<StartSessionResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    const url = new URL(`${API_BASE_URL}/ai/sessions/upload`);
+    url.searchParams.set('organizationId', String(organizationId));
+    url.searchParams.set('wizardKind', wizardKind);
+    url.searchParams.set('mode', mode);
+    if (prompt) url.searchParams.set('prompt', prompt);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    // Don't set Content-Type — browser sets multipart boundary
+
+    const res = await fetch(url.toString(), { method: 'POST', headers, body: fd });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return res.json();
+  },
+
   async cancelSession(sessionId: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/ai/sessions/${sessionId}`, {
       method: 'DELETE',

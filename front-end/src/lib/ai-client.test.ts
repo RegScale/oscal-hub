@@ -44,3 +44,21 @@ describe('aiClient.startSession', () => {
     expect(result.sessionId).toBe('abc-123');
   });
 });
+
+describe('aiClient.startSessionWithUpload', () => {
+  it('POSTs multipart with file + query params', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 'xyz' }),
+    });
+    const file = new File(['hello'], 'test.pdf', { type: 'application/pdf' });
+    const result = await aiClient.startSessionWithUpload(1, 'CATALOG', file);
+    expect(result.sessionId).toBe('xyz');
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toContain('/ai/sessions/upload?');
+    expect(call[0]).toContain('organizationId=1');
+    expect(call[0]).toContain('wizardKind=CATALOG');
+    expect(call[1]?.method).toBe('POST');
+  });
+});
