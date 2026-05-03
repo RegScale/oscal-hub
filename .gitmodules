@@ -1,3 +1,6 @@
 [submodule "cli"]
 	path = cli
 	url = https://github.com/metaschema-framework/oscal-cli.git
+[submodule "back-end/src/main/resources/claude-plugins"]
+	path = back-end/src/main/resources/claude-plugins
+	url = https://github.com/metaschema-framework/claude-plugins.git
