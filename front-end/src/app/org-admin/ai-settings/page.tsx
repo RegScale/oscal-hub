@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +70,14 @@ export default function AiSettingsPage() {
 
   return (
     <div className="container mx-auto py-8 max-w-2xl">
+      <button
+        onClick={() => router.push('/org-admin')}
+        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
+      >
+        <ChevronLeft className="h-4 w-4 mr-1" />
+        Back to Dashboard
+      </button>
+
       <Card>
         <CardHeader>
           <CardTitle>AI Features</CardTitle>
