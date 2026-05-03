@@ -1,16 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { aiClient, type WizardKind } from '@/lib/ai-client';
 import { useAiSession } from '@/hooks/useAiSession';
 import { toast } from 'sonner';
+import { CatalogWizardForm } from '@/components/ai/CatalogWizardForm';
 
 export default function WizardRunPage() {
   const params = useParams<{ kind: string }>();
   const wizardKind = (params.kind?.toUpperCase() ?? 'SMOKE') as WizardKind;
+  const router = useRouter();
 
   const [orgId, setOrgId] = useState<number | null>(null);
   const [input, setInput] = useState('Reply with the single word OK.');
@@ -21,6 +23,20 @@ export default function WizardRunPage() {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
     if (stored) setOrgId((JSON.parse(stored) as { organizationId?: number }).organizationId ?? null);
   }, []);
+
+  // When the CATALOG wizard completes with a final document, stash it in
+  // sessionStorage and route to the builder hand-off URL.
+  useEffect(() => {
+    if (
+      wizardKind === 'CATALOG' &&
+      session.isComplete &&
+      session.finalDocument != null &&
+      sessionId
+    ) {
+      sessionStorage.setItem(`aiDraft:${sessionId}`, JSON.stringify(session.finalDocument));
+      router.push(`/build?section=catalogs&aiDraft=${sessionId}`);
+    }
+  }, [wizardKind, session.isComplete, session.finalDocument, sessionId, router]);
 
   const start = async () => {
     if (!orgId) return;
@@ -41,7 +57,11 @@ export default function WizardRunPage() {
     <div className="container mx-auto py-8 max-w-3xl space-y-4">
       <h1 className="text-2xl font-semibold">{wizardKind} Wizard</h1>
 
-      {!sessionId && (
+      {!sessionId && wizardKind === 'CATALOG' && orgId != null && (
+        <CatalogWizardForm organizationId={orgId} onSessionStarted={setSessionId} />
+      )}
+
+      {!sessionId && wizardKind !== 'CATALOG' && (
         <Card>
           <CardHeader>
             <CardTitle>Input</CardTitle>
@@ -67,7 +87,7 @@ export default function WizardRunPage() {
               ))}
             </ul>
             {session.error && <div className="text-destructive">Error: {session.error}</div>}
-            {session.isComplete && session.finalDocument != null && (
+            {session.isComplete && session.finalDocument != null && wizardKind !== 'CATALOG' && (
               <pre className="text-xs bg-muted p-3 rounded max-h-64 overflow-auto">
                 {JSON.stringify(session.finalDocument, null, 2)}
               </pre>
