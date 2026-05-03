@@ -46,12 +46,14 @@
         <opentelemetry-bom.version>1.61.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
-        <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
+        <anthropic-java.version>2.27.0</anthropic-java.version>
         <bucket4j.version>8.10.1</bucket4j.version>
-        <org-json.version>20251224</org-json.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
+        <jjwt.version>0.13.0</jjwt.version>
+        <org-json.version>20251224</org-json.version>
+        <poi-ooxml.version>5.4.0</poi-ooxml.version>
         <postgres-socket-factory.version>1.28.3</postgres-socket-factory.version>
+        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
     </properties>
 
     <repositories>
@@ -194,14 +196,14 @@
         <dependency>
             <groupId>com.anthropic</groupId>
             <artifactId>anthropic-java</artifactId>
-            <version>2.27.0</version>
+            <version>${anthropic-java.version}</version>
         </dependency>
 
         <!-- Apache POI for document processing (DOCX extraction) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.4.0</version>
+            <version>${poi-ooxml.version}</version>
         </dependency>
 
         <!-- JSON Support -->
