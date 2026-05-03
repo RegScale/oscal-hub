@@ -93,6 +93,43 @@ export default function AiSettingsPage() {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-ant-…"
             />
+            <details className="text-sm text-muted-foreground">
+              <summary className="cursor-pointer select-none hover:text-foreground">
+                Don&apos;t have an API key? Click for setup instructions
+              </summary>
+              <div className="mt-3 space-y-2 rounded-md border bg-muted/40 p-4">
+                <ol className="list-decimal pl-5 space-y-1.5">
+                  <li>
+                    Go to{' '}
+                    <a
+                      href="https://console.anthropic.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-primary hover:no-underline"
+                    >
+                      console.anthropic.com
+                    </a>{' '}
+                    and sign in (or create an account).
+                  </li>
+                  <li>
+                    If you haven&apos;t already, add a payment method under{' '}
+                    <strong>Settings → Billing</strong>. Anthropic bills usage directly to this account; OSCAL Hub never sees the bill.
+                  </li>
+                  <li>
+                    Open <strong>Settings → API Keys</strong> and click <strong>Create Key</strong>.
+                  </li>
+                  <li>
+                    Give the key a recognizable name (e.g. <code className="rounded bg-background px-1 py-0.5 text-xs">oscal-hub-prod</code>) and create it. Copy the key shown — it starts with <code className="rounded bg-background px-1 py-0.5 text-xs">sk-ant-</code> and is only displayed once.
+                  </li>
+                  <li>
+                    Paste the key in the field above. OSCAL Hub encrypts it at rest and never displays it back; you only see a fingerprint after saving.
+                  </li>
+                </ol>
+                <p className="pt-2">
+                  <strong>Tip:</strong> on the same Anthropic page you can set per-key spend limits — recommended for first-time setup so a runaway prompt can&apos;t spike your bill.
+                </p>
+              </div>
+            </details>
           </div>
 
           <div className="space-y-2">
