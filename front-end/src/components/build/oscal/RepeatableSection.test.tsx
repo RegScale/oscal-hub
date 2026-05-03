@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { arrayMove } from '@dnd-kit/sortable';
 import { RepeatableSection } from './RepeatableSection';
 
 describe('RepeatableSection', () => {
@@ -111,5 +112,15 @@ describe('RepeatableSection', () => {
       />,
     );
     expect(screen.queryByRole('button', { name: /drag to reorder/i })).toBeNull();
+  });
+
+  it('arrayMove (the dnd-kit helper used internally) moves items as expected', () => {
+    // The handleDragEnd path in RepeatableSection delegates to arrayMove.
+    // dnd-kit's pointer/keyboard sensors require real DOM measurements that
+    // happy-dom doesn't fully implement, so we exercise the reorder math
+    // directly to lock in the expected behavior.
+    const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(arrayMove(items, 0, 2)).toEqual([{ id: 'b' }, { id: 'c' }, { id: 'a' }]);
+    expect(arrayMove(items, 2, 0)).toEqual([{ id: 'c' }, { id: 'a' }, { id: 'b' }]);
   });
 });
