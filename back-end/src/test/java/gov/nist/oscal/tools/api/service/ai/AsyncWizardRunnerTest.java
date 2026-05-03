@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 class AsyncWizardRunnerTest {
 
     private WizardContext context(UUID id) {
-        return new WizardContext(id, 1L, 7L, "sk-ant-key", "claude-opus-4-7", "ping");
+        return WizardContext.text(id, 1L, 7L, "sk-ant-key", "claude-opus-4-7", "ping");
     }
 
     @Test

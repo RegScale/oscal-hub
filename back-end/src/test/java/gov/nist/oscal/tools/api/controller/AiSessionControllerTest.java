@@ -26,6 +26,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.mock.web.MockMultipartFile;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -151,5 +154,32 @@ class AiSessionControllerTest {
 
         mockMvc.perform(delete("/api/ai/sessions/" + sessionId).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "alice", roles = "USER")
+    void startWithUploadAcceptsMultipartFile() throws Exception {
+        User u = new User();
+        u.setId(7L);
+        u.setUsername("alice");
+        when(users.findByUsername("alice")).thenReturn(Optional.of(u));
+        OrganizationMembership m = new OrganizationMembership();
+        m.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+        when(memberships.findByUserIdAndOrganizationId(7L, 1L)).thenReturn(Optional.of(m));
+
+        UUID expected = UUID.randomUUID();
+        when(orchestrator.start(eq(1L), eq(7L), eq(WizardKind.CATALOG),
+                eq(AiSessionMode.STREAMING), isNull(), any(byte[].class), eq("input.pdf")))
+                .thenReturn(expected);
+
+        MockMultipartFile file = new MockMultipartFile("file", "input.pdf",
+                "application/pdf", new byte[]{1, 2, 3});
+        mockMvc.perform(multipart("/api/ai/sessions/upload")
+                        .file(file)
+                        .param("organizationId", "1")
+                        .param("wizardKind", "CATALOG")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(expected.toString()));
     }
 }

@@ -28,7 +28,7 @@ class SmokeWizardTest {
                 .thenReturn(new AnthropicResult("hello back", 5, 3));
 
         SmokeWizard wizard = new SmokeWizard(client, stream, loader);
-        WizardContext ctx = new WizardContext(UUID.randomUUID(), 1L, 7L,
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
                 "sk-ant-test-key-1234567890", "claude-opus-4-7", "ping me");
 
         WizardOutcome outcome = wizard.run(ctx);

@@ -1,9 +1,11 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.AiSession;
+import gov.nist.oscal.tools.api.entity.AiSessionMode;
 import gov.nist.oscal.tools.api.entity.AiSessionStatus;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.entity.WizardKind;
 import gov.nist.oscal.tools.api.model.ai.StartSessionRequest;
 import gov.nist.oscal.tools.api.model.ai.StartSessionResponse;
 import gov.nist.oscal.tools.api.repository.AiSessionRepository;
@@ -20,7 +22,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -55,6 +60,23 @@ public class AiSessionController {
         requireOrgMembership(user, req.getOrganizationId());
         UUID id = orchestrator.start(req.getOrganizationId(), user.getId(),
                 req.getWizardKind(), req.getMode(), req.getInput());
+        return ResponseEntity.ok(new StartSessionResponse(id));
+    }
+
+    @Operation(summary = "Start an AI wizard session with a file upload")
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<StartSessionResponse> startWithUpload(
+            @RequestParam Long organizationId,
+            @RequestParam WizardKind wizardKind,
+            @RequestParam(required = false, defaultValue = "STREAMING") AiSessionMode mode,
+            @RequestParam(required = false) String prompt,
+            @RequestPart MultipartFile file) throws IOException {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = users.findByUsername(username).orElseThrow();
+        requireOrgMembership(user, organizationId);
+        UUID id = orchestrator.start(organizationId, user.getId(), wizardKind, mode,
+                prompt, file.getBytes(), file.getOriginalFilename());
         return ResponseEntity.ok(new StartSessionResponse(id));
     }
 

@@ -8,5 +8,15 @@ public record WizardContext(
         Long userId,
         String apiKey,
         String model,
-        String input
-) { }
+        String input,
+        byte[] inputBytes,
+        String inputFilename
+) {
+    public static WizardContext text(UUID id, Long orgId, Long userId, String apiKey, String model, String input) {
+        return new WizardContext(id, orgId, userId, apiKey, model, input, null, null);
+    }
+
+    public static WizardContext file(UUID id, Long orgId, Long userId, String apiKey, String model, byte[] bytes, String filename) {
+        return new WizardContext(id, orgId, userId, apiKey, model, null, bytes, filename);
+    }
+}
