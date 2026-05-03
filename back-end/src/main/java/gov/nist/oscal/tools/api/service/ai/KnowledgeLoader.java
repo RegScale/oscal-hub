@@ -3,6 +3,7 @@ package gov.nist.oscal.tools.api.service.ai;
 import gov.nist.oscal.tools.api.entity.WizardKind;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -55,6 +56,7 @@ public class KnowledgeLoader {
     private final Path pluginRoot;
 
     /** Spring-managed constructor — root resolved from property or default. */
+    @Autowired
     public KnowledgeLoader(
             @Value("${ai.plugins.root:" + DEFAULT_PLUGIN_ROOT + "}") String root) {
         this(Paths.get(root));
