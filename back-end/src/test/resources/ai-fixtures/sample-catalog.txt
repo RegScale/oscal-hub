@@ -1,0 +1,17 @@
+ACME Sample Controls Publication, version 1.0
+
+Family AC: Access Control
+
+AC-1 Policy and Procedures
+The organization shall develop, document, and disseminate access control policy and procedures.
+
+AC-2 Account Management
+The organization shall manage system accounts including establishment, activation, modification, review, and removal.
+
+Family AT: Awareness and Training
+
+AT-1 Policy and Procedures
+The organization shall develop and maintain a security awareness training policy.
+
+AT-2 Literacy Training and Awareness
+The organization shall provide security awareness training to all users.
