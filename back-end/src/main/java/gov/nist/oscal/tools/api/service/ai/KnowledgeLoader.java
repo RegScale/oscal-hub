@@ -72,8 +72,10 @@ public class KnowledgeLoader {
      *
      * <ul>
      *   <li>SMOKE — short static prompt only (no skill markdown loaded)</li>
-     *   <li>All others — preamble + all OSCAL skill markdown + all Metaschema skill
-     *       markdown + a kind-specific focus line</li>
+     *   <li>CATALOG — targeted: loads only {@code oscal-basics}, {@code oscal-catalog},
+     *       and {@code metaschema-basics} skill directories</li>
+     *   <li>All other kinds — load-all behavior (all OSCAL + Metaschema skills) until
+     *       their own wizard plans tighten them</li>
      * </ul>
      */
     public String systemFor(WizardKind kind) {
@@ -86,13 +88,20 @@ public class KnowledgeLoader {
             return sb.toString();
         }
 
-        // Load all OSCAL skills recursively
+        if (kind == WizardKind.CATALOG) {
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-basics"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-catalog"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/metaschema/skills/metaschema-basics"));
+            sb.append("\nFocus: produce an OSCAL Catalog with controls, parts, params, groups.\n");
+            return sb.toString();
+        }
+
+        // Other kinds keep load-all behavior until their own wizard plans land.
         String oscalSkills = loadAllMarkdown(pluginRoot.resolve("plugins/oscal/skills"));
         if (!oscalSkills.isEmpty()) {
             sb.append(oscalSkills).append("\n\n");
         }
 
-        // Load all Metaschema skills recursively
         String metaSkills = loadAllMarkdown(pluginRoot.resolve("plugins/metaschema/skills"));
         if (!metaSkills.isEmpty()) {
             sb.append(metaSkills).append("\n\n");
@@ -100,8 +109,6 @@ public class KnowledgeLoader {
 
         // Kind-specific focus instruction
         switch (kind) {
-            case CATALOG ->
-                sb.append("Focus: produce an OSCAL Catalog with controls, parts, params, groups.\n");
             case PROFILE ->
                 sb.append("Focus: produce an OSCAL Profile with imports, includes, and modifications.\n");
             case COMPONENT_DEF ->
@@ -116,6 +123,20 @@ public class KnowledgeLoader {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Appends all markdown content from a single skill directory (and its subdirectories)
+     * into the given {@link StringBuilder}.
+     *
+     * @param sb  target string builder
+     * @param dir directory to walk; may be absent (logs a warning and appends nothing)
+     */
+    private void appendSkillsFrom(StringBuilder sb, Path dir) {
+        String content = loadAllMarkdown(dir);
+        if (!content.isEmpty()) {
+            sb.append(content).append("\n\n");
+        }
     }
 
     /**

@@ -11,13 +11,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 class KnowledgeLoaderTest {
 
     @Test
-    void loadsCatalogSystemPromptFromFixture() {
+    void loadsCatalogSystemPromptIncludesBasicsAndCatalog() {
         Path root = Paths.get("src/test/resources/claude-plugins");
         KnowledgeLoader loader = new KnowledgeLoader(root);
         String prompt = loader.systemFor(WizardKind.CATALOG);
 
+        assertThat(prompt).contains("OSCAL Layer Overview"); // from oscal-basics
+        assertThat(prompt).contains("Catalog skill");        // from oscal-catalog
+        assertThat(prompt).contains("Metaschema Constraints"); // from metaschema-basics
+    }
+
+    @Test
+    void loadsProfileSystemPromptStillLoadsAllForUntightenedKinds() {
+        Path root = Paths.get("src/test/resources/claude-plugins");
+        KnowledgeLoader loader = new KnowledgeLoader(root);
+        String prompt = loader.systemFor(WizardKind.PROFILE);
+        // PROFILE wizard plan hasn't landed yet — still load-all
         assertThat(prompt).contains("OSCAL Layer Overview");
-        assertThat(prompt).contains("Metaschema Constraints");
+        assertThat(prompt).contains("Catalog skill");
     }
 
     @Test
