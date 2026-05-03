@@ -24,8 +24,11 @@ import {
   ClipboardList,
   ClipboardCheck,
   Target,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { AiFeatureGate } from '@/components/ai/AiFeatureGate';
 import { Footer } from '@/components/Footer';
 import { ElementLibrary } from '@/components/build/ElementLibrary';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
@@ -65,7 +68,8 @@ const GENERIC_SECTIONS: Record<
 
 export default function BuildPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const orgId = user?.organizationId ?? null;
 
   const [section, setSection] = useState<Section>('catalogs');
   const [mode, setMode] = useState<Mode>('list');
@@ -141,6 +145,28 @@ export default function BuildPage() {
             </div>
           </div>
         </div>
+
+        <AiFeatureGate organizationId={orgId}>
+          <button
+            onClick={() => router.push('/ai/wizard')}
+            className="group w-full mb-8 rounded-lg border border-indigo-200 dark:border-indigo-900 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 p-5 text-left transition-all hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-700"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
+                  <Sparkles className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Generate with AI</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Draft a catalog, profile, component-definition, SSP, or POA&amp;M from a PDF, URL, or description.
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+          </button>
+        </AiFeatureGate>
 
         <Tabs value={section} onValueChange={(v) => switchSection(v as Section)} className="space-y-6">
           <TooltipProvider delayDuration={200}>
