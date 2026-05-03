@@ -190,6 +190,20 @@
             <version>${liboscal-java.version}</version>
         </dependency>
 
+        <!-- Anthropic Java SDK for Claude API integration -->
+        <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+            <version>2.27.0</version>
+        </dependency>
+
+        <!-- Apache POI for document processing (DOCX extraction) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.0</version>
+        </dependency>
+
         <!-- JSON Support -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
