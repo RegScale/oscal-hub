@@ -100,33 +100,62 @@ export default function AiSettingsPage() {
               <div className="mt-3 space-y-2 rounded-md border bg-muted/40 p-4">
                 <ol className="list-decimal pl-5 space-y-1.5">
                   <li>
-                    Go to{' '}
+                    Sign in to the Claude Console at{' '}
                     <a
-                      href="https://console.anthropic.com"
+                      href="https://platform.claude.com"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline text-primary hover:no-underline"
                     >
-                      console.anthropic.com
+                      platform.claude.com
                     </a>{' '}
-                    and sign in (or create an account).
+                    (or create an account if you don&apos;t have one).
                   </li>
                   <li>
-                    If you haven&apos;t already, add a payment method under{' '}
-                    <strong>Settings → Billing</strong>. Anthropic bills usage directly to this account; OSCAL Hub never sees the bill.
+                    Add a payment method under{' '}
+                    <a
+                      href="https://platform.claude.com/settings/billing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-primary hover:no-underline"
+                    >
+                      Settings → Billing
+                    </a>
+                    . Anthropic bills usage directly to this account; OSCAL Hub never sees the bill.
                   </li>
                   <li>
-                    Open <strong>Settings → API Keys</strong> and click <strong>Create Key</strong>.
+                    Go to{' '}
+                    <a
+                      href="https://platform.claude.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-primary hover:no-underline"
+                    >
+                      Settings → API Keys
+                    </a>{' '}
+                    and click <strong>Create Key</strong>.
                   </li>
                   <li>
-                    Give the key a recognizable name (e.g. <code className="rounded bg-background px-1 py-0.5 text-xs">oscal-hub-prod</code>) and create it. Copy the key shown — it starts with <code className="rounded bg-background px-1 py-0.5 text-xs">sk-ant-</code> and is only displayed once.
+                    Give the key a recognizable name (e.g.{' '}
+                    <code className="rounded bg-background px-1 py-0.5 text-xs">oscal-hub-prod</code>
+                    ) and create it. Copy the key shown — it starts with{' '}
+                    <code className="rounded bg-background px-1 py-0.5 text-xs">sk-ant-</code> and is only displayed once.
                   </li>
                   <li>
                     Paste the key in the field above. OSCAL Hub encrypts it at rest and never displays it back; you only see a fingerprint after saving.
                   </li>
                 </ol>
                 <p className="pt-2">
-                  <strong>Tip:</strong> on the same Anthropic page you can set per-key spend limits — recommended for first-time setup so a runaway prompt can&apos;t spike your bill.
+                  <strong>Tip:</strong> create a dedicated{' '}
+                  <a
+                    href="https://platform.claude.com/settings/workspaces"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-primary hover:no-underline"
+                  >
+                    Workspace
+                  </a>{' '}
+                  for OSCAL Hub before generating the key. Workspaces let you set a monthly spend limit so a runaway prompt can&apos;t spike your bill, and you can revoke the whole workspace if anything ever leaks.
                 </p>
               </div>
             </details>
