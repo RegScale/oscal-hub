@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail } from 'lucide-react';
+import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { aiClient } from '@/lib/ai-client';
 
 interface DashboardSummary {
   totalMembers: number;
@@ -26,6 +27,7 @@ export default function OrgAdminDashboardPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
   const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -123,6 +125,10 @@ export default function OrgAdminDashboardPage() {
     } finally {
       setLoading(false);
     }
+    aiClient
+      .getSettingsStatus(organizationId)
+      .then((s) => setAiConfigured(s.enabled))
+      .catch(() => setAiConfigured(false));
   };
 
   if (loading) {
@@ -194,13 +200,35 @@ export default function OrgAdminDashboardPage() {
     yellow: { bg: 'bg-yellow-50 dark:bg-yellow-900/20', iconBg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-600 dark:text-yellow-400' },
     green: { bg: 'bg-green-50 dark:bg-green-900/20', iconBg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400' },
     purple: { bg: 'bg-purple-50 dark:bg-purple-900/20', iconBg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400' },
+    indigo: { bg: 'bg-indigo-50 dark:bg-indigo-900/20', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400' },
   };
 
-  const quickLinks = [
+  type QuickLink = {
+    label: string;
+    description: string;
+    href: string;
+    icon: typeof Users;
+    color: string;
+    badge?: { text: string; tone: 'success' | 'warning' };
+  };
+
+  const quickLinks: QuickLink[] = [
     { label: 'Manage Users', description: 'View and manage organization members', href: '/org-admin/users', icon: Users, color: 'blue' },
     { label: 'Access Requests', description: 'Review pending access requests', href: '/org-admin/requests', icon: ClipboardCheck, color: 'green' },
     { label: 'Invitations', description: 'Invite teammates and manage pending invitations', href: '/org-admin/invitations', icon: Mail, color: 'yellow' },
     { label: 'Usage Analytics', description: 'View organization usage metrics', href: '/org-admin/analytics', icon: Activity, color: 'purple' },
+    {
+      label: 'AI Settings',
+      description: 'Configure your Anthropic API key to enable AI-assisted authoring',
+      href: '/org-admin/ai-settings',
+      icon: Sparkles,
+      color: 'indigo',
+      badge: aiConfigured === null
+        ? undefined
+        : aiConfigured
+          ? { text: 'Configured', tone: 'success' }
+          : { text: 'Requires Setup', tone: 'warning' },
+    },
   ];
 
   return (
@@ -259,8 +287,28 @@ export default function OrgAdminDashboardPage() {
                 onClick={() => router.push(link.href)}
                 className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 p-8 text-left border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400"
               >
-                <div className={`flex items-center justify-center w-16 h-16 ${colors.iconBg} rounded-lg mb-6 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors`}>
-                  <Icon className={`h-8 w-8 ${colors.text}`} />
+                <div className="flex items-start justify-between mb-6">
+                  <div className={`flex items-center justify-center w-16 h-16 ${colors.iconBg} rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors`}>
+                    <Icon className={`h-8 w-8 ${colors.text}`} />
+                  </div>
+                  {link.badge && (
+                    <span
+                      className={
+                        link.badge.tone === 'success'
+                          ? 'inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-200'
+                          : 'inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200'
+                      }
+                    >
+                      <span
+                        className={
+                          link.badge.tone === 'success'
+                            ? 'h-1.5 w-1.5 rounded-full bg-green-500'
+                            : 'h-1.5 w-1.5 rounded-full bg-amber-500'
+                        }
+                      />
+                      {link.badge.text}
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{link.label}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{link.description}</p>

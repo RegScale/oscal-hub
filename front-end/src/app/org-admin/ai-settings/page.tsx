@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { aiClient, type AiSettingsResponse } from '@/lib/ai-client';
 
@@ -15,6 +16,7 @@ export default function AiSettingsPage() {
   const [settings, setSettings] = useState<AiSettingsResponse | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('claude-opus-4-7');
+  const [acknowledged, setAcknowledged] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,11 +40,12 @@ export default function AiSettingsPage() {
   }, [router]);
 
   const onSave = async () => {
-    if (!orgId || !apiKey) return;
+    if (!orgId || !apiKey || !acknowledged) return;
     try {
       const next = await aiClient.putSettings(orgId, { apiKey, defaultModel: model });
       setSettings(next);
       setApiKey('');
+      setAcknowledged(false);
       toast.success('AI features enabled. Key fingerprint saved.');
     } catch (err) {
       toast.error('Failed to save: ' + (err instanceof Error ? err.message : 'unknown'));
@@ -70,7 +73,7 @@ export default function AiSettingsPage() {
         <CardHeader>
           <CardTitle>AI Features</CardTitle>
           <CardDescription>
-            Configure your organization's Anthropic API key to enable AI-assisted OSCAL authoring.
+            Configure your organization&apos;s Anthropic API key to enable AI-assisted OSCAL authoring.
             Your key is encrypted at rest and never returned to the browser.
           </CardDescription>
         </CardHeader>
@@ -97,10 +100,55 @@ export default function AiSettingsPage() {
             <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
           </div>
 
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+            <p className="font-semibold text-amber-900 dark:text-amber-200 mb-2">
+              Acknowledgement required
+            </p>
+            <p className="text-amber-900/90 dark:text-amber-200/90 mb-3">
+              By enabling AI features, you acknowledge and agree that:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-amber-900/90 dark:text-amber-200/90 mb-3">
+              <li>
+                Source documents you submit (PDFs, URLs, narratives, control content) will be sent
+                to Anthropic for processing under your organization&apos;s own API key. Do not submit
+                data your organization is not authorized to share with a third-party AI vendor.
+              </li>
+              <li>
+                AI-generated output may be inaccurate, incomplete, biased, or include fabricated
+                information. You are responsible for reviewing and validating every AI-generated
+                artifact before using it for compliance, assessment, or authorization purposes.
+              </li>
+              <li>
+                OSCAL Hub provides AI integration as a convenience and makes no warranties as to
+                the accuracy, completeness, suitability, or fitness-for-purpose of any AI output,
+                and disclaims all liability for decisions made on the basis of AI-generated content.
+              </li>
+              <li>
+                Token costs and rate limits are billed and enforced by Anthropic against the API
+                key you provide; OSCAL Hub does not meter or pay for these calls.
+              </li>
+            </ul>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="ack"
+                checked={acknowledged}
+                onCheckedChange={(v) => setAcknowledged(v === true)}
+              />
+              <Label htmlFor="ack" className="text-sm leading-snug font-normal cursor-pointer">
+                I acknowledge and accept the responsibilities and disclaimers above on behalf of
+                my organization.
+              </Label>
+            </div>
+          </div>
+
           <div className="flex gap-2">
-            <Button onClick={onSave} disabled={!apiKey}>Save</Button>
+            <Button onClick={onSave} disabled={!apiKey || !acknowledged}>
+              Save
+            </Button>
             {settings?.enabled && (
-              <Button variant="destructive" onClick={onDisable}>Disable</Button>
+              <Button variant="destructive" onClick={onDisable}>
+                Disable
+              </Button>
             )}
           </div>
         </CardContent>
