@@ -115,6 +115,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
+                .requestMatchers("/api/ai/settings/status").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
                 // Actuator endpoints - health and info are public (for load balancers), others require auth
