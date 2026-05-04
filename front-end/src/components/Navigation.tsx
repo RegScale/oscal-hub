@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Settings, Cog } from 'lucide-react';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 export function Navigation() {
+  const pathname = usePathname();
+  // Public-catalog routes provide their own minimal header.
+  if (pathname?.startsWith('/catalog')) return null;
   const { user, isAuthenticated, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
