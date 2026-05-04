@@ -16,9 +16,13 @@ interface Organization {
 
 export function OrganizationSwitcher() {
   const router = useRouter();
-  const { updateUser } = useAuth();
-  const [currentOrg, setCurrentOrg] = useState<string | null>(null);
-  const [currentOrgId, setCurrentOrgId] = useState<number | null>(null);
+  const { user, updateUser } = useAuth();
+  // Derive the current org directly from AuthContext.user. This auto-updates
+  // whenever updateUser() runs (e.g., after select-organization or
+  // switch-organization), so the dropdown label always reflects the active
+  // org without needing a manual refresh or remount.
+  const currentOrg = user?.organizationName ?? null;
+  const currentOrgId = user?.organizationId ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -26,7 +30,6 @@ export function OrganizationSwitcher() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadCurrentOrganization();
     loadOrganizations();
   }, []);
 
@@ -43,19 +46,6 @@ export function OrganizationSwitcher() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
-
-  const loadCurrentOrganization = () => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try {
-        const userData = JSON.parse(user);
-        setCurrentOrg(userData.organizationName || userData.organization);
-        setCurrentOrgId(userData.organizationId);
-      } catch (error) {
-        console.error('Failed to parse user data:', error);
-      }
-    }
-  };
 
   const loadOrganizations = async () => {
     try {
@@ -80,11 +70,9 @@ export function OrganizationSwitcher() {
       setIsOpen(false);
       const result = await apiClient.switchOrganization(orgId);
 
-      // Update local state
-      setCurrentOrg(result.organizationName);
-      setCurrentOrgId(result.organizationId);
-
-      // Sync the AuthContext with the new user data from localStorage
+      // Sync the AuthContext with the new user data from localStorage; the
+      // switcher's currentOrg / currentOrgId are derived from useAuth().user
+      // and will re-render automatically.
       updateUser();
 
       // Check if password change is required
@@ -109,11 +97,7 @@ export function OrganizationSwitcher() {
       setIsOpen(false);
       const result = await apiClient.selectOrganization(orgId);
 
-      // Update local state
-      setCurrentOrg(result.organizationName);
-      setCurrentOrgId(result.organizationId);
-
-      // Sync the AuthContext with the new user data from localStorage
+      // Sync AuthContext with the new user data; currentOrg derives from it.
       updateUser();
 
       // Check if password change is required
