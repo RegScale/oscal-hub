@@ -363,6 +363,7 @@ export default function BuildPage() {
                   editingComponent={editingComponent}
                   initialComponent={aiDraftComponent}
                   onSaveComplete={onSaveComplete}
+                  userOrganizationId={orgId}
                 />
               </div>
             )}

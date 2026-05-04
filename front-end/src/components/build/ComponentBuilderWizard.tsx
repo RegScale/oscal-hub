@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +23,10 @@ import {
   Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import { ControlSelector } from '@/components/build/ControlSelector';
 import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
+import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import type { ComponentDefinitionRequest, ComponentDefinitionResponse } from '@/types/oscal';
 
 interface WizardStep {
@@ -58,6 +61,12 @@ interface ComponentBuilderWizardProps {
   editingComponent?: ComponentDefinitionResponse | null;
   initialComponent?: unknown | null;
   onSaveComplete?: () => void;
+  /**
+   * Caller's organization id, forwarded to the Save-to-Library modal so
+   * the user can publish at ORGANIZATION visibility. `null` when the user
+   * has no org membership.
+   */
+  userOrganizationId?: number | null;
 }
 
 const WIZARD_STEPS: WizardStep[] = [
@@ -69,7 +78,7 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 6, title: 'Review & Save', description: 'Preview and save your work' },
 ];
 
-export function ComponentBuilderWizard({ editingComponent, initialComponent, onSaveComplete }: ComponentBuilderWizardProps) {
+export function ComponentBuilderWizard({ editingComponent, initialComponent, onSaveComplete, userOrganizationId }: ComponentBuilderWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -77,6 +86,10 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
   const [showControlSelector, setShowControlSelector] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Track the saved-row id so "Save to Library" works after a fresh create
+  // as well as in edit mode.
+  const [savedComponentId, setSavedComponentId] = useState<number | null>(editingComponent?.id ?? null);
+  const [saveToLibOpen, setSaveToLibOpen] = useState(false);
 
   // Step 1: Metadata
   const [metadata, setMetadata] = useState({
@@ -109,10 +122,12 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
   // Load component data when editing
   useEffect(() => {
     if (editingComponent) {
+      setSavedComponentId(editingComponent.id);
       loadComponentForEditing(editingComponent.id);
     } else {
       // Reset to defaults when creating new, unless an AI draft is being loaded
       if (!initialComponent) {
+        setSavedComponentId(null);
         resetWizard();
       }
     }
@@ -550,10 +565,12 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
 
       if (editingComponent) {
         // Update existing component
-        await apiClient.updateComponentDefinition(editingComponent.id, request);
+        const updated = await apiClient.updateComponentDefinition(editingComponent.id, request);
+        setSavedComponentId(updated.id);
       } else {
         // Create new component
-        await apiClient.createComponentDefinition(request);
+        const created = await apiClient.createComponentDefinition(request);
+        setSavedComponentId(created.id);
       }
 
       setSaveSuccess(true);
@@ -1159,6 +1176,20 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
           </Button>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setSaveToLibOpen(true)}
+              disabled={isSaving || savedComponentId == null}
+              title={
+                savedComponentId == null
+                  ? 'Save the component first, then publish it to the Library'
+                  : 'Publish this component definition to the Library'
+              }
+            >
+              <Library className="mr-2 h-4 w-4" />
+              Save to Library
+            </Button>
             {currentStep < WIZARD_STEPS.length ? (
               <Button
                 onClick={nextStep}
@@ -1200,6 +1231,26 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
           />
         </DialogContent>
       </Dialog>
+
+      <SaveToLibraryModal
+        open={saveToLibOpen}
+        onClose={() => setSaveToLibOpen(false)}
+        defaultTitle={metadata.title}
+        defaultDescription={metadata.description}
+        userOrganizationId={userOrganizationId ?? null}
+        onSubmit={async (req) => {
+          if (savedComponentId == null) return;
+          try {
+            await libraryPublishApi.saveComponentToLibrary(savedComponentId, req);
+            toast.success('Component definition published to Library');
+          } catch (e) {
+            toast.error(
+              `Failed to publish component: ${e instanceof Error ? e.message : 'unknown error'}`,
+            );
+            throw e;
+          }
+        }}
+      />
     </>
   );
 }

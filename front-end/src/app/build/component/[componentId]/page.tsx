@@ -14,7 +14,8 @@ import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizar
 export default function ComponentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const orgId = user?.organizationId ?? null;
 
   const componentId = params.componentId as string;
 
@@ -129,6 +130,7 @@ export default function ComponentDetailPage() {
         <ComponentBuilderWizard
           editingComponent={component}
           onSaveComplete={handleSaveComplete}
+          userOrganizationId={orgId}
         />
       </div>
 
