@@ -1,9 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.Profile;
+import gov.nist.oscal.tools.api.entity.SourceType;
+import gov.nist.oscal.tools.api.model.LibraryItemResponse;
 import gov.nist.oscal.tools.api.model.ProfileRequest;
 import gov.nist.oscal.tools.api.model.ProfileResponse;
+import gov.nist.oscal.tools.api.model.library.SaveToLibraryRequest;
 import gov.nist.oscal.tools.api.service.ProfileService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,10 +30,12 @@ import java.util.stream.Collectors;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final LibraryIngestService libraryIngestService;
 
     @Autowired
-    public ProfileController(ProfileService profileService) {
+    public ProfileController(ProfileService profileService, LibraryIngestService libraryIngestService) {
         this.profileService = profileService;
+        this.libraryIngestService = libraryIngestService;
     }
 
     @Operation(summary = "Create new profile")
@@ -154,6 +161,41 @@ public class ProfileController {
             return ResponseEntity.ok(profileService.getStatistics(principal.getName()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @Operation(
+        summary = "Save this profile to the user's library",
+        description = "Idempotent on (creator, source). First call creates a library item linked to the profile; "
+                + "subsequent calls append a new version to the existing item."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Profile saved to library"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "403", description = "Not your profile"),
+        @ApiResponse(responseCode = "404", description = "Profile not found")
+    })
+    @PostMapping("/{profileId}/save-to-library")
+    public ResponseEntity<?> saveToLibrary(
+            @PathVariable Long profileId,
+            @Valid @RequestBody SaveToLibraryRequest req,
+            Principal principal) {
+        try {
+            LibraryItem saved = libraryIngestService.saveToLibrary(
+                    SourceType.PROFILE,
+                    profileId,
+                    req.getTitle(),
+                    req.getDescription(),
+                    req.getTags(),
+                    req.getVisibility(),
+                    req.getOrganizationId(),
+                    principal.getName());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(LibraryItemResponse.fromEntity(saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 }
