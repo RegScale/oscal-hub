@@ -2,9 +2,11 @@ package gov.nist.oscal.tools.api.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Represents a shared OSCAL document in the library
@@ -61,6 +63,28 @@ public class LibraryItem {
 
     @Column(nullable = false)
     private Long viewCount = 0L;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @ColumnDefault("'PRIVATE'")
+    private Visibility visibility = Visibility.PRIVATE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 40)
+    private SourceType sourceType;
+
+    @Column(name = "source_id")
+    private UUID sourceId;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @Column(name = "last_published_at")
+    private LocalDateTime lastPublishedAt;
 
     // Constructors
     public LibraryItem() {
@@ -202,4 +226,25 @@ public class LibraryItem {
     public void incrementViewCount() {
         this.viewCount++;
     }
+
+    public Visibility getVisibility() { return visibility; }
+    public void setVisibility(Visibility visibility) {
+        this.visibility = visibility;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public Organization getOrganization() { return organization; }
+    public void setOrganization(Organization organization) { this.organization = organization; }
+
+    public SourceType getSourceType() { return sourceType; }
+    public void setSourceType(SourceType sourceType) { this.sourceType = sourceType; }
+
+    public UUID getSourceId() { return sourceId; }
+    public void setSourceId(UUID sourceId) { this.sourceId = sourceId; }
+
+    public LocalDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+
+    public LocalDateTime getLastPublishedAt() { return lastPublishedAt; }
+    public void setLastPublishedAt(LocalDateTime lastPublishedAt) { this.lastPublishedAt = lastPublishedAt; }
 }
