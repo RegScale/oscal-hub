@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useAiSession } from './useAiSession';
+import { useAiSession, formatAiError } from './useAiSession';
 
 function sseResponse(chunks: string[]): Response {
   const encoder = new TextEncoder();
@@ -74,5 +74,36 @@ describe('useAiSession', () => {
     expect(result.current.error).toContain('401');
     expect(result.current.error).toMatch(/session expired/i);
     expect(result.current.isComplete).toBe(true);
+  });
+});
+
+describe('formatAiError', () => {
+  it('translates Anthropic 529 overloaded into a friendly message', () => {
+    const raw = 'Error 529: {type=error, error={type=overloaded_error, message=Overloaded}, request_id=req_X}';
+    expect(formatAiError(raw)).toMatch(/overloaded.*try again/i);
+  });
+
+  it('translates 429 rate limit into a friendly message', () => {
+    expect(formatAiError('429 rate_limit_error')).toMatch(/rate limit/i);
+  });
+
+  it('translates context length errors into a size hint', () => {
+    expect(formatAiError('prompt is too long: 250000 tokens > max 200000'))
+      .toMatch(/document too large/i);
+  });
+
+  it('translates auth errors into an API-key hint', () => {
+    expect(formatAiError('authentication_error: invalid_api_key'))
+      .toMatch(/api key/i);
+  });
+
+  it('passes unknown errors through verbatim', () => {
+    expect(formatAiError('Some unrelated server error')).toBe('Some unrelated server error');
+  });
+
+  it('handles null and empty input', () => {
+    expect(formatAiError(null)).toBe('Unknown error');
+    expect(formatAiError(undefined)).toBe('Unknown error');
+    expect(formatAiError('')).toBe('Unknown error');
   });
 });

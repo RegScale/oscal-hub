@@ -46,9 +46,9 @@ class SourceIngestorTest {
     }
 
     @Test
-    void xccdfXmlPassesThroughWithStructurePreserved() {
-        // Tag names + attributes are signal Claude should see — verify Tika
-        // is bypassed for .xml so the raw XML reaches the model.
+    void xccdfIsDigestedToCompactTextWithRuleStructure() {
+        // XCCDF gets reduced to a compact rule digest (no XML) before being
+        // sent to the model — so multi-MB STIGs fit in the input budget.
         String xccdf =
                 "<xccdf:Benchmark xmlns:xccdf=\"http://checklists.nist.gov/xccdf/1.2\">\n" +
                 "  <xccdf:Rule id=\"V-12345\" severity=\"high\">\n" +
@@ -57,9 +57,12 @@ class SourceIngestorTest {
                 "</xccdf:Benchmark>";
         IngestedSource s = ingestor.ingestAny(xccdf.getBytes(java.nio.charset.StandardCharsets.UTF_8), "rhel9.xccdf");
         assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
-        assertThat(s.text()).contains("xccdf:Rule");
-        assertThat(s.text()).contains("V-12345");
-        assertThat(s.text()).contains("severity=\"high\"");
+        assertThat(s.text()).contains("RULE V-12345");
+        assertThat(s.text()).contains("severity=high");
+        assertThat(s.text()).contains("Disable telnet");
+        // No XML structure should remain.
+        assertThat(s.text()).doesNotContain("xccdf:Rule");
+        assertThat(s.text()).doesNotContain("<");
     }
 
     @Test

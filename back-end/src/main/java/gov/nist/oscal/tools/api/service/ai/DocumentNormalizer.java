@@ -72,12 +72,13 @@ public class DocumentNormalizer {
         for (Map.Entry<String, String> e : STRUCTURED_TEXT_MIME.entrySet()) {
             if (lower.endsWith(e.getKey())) {
                 String text = new String(bytes, StandardCharsets.UTF_8);
-                // Trim XCCDF/SCAP noise (check/fix/OVAL bodies) before the
-                // size check — STIG XCCDF files are routinely 1-3 MB raw but
-                // shrink ~70-90% once test logic is stripped.
+                // For XCCDF/SCAP, drop XML structure entirely and emit a
+                // compact rule digest (RULE / Title / CCIs / Description).
+                // STIG XCCDF files are routinely 1-3 MB raw but compress
+                // ~95-98% as digest, well within the input budget.
                 if ((".xml".equals(e.getKey()) || ".xccdf".equals(e.getKey()))
                         && xccdfTrimmer.looksLikeXccdf(text)) {
-                    text = xccdfTrimmer.trim(text);
+                    text = xccdfTrimmer.digest(text);
                 }
                 if (text.length() > MAX_CHARS) {
                     throw new IllegalArgumentException(

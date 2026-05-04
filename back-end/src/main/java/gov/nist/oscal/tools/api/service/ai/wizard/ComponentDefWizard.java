@@ -74,10 +74,10 @@ public class ComponentDefWizard implements Wizard {
             }
 
             // Catch the paste-XCCDF-as-text path. The file-upload path is
-            // already trimmed inside DocumentNormalizer; for pasted text the
-            // trimmer is a no-op on anything that isn't XCCDF.
+            // already digested inside DocumentNormalizer; for pasted text the
+            // digester is a no-op on anything that isn't XCCDF.
             if (xccdfTrimmer.looksLikeXccdf(docText)) {
-                docText = xccdfTrimmer.trim(docText);
+                docText = xccdfTrimmer.digest(docText);
             }
 
             String system = knowledge.systemFor(WizardKind.COMPONENT_DEF);

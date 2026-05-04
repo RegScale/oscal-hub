@@ -71,4 +71,44 @@ class XccdfTrimmerTest {
         // Should not throw; should return original.
         assertThat(trimmer.trim(broken)).isEqualTo(broken);
     }
+
+    @Test
+    void digestEmitsCompactRuleLines() {
+        String xccdf = """
+                <Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2">
+                  <title>Red Hat Enterprise Linux 9 STIG</title>
+                  <version>1.3</version>
+                  <Rule id="V-230222" severity="medium">
+                    <title>Set passwords to 15 characters</title>
+                    <description>Long passwords slow brute force.</description>
+                    <ident system="http://cyber.mil/cci">CCI-000196</ident>
+                    <ident system="http://cyber.mil/cci">CCI-000205</ident>
+                    <check>noisy oval payload</check>
+                  </Rule>
+                  <Rule id="V-230223" severity="high">
+                    <title>Disable telnet</title>
+                    <description>Cleartext credentials.</description>
+                    <ident system="http://cyber.mil/cci">CCI-001942</ident>
+                  </Rule>
+                </Benchmark>
+                """;
+        String digest = trimmer.digest(xccdf);
+
+        assertThat(digest).contains("Document: Red Hat Enterprise Linux 9 STIG");
+        assertThat(digest).contains("Version: 1.3");
+        assertThat(digest).contains("RULE V-230222 (severity=medium) [CCI-000196, CCI-000205]");
+        assertThat(digest).contains("Title: Set passwords to 15 characters");
+        assertThat(digest).contains("Description: Long passwords slow brute force.");
+        assertThat(digest).contains("RULE V-230223 (severity=high) [CCI-001942]");
+        assertThat(digest).contains("Title: Disable telnet");
+        assertThat(digest).doesNotContain("oval payload");
+        // Rough size sanity — digest should be markedly smaller than the source.
+        assertThat(digest.length()).isLessThan(xccdf.length());
+    }
+
+    @Test
+    void digestNonXccdfReturnedUnchanged() {
+        String json = "{\"hello\":\"world\"}";
+        assertThat(trimmer.digest(json)).isEqualTo(json);
+    }
 }

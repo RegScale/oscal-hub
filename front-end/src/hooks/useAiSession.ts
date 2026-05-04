@@ -27,6 +27,29 @@ export interface UseAiSessionState {
   cancel: () => void;
 }
 
+// Translate raw backend/SDK error messages into something a user can act on.
+// Backend logs still keep the full message; this only changes what's surfaced.
+export function formatAiError(raw: string | null | undefined): string {
+  if (!raw) return 'Unknown error';
+  const m = raw.toLowerCase();
+  if (m.includes('overloaded') || m.includes('529')) {
+    return 'Anthropic AI is currently overloaded. Please wait a minute and try again.';
+  }
+  if (m.includes('rate_limit') || m.includes('rate limit') || m.includes('429')) {
+    return 'AI rate limit reached for your API key. Please wait a moment and try again.';
+  }
+  if (m.includes('context_length') || m.includes('prompt is too long') || m.includes('max_tokens')) {
+    return 'Document too large for AI processing. Try a smaller or trimmed source file.';
+  }
+  if (m.includes('invalid_api_key') || m.includes('authentication_error') || m.includes('401')) {
+    return 'AI authentication failed. Check your Anthropic API key in Org Admin → AI Settings.';
+  }
+  if (m.includes('insufficient_quota') || m.includes('billing')) {
+    return 'AI account has insufficient quota. Check your Anthropic billing.';
+  }
+  return raw;
+}
+
 // Parse one SSE event block. Block is the text between two consecutive `\n\n`
 // separators in the stream. Returns null if the block has no `data:` line.
 function parseSseBlock(block: string): { event: string; data: string } | null {
@@ -107,7 +130,7 @@ export function useAiSession(sessionId: string | null): UseAiSessionState {
               setIsComplete(true);
               ac.abort();
             } else if (type === 'error') {
-              setError((data as { message?: string }).message ?? 'Unknown error');
+              setError(formatAiError((data as { message?: string }).message));
               setIsComplete(true);
               ac.abort();
             }
