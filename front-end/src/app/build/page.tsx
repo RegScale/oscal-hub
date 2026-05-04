@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -81,8 +81,14 @@ export default function BuildPage() {
   const [editingDoc, setEditingDoc] = useState<OscalDocumentResponse | null>(null);
   const [aiDraftCatalog, setAiDraftCatalog] = useState<{ catalog: unknown } | null>(null);
 
-  // One-shot: read ?aiDraft=<sessionId>&section=catalogs from URL, hydrate from sessionStorage
+  // One-shot: read ?aiDraft=<sessionId>&section=catalogs from URL, hydrate from
+  // sessionStorage. Uses a ref guard to survive React Strict Mode's double-mount
+  // in dev — without it, the first mount removes the sessionStorage entry and
+  // the second mount finds nothing, so the draft never loads. Also strips the
+  // query params from the URL so a back-button or refresh won't re-trigger.
+  const aiDraftHydrated = useRef(false);
   useEffect(() => {
+    if (aiDraftHydrated.current) return;
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const aiDraft = params.get('aiDraft');
@@ -97,6 +103,8 @@ export default function BuildPage() {
           setMode('create');
           setEditingCatalog(null);
           sessionStorage.removeItem(`aiDraft:${aiDraft}`);
+          window.history.replaceState({}, '', '/build');
+          aiDraftHydrated.current = true;
         } catch {
           // ignore malformed draft
         }

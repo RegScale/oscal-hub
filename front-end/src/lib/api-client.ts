@@ -5231,11 +5231,21 @@ class ApiClient {
           method: 'GET',
           headers: this.getAuthHeaders(),
         },
-        5000
+        15000,
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to get org analytics summary: ${response.statusText}`);
+        // The backend wraps any exception as 400 + {"error":"<message>"}.
+        // Surface that message instead of the empty/generic statusText so the
+        // user (and the dev console) sees the real cause.
+        let detail = response.statusText || `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          if (body?.error) detail = String(body.error);
+        } catch {
+          // body wasn't JSON; keep the status text
+        }
+        throw new Error(`Failed to get org analytics summary: ${detail}`);
       }
 
       return await response.json();
