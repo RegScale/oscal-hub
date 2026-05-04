@@ -10,6 +10,8 @@ export default function PublicCatalogDetailPage() {
   const [item, setItem] = useState<PublicItemSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Auth state — read directly from localStorage rather than useAuth() because
   // this page lives in a (public) route group with no auth context provider.
@@ -73,12 +75,24 @@ export default function PublicCatalogDetailPage() {
 
       <div className="flex gap-2">
         {hasToken ? (
-          <a
-            href={publicCatalogApi.contentUrl(item.itemId)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            download>
-            Download
-          </a>
+          <button
+            type="button"
+            disabled={downloading}
+            onClick={async () => {
+              setDownloading(true);
+              setDownloadError(null);
+              try {
+                await publicCatalogApi.download(item.itemId,
+                  `${item.title.replace(/[^a-zA-Z0-9._-]/g, "_")}.${item.oscalType}.json`);
+              } catch (e) {
+                setDownloadError(String(e));
+              } finally {
+                setDownloading(false);
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+            {downloading ? "Downloading…" : "Download"}
+          </button>
         ) : (
           <Link href="/login"
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
@@ -97,6 +111,9 @@ export default function PublicCatalogDetailPage() {
           </Link>
         )}
       </div>
+      {downloadError && (
+        <p className="mt-3 text-sm text-red-600">Download failed: {downloadError}</p>
+      )}
     </div>
   );
 }

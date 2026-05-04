@@ -115,8 +115,12 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
-                // Public catalog: anonymous-readable PUBLIC library items.
-                .requestMatchers("/api/public/catalog/**").permitAll()
+                // Public catalog: anonymous-readable browse + detail of PUBLIC library
+                // items. Content downloads (the /content paths below) deliberately fall
+                // through to the authenticated rule so anonymous users can discover
+                // items but must sign in to download them.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items/*").permitAll()
                 // Spring's /error forward: when an unhandled controller exception
                 // bubbles up, Spring forwards to /error to render the response. If
                 // /error itself required auth, server-side 500s would be masked as
