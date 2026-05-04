@@ -324,6 +324,7 @@ export default function BuildPage() {
               <ProfileBuilderWizard
                 editingProfile={editingProfile}
                 onSaveComplete={onSaveComplete}
+                userOrganizationId={orgId}
                 onCancel={() => {
                   setMode('list');
                   setEditingProfile(null);

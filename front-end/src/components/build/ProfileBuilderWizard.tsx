@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,8 +16,10 @@ import {
   AlertCircle,
   Upload,
   FileEdit,
+  Library as LibraryIcon,
 } from 'lucide-react';
 import { profileBuilderApi } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import { MetadataEditor } from '@/components/build/oscal/MetadataEditor';
 import { ImportEditor } from '@/components/build/oscal/ImportEditor';
 import { SetParameterEditor } from '@/components/build/oscal/SetParameterEditor';
@@ -27,6 +30,7 @@ import { JsonPreview } from '@/components/build/oscal/JsonPreview';
 import { ImportJsonDialog } from '@/components/build/oscal/ImportJsonDialog';
 import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
 import { ResolvePreviewPanel } from '@/components/build/oscal/ResolvePreviewPanel';
+import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import {
   emptyProfile,
   countProfileControls,
@@ -40,6 +44,12 @@ interface ProfileBuilderWizardProps {
   editingProfile?: ProfileBuildResponse | null;
   onSaveComplete?: () => void;
   onCancel?: () => void;
+  /**
+   * Caller's organization id, forwarded to the Save-to-Library modal so
+   * the user can publish at ORGANIZATION visibility. `null` when the user
+   * has no org membership.
+   */
+  userOrganizationId?: number | null;
 }
 
 const STEPS = [
@@ -51,7 +61,7 @@ const STEPS = [
   { id: 6, title: 'Review & Save', description: 'Preview JSON and save' },
 ];
 
-export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel }: ProfileBuilderWizardProps) {
+export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel, userOrganizationId }: ProfileBuilderWizardProps) {
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState<Profile>(() => emptyProfile());
   const [isSaving, setIsSaving] = useState(false);
@@ -62,6 +72,10 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [isDraft, setIsDraft] = useState<boolean>(editingProfile?.draft ?? true);
+  // Track the saved-row id so "Save to Library" works after a fresh create
+  // as well as in edit mode.
+  const [savedProfileId, setSavedProfileId] = useState<number | null>(editingProfile?.id ?? null);
+  const [saveToLibOpen, setSaveToLibOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,11 +85,13 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
         setStep(1);
         setSuccess(false);
         setIsDraft(true);
+        setSavedProfileId(null);
         return;
       }
       setIsLoading(true);
       setError(null);
       setIsDraft(editingProfile.draft);
+      setSavedProfileId(editingProfile.id);
       try {
         const raw = await profileBuilderApi.getContent(editingProfile.id);
         const parsed = JSON.parse(raw);
@@ -152,7 +168,7 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
       const draftFlag = mode === 'draft';
 
       if (editingProfile) {
-        await profileBuilderApi.update(editingProfile.id, {
+        const updated = await profileBuilderApi.update(editingProfile.id, {
           title: finalProfile.metadata.title,
           description: profile.metadata.remarks,
           version: finalProfile.metadata.version,
@@ -162,8 +178,9 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
           alterCount: stats.alters,
           draft: draftFlag,
         });
+        setSavedProfileId(updated.id);
       } else {
-        await profileBuilderApi.create({
+        const created = await profileBuilderApi.create({
           title: finalProfile.metadata.title,
           description: profile.metadata.remarks,
           version: finalProfile.metadata.version,
@@ -176,6 +193,7 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
           alterCount: stats.alters,
           draft: draftFlag,
         });
+        setSavedProfileId(created.id);
       }
 
       setIsDraft(draftFlag);
@@ -386,6 +404,20 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
             <FileEdit className="h-4 w-4 mr-1" />
             {savingMode === 'draft' ? 'Saving…' : 'Save draft'}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSaveToLibOpen(true)}
+            disabled={isSaving || savedProfileId == null}
+            title={
+              savedProfileId == null
+                ? 'Save the profile first, then publish it to the Library'
+                : 'Publish this profile to the Library'
+            }
+          >
+            <LibraryIcon className="h-4 w-4 mr-1" />
+            Save to Library
+          </Button>
           {step < STEPS.length ? (
             <Button
               type="button"
@@ -407,6 +439,26 @@ export function ProfileBuilderWizard({ editingProfile, onSaveComplete, onCancel 
           )}
         </div>
       </div>
+
+      <SaveToLibraryModal
+        open={saveToLibOpen}
+        onClose={() => setSaveToLibOpen(false)}
+        defaultTitle={profile.metadata.title}
+        defaultDescription={profile.metadata.remarks}
+        userOrganizationId={userOrganizationId ?? null}
+        onSubmit={async (req) => {
+          if (savedProfileId == null) return;
+          try {
+            await libraryPublishApi.saveProfileToLibrary(savedProfileId, req);
+            toast.success('Profile published to Library');
+          } catch (e) {
+            toast.error(
+              `Failed to publish profile: ${e instanceof Error ? e.message : 'unknown error'}`,
+            );
+            throw e;
+          }
+        }}
+      />
     </div>
   );
 }
