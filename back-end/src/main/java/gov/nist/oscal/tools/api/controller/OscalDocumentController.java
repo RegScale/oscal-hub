@@ -1,10 +1,15 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.OscalDocument;
 import gov.nist.oscal.tools.api.entity.OscalModelType;
+import gov.nist.oscal.tools.api.entity.SourceType;
+import gov.nist.oscal.tools.api.model.LibraryItemResponse;
 import gov.nist.oscal.tools.api.model.OscalDocumentRequest;
 import gov.nist.oscal.tools.api.model.OscalDocumentResponse;
+import gov.nist.oscal.tools.api.model.library.SaveToLibraryRequest;
 import gov.nist.oscal.tools.api.service.OscalDocumentService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -30,10 +35,13 @@ import java.util.stream.Collectors;
 public class OscalDocumentController {
 
     private final OscalDocumentService documentService;
+    private final LibraryIngestService libraryIngestService;
 
     @Autowired
-    public OscalDocumentController(OscalDocumentService documentService) {
+    public OscalDocumentController(OscalDocumentService documentService,
+                                   LibraryIngestService libraryIngestService) {
         this.documentService = documentService;
+        this.libraryIngestService = libraryIngestService;
     }
 
     @Operation(summary = "Create a new OSCAL document")
@@ -163,6 +171,61 @@ public class OscalDocumentController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Operation(
+        summary = "Save this OSCAL document to the user's library",
+        description = "Idempotent on (creator, source). First call creates a library item linked to the "
+                + "document; subsequent calls append a new version. The SourceType is derived from the "
+                + "document's modelType (SSP / AP / AR / POAM)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Document saved to library"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or unknown model type"),
+        @ApiResponse(responseCode = "403", description = "Not your document"),
+        @ApiResponse(responseCode = "404", description = "Document not found")
+    })
+    @PostMapping("/{id}/save-to-library")
+    public ResponseEntity<?> saveToLibrary(
+            @PathVariable Long id,
+            @Valid @RequestBody SaveToLibraryRequest req,
+            Principal principal) {
+        try {
+            OscalDocument doc = documentService.get(id);
+            SourceType sourceType = sourceTypeFor(doc.getModelType());
+            LibraryItem saved = libraryIngestService.saveToLibrary(
+                    sourceType,
+                    id,
+                    req.getTitle(),
+                    req.getDescription(),
+                    req.getTags(),
+                    req.getVisibility(),
+                    req.getOrganizationId(),
+                    principal.getName());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(LibraryItemResponse.fromEntity(saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (RuntimeException e) {
+            // documentService.get() throws RuntimeException for not-found.
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    private static SourceType sourceTypeFor(OscalModelType modelType) {
+        if (modelType == null) {
+            throw new IllegalArgumentException("oscal-document modelType is null");
+        }
+        switch (modelType) {
+            case SYSTEM_SECURITY_PLAN: return SourceType.SSP;
+            case ASSESSMENT_PLAN: return SourceType.AP;
+            case ASSESSMENT_RESULTS: return SourceType.AR;
+            case PLAN_OF_ACTION_AND_MILESTONES: return SourceType.POAM;
+            default:
+                throw new IllegalArgumentException("unknown model_type: " + modelType);
         }
     }
 }
