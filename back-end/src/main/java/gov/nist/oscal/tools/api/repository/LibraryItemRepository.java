@@ -17,6 +17,15 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
 
     Optional<LibraryItem> findByItemId(String itemId);
 
+    /**
+     * Looks up a library item by its creator and the builder source it was saved from.
+     * Used by LibraryIngestService to decide between create-new vs append-version.
+     */
+    java.util.Optional<LibraryItem> findByCreatedBy_IdAndSourceTypeAndSourceId(
+        Long createdById,
+        gov.nist.oscal.tools.api.entity.SourceType sourceType,
+        java.util.UUID sourceId);
+
     // Find library item by ID with tags eagerly loaded (for single item fetches)
     @Query("SELECT li FROM LibraryItem li LEFT JOIN FETCH li.tags WHERE li.itemId = :itemId")
     Optional<LibraryItem> findByItemIdWithTags(@Param("itemId") String itemId);
