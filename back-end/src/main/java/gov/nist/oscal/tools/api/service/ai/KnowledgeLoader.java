@@ -74,6 +74,8 @@ public class KnowledgeLoader {
      *   <li>SMOKE — short static prompt only (no skill markdown loaded)</li>
      *   <li>CATALOG — targeted: loads only {@code oscal-basics}, {@code oscal-catalog},
      *       and {@code metaschema-basics} skill directories</li>
+     *   <li>COMPONENT_DEF — targeted: loads only {@code oscal-basics},
+     *       {@code oscal-component-definition}, and {@code metaschema-basics}</li>
      *   <li>All other kinds — load-all behavior (all OSCAL + Metaschema skills) until
      *       their own wizard plans tighten them</li>
      * </ul>
@@ -93,6 +95,14 @@ public class KnowledgeLoader {
             appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-catalog"));
             appendSkillsFrom(sb, pluginRoot.resolve("plugins/metaschema/skills/metaschema-basics"));
             sb.append("\nFocus: produce an OSCAL Catalog with controls, parts, params, groups.\n");
+            return sb.toString();
+        }
+
+        if (kind == WizardKind.COMPONENT_DEF) {
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-basics"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-component-definition"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/metaschema/skills/metaschema-basics"));
+            sb.append("\nFocus: produce an OSCAL Component-definition mapping product features to controls.\n");
             return sb.toString();
         }
 

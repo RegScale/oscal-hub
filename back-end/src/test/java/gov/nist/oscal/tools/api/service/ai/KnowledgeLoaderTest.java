@@ -40,4 +40,17 @@ class KnowledgeLoaderTest {
         assertThat(prompt).contains("smoke");
         assertThat(prompt.length()).isLessThan(2000);
     }
+
+    @Test
+    void loadsComponentDefSystemPromptIncludesBasicsAndComponentDef() {
+        Path root = Paths.get("src/test/resources/claude-plugins");
+        KnowledgeLoader loader = new KnowledgeLoader(root);
+        String prompt = loader.systemFor(WizardKind.COMPONENT_DEF);
+
+        assertThat(prompt).contains("OSCAL Layer Overview");         // from oscal-basics
+        assertThat(prompt).contains("Component-definition skill");   // from oscal-component-definition
+        assertThat(prompt).contains("Metaschema Constraints");       // from metaschema-basics
+        // Should NOT contain catalog-specific content in the targeted branch
+        assertThat(prompt).doesNotContain("Catalog skill");
+    }
 }
