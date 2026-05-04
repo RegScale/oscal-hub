@@ -29,11 +29,13 @@ import type { LibraryItem, LibraryAnalytics, OscalModelType } from '@/types/osca
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { VisibilityBadge } from '@/components/library/VisibilityBadge';
+import { VisibilityActionMenu } from '@/components/library/VisibilityActionMenu';
 import type { Visibility } from '@/lib/api/library';
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [analytics, setAnalytics] = useState<LibraryAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -379,6 +381,23 @@ export default function LibraryPage() {
                           {item.commentCount || 0}
                         </div>
                       </div>
+                      {/* Visibility actions — shown when caller is creator or super-admin */}
+                      {item.visibility && (
+                        <div
+                          className="flex flex-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <VisibilityActionMenu
+                            itemId={item.itemId}
+                            currentVisibility={item.visibility}
+                            isCreator={user?.username === item.createdBy}
+                            isSuperAdmin={isSuperAdmin}
+                            onChanged={() => {
+                              loadLibrary();
+                            }}
+                          />
+                        </div>
+                      )}
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
