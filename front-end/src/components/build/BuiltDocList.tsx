@@ -351,25 +351,23 @@ export function BuiltDocList({ docType, onCreateNew, onEdit, reloadKey }: BuiltD
           {filtered.map((doc, i) => (
             <Card key={doc.id} className="flex flex-col">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-start justify-between gap-2">
-                  {/* min-w-0 + flex-1 lets `truncate` actually shrink the
-                      title below its content width inside this flex row;
-                      without it the title overflows and runs over the
-                      version/draft badges on the right. */}
-                  <span className="truncate min-w-0 flex-1" title={doc.title}>
-                    {doc.title}
-                  </span>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {doc.draft && (
-                      <Badge variant="secondary" className="text-xs">
-                        Draft
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      v{doc.version || '—'}
-                    </Badge>
-                  </div>
+                {/* Title gets its own row with line-clamp-2 + overflow-hidden
+                    so long catalog names wrap to two lines with an ellipsis
+                    instead of overflowing the card. Badges sit on a second
+                    row beneath, never competing with the title for space. */}
+                <CardTitle className="text-base line-clamp-2 break-words overflow-hidden" title={doc.title}>
+                  {doc.title}
                 </CardTitle>
+                <div className="flex items-center gap-1 mt-1">
+                  {doc.draft && (
+                    <Badge variant="secondary" className="text-xs">
+                      Draft
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs">
+                    v{doc.version || '—'}
+                  </Badge>
+                </div>
                 <CardDescription className="text-xs line-clamp-2">
                   {doc.description || <span className="italic">No description</span>}
                 </CardDescription>
