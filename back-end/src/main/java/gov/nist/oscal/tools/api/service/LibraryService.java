@@ -3,13 +3,17 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.Visibility;
+import gov.nist.oscal.tools.api.model.AuditEventType;
+import gov.nist.oscal.tools.api.model.library.VisibilityChangeRequest;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
 import gov.nist.oscal.tools.api.repository.LibraryVersionRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
+import gov.nist.oscal.tools.api.repository.OrganizationRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +50,12 @@ public class LibraryService {
 
     @Autowired(required = false)
     private OrganizationMembershipRepository membershipRepository;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    @Autowired(required = false)
+    private AuditLogService auditLogService;
 
     @Autowired
     private LibraryStorageService storageService;
@@ -542,6 +552,112 @@ public class LibraryService {
         Long orgId = resolveOrgId(caller);
         return libraryItemRepository.findRecentlyUpdatedVisibleTo(userId, orgId)
                 .stream().limit(limit).collect(Collectors.toList());
+    }
+
+    // ==================== VISIBILITY MUTATION ====================
+
+    /**
+     * Change a library item's visibility. Permitted to either the creator or a
+     * platform SUPER_ADMIN (force-unpublish path). All other callers see a 404,
+     * not 403 — we hide existence to avoid leaking the item id.
+     * <p>
+     * Side effects:
+     *   - Sets/clears the {@code organization} reference based on the target visibility
+     *   - Stamps {@code publishedAt}/{@code lastPublishedAt} on transitions to PUBLIC
+     *   - Writes an audit event categorising the change (publish, unpublish,
+     *     force-unpublish by admin, or generic visibility change)
+     */
+    @Transactional
+    public LibraryItem changeVisibility(String itemId,
+                                         VisibilityChangeRequest req,
+                                         User caller) {
+        LibraryItem item = libraryItemRepository.findByItemId(itemId)
+            .orElseThrow(() -> new RuntimeException("library item not found"));
+
+        boolean isCreator = caller != null
+            && item.getCreatedBy() != null
+            && item.getCreatedBy().getId() != null
+            && item.getCreatedBy().getId().equals(caller.getId());
+        boolean isSuperAdmin = caller != null
+            && caller.getGlobalRole() == User.GlobalRole.SUPER_ADMIN;
+
+        if (!isCreator && !isSuperAdmin) {
+            // Hide existence — return 404 not 403.
+            throw new RuntimeException("library item not found");
+        }
+
+        Visibility prev = item.getVisibility();
+        Visibility next = req.getVisibility();
+
+        if (next == Visibility.ORGANIZATION) {
+            if (req.getOrganizationId() == null) {
+                throw new IllegalArgumentException("organizationId required when visibility=ORGANIZATION");
+            }
+            if (!isSuperAdmin) {
+                Long callerOrg = resolveOrgId(caller);
+                if (!req.getOrganizationId().equals(callerOrg)) {
+                    throw new SecurityException("cannot share to organization you don't belong to");
+                }
+            }
+            Organization o = organizationRepository.findById(req.getOrganizationId())
+                .orElseThrow(() -> new IllegalArgumentException("unknown organizationId"));
+            item.setOrganization(o);
+        } else {
+            item.setOrganization(null);
+        }
+
+        item.setVisibility(next);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (next == Visibility.PUBLIC) {
+            if (item.getPublishedAt() == null) item.setPublishedAt(now);
+            item.setLastPublishedAt(now);
+        }
+
+        item = libraryItemRepository.save(item);
+
+        // Audit — non-fatal if AuditLogService isn't wired (e.g. minimal tests).
+        if (auditLogService != null) {
+            try {
+                AuditEventType type = chooseAuditType(prev, next, isCreator, isSuperAdmin);
+                java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+                metadata.put("itemId", item.getItemId());
+                metadata.put("previousVisibility", prev != null ? prev.name() : null);
+                metadata.put("newVisibility", next != null ? next.name() : null);
+                if (req.getReason() != null && !req.getReason().isBlank()) {
+                    metadata.put("reason", req.getReason());
+                }
+                if (req.getOrganizationId() != null) {
+                    metadata.put("organizationId", req.getOrganizationId());
+                }
+                auditLogService.logEvent(
+                    type,
+                    caller != null ? caller.getUsername() : null,
+                    caller != null ? caller.getId() : null,
+                    "SUCCESS",
+                    item.getItemId(),
+                    "VISIBILITY_CHANGE",
+                    metadata
+                );
+            } catch (RuntimeException ex) {
+                logger.warn("Failed to write audit event for visibility change on {}: {}",
+                            item.getItemId(), ex.getMessage());
+            }
+        }
+
+        return item;
+    }
+
+    private AuditEventType chooseAuditType(Visibility prev, Visibility next,
+                                           boolean isCreator, boolean isSuperAdmin) {
+        if (next == Visibility.PUBLIC && prev != Visibility.PUBLIC) {
+            return AuditEventType.LIBRARY_ITEM_PUBLISHED;
+        }
+        if (prev == Visibility.PUBLIC && next != Visibility.PUBLIC) {
+            return (isSuperAdmin && !isCreator)
+                ? AuditEventType.LIBRARY_ITEM_FORCE_UNPUBLISHED
+                : AuditEventType.LIBRARY_ITEM_UNPUBLISHED;
+        }
+        return AuditEventType.LIBRARY_ITEM_VISIBILITY_CHANGED;
     }
 
     // ==================== VISIBILITY ====================

@@ -4,6 +4,7 @@ import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.model.library.VisibilityChangeRequest;
 import gov.nist.oscal.tools.api.service.LibraryCommentService;
 import gov.nist.oscal.tools.api.service.LibraryRatingService;
 import gov.nist.oscal.tools.api.service.LibraryService;
@@ -179,6 +180,44 @@ public class LibraryController {
 
             return ResponseEntity.ok(LibraryItemResponse.fromEntity(item));
         } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Operation(
+        summary = "Change library item visibility",
+        description = "Change a library item's visibility (PRIVATE/ORGANIZATION/PUBLIC). "
+                + "Only the creator or a SUPER_ADMIN may change visibility. "
+                + "Non-creator regular users see 404 (existence is hidden). "
+                + "ORGANIZATION visibility requires organizationId; non-admins can only "
+                + "share to their own organization."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Visibility changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request (e.g. missing organizationId)"),
+        @ApiResponse(responseCode = "403", description = "Forbidden — caller cannot share to that organization"),
+        @ApiResponse(responseCode = "404", description = "Library item not found or caller may not change it")
+    })
+    @PatchMapping("/{itemId}/visibility")
+    public ResponseEntity<?> changeVisibility(
+            @PathVariable String itemId,
+            @Valid @RequestBody VisibilityChangeRequest request,
+            Principal principal) {
+        try {
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            if (caller == null) {
+                // Authenticated security layer should prevent this; if we got here
+                // without a resolvable user, treat as not-found to hide existence.
+                return ResponseEntity.notFound().build();
+            }
+            LibraryItem item = libraryService.changeVisibility(itemId, request, caller);
+            LibraryItemResponse response = LibraryItemResponse.fromEntity(item);
+            return ResponseEntity.ok(enhanceWithRatingAndComments(response));
+        } catch (IllegalArgumentException ve) {
+            return ResponseEntity.badRequest().body(Map.of("error", ve.getMessage()));
+        } catch (SecurityException fe) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (RuntimeException nf) {
             return ResponseEntity.notFound().build();
         }
     }
