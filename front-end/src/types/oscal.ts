@@ -259,6 +259,13 @@ export interface LibraryItem {
   viewCount: number;
   versionCount: number;
 
+  // Visibility (Phase 1 publish): "PRIVATE" | "ORGANIZATION" | "PUBLIC"
+  // Optional because legacy items pre-dating the visibility migration may not
+  // round-trip the field, and certain endpoints in the frontend may not
+  // populate it.
+  visibility?: 'PRIVATE' | 'ORGANIZATION' | 'PUBLIC';
+  organizationId?: number;
+
   // Rating and comment fields
   averageRating?: number;
   totalRatings?: number;

@@ -2,6 +2,7 @@ package gov.nist.oscal.tools.api.model;
 
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
+import gov.nist.oscal.tools.api.entity.Visibility;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -25,6 +26,8 @@ public class LibraryItemResponse {
     private Long downloadCount;
     private Long viewCount;
     private Integer versionCount;
+    private Visibility visibility;
+    private Long organizationId;
 
     // Rating and comment fields
     private Double averageRating;
@@ -72,6 +75,17 @@ public class LibraryItemResponse {
 
         response.setDownloadCount(item.getDownloadCount());
         response.setViewCount(item.getViewCount());
+
+        response.setVisibility(item.getVisibility());
+
+        // Handle lazy-loaded organization
+        try {
+            if (item.getOrganization() != null) {
+                response.setOrganizationId(item.getOrganization().getId());
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            response.setOrganizationId(null);
+        }
 
         // Handle lazy-loaded versions
         try {
@@ -201,5 +215,21 @@ public class LibraryItemResponse {
 
     public void setCommentCount(Long commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(Visibility visibility) {
+        this.visibility = visibility;
+    }
+
+    public Long getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(Long organizationId) {
+        this.organizationId = organizationId;
     }
 }
