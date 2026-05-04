@@ -35,7 +35,6 @@ import type { Artifact, ArtifactVersion, ArtifactVisibility, RatingStats, Artifa
 import { StarRating } from '@/components/ui/star-rating';
 import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
 import { MarkdownPreview } from '@/components/markdown-preview';
 
@@ -343,7 +342,6 @@ export default function ArtifactDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -366,7 +364,6 @@ export default function ArtifactDetailPage() {
             Back to Artifacts
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -850,7 +847,6 @@ export default function ArtifactDetailPage() {
           )}
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

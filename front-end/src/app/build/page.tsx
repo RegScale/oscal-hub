@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AiFeatureGate } from '@/components/ai/AiFeatureGate';
-import { Footer } from '@/components/Footer';
 import { ElementLibrary } from '@/components/build/ElementLibrary';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
 import { ComponentList } from '@/components/build/ComponentList';
@@ -131,7 +130,6 @@ export default function BuildPage() {
             <AlertDescription>Please log in to access the OSCAL builder.</AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -404,8 +402,6 @@ export default function BuildPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      <Footer />
     </div>
   );
 }

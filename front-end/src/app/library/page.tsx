@@ -27,7 +27,6 @@ import { StarRating } from '@/components/ui/star-rating';
 import { apiClient } from '@/lib/api-client';
 import type { LibraryItem, LibraryAnalytics, OscalModelType } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
 
 export default function LibraryPage() {
@@ -204,7 +203,6 @@ export default function LibraryPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -637,7 +635,6 @@ export default function LibraryPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

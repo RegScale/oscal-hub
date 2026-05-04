@@ -30,7 +30,6 @@ import {
 import { apiClient } from '@/lib/api-client';
 import type { AuthorizationResponse, LibraryItem } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { MarkdownPreview } from '@/components/markdown-preview';
 import { DigitalSignatureStep } from '@/components/digital-signature-step';
 import { toast } from 'sonner';
@@ -247,7 +246,6 @@ export default function AuthorizationDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -271,7 +269,6 @@ export default function AuthorizationDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -887,7 +884,6 @@ export default function AuthorizationDetailPage() {
         </Card>
       </div>
 
-      <Footer />
     </div>
   );
 }

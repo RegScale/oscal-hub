@@ -30,7 +30,6 @@ import type { LibraryItem, LibraryVersion, OscalModelType, RatingStats, LibraryC
 import { StarRating } from '@/components/ui/star-rating';
 import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
 
 export default function LibraryItemDetailPage() {
@@ -271,7 +270,6 @@ export default function LibraryItemDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -294,7 +292,6 @@ export default function LibraryItemDetailPage() {
             Back to Library
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -690,7 +687,6 @@ export default function LibraryItemDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

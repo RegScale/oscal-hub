@@ -29,7 +29,6 @@ import { StarRating } from '@/components/ui/star-rating';
 import { apiClient } from '@/lib/api-client';
 import type { Artifact, ArtifactAnalytics, ArtifactVisibility } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
 
 export default function ArtifactsPage() {
@@ -247,7 +246,6 @@ export default function ArtifactsPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -732,7 +730,6 @@ Use {{ variable_name }} syntax for template variables.`}
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

@@ -24,7 +24,6 @@ import type {
   LibraryItem,
 } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
 
@@ -358,7 +357,6 @@ export default function AuthorizationsPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -1283,7 +1281,6 @@ export default function AuthorizationsPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

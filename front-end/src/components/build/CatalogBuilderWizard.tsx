@@ -82,10 +82,17 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
     let cancelled = false;
     async function load() {
       if (!editingCatalog) {
-        setCatalog(emptyCatalog());
-        setStep(1);
-        setSuccess(false);
-        setIsDraft(true);
+        // Only reset to empty if there's no AI draft to hydrate from. The
+        // dedicated initialCatalog effect above seeds the form when the wizard
+        // is opened from an AI run; resetting unconditionally here would
+        // clobber that draft (the two effects fire on the same mount and the
+        // reset would win, leaving the user with an empty form).
+        if (!initialCatalog) {
+          setCatalog(emptyCatalog());
+          setStep(1);
+          setSuccess(false);
+          setIsDraft(true);
+        }
         return;
       }
       setIsLoading(true);
@@ -109,7 +116,7 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
     return () => {
       cancelled = true;
     };
-  }, [editingCatalog]);
+  }, [editingCatalog, initialCatalog]);
 
   const stats = useMemo(() => ({
     controls: countCatalogControls(catalog),
