@@ -45,10 +45,11 @@ public class PublicCatalogController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
         size = Math.min(size, 100);
+        // Native query — Sort uses raw column names (snake_case), not entity field names.
         Sort.Order order = switch (sort) {
-            case "downloads" -> Sort.Order.desc("downloadCount");
-            case "rating" -> Sort.Order.desc("downloadCount");  // proxy until rating sort added
-            default /* "newest" */ -> Sort.Order.desc("lastPublishedAt");
+            case "downloads" -> Sort.Order.desc("download_count");
+            case "rating" -> Sort.Order.desc("download_count");  // proxy until rating sort added
+            default /* "newest" */ -> Sort.Order.desc("last_published_at");
         };
         var pageable = PageRequest.of(page, size, Sort.by(order));
         return ResponseEntity.ok(libraryService.searchPublic(q, type, tag, pageable));
