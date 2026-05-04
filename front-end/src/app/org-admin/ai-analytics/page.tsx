@@ -135,13 +135,11 @@ export default function AiAnalyticsPage() {
       }
       setOffset(newOffset);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load AI analytics';
-      // Friendly hint for the most common cause: backend restart rotated the JWT secret.
-      setError(
-        msg.includes('401')
-          ? 'Your session has expired. Please log out and log back in to view analytics.'
-          : msg,
-      );
+      // Surface the raw error including any body returned by the backend —
+      // aiFetch attaches the response body so messages like Spring Security's
+      // "Full authentication is required to access this resource" show up
+      // here. Helps diagnose 401s without round-tripping through DevTools.
+      setError(err instanceof Error ? err.message : 'Failed to load AI analytics');
     } finally {
       setLoading(false);
       setLoadingMore(false);

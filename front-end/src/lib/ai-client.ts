@@ -7,21 +7,26 @@ function authHeaders(): Record<string, string> {
   return h;
 }
 
-// On 401: clear stale credentials. Matches api-client.ts behavior — no force
-// redirect; the calling code throws so the page can render an inline error,
-// and the next render of any auth-aware component will route to login since
-// localStorage is now empty.
-function handle401(res: Response): Response {
-  if (res.status === 401 && typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+// Drop-in replacement for fetch() that, on a non-OK response, throws an Error
+// whose message includes both the status code and any body text returned by
+// the backend. This lets the calling page show the *server's* explanation
+// (e.g. "Full authentication is required to access this resource") instead
+// of a bare "status 401". We deliberately do NOT clear localStorage on 401:
+// in dev the JWT secret is hardcoded, so a 401 means a real auth bug rather
+// than a stale token, and clearing the token would mask the underlying cause.
+async function aiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  const res = await fetch(input, init);
+  if (!res.ok) {
+    let body = '';
+    try {
+      body = await res.clone().text();
+    } catch {
+      // ignore — body wasn't readable
+    }
+    const detail = body && body.length < 500 ? ` — ${body}` : '';
+    throw new Error(`HTTP ${res.status}${detail}`);
   }
   return res;
-}
-
-// Drop-in replacement for fetch() that runs handle401 on the response.
-async function aiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
-  return handle401(await fetch(input, init));
 }
 
 export type WizardKind =
@@ -96,7 +101,6 @@ export const aiClient = {
       method: 'GET',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -105,7 +109,6 @@ export const aiClient = {
       method: 'GET',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -115,7 +118,6 @@ export const aiClient = {
       headers: authHeaders(),
       body: JSON.stringify(req),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -124,7 +126,6 @@ export const aiClient = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
   },
 
   async startSession(req: StartSessionRequest): Promise<StartSessionResponse> {
@@ -133,7 +134,6 @@ export const aiClient = {
       headers: authHeaders(),
       body: JSON.stringify(req),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -158,7 +158,6 @@ export const aiClient = {
     // Don't set Content-Type — browser sets multipart boundary
 
     const res = await aiFetch(url.toString(), { method: 'POST', headers, body: fd });
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -167,7 +166,6 @@ export const aiClient = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
   },
 
   async listSessions(orgId: number, limit = 20, offset = 0): Promise<AiSessionSummary[]> {
@@ -176,7 +174,6 @@ export const aiClient = {
       `${API_BASE_URL}/ai/analytics/sessions?organizationId=${orgId}&page=${page}&size=${limit}`,
       { method: 'GET', headers: authHeaders() },
     );
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -185,7 +182,6 @@ export const aiClient = {
       `${API_BASE_URL}/ai/analytics/sessions/${id}?organizationId=${orgId}`,
       { method: 'GET', headers: authHeaders() },
     );
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
@@ -194,7 +190,6 @@ export const aiClient = {
       `${API_BASE_URL}/ai/analytics/totals?organizationId=${orgId}`,
       { method: 'GET', headers: authHeaders() },
     );
-    if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 };
