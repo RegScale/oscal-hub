@@ -27,14 +27,14 @@ class CatalogWizardTest {
         DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
         when(knowledge.systemFor(WizardKind.CATALOG)).thenReturn("system");
 
-        // Outline response
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("Step 1"))))
+        // Outline response — matched on the prompt's "controls publication" keyword.
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("controls publication"))))
                 .thenReturn(new AnthropicResult(
                         "{\"title\":\"Test Catalog\",\"version\":\"1.0\",\"publisher\":\"Acme\"," +
                         "\"families\":[{\"id\":\"ac\",\"title\":\"Access Control\",\"controlIds\":[\"ac-1\"]}]}",
                         100, 50));
-        // Family response
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("Step 2"))))
+        // Family response — matched on the family-prompt's "Generate the" keyword.
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("Generate the"))))
                 .thenReturn(new AnthropicResult(
                         "{\"id\":\"ac\",\"class\":\"family\",\"title\":\"Access Control\"," +
                         "\"controls\":[{\"id\":\"ac-1\",\"title\":\"Policy\"}]}",

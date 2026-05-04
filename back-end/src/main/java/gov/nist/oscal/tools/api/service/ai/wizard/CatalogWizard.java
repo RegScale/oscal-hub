@@ -52,7 +52,7 @@ public class CatalogWizard implements Wizard {
     @Override
     public WizardOutcome run(WizardContext ctx) {
         try {
-            stream.publish(ctx.sessionId(), SessionEvent.progress("Normalizing source document…"));
+            stream.publish(ctx.sessionId(), SessionEvent.progress("Reading source document via Apache Tika"));
 
             String docText;
             byte[] pdfBytes = null;
@@ -71,7 +71,7 @@ public class CatalogWizard implements Wizard {
             int tokensIn = 0, tokensOut = 0;
 
             // Pass 1 — outline
-            stream.publish(ctx.sessionId(), SessionEvent.progress("Analyzing structure…"));
+            stream.publish(ctx.sessionId(), SessionEvent.progress("Identifying control families and groupings"));
             AnthropicCall.Builder b = AnthropicCall.builder()
                     .model(ctx.model())
                     .systemPrompt(system)
@@ -93,17 +93,22 @@ public class CatalogWizard implements Wizard {
                 families.add(new CatalogChunkingStrategy.Family(
                         f.path("id").asText(), f.path("title").asText(), ids));
             }
+            int totalControls = families.stream().mapToInt(f -> f.controlIds().size()).sum();
             stream.publish(ctx.sessionId(), SessionEvent.progress(
-                    "Found " + families.size() + " families covering "
-                    + families.stream().mapToInt(f -> f.controlIds().size()).sum() + " controls"));
+                    "Outline complete — " + families.size() + " families, " + totalControls
+                    + " controls (OSCAL Catalog Layer 1.1.2)"));
 
             // Pass 2 — per family
             List<JsonNode> producedGroups = new ArrayList<>();
             int chunkIndex = 0;
+            int familyIndex = 0;
             for (List<CatalogChunkingStrategy.Family> chunk : chunking.chunk(families)) {
                 for (CatalogChunkingStrategy.Family fam : chunk) {
+                    familyIndex++;
                     stream.publish(ctx.sessionId(), SessionEvent.progress(
-                            "Drafting family " + fam.id() + " — " + fam.title()));
+                            "Drafting " + fam.id().toUpperCase() + " family — " + fam.title()
+                            + " (" + familyIndex + " of " + families.size() + ", "
+                            + fam.controlIds().size() + " controls)"));
                     AnthropicResult famRes = client.send(ctx.apiKey(), AnthropicCall.builder()
                             .model(ctx.model())
                             .systemPrompt(system)
@@ -123,7 +128,8 @@ public class CatalogWizard implements Wizard {
             }
 
             // Pass 3 — merge
-            stream.publish(ctx.sessionId(), SessionEvent.progress("Merging into final catalog…"));
+            stream.publish(ctx.sessionId(), SessionEvent.progress(
+                    "Assembling OSCAL Catalog metadata and merging " + producedGroups.size() + " groups"));
             Map<String, Object> catalog = new HashMap<>();
             Map<String, Object> meta = new HashMap<>();
             meta.put("title", title);
@@ -166,6 +172,15 @@ public class CatalogWizard implements Wizard {
             int firstNl = t.indexOf('\n');
             if (firstNl > 0) t = t.substring(firstNl + 1);
             if (t.endsWith("```")) t = t.substring(0, t.length() - 3);
+            t = t.trim();
+        }
+        // Strip prose preludes/postludes by carving out the first { ... last }.
+        // Claude often replies with text like "I'll draft the AC family. {...}" — find
+        // the first '{' and the matching last '}' and use just that substring.
+        int firstBrace = t.indexOf('{');
+        int lastBrace = t.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            t = t.substring(firstBrace, lastBrace + 1);
         }
         return t.trim();
     }

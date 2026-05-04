@@ -22,7 +22,8 @@ class CatalogPromptBuilderTest {
         String p = builder.familyPrompt("ac", "Access Control", List.of("ac-1", "ac-2"));
         assertThat(p).contains("ac-1, ac-2");
         assertThat(p).contains("Access Control");
-        assertThat(p).contains("validate_oscal");
+        // Tightened prompt forbids prose preludes — assert the JSON-only directive.
+        assertThat(p).contains("SINGLE raw JSON object");
     }
 
     @Test

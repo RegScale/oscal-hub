@@ -9,12 +9,12 @@ public class CatalogPromptBuilder {
 
     public String outlinePrompt() {
         return """
+            CRITICAL: Respond with a SINGLE raw JSON object only. No prose, no
+            preamble, no ```json fences, no commentary. First character must be
+            `{`, last character must be `}`.
+
             You are analyzing a controls publication to draft an OSCAL Catalog.
-
-            Step 1 — Outline.
-
-            Read the attached document and produce a JSON outline. Output ONLY valid JSON
-            (no commentary, no markdown). Schema:
+            Produce a JSON outline. Schema:
 
             {
               "title": "<extracted document title>",
@@ -36,9 +36,13 @@ public class CatalogPromptBuilder {
 
     public String familyPrompt(String familyId, String familyTitle, List<String> controlIds) {
         return """
-            Step 2 — Generate the %s family ("%s") for the OSCAL Catalog.
+            CRITICAL: Respond with a SINGLE raw JSON object only. No prose. No
+            preamble like "Here is the JSON" or "I'll draft...". No ```json fences.
+            No commentary after the JSON. The first character of your reply MUST
+            be `{` and the last MUST be `}`.
 
-            Produce ONLY a JSON object representing this family as an OSCAL group.
+            Generate the %s family ("%s") for the OSCAL Catalog.
+
             Output schema (https://pages.nist.gov/OSCAL/concepts/layer/control/catalog/):
 
             {
@@ -54,11 +58,6 @@ public class CatalogPromptBuilder {
             guidance / objective / assessment), and props where the source supplies them.
             Do not invent content not present in the source document. Quote source
             statement text literally where possible.
-
-            After producing the JSON, call the validate_oscal tool with modelType="catalog",
-            format="JSON", and content set to {"catalog":{"metadata":{"title":"draft","last-modified":"2026-01-01T00:00:00Z","version":"draft","oscal-version":"1.1.2"},"groups":[<your-group>]}}.
-            If validation fails, fix the errors and call validate_oscal again. After 3
-            attempts, return your best effort with a "validationWarnings" array.
             """.formatted(familyId, familyTitle, familyId, familyTitle, String.join(", ", controlIds));
     }
 
