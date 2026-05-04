@@ -421,7 +421,39 @@ public enum AuditEventType {
      * <p>Risk Level: LOW</p>
      * <p>Retention: LONG (compliance, privilege-grant traceability)</p>
      */
-    ORG_CREATED("Organization", "Organization created", "LOW");
+    ORG_CREATED("Organization", "Organization created", "LOW"),
+
+    // ========================================
+    // Library Events (LIBRARY_ITEM_*)
+    // ========================================
+
+    /**
+     * Library item visibility changed to PUBLIC by its creator.
+     * <p>Risk Level: MEDIUM (data exposure)</p>
+     * <p>Retention: LONG (compliance, content provenance)</p>
+     */
+    LIBRARY_ITEM_PUBLISHED("Library", "Library item published", "MEDIUM"),
+
+    /**
+     * Library item visibility changed away from PUBLIC by its creator.
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: LONG (content provenance)</p>
+     */
+    LIBRARY_ITEM_UNPUBLISHED("Library", "Library item unpublished by creator", "LOW"),
+
+    /**
+     * Library item force-unpublished by SUPER_ADMIN.
+     * <p>Risk Level: HIGH (admin override)</p>
+     * <p>Retention: LONG (compliance, takedown traceability)</p>
+     */
+    LIBRARY_ITEM_FORCE_UNPUBLISHED("Library", "Library item force-unpublished by admin", "HIGH"),
+
+    /**
+     * Library item visibility changed (any transition not covered above).
+     * <p>Risk Level: LOW</p>
+     * <p>Retention: MEDIUM</p>
+     */
+    LIBRARY_ITEM_VISIBILITY_CHANGED("Library", "Library item visibility changed", "LOW");
 
     // ========================================
     // Enum Fields
