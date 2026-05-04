@@ -116,6 +116,10 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
                 .requestMatchers("/api/ai/settings/status").permitAll()
+                // Dev-only diagnostic endpoint — controller is @Profile("dev"), so it
+                // doesn't exist outside dev anyway, but whitelist regardless to ensure
+                // it works whether or not the JWT validates.
+                .requestMatchers("/api/ai/whoami").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
                 // Actuator endpoints - health and info are public (for load balancers), others require auth
