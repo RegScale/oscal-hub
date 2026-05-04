@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { aiClient, AiSessionSummary, AiUsageTotals, AiSessionStatus } from '@/lib/ai-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SessionDetailDrawer } from '@/components/ai/SessionDetailDrawer';
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -69,6 +70,8 @@ export default function AiAnalyticsPage() {
   const [sessions, setSessions] = useState<AiSessionSummary[]>([]);
   const [offset, setOffset] = useState(0);
   const PAGE_SIZE = 20;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -306,7 +309,10 @@ export default function AiAnalyticsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => console.log(session.id)}
+                          onClick={() => {
+                            setSelectedSessionId(session.id);
+                            setDrawerOpen(true);
+                          }}
                         >
                           View
                         </Button>
@@ -339,6 +345,14 @@ export default function AiAnalyticsPage() {
           )}
         </div>
       </div>
+
+      {/* Session detail drawer */}
+      <SessionDetailDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        organizationId={organizationId}
+        sessionId={selectedSessionId}
+      />
     </div>
   );
 }
