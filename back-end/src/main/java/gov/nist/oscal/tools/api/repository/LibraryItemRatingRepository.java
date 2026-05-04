@@ -47,6 +47,19 @@ public interface LibraryItemRatingRepository extends JpaRepository<LibraryItemRa
     Long countByItemId(@Param("itemId") String itemId);
 
     /**
+     * Average rating for an item by internal id (used by public catalog
+     * summaries to avoid an extra string lookup when the entity is in hand).
+     */
+    @Query("SELECT AVG(r.rating) FROM LibraryItemRating r WHERE r.libraryItem.id = :itemId")
+    Double averageRatingForItem(@Param("itemId") Long itemId);
+
+    /**
+     * Total rating count for an item by internal id.
+     */
+    @Query("SELECT COUNT(r) FROM LibraryItemRating r WHERE r.libraryItem.id = :itemId")
+    Long countRatingsForItem(@Param("itemId") Long itemId);
+
+    /**
      * Batch query to get rating statistics for multiple items.
      * Returns [itemId, averageRating, totalRatings] for each item.
      */

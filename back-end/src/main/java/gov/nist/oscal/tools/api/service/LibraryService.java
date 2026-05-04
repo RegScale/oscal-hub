@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.Visibility;
 import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.library.VisibilityChangeRequest;
+import gov.nist.oscal.tools.api.repository.LibraryItemRatingRepository;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
 import gov.nist.oscal.tools.api.repository.LibraryVersionRepository;
@@ -59,6 +60,9 @@ public class LibraryService {
 
     @Autowired
     private LibraryStorageService storageService;
+
+    @Autowired
+    private LibraryItemRatingRepository libraryItemRatingRepository;
 
     /**
      * Create a new library item with initial version
@@ -722,26 +726,63 @@ public class LibraryService {
     }
 
     // ==================== PUBLIC CATALOG ====================
-    // Anonymous, PUBLIC-only browse and download. Stubbed in Task P1; real
-    // implementations land in Task P2.
+    // Anonymous, PUBLIC-only browse and download.
 
     /** Result type for content downloads (latest or by version). */
     public record VersionDownload(String content, String filename, String format) {}
 
+    @Transactional(readOnly = true)
     public Page<gov.nist.oscal.tools.api.model.library.PublicItemSummary>
             searchPublic(String q, String type, String tag, Pageable pageable) {
-        return Page.empty(pageable);
+        return libraryItemRepository.searchPublic(q, type, tag, pageable)
+            .map(item -> {
+                Double avg = libraryItemRatingRepository.averageRatingForItem(item.getId());
+                Long total = libraryItemRatingRepository.countRatingsForItem(item.getId());
+                return gov.nist.oscal.tools.api.model.library.PublicItemSummary
+                        .fromEntity(item, avg, total);
+            });
     }
 
+    @Transactional
     public Optional<gov.nist.oscal.tools.api.model.library.PublicItemSummary> getPublic(String itemId) {
-        return Optional.empty();
+        return libraryItemRepository.findPublicByItemId(itemId)
+            .map(item -> {
+                Double avg = libraryItemRatingRepository.averageRatingForItem(item.getId());
+                Long total = libraryItemRatingRepository.countRatingsForItem(item.getId());
+                // Increment view count on detail load.
+                item.incrementViewCount();
+                libraryItemRepository.save(item);
+                return gov.nist.oscal.tools.api.model.library.PublicItemSummary
+                        .fromEntity(item, avg, total);
+            });
     }
 
+    @Transactional
     public Optional<VersionDownload> getPublicLatestContent(String itemId) {
-        return Optional.empty();
+        return libraryItemRepository.findPublicByItemId(itemId)
+            .filter(item -> item.getCurrentVersion() != null)
+            .map(item -> {
+                LibraryVersion v = item.getCurrentVersion();
+                String content = storageService.getLibraryFileContent(v.getFilePath());
+                item.incrementDownloadCount();
+                libraryItemRepository.save(item);
+                return new VersionDownload(content == null ? "" : content,
+                                            v.getFileName(), v.getFormat());
+            });
     }
 
+    @Transactional
     public Optional<VersionDownload> getPublicVersionContent(String itemId, String versionId) {
-        return Optional.empty();
+        return libraryItemRepository.findPublicByItemId(itemId)
+            .flatMap(item -> item.getVersions().stream()
+                .filter(v -> versionId.equals(v.getVersionId()))
+                .findFirst()
+                .map(v -> {
+                    String content = storageService.getLibraryFileContent(v.getFilePath());
+                    item.incrementDownloadCount();
+                    libraryItemRepository.save(item);
+                    return new VersionDownload(content == null ? "" : content,
+                                                v.getFileName(), v.getFormat());
+                }));
     }
 }

@@ -219,4 +219,50 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
     List<LibraryItem> findRecentlyUpdatedVisibleTo(
         @Param("userId") Long userId,
         @Param("orgId") Long orgId);
+
+    // ==================== Public Catalog Queries ====================
+    // Anonymous-readable, PUBLIC-only views.
+
+    /**
+     * Public catalog search. Visibility filter pinned to PUBLIC.
+     * FTS keyword applies to title+description via the GIN tsvector index;
+     * type and tag are optional exact filters.
+     */
+    @Query(value = """
+        SELECT li.* FROM library_items li
+        LEFT JOIN library_item_tags lit ON lit.library_item_id = li.id
+        LEFT JOIN library_tags lt ON lt.id = lit.tag_id
+        WHERE li.visibility = 'PUBLIC'
+          AND (:q IS NULL OR :q = ''
+               OR to_tsvector('english',
+                  coalesce(li.title,'') || ' ' || coalesce(li.description,''))
+                  @@ plainto_tsquery('english', :q))
+          AND (:type IS NULL OR :type = '' OR li.oscal_type = :type)
+          AND (:tag  IS NULL OR :tag  = '' OR lt.name = :tag)
+        GROUP BY li.id
+        """,
+        countQuery = """
+            SELECT COUNT(DISTINCT li.id) FROM library_items li
+            LEFT JOIN library_item_tags lit ON lit.library_item_id = li.id
+            LEFT JOIN library_tags lt ON lt.id = lit.tag_id
+            WHERE li.visibility = 'PUBLIC'
+              AND (:q IS NULL OR :q = ''
+                   OR to_tsvector('english',
+                      coalesce(li.title,'') || ' ' || coalesce(li.description,''))
+                      @@ plainto_tsquery('english', :q))
+              AND (:type IS NULL OR :type = '' OR li.oscal_type = :type)
+              AND (:tag  IS NULL OR :tag  = '' OR lt.name = :tag)
+            """,
+        nativeQuery = true)
+    Page<LibraryItem> searchPublic(
+        @Param("q") String q,
+        @Param("type") String type,
+        @Param("tag") String tag,
+        Pageable pageable);
+
+    @Query("""
+        SELECT li FROM LibraryItem li
+        WHERE li.itemId = :itemId AND li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC
+        """)
+    Optional<LibraryItem> findPublicByItemId(@Param("itemId") String itemId);
 }
