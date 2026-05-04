@@ -46,6 +46,9 @@ public class SourceIngestor {
         if (filename != null && filename.toLowerCase().endsWith(".pdf")) {
             return ingestPdf(filename, bytes);
         }
+        // DocumentNormalizer handles both Tika-extracted formats (.docx, .html,
+        // .odt, .rtf) and structured-text passthrough (.xml, .xccdf, .json,
+        // .yaml, .yml, .csv, .txt, .md) — see DocumentNormalizer for the list.
         NormalizedDoc d = normalizer.normalize(bytes, filename);
         return ingestText(d.plainText());
     }

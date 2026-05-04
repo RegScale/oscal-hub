@@ -13,8 +13,33 @@ public class ComponentDefPromptBuilder {
             preamble, no ```json fences, no commentary. First character must be
             `{`, last character must be `}`.
 
-            You are analyzing a configuration guide (STIG, CIS Benchmark, or vendor
-            hardening guide) to draft an OSCAL Component-definition.
+            You are analyzing a configuration guide to draft an OSCAL
+            Component-definition. The input may be in any of these formats —
+            recognize whichever you receive and extract accordingly:
+
+            * XCCDF XML (DISA STIGs, OpenSCAP datastreams) — look for
+              <xccdf:Benchmark>, <xccdf:Group>, <xccdf:Rule>; pull
+              <xccdf:title>, <xccdf:version>, group/rule IDs; map CCI
+              references (CCI-NNNNNN inside <xccdf:ident>) to the
+              corresponding NIST SP 800-53 rev5 control IDs.
+            * SCAP package contents (XCCDF + OVAL) — same as XCCDF; ignore
+              OVAL <oval-def:definition> bodies, those are check logic, not
+              control mappings.
+            * DISA JSON STIG — look for "stig.title", "stig.version",
+              groups[].rules[].rule_id and CCIs.
+            * CIS Benchmark (PDF, HTML, JSON) — recommendations are usually
+              numbered like "1.1.2 Ensure ..."; CIS publishes a 800-53
+              mapping in their docs, use it when present.
+            * Ansible playbook (YAML) — task names and tags often encode the
+              STIG/CIS rule, e.g. tags: ['high', 'V-230222', 'CCI-000196'].
+            * STIG Viewer CSV — columns typically include "V-ID", "Severity",
+              "Title", "CCIs", "STIG ID".
+            * SRG (Security Requirements Guide) PDF/HTML — higher-level
+              parent doc; if specific STIG isn't available, use SRG entries
+              directly mapped via their CCIs.
+            * Plain configuration guide (PDF, HTML, DOCX) — extract product
+              name, settings, and the controls they address.
+
             Produce a JSON outline. Schema:
 
             {

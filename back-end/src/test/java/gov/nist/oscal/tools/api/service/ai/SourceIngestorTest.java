@@ -44,4 +44,59 @@ class SourceIngestorTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exceeds");
     }
+
+    @Test
+    void xccdfXmlPassesThroughWithStructurePreserved() {
+        // Tag names + attributes are signal Claude should see — verify Tika
+        // is bypassed for .xml so the raw XML reaches the model.
+        String xccdf =
+                "<xccdf:Benchmark xmlns:xccdf=\"http://checklists.nist.gov/xccdf/1.2\">\n" +
+                "  <xccdf:Rule id=\"V-12345\" severity=\"high\">\n" +
+                "    <xccdf:title>Disable telnet</xccdf:title>\n" +
+                "  </xccdf:Rule>\n" +
+                "</xccdf:Benchmark>";
+        IngestedSource s = ingestor.ingestAny(xccdf.getBytes(java.nio.charset.StandardCharsets.UTF_8), "rhel9.xccdf");
+        assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
+        assertThat(s.text()).contains("xccdf:Rule");
+        assertThat(s.text()).contains("V-12345");
+        assertThat(s.text()).contains("severity=\"high\"");
+    }
+
+    @Test
+    void jsonPassesThroughWithKeysIntact() {
+        String json = "{\"benchmark\":{\"id\":\"RHEL_9\",\"rules\":[{\"id\":\"V-1\",\"title\":\"x\"}]}}";
+        IngestedSource s = ingestor.ingestAny(json.getBytes(java.nio.charset.StandardCharsets.UTF_8), "stig.json");
+        assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
+        assertThat(s.text()).isEqualTo(json);
+    }
+
+    @Test
+    void yamlPassesThroughWithIndentation() {
+        String yaml = "- name: Set permissions\n  file:\n    path: /etc/foo\n    mode: '0644'\n";
+        IngestedSource s = ingestor.ingestAny(yaml.getBytes(java.nio.charset.StandardCharsets.UTF_8), "playbook.yaml");
+        assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
+        assertThat(s.text()).contains("- name:");
+        assertThat(s.text()).contains("    mode: '0644'");
+    }
+
+    @Test
+    void csvPassesThroughWithCommas() {
+        String csv = "V-ID,Severity,Title\nV-1,high,Disable telnet\nV-2,medium,Enforce password length";
+        IngestedSource s = ingestor.ingestAny(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8), "stig-export.csv");
+        assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
+        assertThat(s.text()).contains("V-ID,Severity,Title");
+        assertThat(s.text()).contains("V-2,medium");
+    }
+
+    @Test
+    void unknownExtensionFallsThroughToTika() throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (XWPFDocument doc = new XWPFDocument()) {
+            doc.createParagraph().createRun().setText("Body via Tika");
+            doc.write(bos);
+        }
+        IngestedSource s = ingestor.ingestAny(bos.toByteArray(), "unknown.docx");
+        assertThat(s.kind()).isEqualTo(IngestedSource.Kind.TEXT);
+        assertThat(s.text()).contains("Body via Tika");
+    }
 }

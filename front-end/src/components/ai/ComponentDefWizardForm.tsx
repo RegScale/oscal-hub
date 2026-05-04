@@ -75,11 +75,13 @@ export function ComponentDefWizardForm({ organizationId, onSessionStarted }: Pro
             <Input
               id="file-upload"
               type="file"
-              accept=".pdf,.docx,.html,.htm,.txt,.md,.odt,.rtf"
+              accept=".pdf,.docx,.html,.htm,.txt,.md,.odt,.rtf,.xml,.xccdf,.json,.yaml,.yml,.csv"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             <p className="text-sm text-muted-foreground">
-              Accepts PDF, Word, HTML, plain text, Markdown, OpenDocument, and RTF.
+              Accepts XCCDF / SCAP XML, JSON STIG, Ansible YAML, STIG Viewer
+              CSV, plus PDF, Word, HTML, plain text, Markdown, OpenDocument,
+              and RTF.
             </p>
           </div>
         ) : (
