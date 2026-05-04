@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.service.ai.AnthropicResult;
 import gov.nist.oscal.tools.api.service.ai.DocumentNormalizer;
 import gov.nist.oscal.tools.api.service.ai.KnowledgeLoader;
 import gov.nist.oscal.tools.api.service.ai.NormalizedDoc;
+import gov.nist.oscal.tools.api.service.ai.XccdfTrimmer;
 import gov.nist.oscal.tools.api.service.ai.stream.AiSessionEventStream;
 import gov.nist.oscal.tools.api.service.ai.stream.SessionEvent;
 import org.slf4j.Logger;
@@ -35,17 +36,20 @@ public class ComponentDefWizard implements Wizard {
     private final DocumentNormalizer normalizer;
     private final ComponentDefPromptBuilder prompts;
     private final ComponentDefChunkingStrategy chunking;
+    private final XccdfTrimmer xccdfTrimmer;
 
     public ComponentDefWizard(AnthropicClient client, AiSessionEventStream stream,
                               KnowledgeLoader knowledge, DocumentNormalizer normalizer,
                               ComponentDefPromptBuilder prompts,
-                              ComponentDefChunkingStrategy chunking) {
+                              ComponentDefChunkingStrategy chunking,
+                              XccdfTrimmer xccdfTrimmer) {
         this.client = client;
         this.stream = stream;
         this.knowledge = knowledge;
         this.normalizer = normalizer;
         this.prompts = prompts;
         this.chunking = chunking;
+        this.xccdfTrimmer = xccdfTrimmer;
     }
 
     @Override
@@ -67,6 +71,13 @@ public class ComponentDefWizard implements Wizard {
                 docText = d.plainText();
             } else {
                 docText = ctx.input() == null ? "" : ctx.input();
+            }
+
+            // Catch the paste-XCCDF-as-text path. The file-upload path is
+            // already trimmed inside DocumentNormalizer; for pasted text the
+            // trimmer is a no-op on anything that isn't XCCDF.
+            if (xccdfTrimmer.looksLikeXccdf(docText)) {
+                docText = xccdfTrimmer.trim(docText);
             }
 
             String system = knowledge.systemFor(WizardKind.COMPONENT_DEF);

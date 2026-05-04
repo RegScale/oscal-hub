@@ -24,6 +24,12 @@ public class DocumentNormalizer {
     private static final Logger log = LoggerFactory.getLogger(DocumentNormalizer.class);
     private static final int MAX_CHARS = 1_500_000;
 
+    private final XccdfTrimmer xccdfTrimmer;
+
+    public DocumentNormalizer(XccdfTrimmer xccdfTrimmer) {
+        this.xccdfTrimmer = xccdfTrimmer;
+    }
+
     /**
      * Filename extensions whose content is already structured text Claude
      * reads natively. We bypass Tika for these so the model sees XCCDF tags,
@@ -66,6 +72,13 @@ public class DocumentNormalizer {
         for (Map.Entry<String, String> e : STRUCTURED_TEXT_MIME.entrySet()) {
             if (lower.endsWith(e.getKey())) {
                 String text = new String(bytes, StandardCharsets.UTF_8);
+                // Trim XCCDF/SCAP noise (check/fix/OVAL bodies) before the
+                // size check — STIG XCCDF files are routinely 1-3 MB raw but
+                // shrink ~70-90% once test logic is stripped.
+                if ((".xml".equals(e.getKey()) || ".xccdf".equals(e.getKey()))
+                        && xccdfTrimmer.looksLikeXccdf(text)) {
+                    text = xccdfTrimmer.trim(text);
+                }
                 if (text.length() > MAX_CHARS) {
                     throw new IllegalArgumentException(
                             "Structured text input exceeds " + MAX_CHARS + " chars");

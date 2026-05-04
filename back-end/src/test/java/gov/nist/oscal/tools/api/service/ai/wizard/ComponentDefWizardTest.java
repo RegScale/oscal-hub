@@ -57,7 +57,8 @@ class ComponentDefWizardTest {
 
         ComponentDefWizard wizard = new ComponentDefWizard(
                 client, stream, knowledge, normalizer,
-                new ComponentDefPromptBuilder(), new ComponentDefChunkingStrategy());
+                new ComponentDefPromptBuilder(), new ComponentDefChunkingStrategy(),
+                new gov.nist.oscal.tools.api.service.ai.XccdfTrimmer());
 
         WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
                 "sk-ant-xxx", "claude-opus-4-7", "Source STIG document text");
@@ -117,7 +118,8 @@ class ComponentDefWizardTest {
 
         ComponentDefWizard wizard = new ComponentDefWizard(
                 client, stream, knowledge, normalizer,
-                new ComponentDefPromptBuilder(), new ComponentDefChunkingStrategy());
+                new ComponentDefPromptBuilder(), new ComponentDefChunkingStrategy(),
+                new gov.nist.oscal.tools.api.service.ai.XccdfTrimmer());
 
         WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
                 "sk-ant-xxx", "claude-opus-4-7", "Source document");

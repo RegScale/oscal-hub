@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentNormalizerTest {
 
-    private final DocumentNormalizer normalizer = new DocumentNormalizer();
+    private final DocumentNormalizer normalizer = new DocumentNormalizer(new XccdfTrimmer());
 
     @Test
     void plainTextPassesThrough() {
