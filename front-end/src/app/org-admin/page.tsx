@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles } from 'lucide-react';
+import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles, BarChart3 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { aiClient } from '@/lib/ai-client';
 
@@ -212,11 +212,28 @@ export default function OrgAdminDashboardPage() {
     badge?: { text: string; tone: 'success' | 'warning' };
   };
 
-  const quickLinks: QuickLink[] = [
+  const baseQuickLinks: QuickLink[] = [
     { label: 'Manage Users', description: 'View and manage organization members', href: '/org-admin/users', icon: Users, color: 'blue' },
     { label: 'Access Requests', description: 'Review pending access requests', href: '/org-admin/requests', icon: ClipboardCheck, color: 'green' },
     { label: 'Invitations', description: 'Invite teammates and manage pending invitations', href: '/org-admin/invitations', icon: Mail, color: 'yellow' },
     { label: 'Usage Analytics', description: 'View organization usage metrics', href: '/org-admin/analytics', icon: Activity, color: 'purple' },
+  ];
+
+  const aiQuickLinks: QuickLink[] = aiConfigured === true
+    ? [
+        {
+          label: 'AI Usage Analytics',
+          description: 'Sessions, tokens, and estimated cost for this organization',
+          href: '/org-admin/ai-analytics',
+          icon: BarChart3,
+          color: 'indigo',
+        },
+      ]
+    : [];
+
+  const quickLinks: QuickLink[] = [
+    ...baseQuickLinks,
+    ...aiQuickLinks,
     {
       label: 'AI Settings',
       description: 'Configure your Anthropic API key to enable AI-assisted authoring',
