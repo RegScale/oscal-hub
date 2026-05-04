@@ -352,7 +352,13 @@ export function BuiltDocList({ docType, onCreateNew, onEdit, reloadKey }: BuiltD
             <Card key={doc.id} className="flex flex-col">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-start justify-between gap-2">
-                  <span className="truncate">{doc.title}</span>
+                  {/* min-w-0 + flex-1 lets `truncate` actually shrink the
+                      title below its content width inside this flex row;
+                      without it the title overflows and runs over the
+                      version/draft badges on the right. */}
+                  <span className="truncate min-w-0 flex-1" title={doc.title}>
+                    {doc.title}
+                  </span>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {doc.draft && (
                       <Badge variant="secondary" className="text-xs">
