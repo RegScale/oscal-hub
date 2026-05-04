@@ -7,6 +7,25 @@ function authHeaders(): Record<string, string> {
   return h;
 }
 
+// On 401: clear stale credentials and redirect to login. Mirrors the standard
+// behavior in api-client.ts so a backend restart (which rotates the JWT secret)
+// surfaces as "you got logged out" rather than silent fetch failures.
+function handle401(res: Response): Response {
+  if (res.status === 401 && typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+  }
+  return res;
+}
+
+// Drop-in replacement for fetch() that runs handle401 on the response.
+async function aiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  return handle401(await fetch(input, init));
+}
+
 export type WizardKind =
   | 'SMOKE'
   | 'CATALOG'
@@ -75,7 +94,7 @@ export interface AiUsageTotals {
 
 export const aiClient = {
   async getSettingsStatus(organizationId: number): Promise<{ enabled: boolean }> {
-    const res = await fetch(`${API_BASE_URL}/ai/settings/status?organizationId=${organizationId}`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/settings/status?organizationId=${organizationId}`, {
       method: 'GET',
       headers: authHeaders(),
     });
@@ -84,7 +103,7 @@ export const aiClient = {
   },
 
   async getSettings(organizationId: number): Promise<AiSettingsResponse> {
-    const res = await fetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
       method: 'GET',
       headers: authHeaders(),
     });
@@ -93,7 +112,7 @@ export const aiClient = {
   },
 
   async putSettings(organizationId: number, req: UpdateAiSettingsRequest): Promise<AiSettingsResponse> {
-    const res = await fetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify(req),
@@ -103,7 +122,7 @@ export const aiClient = {
   },
 
   async disable(organizationId: number): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/settings?organizationId=${organizationId}`, {
       method: 'DELETE',
       headers: authHeaders(),
     });
@@ -111,7 +130,7 @@ export const aiClient = {
   },
 
   async startSession(req: StartSessionRequest): Promise<StartSessionResponse> {
-    const res = await fetch(`${API_BASE_URL}/ai/sessions`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/sessions`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(req),
@@ -140,13 +159,13 @@ export const aiClient = {
     if (token) headers.Authorization = `Bearer ${token}`;
     // Don't set Content-Type — browser sets multipart boundary
 
-    const res = await fetch(url.toString(), { method: 'POST', headers, body: fd });
+    const res = await aiFetch(url.toString(), { method: 'POST', headers, body: fd });
     if (!res.ok) throw new Error(`status ${res.status}`);
     return res.json();
   },
 
   async cancelSession(sessionId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/ai/sessions/${sessionId}`, {
+    const res = await aiFetch(`${API_BASE_URL}/ai/sessions/${sessionId}`, {
       method: 'DELETE',
       headers: authHeaders(),
     });
@@ -155,7 +174,7 @@ export const aiClient = {
 
   async listSessions(orgId: number, limit = 20, offset = 0): Promise<AiSessionSummary[]> {
     const page = Math.floor(offset / limit);
-    const res = await fetch(
+    const res = await aiFetch(
       `${API_BASE_URL}/ai/analytics/sessions?organizationId=${orgId}&page=${page}&size=${limit}`,
       { method: 'GET', headers: authHeaders() },
     );
@@ -164,7 +183,7 @@ export const aiClient = {
   },
 
   async getSession(orgId: number, id: string): Promise<AiSessionDetail> {
-    const res = await fetch(
+    const res = await aiFetch(
       `${API_BASE_URL}/ai/analytics/sessions/${id}?organizationId=${orgId}`,
       { method: 'GET', headers: authHeaders() },
     );
@@ -173,7 +192,7 @@ export const aiClient = {
   },
 
   async getUsageTotals(orgId: number): Promise<AiUsageTotals> {
-    const res = await fetch(
+    const res = await aiFetch(
       `${API_BASE_URL}/ai/analytics/totals?organizationId=${orgId}`,
       { method: 'GET', headers: authHeaders() },
     );

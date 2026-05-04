@@ -65,6 +65,14 @@ export function useAiSession(sessionId: string | null): UseAiSessionState {
           signal: ac.signal,
         });
         if (!res.ok) {
+          if (res.status === 401 && typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            if (!window.location.pathname.startsWith('/login')) {
+              window.location.href = '/login';
+            }
+            return;
+          }
           setError(`Stream failed: HTTP ${res.status}`);
           setIsComplete(true);
           return;
