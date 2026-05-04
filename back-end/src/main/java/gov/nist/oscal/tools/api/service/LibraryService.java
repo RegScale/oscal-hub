@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.entity.Visibility;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
 import gov.nist.oscal.tools.api.repository.LibraryVersionRepository;
+import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,9 @@ public class LibraryService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired(required = false)
+    private OrganizationMembershipRepository membershipRepository;
 
     @Autowired
     private LibraryStorageService storageService;
@@ -562,12 +566,36 @@ public class LibraryService {
     }
 
     /**
-     * Resolve the caller's organization id. Users have a Set&lt;OrganizationMembership&gt;;
-     * we pick the first ACTIVE membership. Returns null if the user has no active
-     * membership (in which case ORGANIZATION-scoped items are not visible to them).
+     * Resolve the caller's organization id. Users have a
+     * {@code Set<OrganizationMembership>}; we pick the first ACTIVE membership.
+     * Returns null if the user has no active membership.
+     * <p>
+     * The caller may be a detached entity (loaded in one transaction, passed into
+     * another), in which case the lazy collection will not have a session to
+     * fault in — fall back to a fresh query against the membership repository
+     * (when wired in). For pure unit tests where the collection is preinitialised
+     * and the membership repo isn't available, the in-memory traversal still
+     * works.
      */
     Long resolveOrgId(User user) {
-        if (user == null || user.getOrganizationMemberships() == null) return null;
+        if (user == null || user.getId() == null) return null;
+        // Try membership repo first when wired (production / @SpringBootTest paths).
+        if (membershipRepository != null) {
+            try {
+                List<OrganizationMembership> memberships =
+                        membershipRepository.findByUserAndStatus(user,
+                                OrganizationMembership.MembershipStatus.ACTIVE);
+                for (OrganizationMembership m : memberships) {
+                    if (m.getOrganization() != null) {
+                        return m.getOrganization().getId();
+                    }
+                }
+                return null;
+            } catch (RuntimeException ignored) {
+                // fall through to the in-memory traversal below
+            }
+        }
+        if (user.getOrganizationMemberships() == null) return null;
         for (OrganizationMembership m : user.getOrganizationMemberships()) {
             if (m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE
                     && m.getOrganization() != null) {
