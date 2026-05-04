@@ -430,6 +430,62 @@ public class LibraryService {
         return libraryItemRepository.advancedSearchPaged(searchTerm, oscalType, tagName, pageable);
     }
 
+    // ==================== VISIBILITY-AWARE LIST METHODS ====================
+
+    /**
+     * Resolve a User by username. Returns null if username is null/blank or not found.
+     * Used by controllers to translate Principal.getName() into a User entity for
+     * visibility filtering.
+     */
+    @Transactional(readOnly = true)
+    public User resolveCaller(String username) {
+        if (username == null || username.isBlank()) return null;
+        return userRepository.findByUsername(username).orElse(null);
+    }
+
+    /** Get all library items visible to the caller (paginated). */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> getAllLibraryItemsVisibleToPaged(User caller, Pageable pageable) {
+        Long userId = caller != null ? caller.getId() : null;
+        Long orgId = resolveOrgId(caller);
+        return libraryItemRepository.findAllVisibleTo(userId, orgId, pageable);
+    }
+
+    /** Get library items by OSCAL type visible to the caller (paginated). */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> getLibraryItemsByOscalTypeVisibleToPaged(String oscalType, User caller, Pageable pageable) {
+        Long userId = caller != null ? caller.getId() : null;
+        Long orgId = resolveOrgId(caller);
+        return libraryItemRepository.findByOscalTypeVisibleTo(oscalType, userId, orgId, pageable);
+    }
+
+    /** Search library visible to caller (paginated). */
+    @Transactional(readOnly = true)
+    public Page<LibraryItem> searchLibraryVisibleToPaged(String searchTerm, String oscalType, String tagName,
+                                                         User caller, Pageable pageable) {
+        Long userId = caller != null ? caller.getId() : null;
+        Long orgId = resolveOrgId(caller);
+        return libraryItemRepository.advancedSearchPagedVisibleTo(searchTerm, oscalType, tagName, userId, orgId, pageable);
+    }
+
+    /** Most popular items visible to caller, capped at limit. */
+    @Transactional(readOnly = true)
+    public List<LibraryItem> getMostPopularVisibleTo(User caller, int limit) {
+        Long userId = caller != null ? caller.getId() : null;
+        Long orgId = resolveOrgId(caller);
+        return libraryItemRepository.findMostDownloadedVisibleTo(userId, orgId)
+                .stream().limit(limit).collect(Collectors.toList());
+    }
+
+    /** Recently updated items visible to caller, capped at limit. */
+    @Transactional(readOnly = true)
+    public List<LibraryItem> getRecentlyUpdatedVisibleTo(User caller, int limit) {
+        Long userId = caller != null ? caller.getId() : null;
+        Long orgId = resolveOrgId(caller);
+        return libraryItemRepository.findRecentlyUpdatedVisibleTo(userId, orgId)
+                .stream().limit(limit).collect(Collectors.toList());
+    }
+
     // ==================== VISIBILITY ====================
 
     /**

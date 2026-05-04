@@ -2,6 +2,7 @@ package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
+import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.service.LibraryCommentService;
 import gov.nist.oscal.tools.api.service.LibraryRatingService;
@@ -330,7 +331,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Search library (paginated)",
-        description = "Search library items by keyword, OSCAL type, or tag with pagination"
+        description = "Search library items by keyword, OSCAL type, or tag with pagination. Results are filtered by visibility: anonymous users see only PUBLIC items; authenticated users also see their own items and their organization's ORGANIZATION items."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Search completed successfully")
@@ -343,7 +344,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -352,7 +354,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.searchLibraryPaged(q, oscalType, tag, pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.searchLibraryVisibleToPaged(q, oscalType, tag, caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -364,7 +367,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Get all library items (paginated)",
-        description = "Retrieve all items in the library with pagination"
+        description = "Retrieve all items visible to the caller, with pagination. Results are filtered by visibility: anonymous users see only PUBLIC items; authenticated users also see their own items and their organization's ORGANIZATION items."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
@@ -374,7 +377,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -383,7 +387,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.getAllLibraryItemsPaged(pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.getAllLibraryItemsVisibleToPaged(caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -396,7 +401,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Get items by OSCAL type (paginated)",
-        description = "Retrieve library items of a specific OSCAL type with pagination"
+        description = "Retrieve library items of a specific OSCAL type with pagination. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
@@ -407,7 +412,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -416,7 +422,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.getLibraryItemsByOscalTypePaged(oscalType, pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.getLibraryItemsByOscalTypeVisibleToPaged(oscalType, caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -428,16 +435,18 @@ public class LibraryController {
 
     @Operation(
         summary = "Get most popular items",
-        description = "Retrieve the most downloaded library items"
+        description = "Retrieve the most downloaded library items. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Popular items retrieved successfully")
     })
     @GetMapping("/popular")
     public ResponseEntity<List<LibraryItemResponse>> getMostPopular(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<LibraryItem> items = libraryService.getMostPopular(limit);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryItem> items = libraryService.getMostPopularVisibleTo(caller, limit);
             List<LibraryItemResponse> responses = items.stream()
                     .map(LibraryItemResponse::fromEntity)
                     .collect(Collectors.toList());
@@ -450,16 +459,18 @@ public class LibraryController {
 
     @Operation(
         summary = "Get recently updated items",
-        description = "Retrieve recently updated library items"
+        description = "Retrieve recently updated library items. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Recently updated items retrieved successfully")
     })
     @GetMapping("/recent")
     public ResponseEntity<List<LibraryItemResponse>> getRecentlyUpdated(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<LibraryItem> items = libraryService.getRecentlyUpdated(limit);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryItem> items = libraryService.getRecentlyUpdatedVisibleTo(caller, limit);
             List<LibraryItemResponse> responses = items.stream()
                     .map(LibraryItemResponse::fromEntity)
                     .collect(Collectors.toList());

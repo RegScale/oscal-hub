@@ -137,4 +137,86 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
         @Param("tagName") String tagName,
         Pageable pageable
     );
+
+    // ==================== Visibility-Aware Queries ====================
+    // These queries filter results based on visibility:
+    //   - PUBLIC items are visible to everyone (including anonymous, userId == null)
+    //   - PRIVATE/ORGANIZATION items are visible only to the creator
+    //   - ORGANIZATION items are also visible to same-org members (orgId match)
+    // Pass userId == null and orgId == null for anonymous callers (returns PUBLIC only).
+
+    @Query(value = "SELECT li FROM LibraryItem li WHERE " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))",
+           countQuery = "SELECT COUNT(li) FROM LibraryItem li WHERE " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))")
+    Page<LibraryItem> findAllVisibleTo(
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId,
+        Pageable pageable);
+
+    @Query(value = "SELECT li FROM LibraryItem li WHERE li.oscalType = :oscalType AND " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))",
+           countQuery = "SELECT COUNT(li) FROM LibraryItem li WHERE li.oscalType = :oscalType AND " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))")
+    Page<LibraryItem> findByOscalTypeVisibleTo(
+        @Param("oscalType") String oscalType,
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId,
+        Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT li FROM LibraryItem li LEFT JOIN li.tags t WHERE " +
+           "(:searchTerm IS NULL OR LOWER(li.title) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%')) OR LOWER(COALESCE(li.description, '')) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%'))) AND " +
+           "(:oscalType IS NULL OR li.oscalType = :oscalType) AND " +
+           "(:tagName IS NULL OR LOWER(t.name) = LOWER(COALESCE(:tagName, ''))) AND " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))",
+           countQuery = "SELECT COUNT(DISTINCT li) FROM LibraryItem li LEFT JOIN li.tags t WHERE " +
+           "(:searchTerm IS NULL OR LOWER(li.title) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%')) OR LOWER(COALESCE(li.description, '')) LIKE LOWER(CONCAT('%', COALESCE(:searchTerm, ''), '%'))) AND " +
+           "(:oscalType IS NULL OR li.oscalType = :oscalType) AND " +
+           "(:tagName IS NULL OR LOWER(t.name) = LOWER(COALESCE(:tagName, ''))) AND " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId))")
+    Page<LibraryItem> advancedSearchPagedVisibleTo(
+        @Param("searchTerm") String searchTerm,
+        @Param("oscalType") String oscalType,
+        @Param("tagName") String tagName,
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId,
+        Pageable pageable);
+
+    @Query("SELECT li FROM LibraryItem li WHERE " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId)) " +
+           "ORDER BY li.downloadCount DESC")
+    List<LibraryItem> findMostDownloadedVisibleTo(
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId);
+
+    @Query("SELECT li FROM LibraryItem li WHERE " +
+           "(li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           " OR (:userId IS NOT NULL AND li.createdBy.id = :userId) " +
+           " OR (li.visibility = gov.nist.oscal.tools.api.entity.Visibility.ORGANIZATION " +
+           "     AND :orgId IS NOT NULL AND li.organization.id = :orgId)) " +
+           "ORDER BY li.updatedAt DESC")
+    List<LibraryItem> findRecentlyUpdatedVisibleTo(
+        @Param("userId") Long userId,
+        @Param("orgId") Long orgId);
 }

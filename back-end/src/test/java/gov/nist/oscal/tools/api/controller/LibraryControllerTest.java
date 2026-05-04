@@ -322,7 +322,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq("NIST"), eq(null), eq(null), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq("NIST"), eq(null), eq(null), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -349,7 +349,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq(null), eq("catalog"), eq(null), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq(null), eq("catalog"), eq(null), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -383,7 +383,7 @@ class LibraryControllerTest {
         item2.setTags(new HashSet<>());
         item2.setVersions(new HashSet<>());
 
-        when(libraryService.getAllLibraryItemsPaged(any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.getAllLibraryItemsVisibleToPaged(any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item1, item2)));
 
         // Act & Assert
@@ -410,7 +410,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.getLibraryItemsByOscalTypePaged(eq("catalog"), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.getLibraryItemsByOscalTypeVisibleToPaged(eq("catalog"), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -577,7 +577,7 @@ class LibraryControllerTest {
         item1.setVersions(new HashSet<>());
         item1.setDownloadCount(100L);
 
-        when(libraryService.getMostPopular(10))
+        when(libraryService.getMostPopularVisibleTo(any(), eq(10)))
                 .thenReturn(Arrays.asList(item1));
 
         // Act & Assert
@@ -590,7 +590,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetMostPopular_serviceException_returns500() throws Exception {
         // Arrange
-        when(libraryService.getMostPopular(anyInt()))
+        when(libraryService.getMostPopularVisibleTo(any(), anyInt()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -616,7 +616,7 @@ class LibraryControllerTest {
         item1.setTags(new HashSet<>());
         item1.setVersions(new HashSet<>());
 
-        when(libraryService.getRecentlyUpdated(10))
+        when(libraryService.getRecentlyUpdatedVisibleTo(any(), eq(10)))
                 .thenReturn(Arrays.asList(item1));
 
         // Act & Assert
@@ -629,7 +629,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetRecentlyUpdated_serviceException_returns500() throws Exception {
         // Arrange
-        when(libraryService.getRecentlyUpdated(anyInt()))
+        when(libraryService.getRecentlyUpdatedVisibleTo(any(), anyInt()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -722,7 +722,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq(null), eq(null), eq("nist"), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq(null), eq(null), eq("nist"), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
