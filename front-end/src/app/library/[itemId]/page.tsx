@@ -333,6 +333,21 @@ export default function LibraryItemDetailPage() {
           </div>
         </div>
 
+        {/*
+         * Public banner — shown to the creator when their item is
+         * PUBLIC, with a link to the (Phase 2) /catalog/{itemId} page.
+         * The link will 404 in Phase 1 and start working when Phase 2 ships.
+         */}
+        {item.visibility === 'PUBLIC' && user?.username === item.createdBy && (
+          <div className="bg-green-50 border-l-4 border-green-500 p-3 mb-6 text-sm">
+            This item is public — visible at{' '}
+            <a className="underline" href={`/catalog/${item.itemId}`}>
+              /catalog/{item.itemId}
+            </a>
+            .
+          </div>
+        )}
+
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>

@@ -319,12 +319,27 @@ export default function LibraryPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {visibleItems.map((item) => (
+                {visibleItems.map((item) => {
+                  const isOwnedPublic =
+                    item.visibility === 'PUBLIC' && user?.username === item.createdBy;
+                  return (
                   <Card
                     key={item.itemId}
                     className="hover:shadow-lg transition-shadow cursor-pointer"
                     onClick={() => router.push(`/library/${item.itemId}`)}
                   >
+                    {isOwnedPublic && (
+                      <div className="bg-green-50 border-l-4 border-green-500 px-3 py-1.5 text-xs">
+                        Public — visible at{' '}
+                        <a
+                          className="underline"
+                          href={`/catalog/${item.itemId}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          /catalog/{item.itemId}
+                        </a>
+                      </div>
+                    )}
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <FileText className="h-8 w-8 text-primary" />
@@ -410,7 +425,8 @@ export default function LibraryPage() {
                       </Button>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
