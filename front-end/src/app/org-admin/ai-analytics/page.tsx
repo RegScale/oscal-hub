@@ -4,8 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { aiClient, AiSessionSummary, AiUsageTotals, AiSessionStatus } from '@/lib/ai-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SessionDetailDrawer } from '@/components/ai/SessionDetailDrawer';
 
 // ─── helpers ───────────────────────────────────────────────────────────────
@@ -14,46 +21,25 @@ function microsToUsd(micros: number): string {
   return `$${(micros / 1_000_000).toFixed(4)}`;
 }
 
-function statusPill(status: AiSessionStatus) {
-  const base = 'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full';
+function StatusBadge({ status }: { status: AiSessionStatus }) {
   switch (status) {
     case 'COMPLETED':
-      return (
-        <span className={`${base} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`}>
-          COMPLETED
-        </span>
-      );
+      return <Badge variant="success">COMPLETED</Badge>;
     case 'FAILED':
-      return (
-        <span className={`${base} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200`}>
-          FAILED
-        </span>
-      );
+      return <Badge variant="destructive">FAILED</Badge>;
     case 'RUNNING':
       return (
-        <span className={`${base} bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200`}>
-          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+        <Badge variant="default">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />
           RUNNING
-        </span>
+        </Badge>
       );
     case 'CANCELLED':
-      return (
-        <span className={`${base} bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300`}>
-          CANCELLED
-        </span>
-      );
+      return <Badge variant="secondary">CANCELLED</Badge>;
     case 'AWAITING_INPUT':
-      return (
-        <span className={`${base} bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200`}>
-          AWAITING INPUT
-        </span>
-      );
+      return <Badge variant="warning">AWAITING INPUT</Badge>;
     default:
-      return (
-        <span className={`${base} bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300`}>
-          {status}
-        </span>
-      );
+      return <Badge variant="outline">{status}</Badge>;
   }
 }
 
@@ -90,7 +76,6 @@ export default function AiAnalyticsPage() {
         return;
       }
 
-      // Resolve org id + name
       const currentOrg = localStorage.getItem('currentOrganization');
       let orgId: number | null = null;
       if (currentOrg) {
@@ -135,10 +120,6 @@ export default function AiAnalyticsPage() {
       }
       setOffset(newOffset);
     } catch (err) {
-      // Surface the raw error including any body returned by the backend —
-      // aiFetch attaches the response body so messages like Spring Security's
-      // "Full authentication is required to access this resource" show up
-      // here. Helps diagnose 401s without round-tripping through DevTools.
       setError(err instanceof Error ? err.message : 'Failed to load AI analytics');
     } finally {
       setLoading(false);
@@ -151,206 +132,170 @@ export default function AiAnalyticsPage() {
     loadData(organizationId, offset + PAGE_SIZE);
   };
 
-  // ── loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-
-        {/* Back link */}
-        <button
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-12 px-4">
+        <Button
+          variant="ghost"
           onClick={() => router.push('/org-admin')}
-          className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors px-0"
         >
-          <ChevronLeft className="h-4 w-4 mr-1" />
+          <ChevronLeft className="h-4 w-4" />
           Back to Dashboard
-        </button>
+        </Button>
 
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">AI Usage Analytics</h1>
+          <h1 className="text-4xl font-bold">AI Usage Analytics</h1>
           {orgName && (
-            <p className="mt-1 text-gray-600 dark:text-gray-400">{orgName}</p>
+            <p className="text-muted-foreground mt-2">{orgName}</p>
           )}
         </div>
 
-        {/* Error state */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 text-red-700 dark:text-red-300">
-            {error}
-          </div>
+          <Card className="mb-6 border-destructive/40 bg-destructive/10">
+            <CardContent className="text-sm text-destructive">{error}</CardContent>
+          </Card>
         )}
 
-        {/* Summary cards */}
         {totals && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            {/* Total Sessions */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Total Sessions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <CardHeader>
+                <CardDescription>Total Sessions</CardDescription>
+                <CardTitle className="text-3xl tabular-nums">
                   {totals.totalSessions.toLocaleString()}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  This month: {totals.sessionsThisMonth.toLocaleString()}
-                </p>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                This month: {totals.sessionsThisMonth.toLocaleString()}
               </CardContent>
             </Card>
 
-            {/* Total Tokens */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Total Tokens
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <CardHeader>
+                <CardDescription>Total Tokens</CardDescription>
+                <CardTitle className="text-3xl tabular-nums">
                   {(totals.totalTokensIn + totals.totalTokensOut).toLocaleString()}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  In: {totals.totalTokensIn.toLocaleString()} / Out: {totals.totalTokensOut.toLocaleString()}
-                </p>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                In: {totals.totalTokensIn.toLocaleString()} / Out: {totals.totalTokensOut.toLocaleString()}
               </CardContent>
             </Card>
 
-            {/* Total Cost */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Total Cost
+              <CardHeader>
+                <CardDescription>Total Cost</CardDescription>
+                <CardTitle className="text-3xl tabular-nums">
+                  {microsToUsd(totals.totalCostUsdMicros)}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {microsToUsd(totals.totalCostUsdMicros)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  This month: {microsToUsd(totals.costThisMonthUsdMicros)}
-                </p>
+              <CardContent className="text-xs text-muted-foreground">
+                This month: {microsToUsd(totals.costThisMonthUsdMicros)}
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Sessions table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sessions</h2>
-          </div>
-
-          {sessions.length === 0 && !error ? (
-            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
-              No AI sessions found for this organization.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Started
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Wizard
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Model
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Tokens (in / out)
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Cost
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {sessions.map((session) => (
-                    <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {new Date(session.startedAt).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {session.username ?? `#${session.userId}`}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {session.wizardKind}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {statusPill(session.status)}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
-                        {session.model}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 tabular-nums">
-                        {session.tokensIn.toLocaleString()} / {session.tokensOut.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 tabular-nums">
-                        {microsToUsd(session.costUsdMicros)}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSessionId(session.id);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </td>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sessions</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            {sessions.length === 0 && !error ? (
+              <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+                No AI sessions found for this organization.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-y border-border bg-muted/40">
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Started</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Wizard</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Model</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Tokens (in / out)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Cost</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {sessions.map((session, i) => (
+                      <tr
+                        key={session.id}
+                        className={
+                          'transition-colors hover:bg-muted/40 ' +
+                          (i < sessions.length - 1 ? 'border-b border-border' : '')
+                        }
+                      >
+                        <td className="px-6 py-3 whitespace-nowrap tabular-nums text-foreground">
+                          {new Date(session.startedAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-foreground">
+                          {session.username ?? `#${session.userId}`}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-foreground">
+                          {session.wizardKind}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap">
+                          <StatusBadge status={session.status} />
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap font-mono text-xs text-muted-foreground">
+                          {session.model}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap tabular-nums text-foreground">
+                          {session.tokensIn.toLocaleString()} / {session.tokensOut.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap tabular-nums text-foreground">
+                          {microsToUsd(session.costUsdMicros)}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedSessionId(session.id);
+                              setDrawerOpen(true);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {/* Load more */}
-          {sessions.length > 0 && sessions.length % PAGE_SIZE === 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-center">
-              <Button
-                variant="outline"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  'Load more'
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
+            {sessions.length > 0 && sessions.length % PAGE_SIZE === 0 && (
+              <div className="px-6 py-4 border-t border-border flex justify-center">
+                <Button variant="outline" onClick={handleLoadMore} disabled={loadingMore}>
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    'Load more'
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Session detail drawer */}
       <SessionDetailDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
