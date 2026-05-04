@@ -56,6 +56,7 @@ interface ImplementationDetail {
 
 interface ComponentBuilderWizardProps {
   editingComponent?: ComponentDefinitionResponse | null;
+  initialComponent?: unknown | null;
   onSaveComplete?: () => void;
 }
 
@@ -68,7 +69,7 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 6, title: 'Review & Save', description: 'Preview and save your work' },
 ];
 
-export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: ComponentBuilderWizardProps) {
+export function ComponentBuilderWizard({ editingComponent, initialComponent, onSaveComplete }: ComponentBuilderWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -110,10 +111,26 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     if (editingComponent) {
       loadComponentForEditing(editingComponent.id);
     } else {
-      // Reset to defaults when creating new
-      resetWizard();
+      // Reset to defaults when creating new, unless an AI draft is being loaded
+      if (!initialComponent) {
+        resetWizard();
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingComponent]);
+
+  // Hydrate from AI draft when provided and not in edit mode
+  useEffect(() => {
+    if (editingComponent) return; // edit mode takes precedence
+    if (!initialComponent) return;
+    try {
+      hydrateFromOscalJson(initialComponent);
+      setCurrentStep(1);
+    } catch {
+      // ignore malformed AI draft — form stays empty
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialComponent, editingComponent]);
 
   const resetWizard = () => {
     setCurrentStep(1);
@@ -127,6 +144,159 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     setSaveSuccess(false);
   };
 
+  const hydrateFromOscalJson = (oscalJson: unknown) => {
+    // Validate the structure
+    if (!oscalJson || typeof oscalJson !== 'object') {
+      throw new Error('No OSCAL data returned from server');
+    }
+
+    const oscalObj = oscalJson as Record<string, unknown>;
+    const compDefRaw = oscalObj['component-definition'];
+
+    if (!compDefRaw || typeof compDefRaw !== 'object') {
+      console.error('OSCAL JSON structure:', Object.keys(oscalObj));
+      throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalObj).join(', ')}`);
+    }
+
+    const compDef = compDefRaw as Record<string, unknown>;
+
+    if (!compDef.metadata || typeof compDef.metadata !== 'object') {
+      throw new Error('Invalid OSCAL structure: missing metadata');
+    }
+
+    const meta = compDef.metadata as Record<string, unknown>;
+
+    // Load metadata
+    setMetadata({
+      title: (meta.title as string) || '',
+      version: (meta.version as string) || '1.0.0',
+      oscalVersion: (meta['oscal-version'] as string) || '1.1.3',
+      description: (meta.description as string) || '',
+    });
+
+    // Load components and capabilities
+    const loadedItems: ComponentOrCapability[] = [];
+    const loadedAssignments: ControlAssignment[] = [];
+    const loadedDetails: ImplementationDetail[] = [];
+    const allControls: Set<string> = new Set();
+    let catalogSource: string | null = null;
+
+    // Process components
+    if (compDef.components && Array.isArray(compDef.components)) {
+      for (const compRaw of compDef.components) {
+        const comp = compRaw as Record<string, unknown>;
+        loadedItems.push({
+          uuid: comp.uuid as string,
+          type: 'component',
+          componentType: comp.type as string,
+          title: comp.title as string,
+          description: (comp.description as string) || '',
+        });
+
+        // Extract control implementations
+        if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
+          for (const controlImplRaw of comp['control-implementations']) {
+            const controlImpl = controlImplRaw as Record<string, unknown>;
+            if (!catalogSource) catalogSource = controlImpl.source as string;
+
+            const controlIds: string[] = [];
+            if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+              for (const reqRaw of controlImpl['implemented-requirements']) {
+                const req = reqRaw as Record<string, unknown>;
+                const controlId = req['control-id'] as string;
+                controlIds.push(controlId);
+                allControls.add(controlId);
+
+                // Store implementation details
+                if (req.description) {
+                  loadedDetails.push({
+                    componentUuid: comp.uuid as string,
+                    controlId,
+                    description: req.description as string,
+                  });
+                }
+              }
+            }
+
+            if (controlIds.length > 0) {
+              loadedAssignments.push({
+                componentUuid: comp.uuid as string,
+                controlIds,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Process capabilities
+    if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
+      for (const capRaw of compDef.capabilities) {
+        const cap = capRaw as Record<string, unknown>;
+        loadedItems.push({
+          uuid: cap.uuid as string,
+          type: 'capability',
+          name: cap.name as string,
+          title: (cap.name as string) || '',
+          description: (cap.description as string) || '',
+        });
+
+        // Extract control implementations for capabilities
+        if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
+          for (const controlImplRaw of cap['control-implementations']) {
+            const controlImpl = controlImplRaw as Record<string, unknown>;
+            if (!catalogSource) catalogSource = controlImpl.source as string;
+
+            const controlIds: string[] = [];
+            if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+              for (const reqRaw of controlImpl['implemented-requirements']) {
+                const req = reqRaw as Record<string, unknown>;
+                const controlId = req['control-id'] as string;
+                controlIds.push(controlId);
+                allControls.add(controlId);
+
+                if (req.description) {
+                  loadedDetails.push({
+                    componentUuid: cap.uuid as string,
+                    controlId,
+                    description: req.description as string,
+                  });
+                }
+              }
+            }
+
+            if (controlIds.length > 0) {
+              loadedAssignments.push({
+                componentUuid: cap.uuid as string,
+                controlIds,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    setComponentsAndCapabilities(loadedItems);
+    setControlAssignments(loadedAssignments);
+    setImplementationDetails(loadedDetails);
+
+    // Set catalog and controls (simplified - just control IDs)
+    if (catalogSource && allControls.size > 0) {
+      setSelectedCatalog({
+        title: 'Loaded Catalog',
+        source: catalogSource,
+      });
+
+      setSelectedControls(
+        Array.from(allControls).map(id => ({
+          controlId: id,
+          title: id,
+          description: '',
+        }))
+      );
+    }
+  };
+
   const loadComponentForEditing = async (componentId: number) => {
     setIsLoadingEdit(true);
     setLoadError(null);
@@ -138,163 +308,14 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
       if (typeof oscalJson === 'string') {
         try {
           oscalJson = JSON.parse(oscalJson);
-        } catch (parseError) {
+        } catch {
           throw new Error('Failed to parse OSCAL JSON from server');
         }
       }
 
       console.log('Loaded OSCAL JSON:', oscalJson);
 
-      // Validate the structure
-      if (!oscalJson || typeof oscalJson !== 'object') {
-        throw new Error('No OSCAL data returned from server');
-      }
-
-      const oscalObj = oscalJson as Record<string, unknown>;
-      const compDefRaw = oscalObj['component-definition'];
-
-      if (!compDefRaw || typeof compDefRaw !== 'object') {
-        console.error('OSCAL JSON structure:', Object.keys(oscalObj));
-        throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalObj).join(', ')}`);
-      }
-
-      const compDef = compDefRaw as Record<string, unknown>;
-
-      if (!compDef.metadata || typeof compDef.metadata !== 'object') {
-        throw new Error('Invalid OSCAL structure: missing metadata');
-      }
-
-      const metadata = compDef.metadata as Record<string, unknown>;
-
-      // Load metadata
-      setMetadata({
-        title: (metadata.title as string) || '',
-        version: (metadata.version as string) || '1.0.0',
-        oscalVersion: (metadata['oscal-version'] as string) || '1.1.3',
-        description: (metadata.description as string) || '',
-      });
-
-      // Load components and capabilities
-      const loadedItems: ComponentOrCapability[] = [];
-      const loadedAssignments: ControlAssignment[] = [];
-      const loadedDetails: ImplementationDetail[] = [];
-      const allControls: Set<string> = new Set();
-      let catalogSource: string | null = null;
-
-      // Process components
-      if (compDef.components && Array.isArray(compDef.components)) {
-        for (const compRaw of compDef.components) {
-          const comp = compRaw as Record<string, unknown>;
-          loadedItems.push({
-            uuid: comp.uuid as string,
-            type: 'component',
-            componentType: comp.type as string,
-            title: comp.title as string,
-            description: (comp.description as string) || '',
-          });
-
-          // Extract control implementations
-          if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
-            for (const controlImplRaw of comp['control-implementations']) {
-              const controlImpl = controlImplRaw as Record<string, unknown>;
-              if (!catalogSource) catalogSource = controlImpl.source as string;
-
-              const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
-                for (const reqRaw of controlImpl['implemented-requirements']) {
-                  const req = reqRaw as Record<string, unknown>;
-                  const controlId = req['control-id'] as string;
-                  controlIds.push(controlId);
-                  allControls.add(controlId);
-
-                  // Store implementation details
-                  if (req.description) {
-                    loadedDetails.push({
-                      componentUuid: comp.uuid as string,
-                      controlId,
-                      description: req.description as string,
-                    });
-                  }
-                }
-              }
-
-              if (controlIds.length > 0) {
-                loadedAssignments.push({
-                  componentUuid: comp.uuid as string,
-                  controlIds,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      // Process capabilities
-      if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
-        for (const capRaw of compDef.capabilities) {
-          const cap = capRaw as Record<string, unknown>;
-          loadedItems.push({
-            uuid: cap.uuid as string,
-            type: 'capability',
-            name: cap.name as string,
-            title: (cap.name as string) || '',
-            description: (cap.description as string) || '',
-          });
-
-          // Extract control implementations for capabilities
-          if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
-            for (const controlImplRaw of cap['control-implementations']) {
-              const controlImpl = controlImplRaw as Record<string, unknown>;
-              if (!catalogSource) catalogSource = controlImpl.source as string;
-
-              const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
-                for (const reqRaw of controlImpl['implemented-requirements']) {
-                  const req = reqRaw as Record<string, unknown>;
-                  const controlId = req['control-id'] as string;
-                  controlIds.push(controlId);
-                  allControls.add(controlId);
-
-                  if (req.description) {
-                    loadedDetails.push({
-                      componentUuid: cap.uuid as string,
-                      controlId,
-                      description: req.description as string,
-                    });
-                  }
-                }
-              }
-
-              if (controlIds.length > 0) {
-                loadedAssignments.push({
-                  componentUuid: cap.uuid as string,
-                  controlIds,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      setComponentsAndCapabilities(loadedItems);
-      setControlAssignments(loadedAssignments);
-      setImplementationDetails(loadedDetails);
-
-      // Set catalog and controls (simplified - just control IDs)
-      if (catalogSource && allControls.size > 0) {
-        setSelectedCatalog({
-          title: 'Loaded Catalog',
-          source: catalogSource,
-        });
-
-        setSelectedControls(
-          Array.from(allControls).map(id => ({
-            controlId: id,
-            title: id,
-            description: '',
-          }))
-        );
-      }
+      hydrateFromOscalJson(oscalJson);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Failed to load component for editing');
       console.error('Error loading component for editing:', error);

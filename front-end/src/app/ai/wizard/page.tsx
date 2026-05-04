@@ -12,12 +12,11 @@ interface WizardOption {
 }
 
 const OPTIONS: WizardOption[] = [
-  { kind: 'SMOKE', title: 'Smoke Test', description: 'Diagnostic round-trip — confirms AI is reachable.', available: true },
   { kind: 'CATALOG', title: 'Build Catalog from Source', description: 'Drop a PDF, Word doc, HTML, or paste text — AI drafts an OSCAL catalog you can review and save.', available: true },
-  { kind: 'COMPONENT_DEF', title: 'Build Component-definition', description: 'Coming next plan.', available: false },
-  { kind: 'PROFILE', title: 'Build Profile', description: 'Coming later plan.', available: false },
-  { kind: 'SSP', title: 'Draft SSP', description: 'Coming later plan.', available: false },
-  { kind: 'POAM', title: 'Draft POA&M', description: 'Coming later plan.', available: false },
+  { kind: 'COMPONENT_DEF', title: 'Build Component-definition from STIG / CIS / Config Guide', description: 'Drop a STIG, CIS Benchmark, or vendor configuration guide — AI maps the recommended settings to NIST 800-53 controls and drafts an OSCAL component-definition.', available: true },
+  { kind: 'PROFILE', title: 'Build Profile', description: 'Coming soon.', available: false },
+  { kind: 'SSP', title: 'Draft SSP', description: 'Coming soon.', available: false },
+  { kind: 'POAM', title: 'Draft POA&M', description: 'Coming soon.', available: false },
 ];
 
 export default function WizardPickerPage() {

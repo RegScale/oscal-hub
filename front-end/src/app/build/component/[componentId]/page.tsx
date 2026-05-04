@@ -9,7 +9,6 @@ import { ArrowLeft, Hammer, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { ComponentDefinitionResponse } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
 
 export default function ComponentDetailPage() {
@@ -77,7 +76,6 @@ export default function ComponentDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -101,7 +99,6 @@ export default function ComponentDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -135,7 +132,6 @@ export default function ComponentDetailPage() {
         />
       </div>
 
-      <Footer />
     </div>
   );
 }
