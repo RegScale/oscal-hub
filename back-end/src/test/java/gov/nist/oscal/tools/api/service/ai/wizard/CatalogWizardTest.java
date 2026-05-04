@@ -28,13 +28,13 @@ class CatalogWizardTest {
         when(knowledge.systemFor(WizardKind.CATALOG)).thenReturn("system");
 
         // Outline response — matched on the prompt's "controls publication" keyword.
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("controls publication"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("controls publication")), any()))
                 .thenReturn(new AnthropicResult(
                         "{\"title\":\"Test Catalog\",\"version\":\"1.0\",\"publisher\":\"Acme\"," +
                         "\"families\":[{\"id\":\"ac\",\"title\":\"Access Control\",\"controlIds\":[\"ac-1\"]}]}",
                         100, 50));
         // Family response — matched on the family-prompt's "Generate the" keyword.
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("Generate the"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("Generate the")), any()))
                 .thenReturn(new AnthropicResult(
                         "{\"id\":\"ac\",\"class\":\"family\",\"title\":\"Access Control\"," +
                         "\"controls\":[{\"id\":\"ac-1\",\"title\":\"Policy\"}]}",

@@ -48,11 +48,11 @@ class ComponentDefWizardTest {
                 "\"description\":\"Account management configured via authselect.\"}]";
 
         // Outline response — matched on the outline prompt keyword
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("configuration guide"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("configuration guide")), any()))
                 .thenReturn(new AnthropicResult(outlineJson, 100, 50));
 
         // Per-chunk response — matched on the componentPrompt keyword
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirements entries"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirements entries")), any()))
                 .thenReturn(new AnthropicResult(chunkJson, 100, 50));
 
         ComponentDefWizard wizard = new ComponentDefWizard(
@@ -99,9 +99,9 @@ class ComponentDefWizardTest {
                 "{\"uuid\":\"" + UUID.randomUUID() + "\",\"control-id\":\"ia-2\",\"description\":\"desc2\"}," +
                 "{\"uuid\":\"" + UUID.randomUUID() + "\",\"control-id\":\"au-3\",\"description\":\"desc3\"}]";
 
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("configuration guide"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("configuration guide")), any()))
                 .thenReturn(new AnthropicResult(outlineJson, 80, 40));
-        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirements entries"))))
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirements entries")), any()))
                 .thenReturn(new AnthropicResult(chunkJson, 120, 60));
 
         // Capture the complete event JSON

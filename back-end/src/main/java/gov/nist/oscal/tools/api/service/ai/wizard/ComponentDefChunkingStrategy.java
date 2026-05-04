@@ -10,17 +10,18 @@ import java.util.List;
  * Anthropic call.
  *
  * <ul>
- *   <li>≤ 50 controls → 8 per chunk (small guides such as vendor hardening docs)</li>
- *   <li>&gt; 50 controls → 4 per chunk (large guides such as DISA STIGs or CIS
- *       Benchmarks which can have hundreds of items)</li>
+ *   <li>≤ 50 controls → 10 per chunk (small guides such as vendor hardening docs)</li>
+ *   <li>&gt; 50 controls → 8 per chunk (large guides such as DISA STIGs or CIS
+ *       Benchmarks which can have hundreds of items). Larger chunks mean
+ *       fewer round-trips and more visible progress in the wizard UI.</li>
  * </ul>
  */
 @Component
 public class ComponentDefChunkingStrategy {
 
     private static final int SMALL_THRESHOLD = 50;
-    private static final int SMALL_CHUNK_SIZE = 8;
-    private static final int LARGE_CHUNK_SIZE = 4;
+    private static final int SMALL_CHUNK_SIZE = 10;
+    private static final int LARGE_CHUNK_SIZE = 8;
 
     /**
      * Splits {@code controlIds} into sub-lists.

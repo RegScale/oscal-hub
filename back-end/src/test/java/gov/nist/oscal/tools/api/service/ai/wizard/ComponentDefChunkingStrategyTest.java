@@ -12,43 +12,43 @@ class ComponentDefChunkingStrategyTest {
     private final ComponentDefChunkingStrategy strategy = new ComponentDefChunkingStrategy();
 
     @Test
-    void smallGuideChunksInGroupsOfEight() {
-        List<String> ids = mk(24);
+    void smallGuideChunksInGroupsOfTen() {
+        List<String> ids = mk(30);
         List<List<String>> chunks = strategy.chunk(ids);
-        // 24 / 8 = 3 full chunks
+        // 30 / 10 = 3 full chunks
         assertThat(chunks).hasSize(3);
-        assertThat(chunks.get(0)).hasSize(8);
-        assertThat(chunks.get(2)).hasSize(8);
+        assertThat(chunks.get(0)).hasSize(10);
+        assertThat(chunks.get(2)).hasSize(10);
     }
 
     @Test
     void smallGuideWithRemainderChunksCorrectly() {
-        List<String> ids = mk(20);
+        List<String> ids = mk(25);
         List<List<String>> chunks = strategy.chunk(ids);
-        // 20 / 8 = 2 full chunks of 8 + 1 chunk of 4
+        // 25 / 10 = 2 full chunks of 10 + 1 chunk of 5
         assertThat(chunks).hasSize(3);
-        assertThat(chunks.get(0)).hasSize(8);
-        assertThat(chunks.get(1)).hasSize(8);
-        assertThat(chunks.get(2)).hasSize(4);
+        assertThat(chunks.get(0)).hasSize(10);
+        assertThat(chunks.get(1)).hasSize(10);
+        assertThat(chunks.get(2)).hasSize(5);
     }
 
     @Test
-    void largeGuideChunksInGroupsOfFour() {
+    void largeGuideChunksInGroupsOfEight() {
         List<String> ids = mk(100);
         List<List<String>> chunks = strategy.chunk(ids);
-        // 100 / 4 = 25 chunks
-        assertThat(chunks).hasSize(25);
-        assertThat(chunks.get(0)).hasSize(4);
-        assertThat(chunks.get(24)).hasSize(4);
+        // 100 / 8 = 12 chunks of 8 + 1 chunk of 4
+        assertThat(chunks).hasSize(13);
+        assertThat(chunks.get(0)).hasSize(8);
+        assertThat(chunks.get(12)).hasSize(4);
     }
 
     @Test
     void boundaryAt50UsesSmallChunkSize() {
         List<String> ids = mk(50);
         List<List<String>> chunks = strategy.chunk(ids);
-        // 50 / 8 = 6 chunks of 8 + 1 chunk of 2
-        assertThat(chunks).hasSize(7);
-        assertThat(chunks.get(0)).hasSize(8);
+        // 50 / 10 = 5 chunks of 10
+        assertThat(chunks).hasSize(5);
+        assertThat(chunks.get(0)).hasSize(10);
     }
 
     @Test

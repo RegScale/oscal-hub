@@ -90,7 +90,8 @@ public class ComponentDefWizard implements Wizard {
                     .userMessage(prompts.outlinePrompt() + "\n\n---\n\n" + docText)
                     .maxTokens(8000);
             if (pdfBytes != null) b.addPdf(pdfBytes);
-            AnthropicResult outlineRes = client.send(ctx.apiKey(), b.build());
+            AnthropicResult outlineRes = client.send(ctx.apiKey(), b.build(),
+                    msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
             tokensIn += outlineRes.tokensIn();
             tokensOut += outlineRes.tokensOut();
 
@@ -124,7 +125,8 @@ public class ComponentDefWizard implements Wizard {
                         .userMessage(prompts.componentPrompt(productTitle, chunk)
                                 + "\n\n---\n\n" + docText)
                         .maxTokens(8000)
-                        .build());
+                        .build(),
+                        msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
                 tokensIn += chunkRes.tokensIn();
                 tokensOut += chunkRes.tokensOut();
 

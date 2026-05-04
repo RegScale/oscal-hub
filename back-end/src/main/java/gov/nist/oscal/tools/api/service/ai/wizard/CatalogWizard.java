@@ -78,7 +78,8 @@ public class CatalogWizard implements Wizard {
                     .userMessage(prompts.outlinePrompt() + "\n\n---\n\n" + docText)
                     .maxTokens(8000);
             if (pdfBytes != null) b.addPdf(pdfBytes);
-            AnthropicResult outlineRes = client.send(ctx.apiKey(), b.build());
+            AnthropicResult outlineRes = client.send(ctx.apiKey(), b.build(),
+                    msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
             tokensIn += outlineRes.tokensIn();
             tokensOut += outlineRes.tokensOut();
 
@@ -115,7 +116,8 @@ public class CatalogWizard implements Wizard {
                             .userMessage(prompts.familyPrompt(fam.id(), fam.title(), fam.controlIds())
                                     + "\n\n---\n\n" + docText)
                             .maxTokens(8000)
-                            .build());
+                            .build(),
+                            msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
                     tokensIn += famRes.tokensIn();
                     tokensOut += famRes.tokensOut();
                     producedGroups.add(MAPPER.readTree(extractJson(famRes.text())));
