@@ -720,4 +720,28 @@ public class LibraryService {
         }
         return null;
     }
+
+    // ==================== PUBLIC CATALOG ====================
+    // Anonymous, PUBLIC-only browse and download. Stubbed in Task P1; real
+    // implementations land in Task P2.
+
+    /** Result type for content downloads (latest or by version). */
+    public record VersionDownload(String content, String filename, String format) {}
+
+    public Page<gov.nist.oscal.tools.api.model.library.PublicItemSummary>
+            searchPublic(String q, String type, String tag, Pageable pageable) {
+        return Page.empty(pageable);
+    }
+
+    public Optional<gov.nist.oscal.tools.api.model.library.PublicItemSummary> getPublic(String itemId) {
+        return Optional.empty();
+    }
+
+    public Optional<VersionDownload> getPublicLatestContent(String itemId) {
+        return Optional.empty();
+    }
+
+    public Optional<VersionDownload> getPublicVersionContent(String itemId, String versionId) {
+        return Optional.empty();
+    }
 }

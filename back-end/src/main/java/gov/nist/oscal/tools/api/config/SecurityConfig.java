@@ -115,6 +115,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
+                // Public catalog: anonymous-readable PUBLIC library items.
+                .requestMatchers("/api/public/catalog/**").permitAll()
                 // Spring's /error forward: when an unhandled controller exception
                 // bubbles up, Spring forwards to /error to render the response. If
                 // /error itself required auth, server-side 500s would be masked as
