@@ -173,10 +173,16 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Flyway Database Migrations -->
+        <!-- Flyway Database Migrations.
+             Spring Boot 4 modularised the Flyway autoconfiguration out of
+             spring-boot-autoconfigure into a dedicated module shipped via
+             spring-boot-starter-flyway. Without this starter on the classpath
+             FlywayAutoConfiguration is absent and Flyway never runs at boot,
+             even though flyway-core itself is present — the schema-authority
+             policy in CLAUDE.md silently no-ops. -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
 
         <!-- Flyway PostgreSQL support -->
