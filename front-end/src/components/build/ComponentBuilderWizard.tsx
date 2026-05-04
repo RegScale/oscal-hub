@@ -18,12 +18,12 @@ import {
   Eye,
   CheckCircle2,
   Circle,
-  ArrowRight,
   Library,
   Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { ControlSelector } from '@/components/build/ControlSelector';
+import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
 import type { ComponentDefinitionRequest, ComponentDefinitionResponse } from '@/types/oscal';
 
 interface WizardStep {
@@ -604,39 +604,28 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
     }
   };
 
+  // Compact step nav matching OscalDocumentWizard so the Component, SSP, AP,
+  // AR, and POA&M builders all look and feel the same.
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-between mb-8 overflow-x-auto">
-      {WIZARD_STEPS.map((step, index) => (
-        <div key={step.id} className="flex items-center flex-1 min-w-0">
-          <div className="flex flex-col items-center flex-1">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
-              currentStep > step.id
-                ? 'bg-primary border-primary text-primary-foreground'
-                : currentStep === step.id
-                ? 'border-primary text-primary'
-                : 'border-muted-foreground/30 text-muted-foreground'
-            }`}>
-              {currentStep > step.id ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <Circle className={`h-5 w-5 ${currentStep === step.id ? 'fill-current' : ''}`} />
-              )}
-            </div>
-            <div className="mt-2 text-center">
-              <div className={`text-xs sm:text-sm font-medium ${
-                currentStep === step.id ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-                {step.title}
-              </div>
-              <div className="text-xs text-muted-foreground hidden lg:block">
-                {step.description}
-              </div>
-            </div>
-          </div>
-          {index < WIZARD_STEPS.length - 1 && (
-            <ArrowRight className="h-4 w-4 text-muted-foreground mx-1 flex-shrink-0" />
+    <div className="flex flex-wrap items-center gap-2 px-1">
+      {WIZARD_STEPS.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => setCurrentStep(s.id)}
+          className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+            currentStep === s.id
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+          }`}
+        >
+          {currentStep > s.id ? (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          ) : (
+            <Circle className="h-3.5 w-3.5" />
           )}
-        </div>
+          <span>{s.id}. {s.title}</span>
+        </button>
       ))}
     </div>
   );
@@ -1075,6 +1064,8 @@ export function ComponentBuilderWizard({ editingComponent, initialComponent, onS
             </pre>
           </CardContent>
         </Card>
+
+        <SchemaValidationPanel jsonContent={jsonString} modelType="component-definition" />
 
         {saveError && (
           <Card className="border-red-200 bg-red-50 dark:bg-red-950">
