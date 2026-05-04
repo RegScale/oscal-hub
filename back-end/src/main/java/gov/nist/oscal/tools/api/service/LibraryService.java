@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.entity.Visibility;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
 import gov.nist.oscal.tools.api.repository.LibraryVersionRepository;
@@ -426,5 +428,42 @@ public class LibraryService {
     @Transactional(readOnly = true)
     public Page<LibraryItem> searchLibraryPaged(String searchTerm, String oscalType, String tagName, Pageable pageable) {
         return libraryItemRepository.advancedSearchPaged(searchTerm, oscalType, tagName, pageable);
+    }
+
+    // ==================== VISIBILITY ====================
+
+    /**
+     * Visibility predicate used by every read path. PUBLIC items are readable by
+     * anyone (including null caller). Otherwise, only creator or same-org members
+     * (the latter only when visibility == ORGANIZATION).
+     */
+    public boolean canRead(LibraryItem item, User caller) {
+        if (item.getVisibility() == Visibility.PUBLIC) return true;
+        if (caller == null) return false;
+        if (item.getCreatedBy() != null
+                && item.getCreatedBy().getId() != null
+                && item.getCreatedBy().getId().equals(caller.getId())) return true;
+        if (item.getVisibility() == Visibility.ORGANIZATION) {
+            Long itemOrg = item.getOrganization() != null ? item.getOrganization().getId() : null;
+            Long callerOrg = resolveOrgId(caller);
+            return itemOrg != null && itemOrg.equals(callerOrg);
+        }
+        return false;
+    }
+
+    /**
+     * Resolve the caller's organization id. Users have a Set&lt;OrganizationMembership&gt;;
+     * we pick the first ACTIVE membership. Returns null if the user has no active
+     * membership (in which case ORGANIZATION-scoped items are not visible to them).
+     */
+    Long resolveOrgId(User user) {
+        if (user == null || user.getOrganizationMemberships() == null) return null;
+        for (OrganizationMembership m : user.getOrganizationMemberships()) {
+            if (m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE
+                    && m.getOrganization() != null) {
+                return m.getOrganization().getId();
+            }
+        }
+        return null;
     }
 }
