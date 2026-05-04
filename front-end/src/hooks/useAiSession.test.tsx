@@ -55,7 +55,7 @@ describe('useAiSession', () => {
     expect(result.current.finalDocument).toEqual({ ok: true });
   });
 
-  it('clears stale credentials on 401 from the stream endpoint', async () => {
+  it('clears stale credentials and surfaces error on 401 from the stream endpoint', async () => {
     const removeItem = vi.fn();
     vi.stubGlobal('localStorage', {
       getItem: () => 'stale-jwt',
@@ -65,11 +65,14 @@ describe('useAiSession', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    renderHook(() => useAiSession('abc'));
+    const { result } = renderHook(() => useAiSession('abc'));
 
     await waitFor(() => {
       expect(removeItem).toHaveBeenCalledWith('token');
       expect(removeItem).toHaveBeenCalledWith('user');
     });
+    expect(result.current.error).toContain('401');
+    expect(result.current.error).toMatch(/session expired/i);
+    expect(result.current.isComplete).toBe(true);
   });
 });

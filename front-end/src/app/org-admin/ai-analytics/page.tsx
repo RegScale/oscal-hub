@@ -135,7 +135,13 @@ export default function AiAnalyticsPage() {
       }
       setOffset(newOffset);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load AI analytics');
+      const msg = err instanceof Error ? err.message : 'Failed to load AI analytics';
+      // Friendly hint for the most common cause: backend restart rotated the JWT secret.
+      setError(
+        msg.includes('401')
+          ? 'Your session has expired. Please log out and log back in to view analytics.'
+          : msg,
+      );
     } finally {
       setLoading(false);
       setLoadingMore(false);

@@ -7,16 +7,14 @@ function authHeaders(): Record<string, string> {
   return h;
 }
 
-// On 401: clear stale credentials and redirect to login. Mirrors the standard
-// behavior in api-client.ts so a backend restart (which rotates the JWT secret)
-// surfaces as "you got logged out" rather than silent fetch failures.
+// On 401: clear stale credentials. Matches api-client.ts behavior — no force
+// redirect; the calling code throws so the page can render an inline error,
+// and the next render of any auth-aware component will route to login since
+// localStorage is now empty.
 function handle401(res: Response): Response {
   if (res.status === 401 && typeof window !== 'undefined') {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    if (!window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
-    }
   }
   return res;
 }

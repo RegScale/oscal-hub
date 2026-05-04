@@ -68,12 +68,8 @@ export function useAiSession(sessionId: string | null): UseAiSessionState {
           if (res.status === 401 && typeof window !== 'undefined') {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            if (!window.location.pathname.startsWith('/login')) {
-              window.location.href = '/login';
-            }
-            return;
           }
-          setError(`Stream failed: HTTP ${res.status}`);
+          setError(`Stream failed: HTTP ${res.status}${res.status === 401 ? ' — session expired, please log in again' : ''}`);
           setIsComplete(true);
           return;
         }
