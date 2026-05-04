@@ -392,6 +392,7 @@ export default function BuildPage() {
                     modelType={cfg.slug}
                     editingDocument={editingDoc}
                     onSaveComplete={onSaveComplete}
+                    userOrganizationId={orgId}
                     onCancel={() => {
                       setMode('list');
                       setEditingDoc(null);

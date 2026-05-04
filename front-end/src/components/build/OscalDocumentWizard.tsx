@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,13 +19,16 @@ import {
   Upload,
   FileEdit,
   RotateCcw,
+  Library as LibraryIcon,
 } from 'lucide-react';
 import { oscalDocumentApi } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import { MetadataEditor } from '@/components/build/oscal/MetadataEditor';
 import { ResourcesEditor } from '@/components/build/oscal/ResourcesEditor';
 import { JsonPreview } from '@/components/build/oscal/JsonPreview';
 import { ImportJsonDialog } from '@/components/build/oscal/ImportJsonDialog';
 import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
+import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import { LazyMonacoEditor } from '@/components/lazy/LazyMonacoEditor';
 import {
   emptyMetadata,
@@ -50,6 +54,12 @@ interface OscalDocumentWizardProps {
   editingDocument?: OscalDocumentResponse | null;
   onSaveComplete?: () => void;
   onCancel?: () => void;
+  /**
+   * Caller's organization id, forwarded to the Save-to-Library modal so
+   * the user can publish at ORGANIZATION visibility. `null` when the user
+   * has no org membership.
+   */
+  userOrganizationId?: number | null;
 }
 
 const STEPS = [
@@ -148,6 +158,7 @@ export function OscalDocumentWizard({
   editingDocument,
   onSaveComplete,
   onCancel,
+  userOrganizationId,
 }: OscalDocumentWizardProps) {
   const [step, setStep] = useState(1);
   const [doc, setDoc] = useState<ParsedDocument>(() => emptyParsedDoc(modelType));
@@ -163,6 +174,11 @@ export function OscalDocumentWizard({
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [isDraft, setIsDraft] = useState<boolean>(editingDocument?.draft ?? true);
+  // Track the saved-row id so "Save to Library" works after a fresh create
+  // as well as in edit mode. One id covers all four model types because
+  // the backend route is the same: /build/oscal-documents/{id}/save-to-library.
+  const [savedDocId, setSavedDocId] = useState<number | null>(editingDocument?.id ?? null);
+  const [saveToLibOpen, setSaveToLibOpen] = useState(false);
 
   // Parse the body Monaco text into the doc.body whenever it changes (best-effort).
   useEffect(() => {
@@ -188,11 +204,13 @@ export function OscalDocumentWizard({
         setStep(1);
         setSuccess(false);
         setIsDraft(true);
+        setSavedDocId(null);
         return;
       }
       setIsLoading(true);
       setError(null);
       setIsDraft(editingDocument.draft);
+      setSavedDocId(editingDocument.id);
       try {
         const raw = await oscalDocumentApi.getContent(editingDocument.id);
         const next = parseLoadedDoc(modelType, raw);
@@ -268,7 +286,7 @@ export function OscalDocumentWizard({
       const statsJson = JSON.stringify(stats);
 
       if (editingDocument) {
-        await oscalDocumentApi.update(editingDocument.id, {
+        const updated = await oscalDocumentApi.update(editingDocument.id, {
           modelType,
           title: finalDoc.metadata.title,
           description: finalDoc.metadata.remarks,
@@ -279,8 +297,9 @@ export function OscalDocumentWizard({
           statsJson,
           draft: draftFlag,
         });
+        setSavedDocId(updated.id);
       } else {
-        await oscalDocumentApi.create({
+        const created = await oscalDocumentApi.create({
           modelType,
           title: finalDoc.metadata.title,
           description: finalDoc.metadata.remarks,
@@ -292,6 +311,7 @@ export function OscalDocumentWizard({
           statsJson,
           draft: draftFlag,
         });
+        setSavedDocId(created.id);
       }
 
       setIsDraft(draftFlag);
@@ -555,6 +575,20 @@ export function OscalDocumentWizard({
             <FileEdit className="h-4 w-4 mr-1" />
             {savingMode === 'draft' ? 'Saving…' : 'Save draft'}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSaveToLibOpen(true)}
+            disabled={isSaving || savedDocId == null}
+            title={
+              savedDocId == null
+                ? `Save the ${label.toLowerCase()} first, then publish it to the Library`
+                : `Publish this ${label.toLowerCase()} to the Library`
+            }
+          >
+            <LibraryIcon className="h-4 w-4 mr-1" />
+            Save to Library
+          </Button>
           {step < STEPS.length ? (
             <Button
               type="button"
@@ -576,6 +610,26 @@ export function OscalDocumentWizard({
           )}
         </div>
       </div>
+
+      <SaveToLibraryModal
+        open={saveToLibOpen}
+        onClose={() => setSaveToLibOpen(false)}
+        defaultTitle={doc.metadata.title}
+        defaultDescription={doc.metadata.remarks}
+        userOrganizationId={userOrganizationId ?? null}
+        onSubmit={async (req) => {
+          if (savedDocId == null) return;
+          try {
+            await libraryPublishApi.saveOscalDocumentToLibrary(savedDocId, req);
+            toast.success(`${label} published to Library`);
+          } catch (e) {
+            toast.error(
+              `Failed to publish ${label.toLowerCase()}: ${e instanceof Error ? e.message : 'unknown error'}`,
+            );
+            throw e;
+          }
+        }}
+      />
     </div>
   );
 }
