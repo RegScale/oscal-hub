@@ -115,6 +115,12 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
+                // Spring's /error forward: when an unhandled controller exception
+                // bubbles up, Spring forwards to /error to render the response. If
+                // /error itself required auth, server-side 500s would be masked as
+                // 401s by AuthenticationEntryPoint. Make the error path public so
+                // real status codes flow through to the client.
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/ai/settings/status").permitAll()
                 // Dev-only diagnostic endpoint — controller is @Profile("dev"), so it
                 // doesn't exist outside dev anyway, but whitelist regardless to ensure

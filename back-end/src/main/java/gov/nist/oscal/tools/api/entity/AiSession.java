@@ -57,6 +57,7 @@ public class AiSession {
     private String eventsJson;
 
     @Column(name = "cost_usd_micros", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
     private long costUsdMicros = 0;
 
     // Getters and setters
