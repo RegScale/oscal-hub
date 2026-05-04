@@ -40,6 +40,39 @@ export interface UpdateAiSettingsRequest {
   defaultModel?: string;
 }
 
+export type AiSessionStatus = 'RUNNING' | 'AWAITING_INPUT' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+
+export interface AiSessionSummary {
+  id: string;
+  userId: number;
+  username: string | null;
+  wizardKind: WizardKind;
+  mode: SessionMode;
+  model: string;
+  status: AiSessionStatus;
+  tokensIn: number;
+  tokensOut: number;
+  costUsdMicros: number;
+  startedAt: string;
+  endedAt: string | null;
+  errorCode: string | null;
+}
+
+export interface AiSessionDetail {
+  summary: AiSessionSummary;
+  events: Array<{ type: string; data: string }>;
+  errorMessage: string | null;
+}
+
+export interface AiUsageTotals {
+  totalSessions: number;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  totalCostUsdMicros: number;
+  sessionsThisMonth: number;
+  costThisMonthUsdMicros: number;
+}
+
 export const aiClient = {
   async getSettingsStatus(organizationId: number): Promise<{ enabled: boolean }> {
     const res = await fetch(`${API_BASE_URL}/ai/settings/status?organizationId=${organizationId}`, {
@@ -118,5 +151,33 @@ export const aiClient = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
+  },
+
+  async listSessions(orgId: number, limit = 20, offset = 0): Promise<AiSessionSummary[]> {
+    const page = Math.floor(offset / limit);
+    const res = await fetch(
+      `${API_BASE_URL}/ai/analytics/sessions?organizationId=${orgId}&page=${page}&size=${limit}`,
+      { method: 'GET', headers: authHeaders() },
+    );
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return res.json();
+  },
+
+  async getSession(orgId: number, id: string): Promise<AiSessionDetail> {
+    const res = await fetch(
+      `${API_BASE_URL}/ai/analytics/sessions/${id}?organizationId=${orgId}`,
+      { method: 'GET', headers: authHeaders() },
+    );
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return res.json();
+  },
+
+  async getUsageTotals(orgId: number): Promise<AiUsageTotals> {
+    const res = await fetch(
+      `${API_BASE_URL}/ai/analytics/totals?organizationId=${orgId}`,
+      { method: 'GET', headers: authHeaders() },
+    );
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return res.json();
   },
 };
