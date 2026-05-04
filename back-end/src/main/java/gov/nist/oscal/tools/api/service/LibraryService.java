@@ -177,12 +177,18 @@ public class LibraryService {
     }
 
     /**
-     * Get a library item by ID
+     * Get a library item by ID. Enforces visibility — items not readable by the
+     * caller surface as "not found" (404 at the controller) to avoid leaking
+     * existence.
      */
     @Transactional
-    public LibraryItem getLibraryItem(String itemId) {
+    public LibraryItem getLibraryItem(String itemId, User caller) {
         LibraryItem item = libraryItemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new RuntimeException("Library item not found: " + itemId));
+
+        if (!canRead(item, caller)) {
+            throw new RuntimeException("Library item not found: " + itemId);
+        }
 
         // Increment view count
         item.incrementViewCount();
@@ -192,21 +198,49 @@ public class LibraryService {
     }
 
     /**
-     * Get file content for a specific version
+     * Backwards-compatible overload — only used by callers that don't yet have a
+     * caller User to thread through. Treats as anonymous (PUBLIC-only).
+     * @deprecated prefer {@link #getLibraryItem(String, User)}
      */
-    public String getVersionContent(String versionId) {
+    @Deprecated
+    @Transactional
+    public LibraryItem getLibraryItem(String itemId) {
+        return getLibraryItem(itemId, null);
+    }
+
+    /**
+     * Get file content for a specific version. Enforces visibility on the parent
+     * library item — version not readable surfaces as "not found".
+     */
+    public String getVersionContent(String versionId, User caller) {
         LibraryVersion version = libraryVersionRepository.findByVersionId(versionId)
                 .orElseThrow(() -> new RuntimeException("Version not found: " + versionId));
+
+        if (version.getLibraryItem() != null && !canRead(version.getLibraryItem(), caller)) {
+            throw new RuntimeException("Version not found: " + versionId);
+        }
 
         return storageService.getLibraryFileContent(version.getFilePath());
     }
 
     /**
-     * Get file content for current version of a library item
+     * @deprecated prefer {@link #getVersionContent(String, User)}
      */
-    public String getCurrentVersionContent(String itemId) {
+    @Deprecated
+    public String getVersionContent(String versionId) {
+        return getVersionContent(versionId, null);
+    }
+
+    /**
+     * Get file content for current version of a library item. Enforces visibility.
+     */
+    public String getCurrentVersionContent(String itemId, User caller) {
         LibraryItem item = libraryItemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new RuntimeException("Library item not found: " + itemId));
+
+        if (!canRead(item, caller)) {
+            throw new RuntimeException("Library item not found: " + itemId);
+        }
 
         if (item.getCurrentVersion() == null) {
             throw new RuntimeException("No current version found for library item: " + itemId);
@@ -220,13 +254,33 @@ public class LibraryService {
     }
 
     /**
-     * Get version history for a library item
+     * @deprecated prefer {@link #getCurrentVersionContent(String, User)}
      */
-    public List<LibraryVersion> getVersionHistory(String itemId) {
+    @Deprecated
+    public String getCurrentVersionContent(String itemId) {
+        return getCurrentVersionContent(itemId, null);
+    }
+
+    /**
+     * Get version history for a library item. Enforces visibility.
+     */
+    public List<LibraryVersion> getVersionHistory(String itemId, User caller) {
         LibraryItem item = libraryItemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new RuntimeException("Library item not found: " + itemId));
 
+        if (!canRead(item, caller)) {
+            throw new RuntimeException("Library item not found: " + itemId);
+        }
+
         return libraryVersionRepository.findByLibraryItemOrderByVersionNumberDesc(item);
+    }
+
+    /**
+     * @deprecated prefer {@link #getVersionHistory(String, User)}
+     */
+    @Deprecated
+    public List<LibraryVersion> getVersionHistory(String itemId) {
+        return getVersionHistory(itemId, null);
     }
 
     /**

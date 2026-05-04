@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryTag;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.entity.Visibility;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
 import gov.nist.oscal.tools.api.repository.LibraryVersionRepository;
@@ -65,6 +66,10 @@ class LibraryServiceTest {
 
         testItem = new LibraryItem("item-123", "Test Catalog", "Test description", "catalog", testUser);
         testItem.setId(1L);
+        // These tests cover happy-path read operations that pre-date visibility
+        // enforcement. Mark as PUBLIC so canRead() permits the null caller used
+        // by the deprecated single-arg overloads being exercised here.
+        testItem.setVisibility(Visibility.PUBLIC);
 
         testVersion = new LibraryVersion("version-123", testItem, 1, "catalog.xml", "XML", 1024L,
                 "/library/item-123/version-123/catalog.xml", testUser, "Initial version");

@@ -216,16 +216,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get library item by ID",
-        description = "Retrieve a specific library item with metadata"
+        description = "Retrieve a specific library item with metadata. Returns 404 if the item doesn't exist OR the caller cannot read it (private/org-scoped item without permission), to avoid leaking existence."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library item found"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}")
-    public ResponseEntity<LibraryItemResponse> getLibraryItem(@PathVariable String itemId) {
+    public ResponseEntity<LibraryItemResponse> getLibraryItem(@PathVariable String itemId, Principal principal) {
         try {
-            LibraryItem item = libraryService.getLibraryItem(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            LibraryItem item = libraryService.getLibraryItem(itemId, caller);
             LibraryItemResponse response = LibraryItemResponse.fromEntity(item);
             return ResponseEntity.ok(enhanceWithRatingAndComments(response));
         } catch (Exception e) {
@@ -235,16 +236,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get library item file content",
-        description = "Download the current version file content of a library item"
+        description = "Download the current version file content of a library item. Visibility-enforced: returns 404 if not readable."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File content retrieved"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}/content")
-    public ResponseEntity<Map<String, String>> getLibraryItemContent(@PathVariable String itemId) {
+    public ResponseEntity<Map<String, String>> getLibraryItemContent(@PathVariable String itemId, Principal principal) {
         try {
-            String content = libraryService.getCurrentVersionContent(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            String content = libraryService.getCurrentVersionContent(itemId, caller);
             try {
                 telemetryService.emit(EventNames.LIBRARY_ITEM_DOWNLOADED, Map.of(
                         "item_id", itemId,
@@ -261,16 +263,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get version history",
-        description = "Retrieve all versions of a library item"
+        description = "Retrieve all versions of a library item. Visibility-enforced: returns 404 if the item is not readable."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Version history retrieved"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}/versions")
-    public ResponseEntity<List<LibraryVersionResponse>> getVersionHistory(@PathVariable String itemId) {
+    public ResponseEntity<List<LibraryVersionResponse>> getVersionHistory(@PathVariable String itemId, Principal principal) {
         try {
-            List<LibraryVersion> versions = libraryService.getVersionHistory(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryVersion> versions = libraryService.getVersionHistory(itemId, caller);
             List<LibraryVersionResponse> responses = versions.stream()
                     .map(LibraryVersionResponse::fromEntity)
                     .collect(Collectors.toList());
@@ -282,16 +285,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get specific version content",
-        description = "Download the file content of a specific version"
+        description = "Download the file content of a specific version. Visibility-enforced via the parent library item."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Version content retrieved"),
-        @ApiResponse(responseCode = "404", description = "Version not found")
+        @ApiResponse(responseCode = "404", description = "Version not found or parent item not readable")
     })
     @GetMapping("/versions/{versionId}/content")
-    public ResponseEntity<Map<String, String>> getVersionContent(@PathVariable String versionId) {
+    public ResponseEntity<Map<String, String>> getVersionContent(@PathVariable String versionId, Principal principal) {
         try {
-            String content = libraryService.getVersionContent(versionId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            String content = libraryService.getVersionContent(versionId, caller);
             return ResponseEntity.ok(Map.of("content", content));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
