@@ -27,8 +27,12 @@ public class ComponentDefWizard implements Wizard {
 
     private static final Logger log = LoggerFactory.getLogger(ComponentDefWizard.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final int TOKEN_BUDGET_IN = 250_000;
-    private static final int TOKEN_BUDGET_OUT = 50_000;
+    // Soft cost cap. BYOK users pay their own usage, so this is a runaway
+    // guard rather than a tight budget. A 90-control DISA STIG run consumes
+    // roughly 2–3 M input tokens before optimization — set 5 M to leave
+    // headroom while still aborting a truly pathological loop.
+    private static final int TOKEN_BUDGET_IN = 5_000_000;
+    private static final int TOKEN_BUDGET_OUT = 200_000;
 
     private final AnthropicClient client;
     private final AiSessionEventStream stream;
@@ -80,10 +84,16 @@ public class ComponentDefWizard implements Wizard {
                 docText = xccdfTrimmer.digest(docText);
             }
 
+            log.info("ComponentDef wizard sessionId={} docTextChars={} pdfBytes={}",
+                    ctx.sessionId(), docText.length(),
+                    pdfBytes == null ? 0 : pdfBytes.length);
+
             String system = knowledge.systemFor(WizardKind.COMPONENT_DEF);
             int tokensIn = 0, tokensOut = 0;
 
             // Pass 1 — outline
+            log.info("ComponentDef wizard sessionId={} starting outline pass", ctx.sessionId());
+            long passStarted = System.currentTimeMillis();
             AnthropicCall.Builder b = AnthropicCall.builder()
                     .model(ctx.model())
                     .systemPrompt(system)
@@ -94,6 +104,9 @@ public class ComponentDefWizard implements Wizard {
                     msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
             tokensIn += outlineRes.tokensIn();
             tokensOut += outlineRes.tokensOut();
+            log.info("ComponentDef wizard sessionId={} outline complete tokensIn={} tokensOut={} elapsedMs={}",
+                    ctx.sessionId(), outlineRes.tokensIn(), outlineRes.tokensOut(),
+                    System.currentTimeMillis() - passStarted);
 
             JsonNode outline = MAPPER.readTree(extractJson(outlineRes.text()));
             String productTitle      = outline.path("productTitle").asText("Untitled Component");
@@ -117,6 +130,9 @@ public class ComponentDefWizard implements Wizard {
             int chunkIndex = 0;
             for (List<String> chunk : chunks) {
                 chunkIndex++;
+                log.info("ComponentDef wizard sessionId={} starting chunk {} of {} controls={}",
+                        ctx.sessionId(), chunkIndex, chunks.size(), chunk);
+                long chunkStarted = System.currentTimeMillis();
                 stream.publish(ctx.sessionId(), SessionEvent.progress(
                         "Drafting implementation statements (" + chunkIndex + " of " + chunks.size() + ")…"));
                 AnthropicResult chunkRes = client.send(ctx.apiKey(), AnthropicCall.builder()
@@ -135,10 +151,17 @@ public class ComponentDefWizard implements Wizard {
                 if (arr.isArray()) {
                     for (JsonNode req : arr) producedRequirements.add(req);
                 }
+                log.info("ComponentDef wizard sessionId={} chunk {} of {} done tokensIn={} tokensOut={} cumIn={} cumOut={} elapsedMs={}",
+                        ctx.sessionId(), chunkIndex, chunks.size(),
+                        chunkRes.tokensIn(), chunkRes.tokensOut(),
+                        tokensIn, tokensOut, System.currentTimeMillis() - chunkStarted);
 
                 if (tokensIn > TOKEN_BUDGET_IN || tokensOut > TOKEN_BUDGET_OUT) {
-                    return WizardOutcome.failed("token_budget",
-                            "Token budget exceeded after chunk " + chunkIndex);
+                    String msg = "Token budget exceeded after chunk " + chunkIndex
+                            + " (in=" + tokensIn + ", out=" + tokensOut + ")";
+                    log.warn("ComponentDef wizard sessionId={} {}", ctx.sessionId(), msg);
+                    stream.publish(ctx.sessionId(), SessionEvent.error("token_budget", msg));
+                    return WizardOutcome.failed("token_budget", msg);
                 }
             }
 

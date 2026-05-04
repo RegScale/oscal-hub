@@ -25,8 +25,8 @@ public class CatalogWizard implements Wizard {
 
     private static final Logger log = LoggerFactory.getLogger(CatalogWizard.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final int TOKEN_BUDGET_IN = 250_000;
-    private static final int TOKEN_BUDGET_OUT = 50_000;
+    private static final int TOKEN_BUDGET_IN = 5_000_000;
+    private static final int TOKEN_BUDGET_OUT = 200_000;
 
     private final AnthropicClient client;
     private final AiSessionEventStream stream;
@@ -121,9 +121,15 @@ public class CatalogWizard implements Wizard {
                     tokensIn += famRes.tokensIn();
                     tokensOut += famRes.tokensOut();
                     producedGroups.add(MAPPER.readTree(extractJson(famRes.text())));
+                    log.info("Catalog wizard sessionId={} family {} done tokensIn={} tokensOut={} cumIn={} cumOut={}",
+                            ctx.sessionId(), fam.id(), famRes.tokensIn(), famRes.tokensOut(),
+                            tokensIn, tokensOut);
                     if (tokensIn > TOKEN_BUDGET_IN || tokensOut > TOKEN_BUDGET_OUT) {
-                        return WizardOutcome.failed("token_budget",
-                                "Token budget exceeded after " + (chunkIndex + 1) + " families");
+                        String msg = "Token budget exceeded after " + (chunkIndex + 1) + " families"
+                                + " (in=" + tokensIn + ", out=" + tokensOut + ")";
+                        log.warn("Catalog wizard sessionId={} {}", ctx.sessionId(), msg);
+                        stream.publish(ctx.sessionId(), SessionEvent.error("token_budget", msg));
+                        return WizardOutcome.failed("token_budget", msg);
                     }
                 }
                 chunkIndex++;

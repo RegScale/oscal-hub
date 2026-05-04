@@ -111,4 +111,27 @@ class XccdfTrimmerTest {
         String json = "{\"hello\":\"world\"}";
         assertThat(trimmer.digest(json)).isEqualTo(json);
     }
+
+    @Test
+    void digestExtractsOnlyVulnDiscussionFromStigDescriptions() {
+        // DISA STIGs wrap the actual rationale inside <VulnDiscussion> with a
+        // bunch of mostly-empty sibling sections. The digest should keep the
+        // VulnDiscussion content and drop the noise.
+        String xccdf = """
+                <Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2">
+                  <Rule id="V-230222" severity="medium">
+                    <title>Set passwords to 15 characters</title>
+                    <description>&lt;VulnDiscussion&gt;Long passwords slow brute force attacks against captured hashes.&lt;/VulnDiscussion&gt;&lt;FalsePositives&gt;&lt;/FalsePositives&gt;&lt;FalseNegatives&gt;&lt;/FalseNegatives&gt;&lt;Documentable&gt;false&lt;/Documentable&gt;&lt;Mitigations&gt;&lt;/Mitigations&gt;&lt;SeverityOverrideGuidance&gt;&lt;/SeverityOverrideGuidance&gt;&lt;PotentialImpacts&gt;&lt;/PotentialImpacts&gt;&lt;ThirdPartyTools&gt;&lt;/ThirdPartyTools&gt;&lt;MitigationControl&gt;&lt;/MitigationControl&gt;&lt;Responsibility&gt;&lt;/Responsibility&gt;&lt;IAControls&gt;&lt;/IAControls&gt;</description>
+                    <ident system="http://cyber.mil/cci">CCI-000196</ident>
+                  </Rule>
+                </Benchmark>
+                """;
+        String digest = trimmer.digest(xccdf);
+        assertThat(digest).contains("Long passwords slow brute force");
+        // Boilerplate section labels should NOT make it into the digest.
+        assertThat(digest).doesNotContain("FalsePositives");
+        assertThat(digest).doesNotContain("Mitigations");
+        assertThat(digest).doesNotContain("SeverityOverrideGuidance");
+        assertThat(digest).doesNotContain("IAControls");
+    }
 }

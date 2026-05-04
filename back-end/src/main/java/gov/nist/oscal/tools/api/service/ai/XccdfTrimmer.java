@@ -242,11 +242,43 @@ public class XccdfTrimmer {
         if (!ccis.isEmpty()) out.append(" [").append(String.join(", ", ccis)).append(']');
         out.append('\n');
         if (!title.isEmpty()) out.append("  Title: ").append(squash(title)).append('\n');
-        if (!description.isEmpty()) out.append("  Description: ").append(squash(description)).append('\n');
+        if (!description.isEmpty()) {
+            String body = extractVulnDiscussion(description);
+            if (!body.isEmpty()) out.append("  Description: ").append(squash(body)).append('\n');
+        }
         out.append('\n');
     }
 
     private static String squash(String s) {
         return s.replaceAll("\\s+", " ").trim();
+    }
+
+    /**
+     * DISA STIG XCCDF descriptions are XML-encoded blobs that contain
+     * {@code <VulnDiscussion>}, {@code <FalsePositives>},
+     * {@code <FalseNegatives>}, {@code <Mitigations>},
+     * {@code <SeverityOverrideGuidance>}, etc. — most are empty boilerplate
+     * but they bloat the digest 2-3×. Extract just the VulnDiscussion if
+     * present; fall back to the full string otherwise.
+     */
+    static String extractVulnDiscussion(String description) {
+        if (description == null) return "";
+        // Description content is double-XML-escaped inside <description>.
+        // Decode the inner XML so we can match VulnDiscussion tags.
+        String decoded = description
+                .replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&amp;", "&").replace("&quot;", "\"")
+                .replace("&apos;", "'");
+        int start = decoded.indexOf("<VulnDiscussion>");
+        if (start >= 0) {
+            int end = decoded.indexOf("</VulnDiscussion>", start);
+            if (end > start) {
+                return decoded.substring(start + "<VulnDiscussion>".length(), end).trim();
+            }
+        }
+        // No structured wrapper — return the decoded body but strip any
+        // residual XML tags (FalsePositives etc.) just in case the producer
+        // used a different layout.
+        return decoded.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
     }
 }
