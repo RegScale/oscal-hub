@@ -374,17 +374,21 @@ ALTER TABLE widgets
 - `application-dev.properties`, `application-prod.properties`, `application-gcp.properties` — all set `ddl-auto=validate`.
 - Migration files — `back-end/src/main/resources/db/migration/V*.sql`.
 
+### Fresh database bootstrap
+
+`V1.0__baseline.sql` contains the full current schema (generated via `pg_dump`). On an empty database Flyway runs it automatically — no manual steps. The historical migration files V1.5..V1.23 that built the schema incrementally during the `ddl-auto=update` era are preserved under `back-end/src/main/resources/db/historical/` for reference but are not loaded by Flyway.
+
 ### Override knobs (escape hatches)
 
 ```bash
-# Bootstrap a brand-new empty DB (no schema yet, no V1.0 baseline file):
-DB_DDL_AUTO=update ./dev.sh   # one-time only, then unset
-
 # Skip Flyway during local debugging:
 SPRING_FLYWAY_ENABLED=false ./dev.sh
+
+# Let Hibernate manage schema (legacy mode, do not use in prod):
+DB_DDL_AUTO=update ./dev.sh
 ```
 
-These should rarely be needed. Existing dev/prod databases have full schema and validate cleanly out of the box.
+These should rarely be needed.
 
 ### Manual schema fixup (one-off, when you've already broken things)
 
