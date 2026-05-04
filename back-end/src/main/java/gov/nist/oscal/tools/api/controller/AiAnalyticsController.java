@@ -14,6 +14,7 @@ import gov.nist.oscal.tools.api.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -169,13 +170,44 @@ public class AiAnalyticsController {
     }
 
     private void requireOrgAdmin(Long organizationId) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = users.findByUsername(username).orElseThrow();
-        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) return;
-        memberships.findByUserIdAndOrganizationId(user.getId(), organizationId)
-                .filter(m -> m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE
-                          && m.getRole() == OrganizationMembership.OrganizationRole.ORG_ADMIN)
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AccessDeniedException("No Authentication in SecurityContext");
+        }
+        String username = auth.getName();
+        User user = users.findByUsername(username)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not belong to organization " + organizationId + " as ORG_ADMIN"));
+                        "User '" + username + "' not found in database"));
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) return;
+
+        Optional<OrganizationMembership> mOpt =
+                memberships.findByUserIdAndOrganizationId(user.getId(), organizationId);
+        if (mOpt.isEmpty()) {
+            throw new AccessDeniedException(
+                    "User " + user.getId() + " (" + username + ") has no membership row for org " + organizationId);
+        }
+        OrganizationMembership m = mOpt.get();
+        if (m.getStatus() != OrganizationMembership.MembershipStatus.ACTIVE) {
+            throw new AccessDeniedException(
+                    "Membership status is " + m.getStatus() + " (not ACTIVE) for user " + user.getId()
+                    + " in org " + organizationId);
+        }
+        if (m.getRole() != OrganizationMembership.OrganizationRole.ORG_ADMIN) {
+            throw new AccessDeniedException(
+                    "Membership role is " + m.getRole() + " (not ORG_ADMIN) for user " + user.getId()
+                    + " in org " + organizationId);
+        }
+    }
+
+    /**
+     * Translate AccessDeniedException to a 403 with the exception's message
+     * in the body. Bypasses Spring Security's default ExceptionTranslationFilter,
+     * which (combined with the custom AuthenticationEntryPoint at the SecurityConfig
+     * level) was masking the real reason for denial as a generic 401.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Forbidden", "message", e.getMessage() == null ? "Access denied" : e.getMessage()));
     }
 }
