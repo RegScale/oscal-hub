@@ -295,6 +295,7 @@ export default function BuildPage() {
                 editingCatalog={editingCatalog}
                 initialCatalog={aiDraftCatalog}
                 onSaveComplete={onSaveComplete}
+                userOrganizationId={orgId}
                 onCancel={() => {
                   setMode('list');
                   setEditingCatalog(null);

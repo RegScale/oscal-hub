@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,8 +17,10 @@ import {
   AlertCircle,
   Upload,
   FileEdit,
+  Library as LibraryIcon,
 } from 'lucide-react';
 import { catalogBuilderApi } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import { MetadataEditor } from '@/components/build/oscal/MetadataEditor';
 import { ParamEditor } from '@/components/build/oscal/ParamEditor';
 import { GroupEditor } from '@/components/build/oscal/GroupEditor';
@@ -26,6 +29,7 @@ import { ResourcesEditor } from '@/components/build/oscal/ResourcesEditor';
 import { JsonPreview } from '@/components/build/oscal/JsonPreview';
 import { ImportJsonDialog } from '@/components/build/oscal/ImportJsonDialog';
 import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
+import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import {
   emptyCatalog,
   countCatalogControls,
@@ -42,6 +46,12 @@ interface CatalogBuilderWizardProps {
   initialCatalog?: { catalog: unknown } | null;
   onSaveComplete?: () => void;
   onCancel?: () => void;
+  /**
+   * Caller's organization id, forwarded to the Save-to-Library modal so
+   * the user can publish at ORGANIZATION visibility. `null` when the user
+   * has no org membership.
+   */
+  userOrganizationId?: number | null;
 }
 
 const STEPS = [
@@ -52,7 +62,7 @@ const STEPS = [
   { id: 5, title: 'Review & Save', description: 'Preview JSON and save' },
 ];
 
-export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveComplete, onCancel }: CatalogBuilderWizardProps) {
+export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveComplete, onCancel, userOrganizationId }: CatalogBuilderWizardProps) {
   const [step, setStep] = useState(1);
   const [catalog, setCatalog] = useState<Catalog>(() => emptyCatalog());
   const [isSaving, setIsSaving] = useState(false);
@@ -63,6 +73,11 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [isDraft, setIsDraft] = useState<boolean>(editingCatalog?.draft ?? true);
+  // Track the saved-row id locally so "Save to Library" works after a fresh
+  // create as well as when editing — `editingCatalog` is only set by the
+  // parent when re-entering the wizard, never updated mid-session.
+  const [savedCatalogId, setSavedCatalogId] = useState<number | null>(editingCatalog?.id ?? null);
+  const [saveToLibOpen, setSaveToLibOpen] = useState(false);
 
   // Hydrate from AI draft when provided and not in edit mode
   useEffect(() => {
@@ -92,12 +107,14 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
           setStep(1);
           setSuccess(false);
           setIsDraft(true);
+          setSavedCatalogId(null);
         }
         return;
       }
       setIsLoading(true);
       setError(null);
       setIsDraft(editingCatalog.draft);
+      setSavedCatalogId(editingCatalog.id);
       try {
         const raw = await catalogBuilderApi.getContent(editingCatalog.id);
         const parsed = JSON.parse(raw);
@@ -169,7 +186,7 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
       const draftFlag = mode === 'draft';
 
       if (editingCatalog) {
-        await catalogBuilderApi.update(editingCatalog.id, {
+        const updated = await catalogBuilderApi.update(editingCatalog.id, {
           title: finalCatalog.metadata.title,
           description: catalog.metadata.remarks,
           version: finalCatalog.metadata.version,
@@ -179,8 +196,9 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
           paramCount: stats.params,
           draft: draftFlag,
         });
+        setSavedCatalogId(updated.id);
       } else {
-        await catalogBuilderApi.create({
+        const created = await catalogBuilderApi.create({
           title: finalCatalog.metadata.title,
           description: catalog.metadata.remarks,
           version: finalCatalog.metadata.version,
@@ -193,6 +211,7 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
           paramCount: stats.params,
           draft: draftFlag,
         });
+        setSavedCatalogId(created.id);
       }
 
       setIsDraft(draftFlag);
@@ -399,6 +418,20 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
             <FileEdit className="h-4 w-4 mr-1" />
             {savingMode === 'draft' ? 'Saving…' : 'Save draft'}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSaveToLibOpen(true)}
+            disabled={isSaving || savedCatalogId == null}
+            title={
+              savedCatalogId == null
+                ? 'Save the catalog first, then publish it to the Library'
+                : 'Publish this catalog to the Library'
+            }
+          >
+            <LibraryIcon className="h-4 w-4 mr-1" />
+            Save to Library
+          </Button>
           {step < STEPS.length ? (
             <Button
               type="button"
@@ -420,6 +453,26 @@ export function CatalogBuilderWizard({ editingCatalog, initialCatalog, onSaveCom
           )}
         </div>
       </div>
+
+      <SaveToLibraryModal
+        open={saveToLibOpen}
+        onClose={() => setSaveToLibOpen(false)}
+        defaultTitle={catalog.metadata.title}
+        defaultDescription={catalog.metadata.remarks}
+        userOrganizationId={userOrganizationId ?? null}
+        onSubmit={async (req) => {
+          if (savedCatalogId == null) return;
+          try {
+            await libraryPublishApi.saveCatalogToLibrary(savedCatalogId, req);
+            toast.success('Catalog published to Library');
+          } catch (e) {
+            toast.error(
+              `Failed to publish catalog: ${e instanceof Error ? e.message : 'unknown error'}`,
+            );
+            throw e;
+          }
+        }}
+      />
     </div>
   );
 }
