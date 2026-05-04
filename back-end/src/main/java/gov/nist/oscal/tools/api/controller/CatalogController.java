@@ -1,9 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.Catalog;
+import gov.nist.oscal.tools.api.entity.LibraryItem;
+import gov.nist.oscal.tools.api.entity.SourceType;
 import gov.nist.oscal.tools.api.model.CatalogRequest;
 import gov.nist.oscal.tools.api.model.CatalogResponse;
+import gov.nist.oscal.tools.api.model.LibraryItemResponse;
+import gov.nist.oscal.tools.api.model.library.SaveToLibraryRequest;
 import gov.nist.oscal.tools.api.service.CatalogService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,10 +30,12 @@ import java.util.stream.Collectors;
 public class CatalogController {
 
     private final CatalogService catalogService;
+    private final LibraryIngestService libraryIngestService;
 
     @Autowired
-    public CatalogController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService, LibraryIngestService libraryIngestService) {
         this.catalogService = catalogService;
+        this.libraryIngestService = libraryIngestService;
     }
 
     @Operation(summary = "Create new catalog")
@@ -154,6 +161,41 @@ public class CatalogController {
             return ResponseEntity.ok(catalogService.getStatistics(principal.getName()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @Operation(
+        summary = "Save this catalog to the user's library",
+        description = "Idempotent on (creator, source). First call creates a library item linked to the catalog; "
+                + "subsequent calls append a new version to the existing item."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Catalog saved to library"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "403", description = "Not your catalog"),
+        @ApiResponse(responseCode = "404", description = "Catalog not found")
+    })
+    @PostMapping("/{catalogId}/save-to-library")
+    public ResponseEntity<?> saveToLibrary(
+            @PathVariable Long catalogId,
+            @Valid @RequestBody SaveToLibraryRequest req,
+            Principal principal) {
+        try {
+            LibraryItem saved = libraryIngestService.saveToLibrary(
+                    SourceType.CATALOG,
+                    catalogId,
+                    req.getTitle(),
+                    req.getDescription(),
+                    req.getTags(),
+                    req.getVisibility(),
+                    req.getOrganizationId(),
+                    principal.getName());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(LibraryItemResponse.fromEntity(saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 }
