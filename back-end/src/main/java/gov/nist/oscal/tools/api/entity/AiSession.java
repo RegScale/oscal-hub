@@ -53,6 +53,12 @@ public class AiSession {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "events_json", columnDefinition = "TEXT")
+    private String eventsJson;
+
+    @Column(name = "cost_usd_micros", nullable = false)
+    private long costUsdMicros = 0;
+
     // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -82,4 +88,8 @@ public class AiSession {
     public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
     public LocalDateTime getEndedAt() { return endedAt; }
     public void setEndedAt(LocalDateTime endedAt) { this.endedAt = endedAt; }
+    public String getEventsJson() { return eventsJson; }
+    public void setEventsJson(String eventsJson) { this.eventsJson = eventsJson; }
+    public long getCostUsdMicros() { return costUsdMicros; }
+    public void setCostUsdMicros(long costUsdMicros) { this.costUsdMicros = costUsdMicros; }
 }
