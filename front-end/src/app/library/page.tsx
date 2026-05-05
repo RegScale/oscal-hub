@@ -28,6 +28,7 @@ import { apiClient } from '@/lib/api-client';
 import type { LibraryItem, LibraryAnalytics, OscalModelType } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 import { VisibilityBadge } from '@/components/library/VisibilityBadge';
 import { VisibilityActionMenu } from '@/components/library/VisibilityActionMenu';
 import type { Visibility } from '@/lib/api/library';
@@ -236,7 +237,10 @@ export default function LibraryPage() {
           <div className="flex items-center">
             <Library className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">OSCAL Library</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">OSCAL Library</h1>
+                <HelpButton slug="library" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Browse, share, and download example OSCAL documents
               </p>

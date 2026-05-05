@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Star, Loader2 } from 'lucide-react';
+import { HelpButton } from '@/components/HelpButton';
 import { publicCatalogApi, type PublicItemSummary } from '@/lib/api/public-catalog';
 
 export default function PublicCatalogDetailPage() {
@@ -99,7 +100,10 @@ export default function PublicCatalogDetailPage() {
               </Badge>
             )}
           </div>
-          <h1 className="text-2xl font-bold leading-tight">{item.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold leading-tight">{item.title}</h1>
+            <HelpButton slug="public-catalog" />
+          </div>
           {item.description && (
             <p className="text-sm text-muted-foreground whitespace-pre-line mt-2">
               {item.description}

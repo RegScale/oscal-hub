@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Search, ShieldCheck, AlertCircle, AlertTriangle, Info, Filter, Settings } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import type { ValidationRulesResponse, OscalModelType } from '@/types/oscal';
 
 const modelTypeLabels: Record<OscalModelType, string> = {
@@ -136,6 +137,7 @@ export default function ValidationRulesPage() {
               <div className="flex items-center gap-3 mb-2">
                 <ShieldCheck className="h-10 w-10 text-primary" />
                 <h1 className="text-4xl font-bold">Validation Rules</h1>
+                <HelpButton slug="rules" />
               </div>
               <p className="text-lg text-muted-foreground">
                 Explore the validation rules checked for OSCAL documents

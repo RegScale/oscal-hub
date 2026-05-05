@@ -36,6 +36,7 @@ import { StarRating } from '@/components/ui/star-rating';
 import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 import { MarkdownPreview } from '@/components/markdown-preview';
 
 export default function ArtifactDetailPage() {
@@ -388,6 +389,7 @@ export default function ArtifactDetailPage() {
                   {getVisibilityIcon(artifact.visibility)}
                   {artifact.visibility}
                 </Badge>
+                <HelpButton slug="artifacts" />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Version {artifact.currentVersion?.versionNumber || 1} • Updated {new Date(artifact.updatedAt).toLocaleDateString()}

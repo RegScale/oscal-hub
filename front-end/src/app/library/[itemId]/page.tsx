@@ -31,6 +31,7 @@ import { StarRating } from '@/components/ui/star-rating';
 import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function LibraryItemDetailPage() {
   const params = useParams();
@@ -313,6 +314,7 @@ export default function LibraryItemDetailPage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold">{item.title}</h1>
                 <Badge variant="outline">{item.oscalType}</Badge>
+                <HelpButton slug="library" />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Version {item.currentVersion?.versionNumber || 1} • Updated {new Date(item.updatedAt).toLocaleDateString()}

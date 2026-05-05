@@ -30,6 +30,7 @@ import { apiClient } from '@/lib/api-client';
 import type { Artifact, ArtifactAnalytics, ArtifactVisibility } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function ArtifactsPage() {
   const router = useRouter();
@@ -265,7 +266,10 @@ export default function ArtifactsPage() {
           <div className="flex items-center">
             <FileText className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">Artifacts</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">Artifacts</h1>
+                <HelpButton slug="artifacts" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Create and share Markdown templates with variables
               </p>

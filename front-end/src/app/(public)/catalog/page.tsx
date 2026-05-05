@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, Eye, Star, Library, Search } from 'lucide-react';
+import { HelpButton } from '@/components/HelpButton';
 import {
   publicCatalogApi,
   type PublicItemSummary,
@@ -56,6 +57,7 @@ export default function PublicCatalogPage() {
         <div className="flex items-center gap-3 mb-2">
           <Library className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">OSCAL Data Products</h1>
+          <HelpButton slug="public-catalog" />
         </div>
         <p className="text-sm text-muted-foreground">
           Browse OSCAL content shared by the community. Login to download or rate.
