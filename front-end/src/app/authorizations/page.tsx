@@ -25,6 +25,7 @@ import type {
 } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 import { DatePicker } from '@/components/ui/date-picker';
 
 type View = 'list-templates' | 'create-template' | 'edit-template' | 'view-template' | 'list-authorizations' | 'create-authorization' | 'view-authorization';
@@ -376,7 +377,10 @@ export default function AuthorizationsPage() {
           <div className="flex items-center">
             <ShieldCheck className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">System Authorizations</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">System Authorizations</h1>
+                <HelpButton slug="authorizations" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Create and manage system authorization documents
               </p>

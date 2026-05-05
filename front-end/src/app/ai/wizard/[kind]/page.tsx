@@ -8,6 +8,7 @@ import { aiClient, type WizardKind } from '@/lib/ai-client';
 import { useAiSession } from '@/hooks/useAiSession';
 import { describeEvent, STEP_EVENT_TYPES } from '@/lib/ai-events';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 import { CatalogWizardForm } from '@/components/ai/CatalogWizardForm';
 import { ComponentDefWizardForm } from '@/components/ai/ComponentDefWizardForm';
 import { ChevronLeft, Check, Loader2, AlertCircle, Sparkles } from 'lucide-react';
@@ -93,6 +94,7 @@ export default function WizardRunPage() {
           <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
         </div>
         <h1 className="text-2xl font-semibold">{WIZARD_TITLES[wizardKind] ?? wizardKind}</h1>
+        <HelpButton slug="ai-wizard" />
       </div>
 
       {!sessionId && wizardKind === 'CATALOG' && orgId != null && (

@@ -43,6 +43,7 @@ import type {
   OscalDocumentResponse,
   GenericOscalModelSlug,
 } from '@/types/oscal-models';
+import { HelpButton } from '@/components/HelpButton';
 
 type Section =
   | 'catalogs'
@@ -186,7 +187,10 @@ export default function BuildPage() {
           <div className="flex items-center">
             <Hammer className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">OSCAL Builder</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">OSCAL Builder</h1>
+                <HelpButton slug="build" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Visually create and manage every OSCAL model: catalogs, profiles, component
                 definitions, system security plans, assessment plans, assessment results, and POA&amp;Ms.

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AiFeatureGate } from '@/components/ai/AiFeatureGate';
 import { useEffect, useState } from 'react';
+import { HelpButton } from '@/components/HelpButton';
 
 interface WizardOption {
   kind: string;
@@ -32,7 +33,10 @@ export default function WizardPickerPage() {
       fallback={<div className="p-8 text-muted-foreground">AI features are disabled. Ask your org admin to add an Anthropic API key.</div>}
     >
       <div className="container mx-auto py-8">
-        <h1 className="text-2xl font-semibold mb-6">AI Wizard</h1>
+        <div className="flex items-center gap-2 mb-6">
+          <h1 className="text-2xl font-semibold">AI Wizard</h1>
+          <HelpButton slug="ai-wizard" />
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           {OPTIONS.map((opt) => (
             <Card key={opt.kind} className={!opt.available ? 'opacity-60' : ''}>

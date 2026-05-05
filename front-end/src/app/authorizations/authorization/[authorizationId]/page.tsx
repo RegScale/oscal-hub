@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownPreview } from '@/components/markdown-preview';
 import { DigitalSignatureStep } from '@/components/digital-signature-step';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function AuthorizationDetailPage() {
   const params = useParams();
@@ -288,7 +289,10 @@ export default function AuthorizationDetailPage() {
           <div className="flex items-center">
             <ShieldCheck className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">{authorization.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">{authorization.name}</h1>
+                <HelpButton slug="authorization-create" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Authorized by {authorization.authorizedBy} on{' '}
                 {new Date(authorization.authorizedAt).toLocaleDateString()}

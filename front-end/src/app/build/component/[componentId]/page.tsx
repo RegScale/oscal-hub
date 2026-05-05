@@ -10,6 +10,7 @@ import { apiClient } from '@/lib/api-client';
 import type { ComponentDefinitionResponse } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function ComponentDetailPage() {
   const params = useParams();
@@ -119,7 +120,10 @@ export default function ComponentDetailPage() {
           <div className="flex items-center">
             <Hammer className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">Edit Component: {component.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">Edit Component: {component.title}</h1>
+                <HelpButton slug="build-component" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Update your OSCAL component definition
               </p>
