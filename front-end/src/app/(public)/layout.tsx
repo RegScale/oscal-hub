@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Library } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,15 +23,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               Browse
             </Link>
           </div>
-          {/* Right: auth */}
-          <Link href="/login" className="text-sm text-blue-500 hover:underline">
-            Sign in
+          {/* Right: auth — same Button + label as the authenticated Navigation. */}
+          <Link href="/login">
+            <Button variant="default" size="sm">
+              Login
+            </Button>
           </Link>
         </div>
       </header>
       <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
       <footer className="border-t border-border bg-muted/30 py-4 text-center text-xs text-muted-foreground">
-        OSCAL Data Products — public content. Sign in to download or rate.
+        OSCAL Data Products — public content. Login to download or rate.
       </footer>
     </div>
   );

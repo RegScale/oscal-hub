@@ -166,7 +166,7 @@ export default function PublicCatalogDetailPage() {
               </Button>
             ) : (
               <Button asChild>
-                <Link href="/login">Sign in to download</Link>
+                <Link href="/login">Login to download</Link>
               </Button>
             )}
             {hasToken ? (
@@ -175,7 +175,7 @@ export default function PublicCatalogDetailPage() {
               </Button>
             ) : (
               <Button variant="outline" asChild>
-                <Link href="/login">Sign in to rate</Link>
+                <Link href="/login">Login to rate</Link>
               </Button>
             )}
           </div>
