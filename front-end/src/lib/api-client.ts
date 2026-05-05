@@ -5413,6 +5413,9 @@ class ApiClient {
       // up to 4 Anthropic round-trips at ~30s each in the auto-iterate path.
       180000
     );
+    if (response.status === 410) {
+      throw new RuleGenSessionExpiredError('Rule-gen session expired or evicted');
+    }
     if (!response.ok) throw new Error(await response.text());
     return response.json();
   }
@@ -5430,6 +5433,9 @@ class ApiClient {
       },
       30000
     );
+    if (response.status === 410) {
+      throw new RuleGenSessionExpiredError('Rule-gen session expired or evicted');
+    }
     if (!response.ok) throw new Error(await response.text());
     return response.json();
   }
@@ -5459,6 +5465,17 @@ class ApiClient {
       { method: 'DELETE', headers: this.getAuthHeaders() },
       5000
     );
+  }
+}
+
+// Thrown by the rule-gen client methods when the backend returns 410 Gone —
+// the in-memory session was lost (typically a backend restart). Hooks should
+// catch this and silently restart the session before retrying the user's
+// request.
+export class RuleGenSessionExpiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RuleGenSessionExpiredError';
   }
 }
 

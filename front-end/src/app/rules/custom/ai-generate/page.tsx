@@ -69,6 +69,15 @@ function Inner() {
     }
   }, [router]);
 
+  // Surface silent session-restart recoveries (backend restart / TTL).
+  useEffect(() => {
+    if (session.recovered) {
+      toast('Session was reset — your prior turns were not preserved.', {
+        description: 'The backend forgot the conversation; we resent your last message on a fresh session.',
+      });
+    }
+  }, [session.recovered]);
+
   const begin = async () => {
     if (!model || !orgId) return;
     await session.start(orgId, model);

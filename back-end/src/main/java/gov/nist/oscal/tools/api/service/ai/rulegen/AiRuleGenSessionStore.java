@@ -29,7 +29,8 @@ public class AiRuleGenSessionStore {
     public AiRuleGenSession get(UUID id) {
         AiRuleGenSession s = cache.getIfPresent(id);
         if (s == null) {
-            throw new IllegalArgumentException("Unknown or expired rule-gen session: " + id);
+            throw new RuleGenSessionExpiredException(
+                "Unknown or expired rule-gen session: " + id);
         }
         return s;
     }
