@@ -34,6 +34,9 @@ class CustomRulesServiceTest {
     @Mock
     private CustomValidationRuleRepository repository;
 
+    @Mock
+    private MetapathConstraintService constraintService;
+
     @InjectMocks
     private CustomRulesService customRulesService;
 
@@ -307,18 +310,20 @@ class CustomRulesServiceTest {
 
     @Test
     void testDeleteCustomRule_success() {
-        when(repository.existsById(1L)).thenReturn(true);
+        // deleteCustomRule loads the entity first so it can evict the
+        // owner's constraint cache after deletion.
+        when(repository.findById(1L)).thenReturn(Optional.of(testRule1));
         doNothing().when(repository).deleteById(1L);
 
         customRulesService.deleteCustomRule(1L);
 
-        verify(repository).existsById(1L);
+        verify(repository).findById(1L);
         verify(repository).deleteById(1L);
     }
 
     @Test
     void testDeleteCustomRule_notFound_throwsException() {
-        when(repository.existsById(999L)).thenReturn(false);
+        when(repository.findById(999L)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 customRulesService.deleteCustomRule(999L)

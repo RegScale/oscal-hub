@@ -10,6 +10,7 @@ import gov.nist.oscal.tools.api.model.OscalDocumentRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.OscalDocumentService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -39,6 +40,9 @@ class OscalDocumentControllerTest {
 
     @MockitoBean
     private OscalDocumentService documentService;
+
+    @MockitoBean
+    private LibraryIngestService libraryIngestService;
 
     @MockitoBean
     private JwtUtil jwtUtil;

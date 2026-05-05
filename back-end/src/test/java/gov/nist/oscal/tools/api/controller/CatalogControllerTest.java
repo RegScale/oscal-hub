@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.model.CatalogRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.CatalogService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -39,6 +40,9 @@ class CatalogControllerTest {
 
     @MockitoBean
     private CatalogService catalogService;
+
+    @MockitoBean
+    private LibraryIngestService libraryIngestService;
 
     @MockitoBean
     private JwtUtil jwtUtil;
