@@ -76,7 +76,7 @@ export default function PublicCatalogDetailPage() {
         className="inline-flex items-center gap-1 text-sm text-primary hover:underline mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to catalog
+        Back to Data Products
       </Link>
 
       <Card>
