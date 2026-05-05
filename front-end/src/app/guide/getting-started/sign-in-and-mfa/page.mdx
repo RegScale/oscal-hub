@@ -1,0 +1,99 @@
+---
+title: Sign in & MFA
+description: How to create an account, sign in, set up multi-factor authentication, recover your password, and join an organization in OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Sign in & MFA
+
+OSCAL Hub uses username-and-password authentication with optional multi-factor authentication (MFA). This page walks you through creating an account, logging in, setting up MFA, recovering your password, joining an organization, and signing out.
+
+---
+
+## First sign-in
+
+To access any protected feature — the builders, AI Wizards, Library, Authorizations, or your operation History — you need to sign in. Navigate to OSCAL Hub and click **Login** in the top navigation bar. Enter your username and password, then click **Sign in**.
+
+If your organization has **MFA enforcement** turned on, or if you have personally enabled MFA on your account, you will be prompted for a one-time code immediately after entering your credentials. Open your authenticator app (Google Authenticator, Authy, 1Password, or any TOTP-compatible app), enter the six-digit code, and click **Verify** to complete sign-in.
+
+<Callout type="info">
+OSCAL Hub uses stateless JWT (JSON Web Token) authentication. Tokens are valid for 24 hours. If a backend restart occurs — common during upgrades or local development — all existing tokens are invalidated and you will see `403 Forbidden` errors on protected pages. Simply sign out and sign back in to get a fresh token.
+</Callout>
+
+---
+
+## Creating a new account
+
+If you do not yet have an account, you can register directly from the login page.
+
+<Steps>
+<Step title="Open the login page">
+Click **Login** in the top navigation bar. This takes you to the sign-in form at `/login`.
+</Step>
+<Step title="Click Sign up">
+Below the sign-in form, click **Sign up** (or **Don't have an account? Register**). This takes you to the registration form.
+</Step>
+<Step title="Fill in your details">
+Enter your desired **username**, a **password**, and your **email address**. Password requirements: at least 10 characters containing an uppercase letter, a lowercase letter, a digit, and a special character.
+</Step>
+<Step title="Click Register">
+Click the **Register** button to create your account. If the username or email is already taken, you will see an inline error — choose a different value and try again.
+</Step>
+<Step title="Sign in">
+You will be redirected to the sign-in page. Enter the username and password you just created and click **Sign in**. You are now logged in.
+</Step>
+</Steps>
+
+<Callout type="info">
+New accounts start without an organization. You can use the core tools and your personal Library immediately, but organization-level features (shared Library, org-scoped Authorizations, org admin settings) require joining or being invited to an organization. See [Joining an existing organization](#joining-an-existing-organization) below.
+</Callout>
+
+---
+
+## Setting up MFA (recommended)
+
+Multi-factor authentication significantly reduces the risk of account compromise. Even if someone obtains your password, they cannot sign in without also having access to your authenticator app.
+
+For step-by-step enrollment instructions — including how to scan the QR code, save your backup codes, and verify the setup — see the [MFA Setup guide](/guide/account/mfa-setup).
+
+MFA can be enabled voluntarily at any time from your account settings. Your organization administrator may also require it for all members, in which case you will be prompted to enroll the next time you sign in.
+
+---
+
+## Forgot password
+
+If you cannot remember your password, click **Forgot password?** on the sign-in page. You will be asked for your registered email address. A password-reset link will be sent to that address; follow the link to set a new password.
+
+For detailed instructions and troubleshooting, see the [Password & account recovery guide](/guide/account/password).
+
+---
+
+## Joining an existing organization
+
+There are two ways to join an organization in OSCAL Hub:
+
+**Path 1 — Accept an invite.** An organization administrator can send you an invitation email. The email contains a unique link. Click the link, sign in (or create an account if you do not have one), and you will automatically be added to the organization. For details, see [Accepting an organization invite](/guide/account/accept-invite).
+
+**Path 2 — Request access.** If you know your organization already uses OSCAL Hub but you have not received an invite, you can request access directly. Sign in to your account and use the organization request flow to ask an admin to add you. For details, see [Requesting organization access](/guide/account/request-access).
+
+<Callout type="warn">
+If your organization has **single sign-on (SSO)** configured, you may be required to sign in through your identity provider rather than using the built-in username/password form. Ask your organization administrator which path applies to you.
+</Callout>
+
+---
+
+## Selecting an organization
+
+If your account belongs to more than one organization — for example, you are a contractor who has been added to multiple clients' workspaces — you will be shown an **organization selector** immediately after signing in. Click the organization you want to work in to proceed.
+
+Your selected organization determines which shared Library documents you can see, which Authorizations are available, and which admin settings you have access to. You can switch to a different organization at any time using the **org switcher** in the top navigation bar (it appears as your current organization's name next to your avatar). Switching organizations does not sign you out; it simply changes the context.
+
+---
+
+## Sign out
+
+To sign out, click your **user avatar or username** in the top-right corner of the navigation bar to open the user menu. Click **Sign out**. Your JWT token is removed from `localStorage` and you are redirected to the public home page.
+
+<Callout type="info">
+Signing out clears your token from the browser's local storage. If you are on a shared or public computer, always sign out when you are finished to prevent other users from accessing your session.
+</Callout>
