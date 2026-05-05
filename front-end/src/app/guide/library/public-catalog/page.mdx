@@ -1,0 +1,100 @@
+---
+title: Public Catalog
+description: The Public Catalog at /catalog lists all community-shared OSCAL documents and is browsable without signing in.
+lastUpdated: 2026-05-04
+---
+
+# Public Catalog
+
+The Public Catalog at `/catalog` is the open, community-facing index of OSCAL Hub. It lists every library item whose visibility is set to **Public** and is fully accessible without an account. No login required to search, filter, sort, or read the detail page for any item.
+
+If you have ever wanted a single place to find reference catalogs, approved baselines, or example SSPs contributed by the OSCAL community, this is it.
+
+---
+
+## What it shows
+
+The Public Catalog only surfaces items that a library owner has explicitly set to **Public** visibility. Private and Organization-scoped items are never listed here, regardless of who is browsing.
+
+For each listed item the catalog shows:
+
+- **Title and description** — as entered by the author
+- **OSCAL type badge** — `catalog`, `profile`, `ssp`, `component-definition`, `ap`, `ar`, or `poam`
+- **Tags** — up to four tags shown on the card, with an overflow count for the rest
+- **Star rating** — average rating and total number of ratings
+- **Download count** — how many times the item has been downloaded
+- **Current version number** — version of the most recent save
+
+---
+
+## Filtering and sorting
+
+The catalog provides four controls at the top of the page:
+
+| Control | What it does |
+|---|---|
+| Keyword search | Searches item title and description |
+| Type filter | Narrows results to one OSCAL model type |
+| Tag filter | Narrows results to items tagged with a specific value |
+| Sort | Orders results by Newest, Most downloaded, or Top rated |
+
+All four filters are live — the list updates as you type or change a selection. Use the **Previous / Next** pagination buttons at the bottom to move through large result sets (24 items per page).
+
+---
+
+## Detail page
+
+Clicking any card navigates to `/catalog/[itemId]` — the full detail page for that item. The detail page shows:
+
+- Full title, description, author username, and creation date
+- All tags
+- Complete version history (version number, upload date, file name)
+- Star rating widget (requires sign-in to rate)
+- Comments section (requires sign-in to comment)
+- **Download** button — see the note below about sign-in for downloads
+
+---
+
+## Sign-in for downloads
+
+Browsing and reading the catalog is fully anonymous. **Downloading requires a signed-in account.**
+
+This is an intentional design decision. Requiring a sign-in for downloads lets the platform:
+
+- Attribute downloads to a user for analytics (so the "Most downloaded" leaderboard is accurate)
+- Apply per-user rate limiting to prevent bulk scraping
+- Maintain an audit trail of who downloaded what and when
+
+If you click **Download** on the detail page without being signed in, you will be redirected to the login page. After signing in (or creating a free account) you will be returned to the detail page and the download will proceed.
+
+---
+
+## How content gets into the catalog
+
+Any logged-in user can contribute to the Public Catalog. The path is:
+
+1. Build or upload an OSCAL document (via `/build` or the Upload tab at `/library`).
+2. Click **Save to Library** and set visibility to **Public**.
+
+The item appears in the catalog immediately. For details on the Save to Library flow, see [Save to Library](/guide/library/save-to-library). For the full visibility rules, see [Library Visibility](/guide/library/visibility).
+
+---
+
+## Tips
+
+- **Start with the type filter.** If you are looking for a specific kind of document (e.g., a `catalog` or a `profile`), selecting the type first gives you a much tighter result set than keyword search alone.
+- **Sort by "Most downloaded" to find proven reference content.** Items with high download counts have been useful to many people — a useful signal for picking a starting point.
+- **Check the version number.** The current version number on the card and detail page tells you whether the author actively maintains the item. A high version number generally indicates ongoing updates.
+- **Rate and comment after signing in.** Community ratings help everyone quickly identify high-quality reference content. If you found an item useful, logging in and giving it a star takes 10 seconds and helps the next person.
+
+<Callout type="info">
+Public Catalog items are contributed by the community and are not reviewed or endorsed by OSCAL Hub or NIST. Always validate any document you download before using it in a compliance workflow. Use the Validate tool at `/validate` or the validation step inside a Build wizard.
+</Callout>
+
+---
+
+## Related
+
+- [Library Overview](/guide/library/overview)
+- [Library Visibility](/guide/library/visibility)
+- [Build Hub](/guide/build/overview)
