@@ -114,6 +114,21 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!--
+              jsoup 1.22.1 (transitive via metaschema-databind 3.0.0.M1) hangs
+              indefinitely on Java 25 inside NodeTraversor.traverse when the
+              head() callback mutates the tree — regression introduced in 1.21.2
+              and fixed in 1.22.2. Metaschema's whitespace normalization in
+              AbstractMarkupString triggers the bug on every OSCAL XML deserialize.
+              Pin to 1.22.2 to escape the loop.
+              See: https://github.com/jhy/jsoup/releases/tag/jsoup-1.22.2
+            -->
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>1.22.2</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
