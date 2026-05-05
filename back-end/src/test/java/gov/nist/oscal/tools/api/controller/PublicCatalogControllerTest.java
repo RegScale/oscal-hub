@@ -288,7 +288,13 @@ class PublicCatalogControllerTest {
                 .thenReturn(Optional.of(new LibraryService.VersionDownload(
                         "public-catalog-test-content", "test.json", "JSON")));
 
-        mockMvc.perform(get("/api/public/catalog/items/{id}/content", pub.getItemId()))
+        // SecurityConfig deliberately requires auth on /content downloads
+        // ("anonymous users can discover items but must sign in to download"
+        // — see SecurityConfig.java:118-123). Browse + detail are public;
+        // bytes are not.
+        mockMvc.perform(get("/api/public/catalog/items/{id}/content", pub.getItemId())
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                        .user(creator.getUsername())))
                .andExpect(status().isOk())
                .andExpect(content().bytes("public-catalog-test-content".getBytes()));
 
