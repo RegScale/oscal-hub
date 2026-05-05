@@ -1,0 +1,86 @@
+---
+title: Build a Catalog
+description: Use the Catalog wizard to create a structured collection of security controls without writing XML or JSON by hand.
+lastUpdated: 2026-05-04
+---
+
+# Build a Catalog
+
+A Catalog is a structured collection of security controls and control baselines. Common examples include NIST SP 800-53, NIST SP 800-171, and CIS Controls. Catalogs are the foundation of the OSCAL ecosystem — profiles select from them, and SSPs implement the controls they define. See [OSCAL Model Types](/guide/reference/model-types) for a full description of how catalogs relate to other document types.
+
+---
+
+## What it does
+
+The Catalog wizard walks you through five steps to produce a fully valid OSCAL catalog in JSON format:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, last-modified timestamp, parties, roles |
+| 2. Parameters | Top-level catalog parameters (optional) |
+| 3. Controls | Control groups and individual controls |
+| 4. Back-matter | Resources and supporting references |
+| 5. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the Catalog wizard">
+    Go to `/build` and click the **Catalogs** tab. Click **Create new** to open the wizard at Step 1: Metadata. If you have an AI-generated draft, it will be pre-populated here automatically.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the catalog **Title** (required), **Version** (required), and **Last Modified** date. Add at least one **Party** (organization or person) and assign a **Role** such as `creator` or `maintainer`. The UUID is generated for you.
+  </Step>
+  <Step title="Add Parameters (optional)">
+    On the Parameters step, add any top-level parameters that controls in this catalog can reference. Each parameter has an **ID**, a **Label**, and optional **Guidelines** and **Values**. Skip this step if your catalog has no shared parameters.
+  </Step>
+  <Step title="Define Control Groups and Controls">
+    The Controls step is where you build the body of your catalog. Click **Add Group** to create a control group (for example, "Access Control" or "AC"). Inside each group, click **Add Control** to add individual controls. Each control requires:
+    - **ID** — a short identifier (for example, `ac-1`)
+    - **Title** — a human-readable name
+    - **Statement** — the control requirement text
+    Parameters and enhancements can be added to individual controls as needed.
+  </Step>
+  <Step title="Add Back-matter (optional)">
+    The Back-matter step lets you attach resources such as external references, supporting documents, or citations. Each resource needs a **Title** and a **Link** (URL or relative path).
+  </Step>
+  <Step title="Validate and save">
+    On the Review & Save step, click **Run Validation** in the Schema Validation panel. Resolve any errors before saving. Use **JSON Preview** to inspect the raw output. Click **Save as Draft** to save without finalizing, or **Save as Final** when the catalog is ready. After saving, click **Save to Library** to publish it for reuse.
+  </Step>
+</Steps>
+
+---
+
+## Validation tips
+
+The Schema Validation panel on the final step checks the same rules as the standalone Validate tool. Common issues to watch for:
+
+- **Missing `uuid` or `metadata.title`** — both are required at the root level.
+- **Missing `metadata.version`** — required field; the wizard pre-fills `1.0.0` but it must not be blank.
+- **Control `id` uniqueness** — every control ID must be unique within the catalog.
+- **Empty control statements** — a control with no statement text will trigger a validation warning.
+
+<Callout type="warn">
+If you import a catalog via **Import JSON** (the upload icon in the wizard toolbar), run validation immediately after import. Imported JSON may reference UUIDs or parameter IDs that do not exist in the current document.
+</Callout>
+
+---
+
+## Tips & limits
+
+- **Import from JSON.** The wizard toolbar has an **Import JSON** button. Use it to load an existing catalog file and edit it in the wizard rather than starting from scratch.
+- **AI-generated catalogs.** Navigate to the [AI Wizard](/guide/ai/catalog-wizard) to draft a catalog from a PDF or description, then open it here for review and editing.
+- **Groups are optional.** You can add top-level controls without any groups if your catalog structure is flat.
+- **Save to Library for templates.** A well-structured catalog saved at Organization visibility becomes a reusable starting point for your whole team.
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build a Profile](/guide/build/profile)
+- [Validate Documents](/guide/tools/validate)
+- [Save to Library](/guide/library/save-to-library)
+- [OSCAL Model Types](/guide/reference/model-types)

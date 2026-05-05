@@ -1,0 +1,74 @@
+---
+title: Build Assessment Results
+description: Use the Assessment Results wizard to record findings, observations, and risks from a completed security assessment.
+lastUpdated: 2026-05-04
+---
+
+# Build Assessment Results
+
+Assessment Results (AR) capture the outcomes of a security assessment: observations about control implementation, findings (pass/fail determinations), and identified risks. An AR always references the Assessment Plan that defined the scope of the assessment. Once findings are recorded here, any open risks or corrective actions are tracked in a [POA&M](/guide/build/poam). See [OSCAL Model Types](/guide/reference/model-types) for the full lifecycle context.
+
+---
+
+## What it does
+
+The Assessment Results wizard walks you through five steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, parties (assessors, system owner) |
+| 2. Import | Reference to the Assessment Plan that defined the scope |
+| 3. Body | Results: observations, findings, risks, and attestations |
+| 4. Back-matter | Supporting evidence and references |
+| 5. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the Assessment Results wizard">
+    Go to `/build` and click the **AR** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the Assessment Results **Title** (required) and **Version** (required). Add parties for the lead assessor, other assessment team members, and the system owner. Assign appropriate roles.
+  </Step>
+  <Step title="Set the Import reference">
+    The Import step records which Assessment Plan this results document corresponds to. Enter the **href** pointing to the saved Assessment Plan. This links the results to the planned scope so readers can see what was intended versus what was found.
+  </Step>
+  <Step title="Edit the Body">
+    The Body step opens a Monaco JSON editor pre-populated with the OSCAL assessment-results skeleton. The primary section to fill in is `results`, which contains:
+    - **Observations** — factual records of what the assessors found (configuration settings, interview responses, test outputs)
+    - **Findings** — determinations for each reviewed control: satisfied, not satisfied, or other
+    - **Risks** — identified risks associated with unsatisfied controls or other vulnerabilities
+
+    Each result block also includes the assessment start and end dates and references to the reviewed controls.
+  </Step>
+  <Step title="Add Back-matter and save">
+    Attach evidence artifacts, screenshots, or test output files as resources in the Back-matter step. On the Review & Save step, run Schema Validation, then click **Save as Draft** or **Save as Final**. After saving, click **Save to Library** to archive or share the results.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **One Results document per assessment event.** If you run multiple assessment rounds, create a separate AR for each. OSCAL supports multiple `result` blocks within a single AR document for progressive updates to the same assessment cycle.
+- **Link observations to findings.** Each `finding` should reference one or more `observation` UUIDs so readers can trace the evidence that supports the determination.
+- **Open findings feed the POA&M.** Any finding marked "not satisfied" should generate a corresponding POA&M item. Build the [POA&M](/guide/build/poam) after completing the AR and import this document as the source.
+- **Preserve final AR documents.** Mark ARs as Final before distributing them. Once finalized, create a new version if follow-up assessments are needed rather than editing the original.
+
+<Callout type="warn">
+Assessment Results often contain sensitive findings. Set the visibility to **Private** or **Organization** when saving to the library unless your organization explicitly allows public disclosure.
+</Callout>
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build an Assessment Plan](/guide/build/assessment-plan)
+- [Build a POA&M](/guide/build/poam)
+- [Save to Library](/guide/library/save-to-library)
+- [Library Visibility](/guide/library/visibility)
+- [OSCAL Model Types](/guide/reference/model-types)

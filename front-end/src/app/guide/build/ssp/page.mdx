@@ -1,0 +1,75 @@
+---
+title: Build a System Security Plan (SSP)
+description: Use the SSP wizard to document the security implementation of an information system against a control baseline.
+lastUpdated: 2026-05-04
+---
+
+# Build a System Security Plan (SSP)
+
+A System Security Plan (SSP) documents how an information system implements a set of security controls drawn from a baseline profile. It identifies the system, its components and users, its boundary, and — critically — the control implementations that explain how each required control is satisfied. SSPs are the primary artifact produced by system owners during the authorization process. See [OSCAL Model Types](/guide/reference/model-types) for how SSPs relate to profiles, component definitions, and assessments.
+
+---
+
+## What it does
+
+The SSP wizard uses the generic OSCAL Document wizard and walks you through five steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, parties (system owner, authorizing official, etc.) |
+| 2. Import | Reference to the baseline profile this SSP implements |
+| 3. Body | System characteristics, system implementation (users, components, inventory items), and control implementations |
+| 4. Back-matter | Supporting resources, policies, and references |
+| 5. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the SSP wizard">
+    Go to `/build` and click the **SSP** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the SSP **Title** (required) and **Version** (required). Add parties for all key roles: system owner, authorizing official (AO), information system security officer (ISSO), and others as required by your organization's authorization process.
+  </Step>
+  <Step title="Set the Import reference">
+    The Import step records which profile this SSP is implementing. Enter the **href** pointing to your baseline profile (for example, the resolved NIST SP 800-53 Moderate profile). This ties the SSP to a specific set of required controls.
+  </Step>
+  <Step title="Edit the Body">
+    The Body step is the largest part of the SSP. It uses a Monaco JSON editor pre-populated with the OSCAL skeleton for a system security plan. Fill in:
+    - **System characteristics** — name, description, security impact level, authorization boundary
+    - **System implementation** — the users, components (referencing your saved component definitions), and inventory items that make up the system
+    - **Control implementations** — for each required control, an `implemented-requirement` block with a `description` of how the system satisfies it
+
+    You can paste in existing SSP content or type directly in the editor.
+  </Step>
+  <Step title="Add Back-matter and save">
+    Attach supporting resources such as policies, procedures, or diagrams on the Back-matter step. On the Review & Save step, run Schema Validation to confirm validity, then click **Save as Draft** or **Save as Final**. After saving, click **Save to Library** to publish.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Build bottom-up.** SSPs are the most complex OSCAL document. The recommended order is: build your [Catalog](/guide/build/catalog) → build a [Profile](/guide/build/profile) → build [Component Definitions](/guide/build/component) for each technology component → build the SSP. This lets the SSP reference previously built artifacts rather than requiring all details to be entered from scratch.
+- **Reference existing component definitions.** In the `system-implementation.components` section of the body, reference UUIDs from component definitions you have already saved to the library. This avoids duplicating control implementation descriptions.
+- **Resolve your profile first.** The SSP import `href` should ideally point to a resolved catalog rather than an unresolved profile, so downstream tools can follow the reference. Use the [Resolve](/guide/tools/resolve) tool to produce the resolved output and upload it to your library.
+- **Large SSPs.** Systems with many components and hundreds of controls produce large JSON bodies. The Monaco editor in the Body step handles large files, but allow a few extra seconds for loading.
+
+<Callout type="warn">
+The Body step uses a freeform JSON editor. Structural errors in the JSON (unclosed brackets, missing commas) will show as schema validation failures. Fix the JSON syntax before running the full validation check.
+</Callout>
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build a Profile](/guide/build/profile)
+- [Build a Component Definition](/guide/build/component)
+- [Resolve a Profile](/guide/tools/resolve)
+- [Build an Assessment Plan](/guide/build/assessment-plan)
+- [Save to Library](/guide/library/save-to-library)
+- [OSCAL Model Types](/guide/reference/model-types)

@@ -1,0 +1,72 @@
+---
+title: Build an Assessment Plan
+description: Use the Assessment Plan wizard to document the scope, objectives, and activities for a security assessment.
+lastUpdated: 2026-05-04
+---
+
+# Build an Assessment Plan
+
+An Assessment Plan (AP) documents the scope, objectives, methods, and scheduled activities for a security assessment of a system. It is created before the assessment begins and references the SSP that describes the system being assessed. After the assessment is complete, findings are captured in [Assessment Results](/guide/build/assessment-results). See [OSCAL Model Types](/guide/reference/model-types) for the full context.
+
+---
+
+## What it does
+
+The Assessment Plan wizard walks you through five steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, parties (assessor, system owner) |
+| 2. Import | Reference to the SSP being assessed |
+| 3. Body | Assessment scope, objectives, subjects, activities, and tasks |
+| 4. Back-matter | Supporting resources and references |
+| 5. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the Assessment Plan wizard">
+    Go to `/build` and click the **AP** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the Assessment Plan **Title** (required) and **Version** (required). Add parties for the assessment team (assessor organization) and the system owner being assessed. Assign roles such as `assessor` and `assessment-lead`.
+  </Step>
+  <Step title="Set the Import reference">
+    The Import step records which SSP this assessment plan targets. Enter the **href** pointing to the SSP for the system being assessed. This links the assessment plan to the system's security documentation and the control baseline it implements.
+  </Step>
+  <Step title="Edit the Body">
+    The Body step opens a Monaco JSON editor pre-populated with the OSCAL assessment-plan skeleton. Key sections to fill in:
+    - **Assessment subjects** — what is being assessed (the system components and boundaries in scope)
+    - **Assessment activities** — the specific testing and interview methods used (for example, document review, interviews, technical testing)
+    - **Tasks** — the scheduled activities, their timing, and which team members are responsible
+
+    You can also specify which controls from the baseline are in scope for this assessment round.
+  </Step>
+  <Step title="Add Back-matter and save">
+    Attach supporting resources such as assessment methodology documents or rules of engagement on the Back-matter step. On the Review & Save step, run Schema Validation, then click **Save as Draft** or **Save as Final**. After saving, click **Save to Library** to share.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Complete the SSP first.** The assessment plan imports the SSP. Have a saved SSP before creating the assessment plan so you can enter the correct import `href`.
+- **In-scope controls.** You do not need to assess every control in the baseline on every engagement. Use the body's `reviewed-controls` section to list only the controls in scope for this assessment cycle.
+- **Assessment Results follow this document.** After the assessment activities are complete, create an [Assessment Results](/guide/build/assessment-results) document that imports this assessment plan and records findings.
+
+<Callout type="info">
+Assessment Plans are typically marked Final before assessment activities begin so the assessors have an authoritative, unmodified scope document to work from.
+</Callout>
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build a System Security Plan (SSP)](/guide/build/ssp)
+- [Build Assessment Results](/guide/build/assessment-results)
+- [Save to Library](/guide/library/save-to-library)
+- [OSCAL Model Types](/guide/reference/model-types)
