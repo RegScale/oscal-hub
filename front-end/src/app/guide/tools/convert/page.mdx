@@ -1,0 +1,65 @@
+---
+title: Convert Document Formats
+description: Translate an OSCAL document between XML, JSON, and YAML formats with automatic source detection and a one-click download.
+lastUpdated: 2026-05-04
+---
+
+# Convert Document Formats
+
+The Convert tool translates an OSCAL document from one serialization format to another — XML to JSON, JSON to YAML, YAML to XML, and every other combination. Format is detected automatically from the file extension, so in most cases you just upload the file, pick the output format you want, and download the result.
+
+---
+
+## What it does
+
+- **Auto-detect source format.** Upload an `.xml`, `.json`, or `.yaml` file and the source format field fills in immediately. Override it if your file uses a non-standard extension.
+- **All six conversion directions.** XML → JSON, XML → YAML, JSON → XML, JSON → YAML, YAML → XML, YAML → JSON. Every combination of the three serialization formats is supported.
+- **Side-by-side preview.** After conversion, the original file and the converted output appear in a two-panel preview. You can scroll both panels independently to compare structure and content before downloading.
+- **One-click download.** Click **Download** to save the converted file. The suggested file name uses the original base name with the new extension (for example, `my-catalog.xml` becomes `my-catalog.json`).
+- **All 7 OSCAL model types.** Catalog, Profile, Component Definition, SSP, Assessment Plan, Assessment Results, and POA&M documents are all supported.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to Convert">
+    From the dashboard, click the **Convert** card in the Core Tools section, or go to **Tools → Convert** in the left navigation.
+  </Step>
+  <Step title="Upload your file">
+    Drag your OSCAL file onto the upload zone or click **Browse files**. Files up to 10 MB are accepted. The **Source format** field is filled in automatically from the file extension (`.xml`, `.json`, or `.yaml`).
+  </Step>
+  <Step title="Choose the target format">
+    Open the **Output format** dropdown and select the format you want: **XML**, **JSON**, or **YAML**. The target format must be different from the source format.
+  </Step>
+  <Step title="Click 'Convert Document'">
+    Press the **Convert Document** button. The backend re-serializes the document into the chosen format. Most conversions complete in under a second; large catalogs may take a few seconds.
+  </Step>
+  <Step title="Preview and download">
+    The two-panel preview appears: the left panel shows the original source, the right panel shows the converted output. Review the result, then click **Download** to save the converted file to your computer.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Validate before converting.** Conversion does not validate the source document. A malformed source produces a malformed output. Run the file through [Validate](/guide/tools/validate) first if you are unsure whether it is well-formed.
+- **10 MB upload limit.** Files larger than 10 MB must be converted via the [API](/guide/reference/api-automation).
+- **JSON is the most widely shared format.** When exchanging documents with other tools and systems, JSON is the safest choice — it is the format used by FedRAMP's OSCAL tooling and most open-source OSCAL libraries.
+- **YAML is the most readable for human review.** Use YAML when you want to review or hand-edit the document content, then convert back to JSON or XML before submitting it to downstream tools.
+- **Conversion is lossless.** All OSCAL content is preserved across formats. Conversion does not add, remove, or change any fields.
+- **Batch conversions.** To convert many files at once, use the [Batch](/guide/tools/batch) tool.
+
+<Callout type="info">
+If the "Convert Document" button stays disabled after you upload a file, make sure you have selected an output format that is different from the detected source format.
+</Callout>
+
+---
+
+## Related
+
+- [Validate Documents](/guide/tools/validate)
+- [Batch Processing](/guide/tools/batch)
+- [API Automation](/guide/reference/api-automation)
+- [OSCAL Model Types](/guide/reference/model-types)

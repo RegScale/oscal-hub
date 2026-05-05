@@ -1,0 +1,68 @@
+---
+title: Resolve Profiles
+description: Flatten an OSCAL Profile — which references and tailors a Catalog — into a fully resolved Catalog containing only the controls that survived tailoring.
+lastUpdated: 2026-05-04
+---
+
+# Resolve Profiles
+
+The Resolve tool processes an OSCAL Profile document and produces a fully resolved Catalog. An OSCAL Profile specifies which controls from a base catalog are selected, which are excluded, and what tailoring modifications apply. Resolution fetches the referenced catalogs, applies all selections and modifications, and outputs a self-contained catalog with only the controls that remain after tailoring.
+
+Use this when you need to see the exact set of controls a profile imposes, when downstream tools require a resolved catalog rather than a profile, or when you want to distribute a tailored control baseline without exposing the source catalog or profile logic.
+
+---
+
+## What it does
+
+- **Fetches referenced catalogs.** The backend follows the `import` elements in your profile, retrieving each referenced catalog (whether a URL or a document already in your Library) so the resolution can proceed.
+- **Applies control selections and modifications.** Include lists, exclude lists, `add` and `remove` modifications, `alter` statements, and `set-parameter` overrides are all applied in the order the OSCAL specification defines.
+- **Produces a resolved catalog.** The output is a valid OSCAL Catalog document containing exactly the controls (with any modifications) that the profile selected. All profile-specific constructs are gone — the output is a plain catalog.
+- **Output format is your choice.** Download the resolved catalog as XML, JSON, or YAML regardless of the source format of the profile.
+- **Preview before download.** The resolved catalog appears in the preview panel before you download it, so you can verify the control count and spot-check the content.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to Resolve">
+    From the dashboard, click the **Resolve** card in the Core Tools section, or go to **Tools → Resolve** in the left navigation.
+  </Step>
+  <Step title="Upload your profile">
+    Drag your OSCAL Profile file onto the upload zone or click **Browse files**. The file must be a valid OSCAL Profile document (root element `profile`). XML, JSON, and YAML profiles are all accepted, up to 10 MB.
+  </Step>
+  <Step title="Choose the output format">
+    Open the **Output format** dropdown and select **XML**, **JSON**, or **YAML**. This controls the serialization format of the resolved catalog that is produced, independent of the source format.
+  </Step>
+  <Step title="Click 'Resolve Profile'">
+    Press the **Resolve Profile** button. OSCAL Hub sends the profile to the backend, which fetches the referenced catalogs, runs the resolution algorithm, and streams the result back. Resolution typically takes two to fifteen seconds depending on the size of the base catalog and how many controls are selected.
+  </Step>
+  <Step title="Preview and download">
+    Once resolution completes, the resolved catalog appears in the preview panel. Scroll through it to verify the control list. When you are satisfied, click **Download** to save the resolved catalog file.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Referenced catalogs must be reachable.** The backend fetches any catalog URLs listed in the profile's `import` elements. If those URLs require authentication, are behind a firewall, or are unreachable from the server, resolution will fail with a network error.
+- **Upload catalogs to your Library first.** If your profile imports a local or private catalog, upload that catalog to your [Library](/guide/library/overview) first, then use its Library URL as the import href in your profile.
+- **Large profiles take longer.** Profiles that import NIST SP 800-53 (Rev 5) with all 1000+ controls typically take five to fifteen seconds to resolve. This is normal.
+- **Resolution is deterministic.** Running the same profile against the same catalog always produces the same output. There is no randomness or environment-dependent behavior.
+- **Validate the profile first.** If your profile has structural errors, resolution may produce unexpected output or fail partway through. Run [Validate](/guide/tools/validate) on your profile before resolving it.
+- **10 MB limit applies to the profile file only.** The base catalogs fetched by the backend are not subject to this limit.
+
+<Callout type="warn">
+Profile resolution requires the backend to reach the catalogs listed in your profile's `import` elements over the network. If those catalog URLs are not publicly accessible from the server (for example, they are `localhost` paths on your laptop), resolution will fail with a "could not fetch catalog" error. Upload catalogs to the Library and use their Library URLs instead.
+</Callout>
+
+---
+
+## Related
+
+- [Validate Documents](/guide/tools/validate)
+- [Convert Document Formats](/guide/tools/convert)
+- [Batch Processing](/guide/tools/batch)
+- [OSCAL Model Types](/guide/reference/model-types)
+- [API Automation](/guide/reference/api-automation)
