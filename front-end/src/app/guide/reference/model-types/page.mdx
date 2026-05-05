@@ -1,0 +1,109 @@
+---
+title: OSCAL Model Types
+description: An overview of the seven OSCAL document types and how they map to the security documentation lifecycle.
+lastUpdated: 2026-05-04
+---
+
+# OSCAL Model Types
+
+OSCAL — the Open Security Controls Assessment Language — is a NIST-developed family of seven interrelated document types. Together they cover the full security lifecycle: from defining controls, to selecting and tailoring them, to documenting how a system implements them, to planning and recording assessments, to tracking remediation. Each type has a well-defined schema and can be expressed in JSON, XML, or YAML.
+
+<Callout type="info">
+Full specification and schema downloads are available at the official NIST OSCAL site: [https://pages.nist.gov/OSCAL/](https://pages.nist.gov/OSCAL/)
+</Callout>
+
+---
+
+## Catalog
+
+A **Catalog** is the authoritative collection of security controls and control baselines published by a standards body or organization. The most widely used example is NIST SP 800-53 Rev 5, which defines hundreds of controls across families such as Access Control, Audit and Accountability, and Incident Response. A catalog defines what controls exist and what each control requires; it does not prescribe which controls apply to any particular system.
+
+**What it is used for:** Reference material that organizations draw from when building profiles. Catalogs are typically authored once by a standards body and consumed by many downstream profiles and SSPs.
+
+- Build a catalog: [/guide/build/catalog](/guide/build/catalog)
+
+---
+
+## Profile
+
+A **Profile** selects a subset of controls from one or more catalogs and optionally tailors them — adding or removing parameters, adding guidance, or modifying control statements to fit an organization's needs. When a profile is resolved, the result is a new catalog-like document that contains only the selected, tailored controls.
+
+**What it is used for:** Defining a security baseline for a class of systems (e.g., "Low Impact", "High Impact", "FedRAMP Moderate"). Agencies, program offices, and SaaS vendors all publish profiles that system owners then implement.
+
+- Build a profile: [/guide/build/profile](/guide/build/profile)
+- Resolve a profile to a catalog: [/guide/tools/resolve](/guide/tools/resolve)
+
+---
+
+## Component Definition
+
+A **Component Definition** describes one or more system components — software packages, hardware devices, services, or organizational processes — and documents how each component satisfies specific security controls. A vendor might publish a component definition for their product so customers can incorporate it directly into their SSP without starting from scratch.
+
+**What it is used for:** Reusable control implementation statements that can be imported into an SSP. Reduces duplication when the same component appears in multiple systems.
+
+- Build a component definition: [/guide/build/component](/guide/build/component)
+- Generate one with AI assistance: [/guide/ai/component-wizard](/guide/ai/component-wizard)
+
+---
+
+## System Security Plan (SSP)
+
+A **System Security Plan** is the central artifact of the OSCAL lifecycle for a specific system. It documents the system's boundary, the baseline of controls that applies to it, and the implementation status and narrative for each control. The SSP is submitted to an authorizing official as part of the Authority to Operate (ATO) process.
+
+**What it is used for:** Demonstrating that a system has addressed all required security controls. It is the primary deliverable for FedRAMP, FISMA, and many other compliance frameworks.
+
+- Build an SSP: [/guide/build/ssp](/guide/build/ssp)
+
+---
+
+## Assessment Plan (AP)
+
+An **Assessment Plan** documents the planned approach for evaluating a system's security controls. It identifies the scope of the assessment, the methods to be used (interviews, testing, examination), the controls to be assessed, and the schedule.
+
+**What it is used for:** Giving system owners and assessors a shared, structured understanding of what the assessment will cover before it begins. The AP is produced by the assessment team and reviewed by the system owner.
+
+- Build an assessment plan: [/guide/build/assessment-plan](/guide/build/assessment-plan)
+
+---
+
+## Assessment Results (AR)
+
+**Assessment Results** record what was found during a security assessment. For each assessed control, the AR captures the assessment methods used, the evidence reviewed, and an outcome — satisfied, other-than-satisfied, or not assessed. Findings and identified risks are captured here.
+
+**What it is used for:** Providing auditors, authorizing officials, and continuous monitoring programs with a machine-readable, timestamped record of control effectiveness. ARs feed directly into POA&M creation.
+
+- Build assessment results: [/guide/build/assessment-results](/guide/build/assessment-results)
+
+---
+
+## Plan of Action and Milestones (POA&M)
+
+A **Plan of Action and Milestones** tracks security weaknesses identified during assessments and the remediation actions planned or underway. Each entry identifies the weakness, the responsible party, scheduled milestones, and current status.
+
+**What it is used for:** Continuous monitoring and remediation tracking. The POA&M is a living document updated as weaknesses are found and resolved. It is a required deliverable under FISMA, FedRAMP, and most agency ATO processes.
+
+- Build a POA&M: [/guide/build/poam](/guide/build/poam)
+
+---
+
+## How the Types Relate
+
+The seven types form a directed lifecycle:
+
+1. Standards bodies publish **Catalogs**.
+2. Organizations select controls from catalogs into **Profiles** (baselines).
+3. Component vendors document control implementations in **Component Definitions**.
+4. System owners combine a profile and component definitions to produce an **SSP**.
+5. Assessors plan their work in an **Assessment Plan**, execute it, and record findings in **Assessment Results**.
+6. Weaknesses from assessment results are tracked in a **POA&M**.
+
+Each document type can reference the others by URI, keeping the chain traceable and machine-readable end to end.
+
+---
+
+## Related
+
+- [Validate a document](/guide/tools/validate)
+- [Convert between formats](/guide/tools/convert)
+- [Resolve a profile](/guide/tools/resolve)
+- [API Automation Guide](/guide/reference/api-automation)
