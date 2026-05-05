@@ -1,0 +1,113 @@
+---
+title: Org Users
+description: Manage org membership — add, lock, reset passwords, and remove users in your organization.
+lastUpdated: 2026-05-04
+---
+
+# Org Users
+
+The Org Users page at `/org-admin/users` is the central roster for your organization. You can see every member, filter by status or role, and perform administrative actions on individual accounts. You can also attach existing platform users to your org from the **Assign Existing Users** tab.
+
+---
+
+## What it does
+
+| Capability | Description |
+|---|---|
+| **View members** | See username, email, role, join date, and account status for every org member |
+| **Search** | Filter the list by name, email, or username |
+| **Filter by status** | Show only Active or Locked accounts |
+| **Filter by role** | Show only Org Admins or regular Members |
+| **Add a user** | Assign an existing platform user to the org |
+| **Lock / Unlock** | Prevent or restore a user's ability to sign in |
+| **Reset password** | Generate a temporary password and deliver it to the user |
+| **Remove from org** | Revoke a user's membership without deleting the platform account |
+
+---
+
+## Two tabs
+
+**Org Users** — The default tab. Shows everyone currently assigned to this org. All row-level actions (lock, unlock, reset, remove) are available here.
+
+**Assign Existing Users** — Search for any platform user who is not yet in your org, choose their role, and assign them. This is useful when someone already has a platform account but needs access to your specific org.
+
+---
+
+## Common operations
+
+### Assign an existing platform user
+
+<Steps>
+<Step title="Open the Assign Existing Users tab">
+Navigate to `/org-admin/users` and click the **Assign Existing Users** tab.
+</Step>
+<Step title="Search for the user">
+Type the user's name or email into the search field. Matching platform users appear in the list.
+</Step>
+<Step title="Select a role">
+In the role dropdown next to the user's row (or in the assignment panel), choose **Member** or **Org Admin**.
+</Step>
+<Step title="Click Assign">
+Click the **Assign** button. The user is immediately added to the org and will see the org in their available org list on their next login or page refresh.
+</Step>
+</Steps>
+
+### Lock a user account
+
+<Steps>
+<Step title="Find the user">
+On the **Org Users** tab, search or scroll to the user's row.
+</Step>
+<Step title="Open row actions">
+Click the actions menu (three dots or the action button) in the user's row.
+</Step>
+<Step title="Select Lock account">
+Click **Lock account**. The user's status changes to **Locked**. They will be unable to sign in until unlocked.
+</Step>
+</Steps>
+
+To reverse this, use the same row actions menu and select **Unlock account**.
+
+### Reset a user's password
+
+<Steps>
+<Step title="Find the user">
+Locate the user on the **Org Users** tab.
+</Step>
+<Step title="Select Reset password">
+Open the row actions menu and click **Reset password**. The system generates a temporary password.
+</Step>
+<Step title="Deliver the temporary password">
+A modal displays the temporary password and provides a one-time link. You can copy either and share it with the user through a secure channel. The user will be prompted to set a new password on their next login.
+</Step>
+</Steps>
+
+### Remove a user from the org
+
+<Steps>
+<Step title="Find the user">
+Locate the user on the **Org Users** tab.
+</Step>
+<Step title="Select Remove">
+Open the row actions menu and click **Remove**. Confirm the prompt.
+</Step>
+</Steps>
+
+The user's platform account is not deleted — they can still log in and belong to other orgs. They simply lose access to this org and any resources within it.
+
+---
+
+## Tips and limits
+
+- **Removing vs. locking.** Lock a user to temporarily block access while keeping them in the org roster. Remove a user to fully revoke org membership.
+- **Locked users still appear** in the list; filter by **Active** status to hide them from view.
+- **Org Admins count as members** — promoting a member to Org Admin does not add a new seat.
+- **To invite someone new to the platform**, use [Invitations](/guide/org-admin/invitations) instead — that flow creates a new platform account and org assignment in one step.
+
+---
+
+## Related
+
+- [Invitations](/guide/org-admin/invitations)
+- [Access Requests](/guide/org-admin/access-requests)
+- [Org Admin Overview](/guide/org-admin/overview)

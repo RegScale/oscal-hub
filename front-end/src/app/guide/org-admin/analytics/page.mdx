@@ -1,0 +1,59 @@
+---
+title: Org Analytics
+description: Track org-wide user activity, tool usage volume, and document creation trends.
+lastUpdated: 2026-05-04
+---
+
+# Org Analytics
+
+The Org Analytics page at `/org-admin/analytics` provides a broad view of how your organization is using OSCAL Hub. You can see login activity, operation volumes by tool, document creation trends, and a feature usage heatmap — all filterable by date range.
+
+---
+
+## What it shows
+
+| Section | Description |
+|---|---|
+| **User logins** | Daily Active Users (DAU) and Monthly Active Users (MAU) over the selected period |
+| **Operations by tool** | Volume of validate, convert, resolve, visualize, and other operations performed by org members |
+| **Document trends** | New documents created and modified over time (catalog, profile, SSP, component, etc.) |
+| **Top features** | Which capabilities members use most — useful for identifying adoption gaps and training needs |
+
+---
+
+## Review org activity
+
+<Steps>
+<Step title="Open Org Analytics">
+Navigate to `/org-admin/analytics`.
+</Step>
+<Step title="Choose a time range">
+Use the date-range picker to select the window you want to analyze. Common selections include the last 7 days, last 30 days, or a custom calendar range.
+</Step>
+<Step title="Review login activity">
+The logins chart shows DAU and MAU trends. A healthy, growing org shows steady or rising DAU without large single-day spikes followed by inactivity.
+</Step>
+<Step title="Examine tool usage">
+The operations breakdown shows which tools (validate, convert, resolve, etc.) account for most activity. Use this to understand what your members actually do and whether under-used features need promotion or training.
+</Step>
+<Step title="Check document creation trends">
+The document trends chart separates creations from modifications, letting you gauge whether members are actively producing new OSCAL content or primarily editing existing documents.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Data refreshes hourly.** Numbers on this page reflect activity up to approximately one hour ago. For very large organizations, ingestion may occasionally lag further during peak periods.
+- **Export to CSV is planned.** The ability to download raw analytics data for use in external reporting tools is on the roadmap but has not yet shipped. Until then, use browser-level screenshot or copy-paste to extract specific data points.
+- **Analytics are org-scoped.** You see only the activity of users who belong to the currently-selected org. Switch orgs using the top-nav org switcher to view a different org's analytics.
+- **Cross-reference with AI Analytics.** If you see an operation spike that isn't explained by document trends, check [AI Analytics](/guide/org-admin/ai-analytics) — AI wizard usage generates operations counts but not always document saves.
+
+---
+
+## Related
+
+- [AI Analytics](/guide/org-admin/ai-analytics)
+- [Org Users](/guide/org-admin/users)
+- [Org Admin Overview](/guide/org-admin/overview)
