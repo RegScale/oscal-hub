@@ -34,6 +34,7 @@ export default function ValidationRulesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedModelType, setSelectedModelType] = useState<OscalModelType | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'builtin' | 'custom'>('all');
 
   useEffect(() => {
     loadRules();
@@ -68,18 +69,26 @@ export default function ValidationRulesPage() {
     const matchesCategory = selectedCategory === 'all' ||
       rule.category === selectedCategory;
 
-    return matchesSearch && matchesModel && matchesCategory;
+    // Source filter (driven by the clickable stats tiles or the dropdown)
+    const matchesSource = sourceFilter === 'all'
+      || (sourceFilter === 'builtin' && rule.builtIn)
+      || (sourceFilter === 'custom' && !rule.builtIn);
+
+    return matchesSearch && matchesModel && matchesCategory && matchesSource;
   }) || [];
 
   const categories = rulesData?.categories || [];
   const uniqueCategories = categories.map(cat => ({ id: cat.id, name: cat.name }));
 
-  // Calculate filtered statistics
-  const filteredStats = {
-    total: filteredRules.length,
-    builtIn: filteredRules.filter(r => r.builtIn).length,
-    custom: filteredRules.filter(r => !r.builtIn).length,
-    categories: new Set(filteredRules.map(r => r.category).filter(Boolean)).size,
+  // Statistics show TOTAL counts (independent of source filter) so users always
+  // see the full picture in the tiles. The tiles double as source-filter
+  // toggles — clicking "Custom Rules" pins sourceFilter='custom'.
+  const allRules = rulesData?.rules ?? [];
+  const totalStats = {
+    total: allRules.length,
+    builtIn: allRules.filter(r => r.builtIn).length,
+    custom: allRules.filter(r => !r.builtIn).length,
+    categories: new Set(allRules.map(r => r.category).filter(Boolean)).size,
   };
 
   if (loading) {
@@ -152,33 +161,59 @@ export default function ValidationRulesPage() {
           </div>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards — clickable as source filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <button
+            type="button"
+            onClick={() => setSourceFilter('all')}
+            aria-pressed={sourceFilter === 'all'}
+            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+          >
+            <Card className={`transition-shadow hover:shadow-md cursor-pointer ${
+              sourceFilter === 'all' ? 'ring-2 ring-primary' : ''
+            }`}>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-primary">{totalStats.total}</div>
+                <p className="text-sm text-muted-foreground">All Rules</p>
+              </CardContent>
+            </Card>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSourceFilter(s => s === 'builtin' ? 'all' : 'builtin')}
+            aria-pressed={sourceFilter === 'builtin'}
+            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
+          >
+            <Card className={`transition-shadow hover:shadow-md cursor-pointer ${
+              sourceFilter === 'builtin' ? 'ring-2 ring-blue-500' : ''
+            }`}>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-blue-500">{totalStats.builtIn}</div>
+                <p className="text-sm text-muted-foreground">Built-in Rules</p>
+              </CardContent>
+            </Card>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSourceFilter(s => s === 'custom' ? 'all' : 'custom')}
+            aria-pressed={sourceFilter === 'custom'}
+            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-lg"
+          >
+            <Card className={`transition-shadow hover:shadow-md cursor-pointer ${
+              sourceFilter === 'custom' ? 'ring-2 ring-purple-500' : ''
+            }`}>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-purple-500">{totalStats.custom}</div>
+                <p className="text-sm text-muted-foreground">Custom Rules</p>
+              </CardContent>
+            </Card>
+          </button>
+
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-primary">{filteredStats.total}</div>
-              <p className="text-sm text-muted-foreground">
-                {searchQuery || selectedModelType !== 'all' || selectedCategory !== 'all'
-                  ? 'Filtered Rules'
-                  : 'Total Rules'}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-blue-500">{filteredStats.builtIn}</div>
-              <p className="text-sm text-muted-foreground">Built-in Rules</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-purple-500">{filteredStats.custom}</div>
-              <p className="text-sm text-muted-foreground">Custom Rules</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-green-500">{filteredStats.categories}</div>
+              <div className="text-2xl font-bold text-green-500">{totalStats.categories}</div>
               <p className="text-sm text-muted-foreground">Categories</p>
             </CardContent>
           </Card>
@@ -237,8 +272,32 @@ export default function ValidationRulesPage() {
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredRules.length} of {rulesData?.totalRules} rules
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Showing {filteredRules.length} of {rulesData?.totalRules} rules
+                {sourceFilter !== 'all' && (
+                  <span className="ml-2">
+                    · source:{' '}
+                    <span className="font-medium text-foreground">
+                      {sourceFilter === 'builtin' ? 'built-in' : 'custom'}
+                    </span>
+                  </span>
+                )}
+              </span>
+              {(searchQuery || selectedModelType !== 'all' || selectedCategory !== 'all' || sourceFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedModelType('all');
+                    setSelectedCategory('all');
+                    setSourceFilter('all');
+                  }}
+                  className="text-primary hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
