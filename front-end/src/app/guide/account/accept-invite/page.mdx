@@ -1,0 +1,74 @@
+---
+title: Accept an Invite
+description: How to join an OSCAL Hub organization by clicking an invitation link sent to your email.
+lastUpdated: 2026-05-04
+---
+
+# Accept an Invite
+
+When an organization administrator invites you to their OSCAL Hub workspace, you receive an email containing a unique invitation link. Clicking that link takes you to the Accept Invitation page, where you can join the organization — either by signing in with an existing account or by creating a new one on the spot.
+
+---
+
+## What to expect from the invitation email
+
+The invitation email includes:
+
+- The **name of the organization** you are being invited to join.
+- The **role** you will be assigned (for example, Member, Analyst, or Org Admin).
+- A **unique invitation link** in the format `/accept-invite?token=<token>`.
+
+The link is valid for **7 days** by default. After it expires, the page will display an error and you will need to contact the person who sent the invite to request a new one.
+
+---
+
+## Accepting the invite
+
+<Steps>
+<Step title="Click the invitation link">
+Open the invitation email and click the **Accept Invitation** button or link. Your browser opens OSCAL Hub at `/accept-invite?token=...`.
+</Step>
+<Step title="Review the invitation details">
+The page displays the organization name, the inviting admin's name, and the role you are being assigned. Confirm these details are correct.
+</Step>
+<Step title="Sign in or create an account">
+- **If you already have an OSCAL Hub account:** Click **Sign in** and enter your credentials. Your existing account will be linked to the organization.
+- **If you do not have an account yet:** Enter a new **username** and **password** in the registration fields on the same page. Your new account will be created and immediately associated with the organization.
+</Step>
+<Step title="Confirm and join">
+Click the **Accept** or **Join Organization** button. OSCAL Hub processes the invite token and adds your account to the organization.
+</Step>
+<Step title="Start working">
+You are redirected to the OSCAL Hub home page inside the organization's context. All organization-level features — shared Library, org-scoped Authorizations, admin tools (if your role allows) — are now available to you.
+</Step>
+</Steps>
+
+---
+
+## What happens after joining
+
+- You are added to the organization with the **role specified in the invitation**.
+- If your account previously had no organization, you are now placed directly in the new org's context.
+- If your account **already belonged to other organizations**, you can switch between them using the **org switcher** in the top navigation bar. Switching orgs does not require signing out.
+- The invitation link is invalidated immediately after use — it cannot be used to add a second account.
+
+---
+
+## Tips and limits
+
+- **Expired invitations (7 days):** If the link has expired, the page displays an error. Contact your organization admin and ask them to resend the invitation from their admin dashboard.
+- **Wrong email address:** If you receive an invite at an email address that is different from the one on your existing OSCAL Hub account, you can still sign in with your existing account — the invite is accepted by clicking the link and then signing in, regardless of which email received the message.
+- **Token reuse:** Each invitation token can be accepted only once. If you accidentally close the page before completing the flow, click the link in the original email again — it remains valid until used or expired.
+- **Role changes after joining:** If you need a different role than the one specified in the invitation, contact your Org Admin after joining. Roles can be changed from the admin dashboard.
+
+<Callout type="info">
+If your organization uses single sign-on (SSO), the invite flow may redirect you to your identity provider's login page rather than the built-in username/password form. Complete the SSO sign-in and you will be returned to OSCAL Hub to finish accepting the invite.
+</Callout>
+
+---
+
+## Related
+
+- [Request Access](/guide/account/request-access)
+- [Sign in & MFA](/guide/getting-started/sign-in-and-mfa)
+- [Profile](/guide/account/profile)

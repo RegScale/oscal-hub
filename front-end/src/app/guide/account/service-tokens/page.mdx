@@ -1,0 +1,142 @@
+---
+title: Service Account Tokens
+description: How to create and use long-lived JWT tokens for programmatic access to the OSCAL Hub API in CI/CD pipelines, scripts, and external integrations.
+lastUpdated: 2026-05-04
+---
+
+# Service Account Tokens
+
+Service account tokens are long-lived JWT credentials that allow scripts, CI/CD pipelines, and external tools to authenticate to the OSCAL Hub API without requiring an interactive login. They are distinct from your personal session token: service account tokens have a configurable expiration (1 to 3650 days) and are managed independently from your login session.
+
+Common use cases include:
+
+- Validating OSCAL documents in a GitHub Actions workflow.
+- Converting files as part of a build pipeline.
+- Automating profile resolution or SSP generation in scripts.
+- Integrating OSCAL Hub into external compliance platforms.
+
+---
+
+## Creating a service account token
+
+<Steps>
+<Step title="Open your Profile">
+Click your **username or avatar** in the top-right corner and select **Profile**, or navigate directly to `/profile`.
+</Step>
+<Step title="Scroll to Service Account Tokens">
+Find the **Service Account Tokens** section near the bottom of the profile page.
+</Step>
+<Step title="Enter a descriptive name">
+In the **Token Name** field, enter a name that describes where and how the token will be used — for example: `GitHub Actions — OSCAL validation` or `Staging pipeline — format conversion`. A clear name makes it easy to identify which token to revoke if one is compromised.
+</Step>
+<Step title="Set the expiration">
+In the **Expiration (days)** field, enter a value between **1** and **3650** (approximately 10 years). Choose an expiration that matches the lifetime of the integration — short-lived tokens are more secure, but tokens used in long-running pipelines may need a longer lifespan.
+</Step>
+<Step title="Click Generate Service Account Token">
+Click the **Generate Service Account Token** button. The token is generated and displayed in a dialog or inline panel.
+</Step>
+<Step title="Copy the token immediately">
+Copy the full token value right now. **The token is displayed exactly once and cannot be retrieved later.** If you close the dialog without copying it, you will need to revoke the token and generate a new one.
+</Step>
+<Step title="Store the token securely">
+Paste the token into your secrets manager, environment variable store, or CI/CD secrets vault (e.g., GitHub Actions Secrets, AWS Secrets Manager, HashiCorp Vault). Never paste it directly into source code or commit it to a repository.
+</Step>
+</Steps>
+
+<Callout type="warn">
+Service account tokens grant **full API access** on behalf of your account. Anyone who possesses a token can perform any action that your account is authorized to perform — including reading, creating, and modifying OSCAL documents. Treat tokens the same way you would treat a password.
+</Callout>
+
+---
+
+## Using tokens with the API
+
+Include the token in the `Authorization` header of every API request using the `Bearer` scheme.
+
+### Validate a document (development)
+
+```bash
+curl -X POST http://localhost:8090/api/validate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "content": "{ \"catalog\": { } }",
+    "modelType": "catalog",
+    "format": "JSON",
+    "fileName": "my-catalog.json"
+  }'
+```
+
+### Convert format (development)
+
+```bash
+curl -X POST http://localhost:8090/api/convert \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "content": "<catalog>...</catalog>",
+    "fromFormat": "XML",
+    "toFormat": "JSON",
+    "modelType": "catalog"
+  }'
+```
+
+### GitHub Actions example
+
+```yaml
+# .github/workflows/validate-oscal.yml
+name: Validate OSCAL
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate catalog
+        run: |
+          CONTENT=$(cat catalog.json | jq -Rs .)
+          curl -X POST ${{ vars.OSCAL_HUB_URL }}/api/validate \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.OSCAL_SERVICE_TOKEN }}" \
+            -d "{\"content\": $CONTENT, \"modelType\": \"catalog\", \"format\": \"JSON\", \"fileName\": \"catalog.json\"}"
+```
+
+In production, replace `http://localhost:8090` with your deployed OSCAL Hub URL (e.g., `https://your-oscal-hub.example.com`).
+
+<Callout type="info">
+The full API reference — with all available endpoints, request schemas, and response examples — is available in the Swagger UI. In development: `http://localhost:8090/swagger-ui/index.html`. In production, use your deployed base URL with the same path.
+</Callout>
+
+---
+
+## Revoking a token
+
+To revoke a service account token that is no longer needed or that may have been compromised:
+
+1. Navigate to your **Profile** page (`/profile`).
+2. Scroll to the **Service Account Tokens** section.
+3. Find the token you want to revoke and click **Revoke** (or the trash icon).
+4. Confirm the revocation. The token is immediately invalidated — any requests using it will receive a `401 Unauthorized` response.
+
+---
+
+## Security best practices
+
+Following these practices reduces the risk of token compromise:
+
+- **Use environment variables or a secrets vault.** Never hardcode a token in source code or a configuration file that is committed to version control.
+- **One token per environment or application.** Use separate tokens for development, staging, and production. Use separate tokens for different applications. This makes it easy to revoke a single token without disrupting other integrations.
+- **Set an appropriate expiration.** Shorter lifetimes mean a compromised token is valid for less time. For automated pipelines that run continuously, tokens scoped to 90–365 days are a common balance.
+- **Rotate on a schedule.** Even if a token has not been compromised, rotating it periodically (for example, annually) limits the blast radius of an undetected breach.
+- **Revoke immediately if compromised.** If you suspect a token has been exposed — for example, accidentally committed to a public repository — revoke it immediately and generate a replacement.
+- **Never log token values.** Make sure your scripts and applications do not log the `Authorization` header or the token string. Redact it in any debug output.
+
+---
+
+## Related
+
+- [Profile](/guide/account/profile)
+- [Sign in & MFA](/guide/getting-started/sign-in-and-mfa)

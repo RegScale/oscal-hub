@@ -1,0 +1,65 @@
+---
+title: Request Access
+description: How to request membership in an OSCAL Hub organization when you have not received a direct invitation.
+lastUpdated: 2026-05-04
+---
+
+# Request Access
+
+If you know your organization is already using OSCAL Hub but you have not received an invitation email, you can submit a request to join directly from the **Request Access** page at `/request-access`. An Org Admin for that organization will review your request and either approve or decline it.
+
+This path is also available from the **Available Organizations** tab on the organization-selection screen, which appears after sign-in when your account does not yet belong to an org.
+
+---
+
+## How to request access
+
+<Steps>
+<Step title="Navigate to Request Access">
+Go to `/request-access` in your browser. If you are already signed in, your name and email are pre-filled in the form. If you are not signed in, you will see a form that also collects account registration details.
+</Step>
+<Step title="Choose your organization">
+A list of organizations that are **accepting public requests** is displayed. Scroll or search the list to find your organization and click it to select it.
+</Step>
+<Step title="Fill in your details">
+Confirm or enter your **first name**, **last name**, **email address**, and **username**. These are sent to the Org Admin so they know who is requesting access. You may also include an optional **message** — for example, your team name or the reason you need access.
+</Step>
+<Step title="Submit the request">
+Click the **Submit Request** button. A confirmation is displayed on the page indicating that your request was received.
+</Step>
+<Step title="Wait for approval">
+Your request now appears as **Pending** in the org-selection screen and on the `/request-access` page. You will be notified (by email, if notifications are configured) when an Org Admin approves or declines your request.
+</Step>
+</Steps>
+
+---
+
+## Tracking your pending request
+
+After submitting a request, you can see its status:
+
+- **On the Request Access page** (`/request-access`) — the status column shows **Pending**, **Approved**, or **Declined** for each request you have submitted.
+- **On the organization-selection screen** — if you sign in but have no active org membership, the org selector shows pending requests in the **Available Organizations** tab.
+
+Once approved, your account is added to the organization and you can sign in normally. On your next sign-in, you will be placed in the org's context automatically (or asked to choose it if you belong to multiple orgs).
+
+---
+
+## Tips and limits
+
+- **Only visible orgs appear in the list.** Organizations only show up as requestable if an Org Admin has enabled the "Accept membership requests" setting in their org admin dashboard. If you do not see your target organization, it has not opted in. In that case, ask a current member of that org to invite you directly — see [Accept an Invite](/guide/account/accept-invite).
+- **One pending request per org.** You can only have one pending request to a given organization at a time. Submitting again to the same org while a request is pending is not allowed.
+- **No automatic approval.** Requests must be approved by a human Org Admin. Approval times depend on the admin's availability. If you have not heard back after a day or two, reach out to a colleague or the admin directly.
+- **Declined requests.** If your request is declined, the status updates to **Declined** in the UI. You may resubmit with additional context, or contact the Org Admin to ask what is needed.
+
+<Callout type="info">
+If your organization uses an invitation-only policy (requests are disabled), you will not see the org in the request list at all. Contact your Org Admin or a current member and ask them to send you an invitation email instead.
+</Callout>
+
+---
+
+## Related
+
+- [Accept an Invite](/guide/account/accept-invite)
+- [Sign in & MFA](/guide/getting-started/sign-in-and-mfa)
+- [Profile](/guide/account/profile)
