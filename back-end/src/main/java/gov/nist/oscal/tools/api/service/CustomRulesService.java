@@ -170,6 +170,10 @@ public class CustomRulesService {
             entity.setApplicableModelTypes(null);
         }
 
+        entity.setAiGenerated(Boolean.TRUE.equals(request.getAiGenerated()));
+        entity.setGenerationPrompt(request.getGenerationPrompt());
+        entity.setGenerationModel(request.getGenerationModel());
+
         entity.setEnabled(request.getEnabled());
     }
 }

@@ -53,6 +53,16 @@ public class CustomValidationRule {
     @Column(length = 100)
     private String createdBy;
 
+    @Column(name = "ai_generated", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private Boolean aiGenerated = false;
+
+    @Column(name = "generation_prompt", columnDefinition = "TEXT")
+    private String generationPrompt;
+
+    @Column(name = "generation_model", length = 64)
+    private String generationModel;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user; // User who owns this custom rule
@@ -192,6 +202,30 @@ public class CustomValidationRule {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Boolean getAiGenerated() {
+        return aiGenerated;
+    }
+
+    public void setAiGenerated(Boolean aiGenerated) {
+        this.aiGenerated = aiGenerated;
+    }
+
+    public String getGenerationPrompt() {
+        return generationPrompt;
+    }
+
+    public void setGenerationPrompt(String generationPrompt) {
+        this.generationPrompt = generationPrompt;
+    }
+
+    public String getGenerationModel() {
+        return generationModel;
+    }
+
+    public void setGenerationModel(String generationModel) {
+        this.generationModel = generationModel;
     }
 
     public User getUser() {

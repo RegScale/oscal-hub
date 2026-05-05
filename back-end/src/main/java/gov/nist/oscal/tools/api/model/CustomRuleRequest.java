@@ -27,6 +27,10 @@ public class CustomRuleRequest {
 
     private List<String> applicableModelTypes;
 
+    private Boolean aiGenerated;
+    private String generationPrompt;
+    private String generationModel;
+
     @NotNull(message = "Enabled status is required")
     private Boolean enabled;
 
@@ -121,5 +125,29 @@ public class CustomRuleRequest {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Boolean getAiGenerated() {
+        return aiGenerated;
+    }
+
+    public void setAiGenerated(Boolean aiGenerated) {
+        this.aiGenerated = aiGenerated;
+    }
+
+    public String getGenerationPrompt() {
+        return generationPrompt;
+    }
+
+    public void setGenerationPrompt(String generationPrompt) {
+        this.generationPrompt = generationPrompt;
+    }
+
+    public String getGenerationModel() {
+        return generationModel;
+    }
+
+    public void setGenerationModel(String generationModel) {
+        this.generationModel = generationModel;
     }
 }
