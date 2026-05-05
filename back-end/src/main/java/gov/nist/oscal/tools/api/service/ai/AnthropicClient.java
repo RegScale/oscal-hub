@@ -1,12 +1,15 @@
 package gov.nist.oscal.tools.api.service.ai;
 
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.ContentBlockParam;
 import com.anthropic.models.messages.DocumentBlockParam;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.MessageParam;
 import com.anthropic.models.messages.TextBlockParam;
+import com.anthropic.models.messages.ToolUseBlock;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 @Service("anthropicClientService")
@@ -135,6 +140,67 @@ public class AnthropicClient {
         }
         // Defensive — loop exit without return only if maxAttempts == 0.
         throw new RuntimeException("Anthropic call failed after " + maxAttempts + " attempts", lastError);
+    }
+
+    /**
+     * Send a request that requires the model to respond with a tool_use block.
+     * The {@code tools} and {@code toolChoice} on {@code call} are forwarded
+     * to Anthropic via the SDK's additional-body-property escape hatch — this
+     * keeps us decoupled from any SDK-version-specific tool builder classes.
+     *
+     * @return the chosen tool name and its JSON input arguments
+     * @throws IllegalStateException if the response contains no tool_use block
+     */
+    public AnthropicToolUseResult sendWithTools(String apiKey, AnthropicCall call,
+                                                Consumer<String> onRetry) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException("Missing Anthropic API key");
+        }
+        com.anthropic.client.AnthropicClient client = AnthropicOkHttpClient.builder()
+                .apiKey(apiKey)
+                .maxRetries(0)
+                .timeout(Duration.ofMinutes(2))
+                .build();
+
+        List<ContentBlockParam> blocks = new ArrayList<>();
+        for (String text : call.textDocuments()) {
+            blocks.add(ContentBlockParam.ofText(TextBlockParam.builder().text(text).build()));
+        }
+        blocks.add(ContentBlockParam.ofText(TextBlockParam.builder().text(call.userMessage()).build()));
+
+        MessageCreateParams.Builder paramsBuilder = MessageCreateParams.builder()
+                .model(call.model())
+                .maxTokens(call.maxTokens())
+                .system(call.systemPrompt())
+                .addMessage(MessageParam.builder()
+                        .role(MessageParam.Role.USER)
+                        .contentOfBlockParams(blocks)
+                        .build());
+
+        if (call.tools() != null && !call.tools().isEmpty()) {
+            paramsBuilder = paramsBuilder.putAdditionalBodyProperty("tools",
+                    JsonValue.from(call.tools()));
+        }
+        if (call.toolChoice() != null) {
+            paramsBuilder = paramsBuilder.putAdditionalBodyProperty("tool_choice",
+                    JsonValue.from(Map.of("type", call.toolChoice())));
+        }
+
+        Message message = sendWithRetry(client, paramsBuilder.build(), onRetry);
+
+        ObjectMapper om = new ObjectMapper();
+        for (var block : message.content()) {
+            Optional<ToolUseBlock> tu = block.toolUse();
+            if (tu.isPresent()) {
+                ToolUseBlock toolUse = tu.get();
+                return new AnthropicToolUseResult(
+                        toolUse.name(),
+                        om.valueToTree(toolUse._input()),
+                        (int) message.usage().inputTokens(),
+                        (int) message.usage().outputTokens());
+            }
+        }
+        throw new IllegalStateException("Anthropic response contained no tool_use block");
     }
 
     private boolean isRetriable(Throwable e) {
