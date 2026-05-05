@@ -51,7 +51,7 @@ export default function PublicCatalogPage() {
   }, [q, type, tag, sort, page]);
 
   return (
-    <div>
+    <div className="container mx-auto px-4 py-8">
       <header className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <Library className="h-6 w-6 text-primary" />

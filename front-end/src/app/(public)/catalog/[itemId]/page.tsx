@@ -47,30 +47,34 @@ export default function PublicCatalogDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading…
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading…
+        </div>
       </div>
     );
   }
 
   if (error || !item) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-destructive">Item not found.</p>
-        <Link
-          href="/catalog"
-          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Data Products
-        </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-3">
+          <p className="text-sm text-destructive">Item not found.</p>
+          <Link
+            href="/catalog"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Data Products
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Link
         href="/catalog"
         className="inline-flex items-center gap-1 text-sm text-primary hover:underline mb-4"

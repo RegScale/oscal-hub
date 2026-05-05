@@ -631,7 +631,7 @@ export default function Dashboard() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
-                    href="http://localhost:8080/swagger-ui/index.html"
+                    href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090/api').replace(/\/api\/?$/, '')}/swagger-ui/index.html`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center"
