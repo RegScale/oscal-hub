@@ -18,8 +18,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { apiClient } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import type { ComponentDefinitionResponse } from '@/types/oscal';
 import { ImportComponentDialog } from './ImportComponentDialog';
+import { toast } from 'sonner';
 import {
   Plus,
   Search,
@@ -33,6 +35,7 @@ import {
   Calendar,
   Blocks,
   Upload,
+  BookPlus,
 } from 'lucide-react';
 
 interface ComponentListProps {
@@ -63,6 +66,9 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
 
   // Import dialog
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // Add-to-library state
+  const [addingToLibraryId, setAddingToLibraryId] = useState<number | null>(null);
 
   // Load components
   const loadComponents = async () => {
@@ -171,6 +177,24 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
   const handleDeleteClick = (component: ComponentDefinitionResponse) => {
     setComponentToDelete(component);
     setDeleteDialogOpen(true);
+  };
+
+  const handleAddToLibrary = async (component: ComponentDefinitionResponse) => {
+    setAddingToLibraryId(component.id);
+    try {
+      await libraryPublishApi.saveComponentToLibrary(component.id, {
+        title: component.title,
+        description: component.description ?? undefined,
+        visibility: 'PRIVATE',
+      });
+      toast.success(`${component.title} added to your Library`, {
+        description: 'Visibility is Private. Open Library to publish or share.',
+      });
+    } catch (e) {
+      toast.error(`Failed to add to Library: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setAddingToLibraryId(null);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -327,6 +351,17 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleEdit(component)} title="Edit">
                   <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAddToLibrary(component)}
+                  disabled={addingToLibraryId === component.id}
+                  title="Add to Library"
+                >
+                  {addingToLibraryId === component.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <BookPlus className="h-3.5 w-3.5" />}
                 </Button>
                 <Button
                   size="sm"

@@ -33,8 +33,11 @@ import {
   ClipboardList,
   ClipboardCheck,
   Target,
+  BookPlus,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { catalogBuilderApi, profileBuilderApi, oscalDocumentApi } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import {
   modelLabel,
   summarizeOscalDocument,
@@ -176,6 +179,8 @@ export function BuiltDocList({ docType, onCreateNew, onEdit, reloadKey }: BuiltD
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
+  const [addingToLibraryId, setAddingToLibraryId] = useState<number | null>(null);
+
   const label = labelFor(docType);
   const labelLower = label.toLowerCase();
   const Icon = iconFor(docType);
@@ -261,6 +266,31 @@ export function BuiltDocList({ docType, onCreateNew, onEdit, reloadKey }: BuiltD
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error('Download failed', e);
+    }
+  };
+
+  const handleAddToLibrary = async (doc: BuiltDoc) => {
+    setAddingToLibraryId(doc.id);
+    const body = {
+      title: doc.title,
+      description: doc.description ?? undefined,
+      visibility: 'PRIVATE' as const,
+    };
+    try {
+      if (docType === 'catalog') {
+        await libraryPublishApi.saveCatalogToLibrary(doc.id, body);
+      } else if (docType === 'profile') {
+        await libraryPublishApi.saveProfileToLibrary(doc.id, body);
+      } else {
+        await libraryPublishApi.saveOscalDocumentToLibrary(doc.id, body);
+      }
+      toast.success(`${doc.title} added to your Library`, {
+        description: 'Visibility is Private. Open Library to publish or share.',
+      });
+    } catch (e) {
+      toast.error(`Failed to add to Library: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setAddingToLibraryId(null);
     }
   };
 
@@ -415,6 +445,17 @@ export function BuiltDocList({ docType, onCreateNew, onEdit, reloadKey }: BuiltD
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAddToLibrary(doc)}
+                  disabled={addingToLibraryId === doc.id}
+                  title="Add to Library"
+                >
+                  {addingToLibraryId === doc.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <BookPlus className="h-3.5 w-3.5" />}
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
