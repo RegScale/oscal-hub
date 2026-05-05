@@ -9,7 +9,13 @@ import {
   User, LogOut, Settings, Cog, Library, ChevronDown,
   FileText, Hammer, ShieldCheck, BarChart3, FileCheck,
   ArrowRightLeft, Folders, Clock, GitMerge,
+  BookOpen, Code2,
 } from 'lucide-react';
+
+// Backend Swagger UI lives at <api-host>/swagger-ui/index.html. The frontend
+// only knows the API URL, so strip the trailing /api segment and append the
+// Swagger path. Mirrors the helper on the home page.
+const SWAGGER_URL = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090/api').replace(/\/api\/?$/, '')}/swagger-ui/index.html`;
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 interface UserAction {
@@ -103,6 +109,26 @@ export function Navigation() {
               <Library className="h-4 w-4" />
               Browse
             </Link>
+            {/* Documentation — always visible. Opens the in-app user guide. */}
+            <Link
+              href="/guide"
+              className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <BookOpen className="h-4 w-4" />
+              Documentation
+            </Link>
+            {/* APIs — authenticated users only. Opens Swagger UI in a new tab. */}
+            {mounted && isAuthenticated && (
+              <a
+                href={SWAGGER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Code2 className="h-4 w-4" />
+                APIs
+              </a>
+            )}
             {/* Actions — every authenticated user. Mirrors the dashboard tiles
                 on / so the same set of jumps is one click away from anywhere. */}
             {mounted && isAuthenticated && (
