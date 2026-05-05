@@ -14,6 +14,7 @@ import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { ServiceAccountTokenGenerator } from '@/components/ServiceAccountTokenGenerator';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -241,7 +242,10 @@ export default function ProfilePage() {
               <ArrowLeft className="h-4 w-4" />
               Back to Dashboard
             </Link>
-            <h1 className="text-4xl font-bold mb-2">User Profile</h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-4xl font-bold">User Profile</h1>
+              <HelpButton slug="profile" />
+            </div>
             <p className="text-muted-foreground">
               Manage your account settings and preferences
             </p>

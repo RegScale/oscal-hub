@@ -6,6 +6,7 @@ import { Shield, Copy, Download, Check, Loader2, AlertCircle, QrCode } from 'luc
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MfaSetupResponse } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 function MfaSetupContent() {
   const router = useRouter();
@@ -251,9 +252,12 @@ If you lose access to your authenticator app, use one of these codes to log in.
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
             <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Setup Two-Factor Authentication
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Setup Two-Factor Authentication
+            </h1>
+            <HelpButton slug="mfa-setup" />
+          </div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Secure your account with an authenticator app
           </p>

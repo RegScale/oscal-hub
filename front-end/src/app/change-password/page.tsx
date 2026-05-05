@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -67,9 +68,12 @@ export default function ChangePasswordPage() {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
               OSCAL Hub
             </h2>
-            <h3 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">
-              Change Password
-            </h3>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Change Password
+              </h3>
+              <HelpButton slug="change-password" />
+            </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               You must change your password before continuing
             </p>
