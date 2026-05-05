@@ -547,7 +547,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <Link
-                    href="/guide/automation"
+                    href="/guide/reference/api-automation"
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     API Automation Guide
@@ -556,7 +556,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <Link
-                    href="/guide/rules"
+                    href="/guide/reference/rules"
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     Validation Rules Guide

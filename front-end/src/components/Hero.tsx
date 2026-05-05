@@ -586,7 +586,7 @@ export function Hero() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="/guide/deployment/cli" className="w-full">
+              <Link href="/guide/reference/deployment/cli" className="w-full">
                 <Button className="w-full" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   View CLI Deployment Guide
@@ -629,7 +629,7 @@ export function Hero() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="/guide/deployment/local" className="w-full">
+              <Link href="/guide/reference/deployment/local" className="w-full">
                 <Button className="w-full" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   View Local Deployment Guide
@@ -672,7 +672,7 @@ export function Hero() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="/guide/deployment/azure" className="w-full">
+              <Link href="/guide/reference/deployment/azure" className="w-full">
                 <Button className="w-full" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   View Azure Deployment Guide
@@ -758,7 +758,7 @@ export function Hero() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="/guide/deployment/aws" className="w-full">
+              <Link href="/guide/reference/deployment/aws" className="w-full">
                 <Button className="w-full" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   View AWS Deployment Guide
