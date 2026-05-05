@@ -3,6 +3,7 @@ package gov.nist.oscal.tools.api.repository;
 import gov.nist.oscal.tools.api.entity.CustomValidationRule;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -62,4 +63,18 @@ public interface CustomValidationRuleRepository extends JpaRepository<CustomVali
      * Find enabled custom rules for a specific user
      */
     List<CustomValidationRule> findByUserIdAndEnabledTrue(Long userId);
+
+    /**
+     * Find a user's enabled rules that apply to a specific OSCAL model type.
+     * Used by ValidationService to scope custom-rule enforcement to the
+     * caller's own rules.
+     */
+    @Query("SELECT r FROM CustomValidationRule r " +
+           "WHERE r.enabled = true " +
+           "  AND r.user.id = :userId " +
+           "  AND (r.applicableModelTypes LIKE CONCAT('%', :modelType, '%') " +
+           "       OR r.applicableModelTypes IS NULL)")
+    List<CustomValidationRule> findEnabledRulesForModelTypeAndUser(
+            @Param("modelType") String modelType,
+            @Param("userId") Long userId);
 }
