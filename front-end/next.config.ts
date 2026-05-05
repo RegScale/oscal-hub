@@ -11,6 +11,7 @@ const withMDX = createMDX({
     remarkPlugins: [
       "remark-frontmatter",
       ["remark-mdx-frontmatter", { name: "frontmatter" }],
+      "remark-gfm",
     ] as unknown as [],
     rehypePlugins: [
       "rehype-slug",

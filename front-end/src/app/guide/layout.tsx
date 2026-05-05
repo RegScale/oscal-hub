@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 export default function GuideLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="container mx-auto px-4 py-6">
       <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
         {/* Mobile toggle */}
         <button

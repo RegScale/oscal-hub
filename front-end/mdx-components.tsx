@@ -20,6 +20,16 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     a: ({ href, children }) => <a href={href} className="text-primary underline-offset-4 hover:underline">{children}</a>,
     blockquote: ({ children }: { children?: ReactNode }) => <blockquote className="my-4 border-l-4 border-border pl-4 italic text-muted-foreground">{children}</blockquote>,
     hr: () => <hr className="my-8 border-border" />,
+    table: ({ children }) => (
+      <div className="my-6 overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm border-collapse">{children}</table>
+      </div>
+    ),
+    thead: ({ children }) => <thead className="bg-muted/60">{children}</thead>,
+    tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+    tr: ({ children }) => <tr>{children}</tr>,
+    th: ({ children }) => <th className="px-4 py-2 text-left font-semibold text-foreground">{children}</th>,
+    td: ({ children }) => <td className="px-4 py-2 text-muted-foreground align-top">{children}</td>,
     Callout,
     Steps,
     Step,
