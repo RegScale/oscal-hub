@@ -7,6 +7,7 @@ import gov.nist.secauto.metaschema.core.model.IConstraintLoader;
 import gov.nist.secauto.metaschema.core.model.constraint.IConstraintSet;
 import gov.nist.secauto.metaschema.databind.IBindingContext;
 import gov.nist.secauto.metaschema.databind.io.Format;
+import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import gov.nist.secauto.oscal.lib.model.AssessmentPlan;
 import gov.nist.secauto.oscal.lib.model.AssessmentResults;
@@ -17,7 +18,6 @@ import gov.nist.secauto.oscal.lib.model.Profile;
 import gov.nist.secauto.oscal.lib.model.SystemSecurityPlan;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,26 +44,44 @@ public class RuleGenTestRunner {
 
     public List<TestResult> run(String ruleId, String modelType, String constraintBody, List<TestCase> cases) {
         IBindingContext context = buildContext(ruleId, modelType, constraintBody);
-        Class<?> klass = modelClass(modelType);
+        IDeserializer<?> deserializer = newDeserializer(context, modelType);
         List<TestResult> results = new ArrayList<>(cases.size());
 
         for (int i = 0; i < cases.size(); i++) {
             TestCase tc = cases.get(i);
             String actual;
             String violation = null;
+            Path fragTmp = null;
             try {
-                context.newDeserializer(Format.JSON, klass)
-                    .deserialize(new ByteArrayInputStream(
-                        tc.fragmentJson().getBytes(StandardCharsets.UTF_8)));
+                fragTmp = Files.createTempFile("rulegen-frag-", ".json");
+                Files.writeString(fragTmp, tc.fragmentJson(), StandardCharsets.UTF_8);
+                deserializer.deserialize(fragTmp);
                 actual = "pass";
             } catch (Exception e) {
                 actual = "fail";
                 violation = e.getMessage();
+            } finally {
+                if (fragTmp != null) {
+                    try { Files.deleteIfExists(fragTmp); } catch (Exception ignored) {}
+                }
             }
             boolean passed = actual.equals(tc.expected());
             results.add(new TestResult(i, tc.description(), tc.expected(), actual, passed, violation));
         }
         return results;
+    }
+
+    private static IDeserializer<?> newDeserializer(IBindingContext ctx, String modelType) {
+        return switch (modelType) {
+            case "catalog" -> ctx.newDeserializer(Format.JSON, Catalog.class);
+            case "profile" -> ctx.newDeserializer(Format.JSON, Profile.class);
+            case "system-security-plan", "ssp" -> ctx.newDeserializer(Format.JSON, SystemSecurityPlan.class);
+            case "component-definition" -> ctx.newDeserializer(Format.JSON, ComponentDefinition.class);
+            case "assessment-plan", "ap" -> ctx.newDeserializer(Format.JSON, AssessmentPlan.class);
+            case "assessment-results", "ar" -> ctx.newDeserializer(Format.JSON, AssessmentResults.class);
+            case "plan-of-action-and-milestones", "poam" -> ctx.newDeserializer(Format.JSON, PlanOfActionAndMilestones.class);
+            default -> throw new IllegalArgumentException("Unknown OSCAL model type: " + modelType);
+        };
     }
 
     private IBindingContext buildContext(String ruleId, String modelType, String body) {
@@ -83,16 +101,4 @@ public class RuleGenTestRunner {
         }
     }
 
-    private static Class<?> modelClass(String modelType) {
-        return switch (modelType) {
-            case "catalog" -> Catalog.class;
-            case "profile" -> Profile.class;
-            case "system-security-plan", "ssp" -> SystemSecurityPlan.class;
-            case "component-definition" -> ComponentDefinition.class;
-            case "assessment-plan", "ap" -> AssessmentPlan.class;
-            case "assessment-results", "ar" -> AssessmentResults.class;
-            case "plan-of-action-and-milestones", "poam" -> PlanOfActionAndMilestones.class;
-            default -> throw new IllegalArgumentException("Unknown OSCAL model type: " + modelType);
-        };
-    }
 }
