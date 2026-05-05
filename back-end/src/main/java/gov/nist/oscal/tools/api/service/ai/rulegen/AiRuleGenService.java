@@ -141,38 +141,80 @@ public class AiRuleGenService {
             "(proposed rule \"" + proposal.name() + "\" with " + proposal.testCases().size() + " test cases)");
         session.setCurrentProposal(proposal);
 
-        List<TestResult> results = testRunner.run(
-            "rule-" + session.id(), session.modelType(),
-            proposal.constraintXml(), proposal.testCases());
+        // Run the synthetic test bench. Two distinct failure modes:
+        //   1. The constraint XML didn't compile against the Metaschema spec
+        //      — hard failure, the rule isn't enforceable. Auto-revise; only
+        //      surface as "exhausted" if Claude can't produce parseable
+        //      Metapath after MAX_REVISIONS.
+        //   2. The constraint compiled but the test matrix has red rows
+        //      (rule too permissive/strict for the AI's own examples) —
+        //      informational. The rule is valid per the OSCAL spec and the
+        //      user can still save and iterate. Rules are inherently about
+        //      flagging things, and a comprehensive synthetic test bench
+        //      isn't a save prerequisite.
+        List<TestResult> results;
+        try {
+            results = testRunner.run(
+                "rule-" + session.id(), session.modelType(),
+                proposal.constraintXml(), proposal.testCases());
+        } catch (Exception parseError) {
+            String detail = parseError.getMessage() == null
+                ? parseError.toString()
+                : parseError.getMessage();
+            if (iteration >= 1 + MAX_REVISIONS) {
+                return new RuleGenTurnResponse(
+                    "exhausted", null, null, List.of(), proposal,
+                    "The generated constraint isn't valid Metaschema after "
+                    + MAX_REVISIONS + " revisions: " + detail
+                    + ". Clarify your description, edit manually, or abandon.",
+                    iteration, session.tokensIn(), session.tokensOut());
+            }
+            String reviseMsg = "Your last constraint XML failed to compile "
+                + "against the Metaschema spec:\n  " + detail
+                + "\nFix the XML so it conforms to METASCHEMA-CONSTRAINTS, "
+                + "then call revise_rule.";
+            AnthropicToolUseResult revised = anthropic.sendWithTools(
+                aiSettings.requireApiKey(session.organizationId()),
+                buildCall(session, reviseMsg),
+                m -> log.info("rule-gen session={} retry: {}", session.id(), m));
+            session.addTokens(revised.tokensIn(), revised.tokensOut());
+            return switch (revised.toolName()) {
+                case "generate_rule", "revise_rule" -> handleProposal(session, revised, iteration + 1);
+                case "ask_clarifying_question" -> handleClarify(session, revised);
+                default -> throw new IllegalStateException("Unexpected tool: " + revised.toolName());
+            };
+        }
 
         boolean clean = results.stream().allMatch(TestResult::passed);
-        if (clean) {
-            return new RuleGenTurnResponse("proposal", null, proposal, results, proposal,
-                    null, iteration, session.tokensIn(), session.tokensOut());
+
+        // Auto-iterate while matrix is dirty AND budget remains. When we exit
+        // the loop dirty, we still return a save-able proposal — the test
+        // bench is informational, not gating.
+        if (!clean && iteration < 1 + MAX_REVISIONS) {
+            String reviseMsg = "Your last proposal had failing tests:\n"
+                + formatFailures(results)
+                + "\nFix the constraint and regenerate test cases. Call revise_rule.";
+            AnthropicToolUseResult revised = anthropic.sendWithTools(
+                aiSettings.requireApiKey(session.organizationId()),
+                buildCall(session, reviseMsg),
+                m -> log.info("rule-gen session={} retry: {}", session.id(), m));
+            session.addTokens(revised.tokensIn(), revised.tokensOut());
+            return switch (revised.toolName()) {
+                case "generate_rule", "revise_rule" -> handleProposal(session, revised, iteration + 1);
+                case "ask_clarifying_question" -> handleClarify(session, revised);
+                default -> throw new IllegalStateException("Unexpected tool: " + revised.toolName());
+            };
         }
 
-        if (iteration >= 1 + MAX_REVISIONS) {
-            return new RuleGenTurnResponse(
-                "exhausted", null, null, results, proposal,
-                buildExhaustedMessage(results),
-                iteration, session.tokensIn(), session.tokensOut());
-        }
-
-        // Auto-revise — feed failures back to Claude.
-        String reviseMsg = "Your last proposal had failing tests:\n"
-            + formatFailures(results)
-            + "\nFix the constraint and regenerate test cases. Call revise_rule.";
-        AnthropicToolUseResult revised = anthropic.sendWithTools(
-            aiSettings.requireApiKey(session.organizationId()),
-            buildCall(session, reviseMsg),
-            m -> log.info("rule-gen session={} retry: {}", session.id(), m));
-        session.addTokens(revised.tokensIn(), revised.tokensOut());
-
-        return switch (revised.toolName()) {
-            case "generate_rule", "revise_rule" -> handleProposal(session, revised, iteration + 1);
-            case "ask_clarifying_question" -> handleClarify(session, revised);
-            default -> throw new IllegalStateException("Unexpected tool: " + revised.toolName());
-        };
+        return new RuleGenTurnResponse(
+            "proposal", null, proposal, results, proposal,
+            clean ? null
+                  : "Some synthetic test cases didn't match the AI's own "
+                    + "expectations after " + MAX_REVISIONS + " revisions. "
+                    + "The rule is still valid Metaschema and can be saved "
+                    + "— review the matrix and decide if it reflects what "
+                    + "you intended.",
+            iteration, session.tokensIn(), session.tokensOut());
     }
 
     private RuleProposal parseProposal(JsonNode node) {
@@ -217,10 +259,4 @@ public class AiRuleGenService {
         return sb.toString();
     }
 
-    private String buildExhaustedMessage(List<TestResult> results) {
-        long failed = results.stream().filter(r -> !r.passed()).count();
-        return "I couldn't reach a working rule after the maximum number of revisions. "
-             + failed + " test case(s) still don't match expectations. "
-             + "Please clarify your description, edit the constraint manually, or abandon.";
-    }
 }

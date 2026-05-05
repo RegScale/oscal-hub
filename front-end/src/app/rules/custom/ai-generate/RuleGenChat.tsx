@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { ChatEntry } from '@/types/rule-gen';
@@ -37,7 +38,18 @@ export function RuleGenChat({ entries, loading, disabled, placeholder, onSend }:
           </div>
         ))}
         {loading && (
-          <div className="text-xs text-muted-foreground italic">Thinking…</div>
+          <div className="self-start max-w-[85%] mr-auto rounded-md px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-center gap-2 text-sm text-indigo-700 dark:text-indigo-300">
+              <Sparkles className="h-4 w-4 animate-pulse" />
+              <span>Generating</span>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="inline-flex gap-0.5 ml-0.5" aria-hidden="true">
+                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1 h-1 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-bounce" />
+              </span>
+            </div>
+          </div>
         )}
       </div>
       <div className="border-t p-2 flex gap-2">

@@ -36,8 +36,11 @@ export function RuleProposalView({ proposal, onEdit, onSave, saveDisabled, loadi
           <h3 className="font-semibold">{proposal.name}</h3>
           <p className="text-sm text-muted-foreground">{proposal.description}</p>
         </div>
-        <Badge variant={proposal.severity === 'error' ? 'destructive' : 'secondary'}>
-          {proposal.severity}
+        <Badge
+          variant={proposal.severity === 'error' ? 'destructive' : 'secondary'}
+          title="The severity this rule emits when a document violates it"
+        >
+          severity: {proposal.severity}
         </Badge>
       </div>
       <div>

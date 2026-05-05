@@ -102,6 +102,13 @@ function Inner() {
     [session.latest?.testResults],
   );
 
+  // The save button is gated only on whether we have a parseable proposal
+  // — synthetic test failures are informational, not blocking. The backend
+  // only returns phase='proposal' when the constraint XML actually compiles
+  // against the Metaschema spec, so this is the correct gate.
+  const proposalAvailable = session.latest?.phase === 'proposal'
+    && (session.latest?.proposal != null);
+
   if (FLAG_DISABLED) return null;
 
   return (
@@ -167,7 +174,7 @@ function Inner() {
             <RuleGenChat
               entries={session.chat}
               loading={session.loading}
-              disabled={session.latest?.phase === 'proposal' && matrixClean}
+              disabled={proposalAvailable}
               placeholder="Describe what the rule should enforce…"
               onSend={session.send}
             />
@@ -182,10 +189,10 @@ function Inner() {
               }
               onEdit={session.editConstraint}
               onSave={onSave}
-              saveDisabled={!matrixClean || session.latest?.phase !== 'proposal'}
+              saveDisabled={!proposalAvailable}
               loading={session.loading}
             />
-            {matrixClean && session.latest?.phase === 'proposal' && (
+            {proposalAvailable && (
               <Card className="p-4 space-y-2">
                 <label className="text-sm font-medium">Rule id</label>
                 <Input
@@ -200,8 +207,25 @@ function Inner() {
               </Card>
             )}
             <TestMatrix results={session.latest?.testResults ?? null} />
+            {/*
+              Informational banner when the AI couldn't reach a clean test
+              matrix but the rule itself is valid Metaschema. Shown alongside
+              the (still saveable) proposal so users can review the matrix
+              and decide.
+            */}
+            {proposalAvailable && !matrixClean && session.latest?.message && (
+              <Card className="p-4 text-sm border-amber-300 dark:border-amber-700 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                <div className="font-medium mb-1">Heads up — test matrix isn't clean</div>
+                {session.latest.message}
+              </Card>
+            )}
+            {/*
+              Hard failure: constraint XML didn't compile against the
+              Metaschema spec after retries. Save is blocked.
+            */}
             {session.latest?.phase === 'exhausted' && (
-              <Card className="p-4 border-amber-300 bg-amber-50 text-sm">
+              <Card className="p-4 text-sm border-red-300 dark:border-red-700 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-100">
+                <div className="font-medium mb-1">Couldn't generate a valid rule</div>
                 {session.latest.message}
               </Card>
             )}
