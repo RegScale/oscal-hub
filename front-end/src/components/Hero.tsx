@@ -31,10 +31,16 @@ export function Hero() {
         <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-8">
           100% Free & Open Source
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-wrap gap-4 justify-center">
           <Link href="/login?mode=signup">
             <Button size="lg" className="text-lg px-8">
               Sign Up Now
+            </Button>
+          </Link>
+          <Link href="/catalog">
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              <Library className="h-5 w-5 mr-2" />
+              Browse Public Catalog
             </Button>
           </Link>
           <a
