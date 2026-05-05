@@ -2,14 +2,19 @@ package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.OperationHistory;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.secauto.oscal.lib.OscalBindingContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -21,6 +26,12 @@ class ValidationServiceTest {
 
     @Mock
     private FileStorageService fileStorageService;
+
+    @Mock
+    private MetapathConstraintService constraintService;
+
+    @Mock
+    private UserRepository userRepository;
 
     private ValidationService validationService;
 
@@ -50,7 +61,14 @@ class ValidationServiceTest {
 
     @BeforeEach
     void setUp() {
-        validationService = new ValidationService(historyService, fileStorageService);
+        validationService = new ValidationService(
+            historyService, fileStorageService, constraintService, userRepository);
+        // Default: no custom rules → use the immutable singleton context.
+        // Lenient because some tests don't reach the deserialize path.
+        lenient().when(constraintService.contextFor(anyString(), any()))
+            .thenReturn(OscalBindingContext.instance());
+        lenient().when(userRepository.findByUsername(anyString()))
+            .thenReturn(Optional.empty());
     }
 
     @Test

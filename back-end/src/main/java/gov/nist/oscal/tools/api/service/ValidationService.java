@@ -2,7 +2,8 @@ package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.OperationHistory;
 import gov.nist.oscal.tools.api.model.*;
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
+import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.secauto.metaschema.databind.IBindingContext;
 import gov.nist.secauto.metaschema.databind.io.Format;
 import gov.nist.secauto.metaschema.databind.io.IDeserializer;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
@@ -21,15 +22,20 @@ import java.nio.file.Path;
 public class ValidationService {
 
     private static final Logger logger = LoggerFactory.getLogger(ValidationService.class);
-    private final OscalBindingContext bindingContext;
     private final HistoryService historyService;
     private final FileStorageService fileStorageService;
+    private final MetapathConstraintService constraintService;
+    private final UserRepository userRepository;
 
     @Autowired
-    public ValidationService(HistoryService historyService, FileStorageService fileStorageService) {
-        this.bindingContext = OscalBindingContext.instance();
+    public ValidationService(HistoryService historyService,
+                             FileStorageService fileStorageService,
+                             MetapathConstraintService constraintService,
+                             UserRepository userRepository) {
         this.historyService = historyService;
         this.fileStorageService = fileStorageService;
+        this.constraintService = constraintService;
+        this.userRepository = userRepository;
     }
 
     @WithSpan("oscal.validate_internal")
@@ -43,8 +49,21 @@ public class ValidationService {
             // Determine the format
             Format format = getFormat(request.getFormat());
 
+            // Resolve the calling user (for per-user custom rule enforcement).
+            // username may be null for unauthenticated probes; in that case
+            // we fall through to the singleton context.
+            Long userId = (username == null)
+                ? null
+                : userRepository.findByUsername(username).map(u -> u.getId()).orElse(null);
+
+            // Build a binding context that enforces the user's custom rules
+            // on top of the built-in NIST constraints. When no custom rules
+            // apply, the service returns OscalBindingContext.instance().
+            String modelKey = request.getModelType().getValue();
+            IBindingContext context = constraintService.contextFor(modelKey, userId);
+
             // Get the appropriate deserializer for the model type
-            IDeserializer<?> deserializer = getDeserializer(request.getModelType(), format);
+            IDeserializer<?> deserializer = newDeserializer(context, request.getModelType(), format);
 
             // Write content to a temporary file
             Path tempFile = Files.createTempFile("oscal-validation-", getFileExtension(format));
@@ -144,22 +163,22 @@ public class ValidationService {
         }
     }
 
-    private IDeserializer<?> getDeserializer(OscalModelType modelType, Format format) throws IOException {
+    private IDeserializer<?> newDeserializer(IBindingContext context, OscalModelType modelType, Format format) throws IOException {
         switch (modelType) {
             case CATALOG:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Catalog.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Catalog.class);
             case PROFILE:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Profile.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.Profile.class);
             case COMPONENT_DEFINITION:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.ComponentDefinition.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.ComponentDefinition.class);
             case SYSTEM_SECURITY_PLAN:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.SystemSecurityPlan.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.SystemSecurityPlan.class);
             case ASSESSMENT_PLAN:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentPlan.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentPlan.class);
             case ASSESSMENT_RESULTS:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentResults.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.AssessmentResults.class);
             case PLAN_OF_ACTION_AND_MILESTONES:
-                return bindingContext.newDeserializer(format, gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones.class);
+                return context.newDeserializer(format, gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones.class);
             default:
                 throw new IllegalArgumentException("Unsupported model type: " + modelType);
         }
