@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Search, Loader2, Lock, Unlock, UserX, UserCheck, KeyRound, UserPlus } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface OrgUser {
   userId: number;
@@ -272,7 +273,10 @@ export default function OrgAdminUsersPage() {
           Back to Dashboard
         </button>
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Manage Users</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
+          <HelpButton slug="org-admin-users" />
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mb-8">View and manage organization members</p>
 
         {/* Alerts */}

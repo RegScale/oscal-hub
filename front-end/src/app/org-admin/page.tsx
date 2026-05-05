@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles, BarChart3 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { aiClient } from '@/lib/ai-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface DashboardSummary {
   totalMembers: number;
@@ -253,9 +254,12 @@ export default function OrgAdminDashboardPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Setup - Admin Panel
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Setup - Admin Panel
+            </h1>
+            <HelpButton slug="org-admin" />
+          </div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             {orgName ? `Managing ${orgName}` : 'Manage your organization'}
           </p>

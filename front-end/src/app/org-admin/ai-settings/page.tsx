@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { aiClient, type AiSettingsResponse } from '@/lib/ai-client';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function AiSettingsPage() {
   const router = useRouter();
@@ -80,7 +81,10 @@ export default function AiSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>AI Features</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>AI Features</CardTitle>
+            <HelpButton slug="org-admin-ai-settings" />
+          </div>
           <CardDescription>
             Configure your organization&apos;s Anthropic API key to enable AI-assisted OSCAL authoring.
             Your key is encrypted at rest and never returned to the browser.
