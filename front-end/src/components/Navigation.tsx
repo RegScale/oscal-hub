@@ -8,27 +8,32 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   User, LogOut, Settings, Cog, Library, ChevronDown,
-  Building2, Users, BarChart3, FileText, Activity,
-  ShieldCheck, KeyRound, SlidersHorizontal,
+  FileText, Hammer, ShieldCheck, BarChart3, FileCheck,
+  ArrowRightLeft, Folders, Clock, GitMerge,
 } from 'lucide-react';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 
-interface AdminAction {
+interface UserAction {
   href: string;
   label: string;
-  icon: typeof Building2;
+  icon: typeof Library;
   description: string;
 }
 
-const ADMIN_ACTIONS: AdminAction[] = [
-  { href: '/admin/organizations', label: 'Manage Organizations', icon: Building2, description: 'Create, edit, and lock organizations' },
-  { href: '/admin/users', label: 'Manage Users', icon: Users, description: 'Cross-org user roster and roles' },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, description: 'Platform usage metrics' },
-  { href: '/admin/logs', label: 'Logs', icon: FileText, description: 'Audit log + request log viewer' },
-  { href: '/admin/health', label: 'System Health', icon: Activity, description: 'Component-level health status' },
-  { href: '/admin/security', label: 'Security Compliance', icon: ShieldCheck, description: 'SOC 2 control evidence' },
-  { href: '/admin/security-policy', label: 'Security Policy', icon: KeyRound, description: 'MFA, password rules, lockouts' },
-  { href: '/org-admin', label: 'Setup — Admin Panel', icon: SlidersHorizontal, description: 'Org-level settings' },
+// Mirrors the dashboard tiles on /. Visible to every authenticated user
+// so the same set of jumps is one click away from anywhere in the app.
+const USER_ACTIONS: UserAction[] = [
+  { href: '/library', label: 'Library', icon: Library, description: 'Browse, share, and download example OSCAL documents' },
+  { href: '/artifacts', label: 'Artifacts', icon: FileText, description: 'Markdown templates with variables for compliance docs' },
+  { href: '/build', label: 'Build', icon: Hammer, description: 'Visually create catalogs, profiles, components, SSPs, AP/AR/POAM' },
+  { href: '/authorizations', label: 'Authorizations', icon: ShieldCheck, description: 'Create and manage system authorizations' },
+  { href: '/visualize', label: 'Visualize', icon: BarChart3, description: 'Explore OSCAL documents through interactive visualizations' },
+  { href: '/validate', label: 'Validate', icon: FileCheck, description: 'Check an OSCAL document against schema and constraints' },
+  { href: '/convert', label: 'Convert', icon: ArrowRightLeft, description: 'Change format between XML, JSON, and YAML' },
+  { href: '/rules', label: 'Validation Rules', icon: FileCheck, description: 'Browse the rules checked during validation' },
+  { href: '/batch', label: 'Batch', icon: Folders, description: 'Process multiple files at once with progress tracking' },
+  { href: '/history', label: 'History', icon: Clock, description: 'Past operations and results — re-run any of them' },
+  { href: '/resolve', label: 'Resolve', icon: GitMerge, description: 'Resolve OSCAL profiles into catalogs' },
 ];
 
 export function Navigation() {
@@ -96,8 +101,9 @@ export function Navigation() {
               <Library className="h-4 w-4" />
               Browse
             </Link>
-            {/* Actions — only for super admins; mirrors the admin tiles. */}
-            {mounted && isAuthenticated && isSuperAdmin() && (
+            {/* Actions — every authenticated user. Mirrors the dashboard tiles
+                on / so the same set of jumps is one click away from anywhere. */}
+            {mounted && isAuthenticated && (
               <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
                 <PopoverTrigger asChild>
                   <button
@@ -108,9 +114,9 @@ export function Navigation() {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-80 p-1">
+                <PopoverContent align="start" className="w-80 p-1 max-h-[80vh] overflow-y-auto">
                   <div className="grid gap-0.5">
-                    {ADMIN_ACTIONS.map(({ href, label, icon: Icon, description }) => (
+                    {USER_ACTIONS.map(({ href, label, icon: Icon, description }) => (
                       <Link
                         key={href}
                         href={href}
