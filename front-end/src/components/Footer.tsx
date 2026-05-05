@@ -1,13 +1,7 @@
-'use client';
-
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { ExternalLink } from 'lucide-react';
 
 export function Footer() {
-  const pathname = usePathname();
-  // Public-catalog routes provide their own minimal footer.
-  if (pathname?.startsWith('/catalog')) return null;
   return (
     <footer className="border-t border-border bg-background mt-auto">
       <div className="container mx-auto py-8 px-4">

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -37,9 +36,12 @@ const USER_ACTIONS: UserAction[] = [
 ];
 
 export function Navigation() {
-  const pathname = usePathname();
-  // Public-catalog routes provide their own minimal header.
-  if (pathname?.startsWith('/catalog')) return null;
+  // Renders on every route, including /catalog. The public-catalog pages used
+  // to ship their own minimal header inside (public)/layout.tsx, but that
+  // dropped the Browse + Actions controls when an authenticated user followed
+  // the Browse link. Letting the global Navigation cover those routes keeps
+  // the primary nav consistent everywhere; the popovers and login state both
+  // still render correctly because the AuthProvider lives in the root layout.
   const { user, isAuthenticated, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
