@@ -74,7 +74,7 @@ export function VisibilityActionMenu({
           type="button"
           disabled={pending}
           onClick={() => change('PUBLIC')}
-          className="text-xs px-2 py-0.5 border rounded bg-green-50 disabled:opacity-50"
+          className="text-xs px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
         >
           Publish
         </button>
@@ -89,7 +89,7 @@ export function VisibilityActionMenu({
               void change('PRIVATE', reason.trim());
             }
           }}
-          className="text-xs px-2 py-0.5 border rounded bg-red-50 disabled:opacity-50"
+          className="text-xs px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
         >
           Force unpublish
         </button>

@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react';
 import { VisibilityBadge } from './VisibilityBadge';
 
 describe('<VisibilityBadge>', () => {
-  it('renders Private with slate styling', () => {
+  it('renders Private with red styling', () => {
     render(<VisibilityBadge visibility="PRIVATE" />);
     const el = screen.getByText(/private/i);
     expect(el).toBeInTheDocument();
-    expect(el.className).toMatch(/slate|gray/);
+    expect(el.className).toMatch(/red/);
   });
 
   it('renders Organization with blue styling', () => {

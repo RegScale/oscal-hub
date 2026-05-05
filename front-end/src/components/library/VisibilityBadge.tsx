@@ -1,9 +1,11 @@
 import type { Visibility } from '@/lib/api/library';
 
+// Backgrounds chosen to read clearly on the dark theme as well as light:
+// solid mid-tone fills (no -50 / -100 light tints that wash out to near-white).
 const styles: Record<Visibility, string> = {
-  PRIVATE: 'bg-slate-200 text-slate-700',
+  PRIVATE: 'bg-red-600 text-white',
   ORGANIZATION: 'bg-blue-100 text-blue-800',
-  PUBLIC: 'bg-green-100 text-green-800',
+  PUBLIC: 'bg-green-600 text-white',
 };
 
 const labels: Record<Visibility, string> = {
@@ -20,7 +22,7 @@ interface VisibilityBadgeProps {
  * Compact pill that shows a library item's visibility scope.
  *
  * Color encodes the access level:
- *   PRIVATE      — slate (only the owner)
+ *   PRIVATE      — red   (only the owner)
  *   ORGANIZATION — blue  (owner's org members)
  *   PUBLIC       — green (everyone, listed at /catalog)
  */
