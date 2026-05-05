@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type { OperationHistory, OperationStats } from '@/types/oscal';
 
@@ -95,7 +96,10 @@ export default function HistoryPage() {
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Operation History</h1>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-4xl font-bold">Operation History</h1>
+                <HelpButton slug="history" />
+              </div>
               <p className="text-muted-foreground">
                 View and manage all your OSCAL operations
               </p>

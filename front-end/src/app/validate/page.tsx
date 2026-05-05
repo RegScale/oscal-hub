@@ -15,6 +15,7 @@ import { ModelTypeSelector } from '@/components/model-type-selector';
 import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type { OscalModelType, OscalFormat, ValidationResult, SavedFile } from '@/types/oscal';
 
@@ -172,7 +173,10 @@ export default function ValidatePage() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Validate OSCAL Document</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold">Validate OSCAL Document</h1>
+            <HelpButton slug="validate" />
+          </div>
           <p className="text-muted-foreground">
             Check if your OSCAL document is valid and complies with schema constraints
           </p>
