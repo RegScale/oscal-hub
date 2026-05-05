@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -116,9 +117,22 @@ export default function CustomRulesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Deep-link target: when navigated here as ?edit=<ruleId>, open the edit
+  // dialog for that rule once the list has loaded.
+  const searchParams = useSearchParams();
+  const editParam = searchParams?.get('edit') ?? null;
+
   useEffect(() => {
     loadCustomRules();
   }, []);
+
+  useEffect(() => {
+    if (!editParam || customRules.length === 0) return;
+    const target = customRules.find((r) => r.ruleId === editParam);
+    if (target) handleEdit(target);
+    // Intentionally only run once per editParam change after rules load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editParam, customRules.length]);
 
   const loadCustomRules = async () => {
     try {

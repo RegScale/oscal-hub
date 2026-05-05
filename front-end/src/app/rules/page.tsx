@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Search, ShieldCheck, AlertCircle, AlertTriangle, Info, Filter, Settings } from 'lucide-react';
+import { ArrowLeft, Search, ShieldCheck, AlertCircle, AlertTriangle, Info, Filter, Settings, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { HelpButton } from '@/components/HelpButton';
@@ -312,7 +312,26 @@ export default function ValidationRulesPage() {
             </Card>
           ) : (
             filteredRules.map((rule) => (
-              <Card key={rule.id} className="hover:shadow-lg transition-shadow">
+              <Card
+                key={rule.id}
+                className={`transition-shadow hover:shadow-lg ${
+                  !rule.builtIn ? 'cursor-pointer' : ''
+                }`}
+                onClick={!rule.builtIn ? () => {
+                  // Custom rules deep-link to the management page with the
+                  // edit dialog pre-opened. Built-in rules aren't editable
+                  // so they stay non-clickable.
+                  window.location.href = `/rules/custom?edit=${encodeURIComponent(rule.id)}`;
+                } : undefined}
+                role={!rule.builtIn ? 'link' : undefined}
+                tabIndex={!rule.builtIn ? 0 : undefined}
+                onKeyDown={!rule.builtIn ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.href = `/rules/custom?edit=${encodeURIComponent(rule.id)}`;
+                  }
+                } : undefined}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -323,9 +342,13 @@ export default function ValidationRulesPage() {
                       <CardDescription className="mt-2">{rule.description}</CardDescription>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      {rule.builtIn && (
+                      {rule.builtIn ? (
                         <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                           Built-in
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                          Custom
                         </span>
                       )}
                       <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${
@@ -335,6 +358,12 @@ export default function ValidationRulesPage() {
                       }`}>
                         {rule.severity}
                       </span>
+                      {!rule.builtIn && (
+                        <ChevronRight
+                          className="h-4 w-4 text-muted-foreground"
+                          aria-label="Click to manage"
+                        />
+                      )}
                     </div>
                   </div>
                 </CardHeader>
