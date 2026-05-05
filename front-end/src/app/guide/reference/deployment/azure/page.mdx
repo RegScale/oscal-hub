@@ -1,0 +1,413 @@
+---
+title: Azure Deployment Guide
+description: Complete guide for deploying OSCAL Hub to Azure using CI/CD, Terraform, and Key Vault.
+lastUpdated: 2026-05-04
+---
+
+# Azure Deployment Guide
+
+Complete guide for deploying OSCAL Hub to Azure using CI/CD, Terraform, and Key Vault.
+
+**Version:** 1.0.0 · **Updated:** October 26, 2025
+
+---
+
+## Overview
+
+This guide walks you through deploying the OSCAL Hub full-stack application to **Azure** with production-ready infrastructure and automated CI/CD.
+
+### Key Features
+
+- **Infrastructure as Code** — Terraform manages all Azure resources
+- **CI/CD Automation** — GitHub Actions for build, test, and deploy
+- **Secure Configuration** — Azure Key Vault for secrets management
+- **Database Management** — Automatic Flyway migrations on deployment
+- **Container Registry** — Azure Container Registry (ACR) for Docker images
+
+### Deployment Flow
+
+```
+Developer → PR to main → Approval → Merge
+                                     ↓
+                         CI/CD Pipeline Triggers
+                                     ↓
+                    ┌────────────────┴────────────────┐
+                    ↓                                 ↓
+              Build & Test                    Terraform Apply
+                    ↓                                 ↓
+            Build Docker Image              Create/Update Azure
+                    ↓                         Resources (if needed)
+            Push to ACR                              ↓
+                    ↓                                 ↓
+            Deploy to Azure ←────────────────────────┘
+                    ↓
+            Run Database Migrations
+                    ↓
+            Health Check & Smoke Tests
+                    ↓
+            Production Ready ✓
+```
+
+---
+
+## Architecture
+
+### Azure Resources
+
+The deployment creates the following Azure resources:
+
+- **Resource Group** — Container for all resources
+- **Container Registry (ACR)** — Private Docker image registry
+- **PostgreSQL Database** — Managed database service
+- **Azure Key Vault** — Secure secrets storage
+- **Container Instances (ACI)** — Container hosting
+- **Application Insights** — Monitoring and diagnostics
+
+---
+
+## Prerequisites
+
+### Required Tools
+
+#### 1. Azure CLI (version 2.50+)
+
+```bash
+# macOS
+brew install azure-cli
+
+# Windows
+winget install Microsoft.AzureCLI
+
+# Linux
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+# Verify
+az --version
+```
+
+#### 2. Terraform (version 1.5+)
+
+```bash
+# macOS
+brew install terraform
+
+# Windows
+winget install Hashicorp.Terraform
+
+# Verify
+terraform --version
+```
+
+#### 3. GitHub CLI (optional but recommended)
+
+```bash
+# macOS
+brew install gh
+
+# Windows
+winget install GitHub.cli
+
+# Verify
+gh --version
+```
+
+### Required Accounts
+
+- **Azure Account** with permissions to create resources (Resource Groups, Container Registries, PostgreSQL, Key Vaults, etc.)
+- **GitHub Account** with admin access to the repository
+
+<Callout type="info">
+**Azure Free Account:** Sign up at [azure.microsoft.com/free](https://azure.microsoft.com/free/) for $200 credit for 30 days, 12 months of free services, and 25+ always-free services.
+</Callout>
+
+---
+
+## Part 1: Azure Setup
+
+### Step 1: Login to Azure
+
+```bash
+# Login to Azure
+az login
+
+# If you have multiple subscriptions, list them
+az account list --output table
+
+# Set the subscription you want to use
+az account set --subscription "Your Subscription Name"
+
+# Verify the correct subscription is active
+az account show --output table
+```
+
+### Step 2: Create a Service Principal
+
+The service principal is used by GitHub Actions to authenticate with Azure.
+
+```bash
+# Set variables (customize these)
+export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+export SP_NAME="oscal-tools-github-actions"
+export RESOURCE_GROUP_NAME="oscal-tools-prod"
+
+# Create service principal with Contributor role
+az ad sp create-for-rbac \
+  --name "$SP_NAME" \
+  --role Contributor \
+  --scopes /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME \
+  --sdk-auth \
+  --output json > azure-credentials.json
+
+# IMPORTANT: Save this file securely! You'll need it for GitHub Secrets
+```
+
+<Callout type="danger">
+The `azure-credentials.json` file contains sensitive credentials. Store it in a password manager or secure vault and **NEVER commit this file to version control**. Add it to `.gitignore` immediately.
+</Callout>
+
+### Step 3: Create Resource Group
+
+```bash
+# Choose a location (region)
+# Common regions: eastus, westus2, centralus, westeurope, eastasia
+
+# Create resource group
+az group create \
+  --name "$RESOURCE_GROUP_NAME" \
+  --location "eastus"
+```
+
+---
+
+## Part 2: GitHub Repository Setup
+
+### Step 1: Protect Main Branch
+
+Configure branch protection to require pull requests for all changes.
+
+<Steps>
+<Step title="Navigate to branch protection settings">
+Go to your repository on GitHub and open **Settings → Branches**.
+</Step>
+<Step title="Add a branch protection rule">
+Click **Add branch protection rule** and set the branch name pattern to `main`.
+</Step>
+<Step title="Enable protection options">
+Enable: **Require a pull request before merging**, **Require approvals: 1**, **Require status checks to pass before merging**, **Require conversation resolution before merging**.
+</Step>
+<Step title="Save">
+Click **Create** to save the rule.
+</Step>
+</Steps>
+
+### Step 2: Add GitHub Secrets
+
+Navigate to **Settings → Secrets and variables → Actions → New repository secret** and add:
+
+1. **AZURE_CREDENTIALS** — Contents of the `azure-credentials.json` file (the entire JSON object)
+2. **AZURE_SUBSCRIPTION_ID** — Your Azure subscription ID
+3. **JWT_SECRET** — Generate: `openssl rand -base64 64 | tr -d '\n'`
+4. **DB_PASSWORD** — Generate: `openssl rand -base64 32 | tr -d '\n'`
+5. **CORS_ALLOWED_ORIGINS** — Your production domain(s), e.g. `https://oscal-tools.example.com`
+
+### Using GitHub CLI to Add Secrets
+
+```bash
+# Set repository
+export GITHUB_REPO="your-username/oscal-cli"
+
+# Add AZURE_CREDENTIALS (from file)
+gh secret set AZURE_CREDENTIALS < azure-credentials.json --repo $GITHUB_REPO
+
+# Add AZURE_SUBSCRIPTION_ID
+gh secret set AZURE_SUBSCRIPTION_ID --body "$AZURE_SUBSCRIPTION_ID" --repo $GITHUB_REPO
+
+# Add JWT_SECRET
+gh secret set JWT_SECRET --body "$(openssl rand -base64 64 | tr -d '\n')" --repo $GITHUB_REPO
+
+# Add DB_PASSWORD
+gh secret set DB_PASSWORD --body "$(openssl rand -base64 32 | tr -d '\n')" --repo $GITHUB_REPO
+
+# Add CORS_ALLOWED_ORIGINS
+gh secret set CORS_ALLOWED_ORIGINS --body "https://your-domain.com" --repo $GITHUB_REPO
+
+# Verify secrets were added
+gh secret list --repo $GITHUB_REPO
+```
+
+---
+
+## Part 3: Terraform Infrastructure
+
+### Directory Structure
+
+Create a `terraform/` directory in your repository:
+
+```
+oscal-cli/
+├── terraform/
+│   ├── main.tf                 # Main Terraform configuration
+│   ├── variables.tf            # Input variables
+│   ├── outputs.tf              # Output values
+│   ├── providers.tf            # Azure provider configuration
+│   ├── acr.tf                  # Container Registry
+│   ├── database.tf             # PostgreSQL Database
+│   ├── keyvault.tf             # Key Vault
+│   ├── container-instance.tf   # Container hosting
+│   ├── monitoring.tf           # Application Insights
+│   └── terraform.tfvars        # Variable values (DO NOT COMMIT!)
+```
+
+### What Terraform Creates
+
+- Resource Group — Container for all resources
+- Azure Container Registry — For Docker images
+- Azure PostgreSQL Flexible Server — Managed database
+- Azure Key Vault — Secure secrets storage
+- Azure Container Instance — Run the application
+- Application Insights — Monitoring and logging
+
+### Initial Deployment
+
+```bash
+# 1. Initialize Terraform
+cd terraform
+terraform init
+
+# 2. Plan infrastructure changes
+terraform plan -out=tfplan
+
+# 3. Apply infrastructure (create Azure resources)
+terraform apply tfplan
+
+# 4. Note the outputs (ACR name, Key Vault name, etc.)
+terraform output
+```
+
+---
+
+## Part 4: CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+| Workflow | Purpose |
+|---|---|
+| `.github/workflows/ci.yml` | Build, test, and security scan on every PR |
+| `.github/workflows/deploy.yml` | Deploy to Azure on merge to main |
+| `.github/workflows/terraform.yml` | Terraform infrastructure management |
+
+### Deployment Pipeline Steps
+
+1. Build Docker Image — Multi-stage build for frontend and backend
+2. Push to Azure Container Registry — Tag and push image to ACR
+3. Update Azure Key Vault — Store secrets securely
+4. Deploy to Azure Container Instance — Create/update container with latest image
+5. Run Database Migrations — Flyway applies pending migrations automatically
+6. Health Checks — Verify backend and frontend are responding
+7. Notify — Post deployment status
+
+---
+
+## Part 5: Deployment Process
+
+### Developer Workflow
+
+<Steps>
+<Step title="Create a feature branch">
+`git checkout -b feature/new-feature`
+</Step>
+<Step title="Make changes and commit">
+`git add . && git commit -m "Add new feature"`
+</Step>
+<Step title="Push to GitHub">
+`git push origin feature/new-feature`
+</Step>
+<Step title="Create Pull Request on GitHub">
+CI runs automatically (build, test, security scan).
+</Step>
+<Step title="Request review">
+Ask a team member to review the PR.
+</Step>
+<Step title="Merge after approval">
+CD pipeline triggers automatically and deploys to Azure.
+</Step>
+</Steps>
+
+### Database Migrations
+
+Database migrations are handled by **Flyway** and run automatically on container startup.
+
+<Callout type="info">
+**Migration Best Practices:** Always use versioned migrations (V1.x, V2.x, etc.). Never modify existing migrations — create a new one instead. Test migrations locally before pushing. Write reversible migrations. Keep migrations small — one logical change per file.
+</Callout>
+
+---
+
+## Troubleshooting
+
+### GitHub Actions Fails — Authentication Error
+
+**Symptom:** Unable to authenticate to Azure
+
+- Verify `AZURE_CREDENTIALS` secret is correct
+- Check service principal has not expired
+- Ensure service principal has Contributor role
+
+### Container Won't Start — Database Connection Failed
+
+**Symptom:** Container logs show connection refused
+
+- Check PostgreSQL firewall rules allow Azure services
+- Verify database connection string in Key Vault
+- Check VNet integration (if using private endpoints)
+
+### Database Migration Failed
+
+**Symptom:** Flyway migration failed
+
+- Check migration SQL syntax
+- Verify user has necessary permissions
+- Check migration has not already been partially applied
+- Review Flyway schema history table
+
+---
+
+## Cost Estimation
+
+Estimated monthly Azure costs for production deployment:
+
+| Service | Tier | Estimated Cost |
+|---|---|---|
+| Azure Container Instance | 1 vCPU, 2 GB RAM | ~$40/month |
+| Azure Database for PostgreSQL | Burstable B1ms | ~$20/month |
+| Azure Container Registry | Basic | ~$5/month |
+| Azure Key Vault | Standard | ~$0.03/month |
+| Application Insights | Basic | ~$2.88/GB |
+| **Total** | | **~$75–100/month** |
+
+<Callout type="info">
+**Cost Optimization:** Use Azure Reserved Instances for 1–3 year commitments (save up to 72%). Enable autoscaling to scale down during off-hours. Set up budget alerts to monitor spending. Use Azure Hybrid Benefit if you have Windows Server licenses.
+</Callout>
+
+---
+
+## Next Steps
+
+After completing Azure setup:
+
+- Create Terraform configuration files
+- Create GitHub Actions workflows
+- Test the deployment pipeline
+- Set up monitoring and alerts in Application Insights
+- Configure custom domain and SSL certificate (optional)
+
+---
+
+## Additional Resources
+
+- [Azure Container Instances Documentation](https://docs.microsoft.com/en-us/azure/container-instances/)
+- [Azure PostgreSQL Documentation](https://docs.microsoft.com/en-us/azure/postgresql/)
+- [Azure Key Vault Documentation](https://docs.microsoft.com/en-us/azure/key-vault/)
+- [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Local Deployment Guide](/guide/reference/deployment/local)
