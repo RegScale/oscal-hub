@@ -30,6 +30,7 @@ import {
   Legend
 } from 'recharts';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface AnalyticsData {
   totalUsers: number;
@@ -176,6 +177,7 @@ export default function AnalyticsDashboardPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                 <BarChart3 className="w-8 h-8 text-emerald-600" />
                 Platform Analytics
+                <HelpButton slug="admin-analytics" />
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 Monitor platform usage, user activity, and trends across all organizations

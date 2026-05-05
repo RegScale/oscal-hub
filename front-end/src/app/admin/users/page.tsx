@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface OrganizationSummary {
   id: number;
@@ -171,9 +172,12 @@ export default function AdminUsersPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Manage Users
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Manage Users
+            </h1>
+            <HelpButton slug="admin-users" />
+          </div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             View users by organization and manage access requests
           </p>

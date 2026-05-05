@@ -27,6 +27,7 @@ import type {
   ControlStatus,
   GapSeverity,
 } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 const CATEGORY_INFO: Record<string, { name: string; icon: React.ReactNode; description: string }> = {
   CC6: {
@@ -214,6 +215,7 @@ export default function SecurityCompliancePage() {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
                   <ShieldCheck className="w-8 h-8 mr-3 text-indigo-600" />
                   SOC 2 Compliance
+                  <HelpButton slug="admin-security" />
                 </h1>
                 <p className="mt-1 text-gray-600 dark:text-gray-400">
                   Security control implementation status and gap analysis

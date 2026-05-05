@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface OrganizationResponse {
   id: number;
@@ -130,9 +131,12 @@ export default function AdminOrganizationsPage() {
 
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Manage Organizations
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Manage Organizations
+              </h1>
+              <HelpButton slug="admin-organizations" />
+            </div>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Create and manage organizations in the system
             </p>

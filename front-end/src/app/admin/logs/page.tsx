@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { AuditLog, AuditLogStats } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 type TabType = 'raw' | 'security' | 'errors';
 
@@ -262,7 +263,10 @@ export default function LogsPage() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Audit Logs</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Audit Logs</h1>
+                  <HelpButton slug="admin-logs" />
+                </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   View and analyze system audit logs, security events, and errors
                 </p>

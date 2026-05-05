@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { DetailedHealthResponse, ComponentHealth, HealthStatus } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function HealthDashboardPage() {
   const router = useRouter();
@@ -162,6 +163,7 @@ export default function HealthDashboardPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
                 <Activity className="w-8 h-8 mr-3 text-cyan-600" />
                 System Health Dashboard
+                <HelpButton slug="admin-health" />
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 Monitor system components, resources, and service availability

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, KeyRound, Shield, Lock, Calendar, Trash2, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { SecurityPolicy, SecurityPolicyUpdateRequest } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function SecurityPolicyPage() {
   const router = useRouter();
@@ -134,9 +135,12 @@ export default function SecurityPolicyPage() {
               <KeyRound className="w-6 h-6 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Security Policy Settings
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Security Policy Settings
+                </h1>
+                <HelpButton slug="admin-security-policy" />
+              </div>
               <p className="text-gray-600 dark:text-gray-400">
                 Configure MFA, password policies, and audit log retention
               </p>
