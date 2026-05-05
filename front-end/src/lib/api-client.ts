@@ -5377,6 +5377,89 @@ class ApiClient {
       controlCount: 42,
     };
   }
+
+  /* ─────────────────────────────────────────────────────────────────
+   * AI Rule Generator wizard
+   * ────────────────────────────────────────────────────────────────*/
+
+  async startRuleGen(
+    organizationId: number,
+    modelType: import('@/types/rule-gen').OscalModelType
+  ): Promise<{ sessionId: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ organizationId, modelType }),
+      },
+      30000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async sendRuleGenTurn(
+    sessionId: string,
+    userMessage: string
+  ): Promise<import('@/types/rule-gen').RuleGenTurnResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/turn`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ userMessage }),
+      },
+      // up to 4 Anthropic round-trips at ~30s each in the auto-iterate path.
+      180000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async editRuleGenProposal(
+    sessionId: string,
+    constraintXml: string
+  ): Promise<import('@/types/rule-gen').RuleGenTurnResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/edit`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ constraintXml }),
+      },
+      30000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async saveRuleGenRule(
+    sessionId: string,
+    ruleId: string,
+    category?: string,
+    enabled = true
+  ): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/save`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ ruleId, category, enabled }),
+      },
+      15000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async abandonRuleGen(sessionId: string): Promise<void> {
+    await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}`,
+      { method: 'DELETE', headers: this.getAuthHeaders() },
+      5000
+    );
+  }
 }
 
 // Export singleton instance
