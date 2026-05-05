@@ -1,0 +1,103 @@
+---
+title: Authorizations Overview
+description: Generate professional ATO and authorization documents from reusable markdown templates with variable substitution.
+lastUpdated: 2026-05-04
+---
+
+# Authorizations Overview
+
+The Authorizations feature is OSCAL Hub's end-to-end system for generating Authority to Operate (ATO) and other official authorization documents. Instead of writing every authorization letter or memo from scratch, you define reusable markdown templates containing `{{ variable }}` placeholders, link a template to a System Security Plan (SSP), supply the variable values, and OSCAL Hub renders a finished document — ready for review, sign-off, and archive.
+
+This workflow is designed for the full range of federal and enterprise authorization scenarios: FedRAMP initial ATOs, annual authorization renewals, conditional approvals with mandatory remediation conditions, interim approvals, and internal system authorization letters.
+
+---
+
+## What it does
+
+- **Reusable templates with variable placeholders.** Write a template once — for example, a standard FedRAMP ATO letter or an internal authorization memo — and instantiate it any number of times with different variable values. Variables use a double-curly-brace syntax (`{{ variable_name }}`), and the variable list is detected automatically as you type in the template editor.
+
+- **Four-step wizard for creating authorizations.** A guided wizard walks you through selecting an SSP, choosing a template, filling in each variable value, and naming the final document. A live preview updates in real time as you fill variables so you can confirm the rendered text looks correct before committing.
+
+- **Linked to your SSP library.** Every authorization is tied to a specific SSP from your Library. This makes it easy to filter, search, and group your authorization documents by system.
+
+- **Authorization management.** The Authorizations tab lists all your authorization documents with their linked SSP, template, creation date, and any tracked conditions (mandatory or recommended). You can open any authorization to review or update it.
+
+- **History tracking.** Every authorization carries metadata about which template version was used and when it was created, giving you an audit trail across your authorization portfolio.
+
+---
+
+## The two-tab interface
+
+The Authorizations page at `/authorizations` has two tabs:
+
+### Templates
+
+The **Templates** tab is where you create and manage reusable authorization templates. A template is a markdown document with `{{ variable_name }}` placeholders. You build it once and reuse it across many authorizations.
+
+- Browse all your templates.
+- Create a new template from scratch.
+- Edit an existing template — the live preview updates in real time and variable names are highlighted in amber.
+- View the auto-detected variable list for any template.
+
+See [Authorization Templates](/guide/authorizations/templates) for the full walkthrough.
+
+### Authorizations
+
+The **Authorizations** tab lists every authorization document you have created. Each card shows:
+
+- Authorization name.
+- Linked SSP (the subject system).
+- Template used.
+- Date created.
+- Status and any tracked conditions.
+
+Click an authorization to open its detail view at `/authorizations/authorization/[id]`.
+
+See [Create an Authorization](/guide/authorizations/create) for the step-by-step wizard.
+
+---
+
+## Common use cases
+
+| Scenario | How to use it |
+|---|---|
+| **FedRAMP initial ATO** | Create a FedRAMP ATO template with standard boilerplate. Instantiate it for each CSP system by selecting the SSP and filling variables like `{{ system_name }}`, `{{ authorizing_official }}`, and `{{ authorization_date }}`. |
+| **Annual ATO renewal** | Clone the prior year's authorization document (or re-run the wizard with the same template and SSP). Update the date variables and any changed conditions. |
+| **Conditional authorization** | Use a template with an `{{ authorization_conditions }}` variable. Fill in the condition text for that specific system during the wizard. |
+| **Internal system approval** | Create a shorter internal authorization memo template. Use it for any system that does not need a full FedRAMP package. |
+| **Interim Authority to Operate (IATO)** | Build a dedicated IATO template with expiration date and scope-limitation variables. Track the expiration via the `{{ iato_expiration_date }}` variable. |
+
+---
+
+## How the Authorizations feature fits the broader workflow
+
+Authorizations sits at the end of the compliance lifecycle. A typical sequence:
+
+1. **Build your SSP** — Use the [Build → SSP](/guide/build/overview) builder to create a structured System Security Plan for the system being authorized.
+2. **Save to Library** — Save the completed SSP to the [Library](/guide/library/overview) so it is available when you create an authorization.
+3. **Create a template** — Write the authorization letter or memo template in the [Templates](/guide/authorizations/templates) tab.
+4. **Run the wizard** — Follow the [four-step wizard](/guide/authorizations/create) to generate the final document: select SSP → choose template → fill variables → name and create.
+5. **Review and archive** — Open the authorization, review the rendered output, and save it to the Library or export it for external review.
+
+---
+
+## Tips & limits
+
+- You must be signed in to create or view authorizations. Unauthenticated users cannot access `/authorizations`.
+- Templates and authorizations are private to your account by default. To share them across your organization, adjust the visibility settings in the Library.
+- Variable names are case-sensitive: `{{ Date }}` and `{{ date }}` are treated as two separate variables.
+- There is no hard limit on template length or number of variables, but very large templates with many variables can make the live preview slower to update.
+
+<Callout type="info">
+Authorizations are linked to your SSP library at creation time. If you later update the SSP, the authorization document is not automatically updated — you will need to re-run the wizard or edit the authorization manually.
+</Callout>
+
+---
+
+## Related
+
+- [Authorization Templates](/guide/authorizations/templates)
+- [Create an Authorization](/guide/authorizations/create)
+- [Library Overview](/guide/library/overview)
+- [Build Overview](/guide/build/overview)
+- [Sign In & MFA](/guide/getting-started/sign-in-and-mfa)

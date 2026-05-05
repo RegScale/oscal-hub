@@ -1,0 +1,154 @@
+---
+title: Authorization Templates
+description: Build reusable markdown templates with variable placeholders that power authorization documents across your entire program.
+lastUpdated: 2026-05-04
+---
+
+# Authorization Templates
+
+Authorization templates are reusable markdown documents containing `{{ variable }}` placeholders. You write the boilerplate once — the standard language, the formatting, the section structure — and OSCAL Hub replaces the placeholders with concrete values each time you create an authorization from that template. One template can power dozens of authorization documents, keeping your language consistent and saving hours of copy-and-paste work.
+
+---
+
+## What it does
+
+- **Markdown authoring with live preview.** The template editor is a full markdown editor. As you type, the preview panel on the right renders the formatted output. Variables are highlighted in amber in both the editor and the preview so you can see exactly where substitution will happen.
+- **Automatic variable detection.** Every `{{ variable_name }}` pattern you write is automatically detected and collected into the variable list below the editor. You never have to declare variables separately.
+- **Flexible variable naming.** Variable names can contain letters, numbers, hyphens, underscores, spaces, and most special characters — so you can use natural-language labels like `{{ Federal Agency/Office }}` or `{{ Low, Moderate, or High }}` that make the wizard form self-documenting.
+- **Template library.** All your templates appear on the Templates tab at `/authorizations`. Each template card shows the template name and its detected variable count.
+
+---
+
+## How to create a template
+
+<Steps>
+  <Step title="Navigate to the Templates tab">
+    Go to `/authorizations` and click the **Templates** tab. You will see a list of any existing templates. Click the **Create New Template** button (or the **+** icon) to open the template editor.
+  </Step>
+  <Step title="Enter a template name">
+    Type a descriptive name in the **Template Name** field at the top of the editor. Good names describe the authorization type and any scope that makes it distinct — for example, `FedRAMP ATO Letter`, `Internal System Authorization`, or `IATO — 90-Day Interim`.
+  </Step>
+  <Step title="Write the template body">
+    Type your authorization text in the markdown editor. Use standard markdown formatting: headings (`#`, `##`), bold (`**text**`), bullet lists, numbered lists, tables, and horizontal rules. Insert a variable anywhere you want the wizard to prompt the user for a value by wrapping the variable name in double curly braces:
+
+    ```
+    This Authority to Operate (ATO) is issued to {{ system_name }}
+    operated by {{ federal_agency }} on behalf of {{ authorizing_official }}.
+
+    The system has been assessed at the {{ impact_level }} impact level
+    and is authorized to operate from {{ authorization_date }}
+    through {{ expiration_date }}.
+    ```
+
+    Every `{{ variable_name }}` you add appears immediately in the variable list below the editor.
+  </Step>
+  <Step title="Review the live preview">
+    The right panel renders your template in real time. Variables appear highlighted in amber so you can confirm their placement. Check that the layout, heading levels, and prose read correctly before saving. If a variable name looks wrong in the preview, edit the placeholder text directly — the variable list updates automatically.
+  </Step>
+  <Step title="Save the template">
+    Click **Save Template**. The template is saved to your account and appears in the Templates list. It is now available to select in the [Create an Authorization](/guide/authorizations/create) wizard.
+  </Step>
+</Steps>
+
+---
+
+## Variable naming rules
+
+Variable names are everything between the opening `{{` and closing `}}`, with leading and trailing whitespace trimmed. The rules are permissive by design so you can use names that describe the expected input clearly:
+
+| Pattern | Example | Notes |
+|---|---|---|
+| `{{ snake_case }}` | `{{ system_name }}` | Letters, numbers, underscores. Most common style. |
+| `{{ hyphenated-name }}` | `{{ agency-code }}` | Hyphens allowed. |
+| `{{ spaces allowed }}` | `{{ agency logo }}` | Spaces allowed. Multi-word labels. |
+| `{{ with, commas }}` | `{{ Low, Moderate, or High }}` | Commas and most punctuation allowed. |
+| `{{ with/slash }}` | `{{ Federal Agency/Office }}` | Forward slashes allowed. |
+
+<Callout type="warn">
+Variable names are **case-sensitive**. `{{ Date }}`, `{{ date }}`, and `{{ DATE }}` are treated as three distinct variables. Pick a capitalization convention and apply it consistently across all your templates.
+</Callout>
+
+Variables do not have declared types — they are all treated as plain text substitution. If you need a date field, name the variable something like `{{ authorization_date }}` to signal the expected format to the user filling the wizard.
+
+---
+
+## Example template — FedRAMP ATO letter
+
+The following is a representative FedRAMP-style ATO template. Copy it into the editor as a starting point and adjust it to match your agency's preferred language and format.
+
+```
+# Authority to Operate Letter
+
+**System Name:** {{ system_name }}
+**Cloud Service Provider (CSP):** {{ cloud_service_provider }}
+**Federal Agency:** {{ federal_agency }}
+**Authorizing Official:** {{ authorizing_official }}
+**Impact Level:** {{ Low, Moderate, or High }} Impact
+
+---
+
+## Authorization Decision
+
+This letter constitutes the formal Authority to Operate (ATO) for {{ system_name }}
+as provided by {{ cloud_service_provider }} (hereinafter "the CSP") for use
+by {{ federal_agency }}.
+
+The {{ low, moderate, or high }}-impact system has been assessed in accordance with
+the FedRAMP Security Assessment Framework (SAF) and the NIST SP 800-53 control
+baseline applicable to {{ Low, Moderate, or High }} impact systems.
+
+**Authorization effective date:** {{ authorization_date }}
+**Authorization expiration date:** {{ expiration_date }}
+
+---
+
+## Scope and Conditions
+
+This ATO is granted for the system boundary described in the SSP on file.
+{{ authorization_scope_notes }}
+
+The following conditions apply to this authorization:
+
+{{ authorization_conditions }}
+
+---
+
+## Continuous Monitoring
+
+The CSP is required to maintain an active continuous monitoring program in accordance
+with the FedRAMP Continuous Monitoring Strategy Guide. Monthly deliverables are due
+to {{ federal_agency }} no later than the last business day of each calendar month.
+
+---
+
+_Signed electronically by {{ authorizing_official }}_
+_{{ authorizing_official_title }}_
+_{{ federal_agency }}_
+_{{ authorization_date }}_
+```
+
+This template uses 13 variables. When a user runs the wizard to create an authorization from this template, OSCAL Hub will prompt them to fill in each one before rendering the final document.
+
+---
+
+## Editing an existing template
+
+To edit a template, open the Templates tab and click the template's name or the **Edit** button on its card. The editor opens at `/authorizations/template/[templateId]`. Changes to variable names in the editor do not automatically update any existing authorization documents that were already created from this template — those documents captured the variable values at creation time.
+
+---
+
+## Tips & limits
+
+- **Keep variable names self-documenting.** A name like `{{ authorizing_official_title }}` is more useful in the wizard form than `{{ ao_title }}` because the person filling in the variable immediately understands what is expected.
+- **Establish naming conventions across your team.** If multiple people create templates, agree on a common style (`snake_case` is recommended) so that wizards present a consistent experience.
+- **Reuse by cloning.** To create a similar template, open an existing one, copy the body, create a new template, and paste. There is no built-in "duplicate" button — the copy-paste workflow is the intended path.
+- **Preview before saving.** The live preview shows you exactly how the document will look with variables highlighted. Use it to catch typos and formatting issues before users start creating authorizations from the template.
+- **Template length.** There is no hard character limit on template bodies. Very long templates (thousands of lines) may cause the live preview to feel sluggish on slower connections.
+
+---
+
+## Related
+
+- [Authorizations Overview](/guide/authorizations/overview)
+- [Create an Authorization](/guide/authorizations/create)
+- [Library Overview](/guide/library/overview)
