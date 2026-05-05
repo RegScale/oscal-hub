@@ -1,0 +1,186 @@
+---
+title: Validation Rules User Guide
+description: Understanding and managing OSCAL validation rules in OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Validation Rules User Guide
+
+Understanding and managing OSCAL validation rules.
+
+---
+
+## What are Validation Rules?
+
+Validation rules are checks that ensure your OSCAL documents meet quality standards, comply with specifications, and contain all required information. When you validate an OSCAL document, the system runs these rules to identify potential issues.
+
+OSCAL Hub includes two types of validation rules:
+
+- **Built-in Rules:** Pre-configured rules based on OSCAL specifications and best practices
+- **Custom Rules:** Organization-specific rules you can create to enforce your own requirements
+
+---
+
+## Built-in Validation Rules
+
+Built-in rules are automatically included with the platform and cover common OSCAL validation scenarios. These rules check for:
+
+- Required metadata fields (title, version, last-modified)
+- UUID format and uniqueness
+- Valid references to other OSCAL objects
+- Proper structure and relationships between elements
+- Date/time format compliance
+- Security control identifiers and references
+
+<Callout type="info">
+Built-in rules are regularly updated to reflect the latest OSCAL specifications. They cannot be modified but can provide a foundation for creating your own custom rules.
+</Callout>
+
+---
+
+## Custom Validation Rules
+
+Custom rules allow you to enforce organization-specific requirements that go beyond the standard OSCAL specifications. You can create custom rules to:
+
+- Enforce naming conventions for controls or components
+- Require specific metadata fields for your organization
+- Validate custom extensions or properties
+- Check for required relationships between elements
+- Ensure compliance with internal policies
+
+### Creating a Custom Rule
+
+<Steps>
+<Step title="Navigate to Custom Rules Management">
+Go to the [Custom Rules Management](/rules/custom) page.
+</Step>
+<Step title="Click New Rule">
+Click the **New Rule** button to open the rule creation form.
+</Step>
+<Step title="Fill in the rule details">
+Provide the following information:
+
+- **Rule ID:** Unique identifier (e.g., `custom-rule-001`)
+- **Name:** Descriptive name for the rule
+- **Description:** What the rule validates
+- **Rule Type:** Type of validation (required-field, pattern-match, etc.)
+- **Severity:** Error, Warning, or Info
+- **Category:** Organizational grouping
+- **Applicable Model Types:** Which OSCAL models this rule applies to
+</Step>
+<Step title="Save the rule">
+Click **Create Rule** to save.
+</Step>
+</Steps>
+
+### Rule Types
+
+| Rule Type | Description |
+|---|---|
+| **Required Field** | Ensures specific fields are present in the document |
+| **Pattern Match** | Validates field values against regex patterns |
+| **Allowed Values** | Restricts fields to specific allowed values |
+| **Cardinality** | Checks minimum/maximum occurrences of elements |
+| **Cross-Field** | Validates relationships between multiple fields |
+| **ID Reference** | Ensures references point to valid IDs |
+| **Data Type** | Validates field values are the correct data type |
+| **Custom** | Organization-specific validation logic |
+
+---
+
+## Understanding Severity Levels
+
+### Error
+
+Critical issues that must be fixed. Documents with errors:
+
+- Violate OSCAL schema requirements
+- Have missing required fields
+- Contain invalid data that prevents processing
+- Should not be used in production until resolved
+
+### Warning
+
+Issues that should be addressed but do not prevent processing:
+
+- Recommended best practices not followed
+- Potential quality issues
+- Fields present but may need attention
+- Could cause problems in certain contexts
+
+### Info
+
+Informational notices for awareness:
+
+- Suggestions for improvement
+- Optional enhancements
+- Documentation reminders
+- Nice-to-have additions
+
+---
+
+## Rule Categories
+
+Rules are organized into categories to help you find and manage them:
+
+| Category | Description |
+|---|---|
+| **Metadata** | Document-level information like title, version, dates |
+| **Security Controls** | Control definitions, parameters, and implementations |
+| **Identifiers** | UUIDs, IDs, and unique references |
+| **References** | Links to external resources and documents |
+| **Structural** | Document organization and relationships |
+| **Profile** | Profile-specific validation |
+| **Component** | Component definition validation |
+| **SSP** | System Security Plan validation |
+| **Assessment** | Assessment-related validation |
+
+---
+
+## Filtering and Searching Rules
+
+The Validation Rules page provides powerful filtering to help you find specific rules:
+
+- **Text Search:** Search by rule name, description, or ID
+- **OSCAL Model Type:** Filter by which OSCAL models the rule applies to (Catalog, Profile, SSP, etc.)
+- **Category:** Filter by rule category to focus on specific areas
+- **Statistics:** View real-time counts of filtered rules, including built-in vs custom rules
+
+<Callout type="info">
+**Pro Tip:** Combine multiple filters to narrow down exactly the rules you need. The statistics tiles update in real-time to show your filtered results.
+</Callout>
+
+---
+
+## Best Practices
+
+### Start with Built-in Rules
+
+Review all built-in rules to understand what is already being validated before creating custom rules.
+
+### Use Descriptive Names
+
+Give your custom rules clear, descriptive names that explain what they validate.
+
+### Set Appropriate Severity
+
+Use Error only for critical issues, Warning for best practices, and Info for suggestions.
+
+### Organize with Categories
+
+Assign rules to appropriate categories to keep them organized and easy to find.
+
+### Document Your Rules
+
+Include detailed descriptions explaining what the rule checks and why it is important.
+
+### Test Before Enabling
+
+Create rules in a disabled state first, test them, then enable them for production use.
+
+---
+
+## Additional Resources
+
+- [View All Validation Rules](/rules)
+- [Manage Custom Rules](/rules/custom)
