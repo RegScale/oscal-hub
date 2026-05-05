@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { AiFeatureGate } from '@/components/ai/AiFeatureGate';
+import { HelpButton } from '@/components/HelpButton';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,7 +124,10 @@ function Inner() {
     >
       {!session.sessionId ? (
         <div className="container mx-auto p-6 max-w-2xl">
-          <h1 className="text-2xl font-semibold mb-4">Generate a rule with AI</h1>
+          <div className="flex items-center gap-2 mb-4">
+            <h1 className="text-2xl font-semibold">Generate a rule with AI</h1>
+            <HelpButton slug="ai-rule-generator" />
+          </div>
           <Card className="p-4 space-y-4">
             <div>
               <label className="text-sm font-medium block mb-1">OSCAL model</label>

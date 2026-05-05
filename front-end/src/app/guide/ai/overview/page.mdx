@@ -1,27 +1,30 @@
 ---
 title: AI Wizards
-description: AI-powered drafting of OSCAL documents from unstructured sources.
-lastUpdated: 2026-05-04
+description: AI-powered drafting of OSCAL documents and validation rules from unstructured sources.
+lastUpdated: 2026-05-05
 ---
 
 # AI Wizards
 
-OSCAL Hub includes a set of AI-powered wizards that transform unstructured source material — PDFs, Word documents, STIGs, CIS Benchmarks — into structured OSCAL draft documents. The AI does the tedious extraction work; you focus on reviewing and refining the output.
+OSCAL Hub includes a set of AI-powered wizards that transform unstructured source material — PDFs, Word documents, STIGs, CIS Benchmarks, plain-English rule descriptions — into structured OSCAL drafts and enforceable validation rules. The AI does the tedious work; you focus on reviewing and refining the output.
 
 ---
 
 ## What they do
 
-Two wizards are available today:
+Three wizards are available today:
 
 | Wizard | Input | Output |
 |--------|-------|--------|
 | [Catalog from Source](/guide/ai/catalog-wizard) | PDF, Word, HTML, plain text | Draft OSCAL Catalog — handed off to the Catalog builder |
 | [Component-definition from STIG / CIS Guide](/guide/ai/component-wizard) | XCCDF, JSON, YAML, CSV | Draft OSCAL Component Definition mapped to NIST 800-53 |
+| [Validation Rule Generator](/guide/ai/rule-generator) | Plain-English rule description | Saved Metaschema constraint that fires during validation |
 
-Both wizards produce **drafts**, not finished documents. After generation, the draft opens directly in the corresponding builder (Catalog or Component) so you can review, edit, and save. AI-generated documents are never saved to your library without an explicit save action from you.
+The **Catalog** and **Component-definition** wizards produce *drafts* — after generation, the draft opens in the corresponding builder so you can review, edit, and save. AI-generated documents are never saved to your library without an explicit save action.
 
-Additional wizards (Profile, SSP, POA&M) are planned and will appear in the picker as they become available.
+The **Validation Rule Generator** is conversational instead of one-shot: it can ask clarifying questions, runs synthetic test cases against the rule it generates, auto-iterates if the rule misfires on its own tests, and saves directly into your custom-rules ruleset. Saved rules apply immediately to subsequent validation runs.
+
+Additional document wizards (Profile, SSP, POA&M) are planned and will appear in the picker as they become available.
 
 ---
 
@@ -70,6 +73,8 @@ Anthropic's data handling policies apply to all content submitted via the API. O
 
 - [AI Catalog Wizard](/guide/ai/catalog-wizard) — turn a prose document into a draft OSCAL catalog
 - [AI Component-Definition Wizard](/guide/ai/component-wizard) — turn a STIG or CIS benchmark into a draft component definition
+- [AI Validation Rule Generator](/guide/ai/rule-generator) — describe a rule in plain English and have it generated, tested, and saved
 - [Build Hub Overview](/guide/build/overview) — the starting point for all manual builders
 - [Catalog Builder](/guide/build/catalog) — review and edit catalog drafts
 - [Component Builder](/guide/build/component) — review and edit component-definition drafts
+- [Validation Rules Reference](/guide/reference/rules) — built-in vs custom rules, severity levels, categories

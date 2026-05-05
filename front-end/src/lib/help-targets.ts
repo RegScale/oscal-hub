@@ -21,6 +21,7 @@ export const HELP_TARGETS = {
   'ai-wizard': 'ai/overview',
   'ai-catalog': 'ai/catalog-wizard',
   'ai-component': 'ai/component-wizard',
+  'ai-rule-generator': 'ai/rule-generator',
 
   // Authorizations
   authorizations: 'authorizations/overview',
