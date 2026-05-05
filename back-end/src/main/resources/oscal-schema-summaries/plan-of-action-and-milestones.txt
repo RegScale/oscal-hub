@@ -1,0 +1,59 @@
+OSCAL Plan of Action and Milestones — Metaschema short-name "oscal-poam", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: plan-of-action-and-milestones
+Required children:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+  - poam-items (list — at least one)
+Optional:
+  - import-ssp (assembly with @href)
+  - system-id (assembly)
+  - local-definitions (assembly)
+  - observations (list)
+  - risks (list)
+  - findings (list)
+  - back-matter
+
+Key Metapath addresses (relative to plan-of-action-and-milestones/):
+  - metadata/title, metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - import-ssp@href (URI reference)
+  - system-id (string)
+  - system-id/@identifier-type
+  - local-definitions/components/component@uuid
+  - local-definitions/inventory-items/inventory-item@uuid
+  - local-definitions/assessment-assets/components/component@uuid
+  - observations/observation@uuid
+  - observations/observation/methods/method
+  - observations/observation/collected (required, dateTime)
+  - risks/risk@uuid
+  - risks/risk/title
+  - risks/risk/description
+  - risks/risk/statement
+  - risks/risk/status (open, investigating, remediating, deviation-requested, deviation-approved, closed)
+  - risks/risk/mitigating-factors/mitigating-factor@uuid
+  - risks/risk/threat-ids/threat-id
+  - risks/risk/characterizations/characterization
+  - findings/finding@uuid
+  - findings/finding/target@type
+  - findings/finding/target@target-id
+  - poam-items/poam-item@uuid
+  - poam-items/poam-item/title (required)
+  - poam-items/poam-item/description (required)
+  - poam-items/poam-item/related-findings/related-finding@finding-uuid
+  - poam-items/poam-item/related-observations/related-observation@observation-uuid
+  - poam-items/poam-item/related-risks/related-risk@risk-uuid
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <has-cardinality target="poam-items/poam-item" min-occurs="1"/>
+  <allowed-values target="risks/risk/status" allow-other="yes">
+    <enum value="open"/><enum value="investigating"/><enum value="remediating"/>
+    <enum value="deviation-requested"/><enum value="deviation-approved"/><enum value="closed"/>
+  </allowed-values>
+  <expect target="poam-items/poam-item" test="title and description">
+    <message>[custom: r1] poam-item must have title and description</message>
+  </expect>
+  <is-unique target="poam-items/poam-item" id="poam-items-unique">
+    <key-field target="@uuid"/>
+  </is-unique>
+  <matches target="import-ssp/@href" regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>
