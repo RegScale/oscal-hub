@@ -1,0 +1,75 @@
+---
+title: AI Wizards
+description: AI-powered drafting of OSCAL documents from unstructured sources.
+lastUpdated: 2026-05-04
+---
+
+# AI Wizards
+
+OSCAL Hub includes a set of AI-powered wizards that transform unstructured source material — PDFs, Word documents, STIGs, CIS Benchmarks — into structured OSCAL draft documents. The AI does the tedious extraction work; you focus on reviewing and refining the output.
+
+---
+
+## What they do
+
+Two wizards are available today:
+
+| Wizard | Input | Output |
+|--------|-------|--------|
+| [Catalog from Source](/guide/ai/catalog-wizard) | PDF, Word, HTML, plain text | Draft OSCAL Catalog — handed off to the Catalog builder |
+| [Component-definition from STIG / CIS Guide](/guide/ai/component-wizard) | XCCDF, JSON, YAML, CSV | Draft OSCAL Component Definition mapped to NIST 800-53 |
+
+Both wizards produce **drafts**, not finished documents. After generation, the draft opens directly in the corresponding builder (Catalog or Component) so you can review, edit, and save. AI-generated documents are never saved to your library without an explicit save action from you.
+
+Additional wizards (Profile, SSP, POA&M) are planned and will appear in the picker as they become available.
+
+---
+
+## Feature gating
+
+AI features are **disabled by default** for every organization. An Org Admin must enable them before any member of your org can use the wizards.
+
+To enable AI for your org:
+
+1. Log in as an Org Admin.
+2. Go to **Org Admin → AI Settings** at `/org-admin/ai-settings`.
+3. Enter your organization's Anthropic API key and set a monthly usage quota.
+4. Save the settings.
+
+Once enabled, all members of your org will see the AI tile on the Build hub. If the AI tile is greyed out or shows "Coming soon," AI has not yet been enabled for your org — contact your Org Admin.
+
+---
+
+## Cost
+
+AI wizards call the **Anthropic Claude API** on your behalf. Each generation consumes tokens and is billed to the Anthropic API key your Org Admin configured. Costs vary by source size and wizard type; larger documents consume more tokens.
+
+Org Admins can monitor usage and estimated cost in **Org Admin → AI Analytics** at [/org-admin/ai-analytics](/org-admin/ai-analytics).
+
+---
+
+## Privacy
+
+<Callout type="warn">
+Content you upload to AI wizards — including PDFs, Word documents, STIGs, and pasted text — is sent to **Anthropic** for processing. Do not upload classified, sensitive, or proprietary material that cannot be processed by a third-party AI service. Review your organization's data handling policy before uploading any document.
+</Callout>
+
+Anthropic's data handling policies apply to all content submitted via the API. OSCAL Hub does not store uploaded source files after generation is complete, but the content is transmitted to and processed by Anthropic during that window.
+
+---
+
+## Tips
+
+- **Always review AI output.** Wizards are helpful first drafts, not authoritative documents. Verify controls, mappings, and metadata before treating any AI output as final.
+- **Re-run if the draft is poor.** You can adjust your source document or paste a refined excerpt and generate again — each run is independent.
+- **Session handoff.** The wizard passes the draft to the builder via session storage. Do not refresh the page between clicking Generate and arriving at the builder or the draft will be lost.
+
+---
+
+## Related
+
+- [AI Catalog Wizard](/guide/ai/catalog-wizard) — turn a prose document into a draft OSCAL catalog
+- [AI Component-Definition Wizard](/guide/ai/component-wizard) — turn a STIG or CIS benchmark into a draft component definition
+- [Build Hub Overview](/guide/build/overview) — the starting point for all manual builders
+- [Catalog Builder](/guide/build/catalog) — review and edit catalog drafts
+- [Component Builder](/guide/build/component) — review and edit component-definition drafts

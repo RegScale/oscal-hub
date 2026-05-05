@@ -1,0 +1,81 @@
+---
+title: AI Catalog Wizard
+description: Turn an unstructured document into a draft OSCAL catalog automatically.
+lastUpdated: 2026-05-04
+---
+
+# AI Catalog Wizard
+
+The AI Catalog Wizard reads an unstructured source document — a PDF policy guide, a Word-format control list, an HTML page, or plain text — and drafts a structured OSCAL Catalog you can review and save. Instead of hand-coding XML or JSON, you supply the source material and the wizard handles extraction, structuring, and initial validation.
+
+---
+
+## What it does
+
+The wizard processes your input in three stages:
+
+1. **Extraction** — The AI reads the source and identifies control-like constructs: titles, IDs, requirement statements, parameters, and groupings.
+2. **Structuring** — Extracted controls are organised into the OSCAL catalog model: groups, controls, and parameters with proper identifiers and metadata.
+3. **Handoff** — The draft is passed directly to the [Catalog Builder](/guide/build/catalog) so you can review, edit, and save without leaving the application.
+
+The wizard targets the OSCAL Catalog model. If your goal is a Profile (a selection from an existing catalog) or a Component Definition (control implementations), use the appropriate wizard or builder instead.
+
+---
+
+## Supported inputs
+
+| Input type | Notes |
+|-----------|-------|
+| PDF | Text-based PDFs only; scanned images may extract poorly |
+| Word (`.docx`) | Formatting and headings are used to infer structure |
+| HTML | Page text is extracted; navigation and boilerplate are stripped |
+| Plain text | Paste directly or upload a `.txt` file |
+
+Maximum upload size is approximately **10 MB**. Very large PDFs are processed in chunks, which may increase generation time.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the AI Wizard hub">
+    Navigate to `/ai/wizard` or click **AI Wizard** in the main navigation. The hub displays a card for each available wizard.
+  </Step>
+  <Step title="Select 'Build Catalog from Source'">
+    Click the **Build Catalog from Source** card, then click **Start →**. The wizard opens to the upload step.
+  </Step>
+  <Step title="Upload your source or paste text">
+    Either drag-and-drop a PDF, Word, or HTML file onto the upload area, or click **Browse** to select a file. Alternatively, switch to the **Paste text** tab and paste your source content directly. Click **Next** when ready.
+  </Step>
+  <Step title="Generate the draft">
+    Click **Generate**. A progress indicator shows the three stages: Extraction → Structuring → Validation. Generation typically takes 15–90 seconds depending on document size. The wizard retries automatically if the Anthropic API is temporarily busy.
+  </Step>
+  <Step title="Review the draft in the Catalog Builder">
+    When generation completes, the wizard navigates you to the [Catalog Builder](/guide/build/catalog) with the draft pre-populated. Review every group, control, parameter, and piece of metadata. The AI sometimes invents plausible-sounding but incorrect content — treat this as a starting point, not a finished document.
+  </Step>
+  <Step title="Edit, validate, and save">
+    Make any corrections in the builder. When satisfied, run schema validation on the Review & Save step to confirm the document is valid OSCAL, then click **Save to Library** to publish it.
+  </Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Large PDFs take longer.** A 200-page PDF may take several minutes to process. Keep the tab open and watch the progress indicator.
+- **Review everything.** The AI sometimes merges separate controls, splits a single control into multiple entries, or generates IDs that look plausible but differ from the source. Always compare the draft against the original document.
+- **Re-run with a better source.** If the first draft is poor quality, try editing the source text to make structure more explicit (add headings, remove irrelevant boilerplate), then generate again.
+- **Scanned PDFs extract poorly.** Use text-based PDFs where possible. If you only have a scanned document, convert it with an OCR tool first.
+- **AI features must be enabled.** If the wizard card is greyed out or you see "AI features are disabled," ask your Org Admin to enable AI at `/org-admin/ai-settings`.
+
+<Callout type="info">
+The draft is passed to the Catalog Builder using session storage. If you refresh the browser between clicking **Generate** and arriving at the builder, the draft will be lost and you will need to generate again.
+</Callout>
+
+---
+
+## Related
+
+- [AI Wizards Overview](/guide/ai/overview) — feature gating, cost, and privacy
+- [AI Component-Definition Wizard](/guide/ai/component-wizard) — generate a component definition from a STIG or CIS benchmark
+- [Build a Catalog](/guide/build/catalog) — manual catalog builder reference
