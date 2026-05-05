@@ -1,0 +1,86 @@
+---
+title: Super Admin Overview
+description: Platform-wide administration responsibilities, role gate, and dashboard summary for Super Admins.
+lastUpdated: 2026-05-04
+---
+
+# Super Admin Overview
+
+The Super Admin section is the control center for the entire OSCAL Hub platform. As a Super Admin you are responsible for managing **the platform itself** — not a single organization, but every organization and every user that exists on the system. You configure security policy, monitor system health, and act as the ultimate authority on access and configuration.
+
+---
+
+## Role gate
+
+Access to `/admin` and all its sub-pages requires the **`SUPER_ADMIN`** global role.
+
+`SUPER_ADMIN` is a **platform-wide** role assigned at the user level. It is distinct from `ORG_ADMIN`, which is an organization-scoped role.
+
+| Role | Scope | Assigned where |
+|---|---|---|
+| `SUPER_ADMIN` | All organizations and platform settings | `/admin/users` (by another Super Admin) |
+| `ORG_ADMIN` | One specific organization | `/org-admin/users` or `/admin/users` |
+
+If the `/admin` navigation item does not appear for you, your account does not hold the `SUPER_ADMIN` role. Contact another Super Admin to have it assigned.
+
+---
+
+## Dashboard summary
+
+Navigating to `/admin` loads the Super Admin Dashboard with:
+
+- **System health indicator** — a live status badge (green / yellow / red) reflecting the last health poll. The dashboard fetches `/api/health` on load and refreshes every 30 seconds.
+- **Quick-link tiles** — one card per sub-section, each with an icon and a brief description. Click any tile to navigate directly to that section.
+
+| Tile | App route | Purpose |
+|---|---|---|
+| Organizations | `/admin/organizations` | Manage all orgs on the platform |
+| Users | `/admin/users` | Manage all platform users |
+| Analytics | `/admin/analytics` | Platform-wide usage metrics |
+| Logs | `/admin/logs` | Auth, operations, and error logs |
+| System Health | `/admin/health` | Component-level health status |
+| Security | `/admin/security` | IP allowlist, OAuth/OIDC, sessions |
+| Security Policy | `/admin/security-policy` | MFA, password, API key rotation |
+
+<Callout type="warn">
+Super Admin actions are **platform-wide**. Changes to security policy, organization settings, or user roles take effect immediately for all users across all organizations. Always test configuration changes in a non-production environment before applying them to production.
+</Callout>
+
+---
+
+## How to reach the dashboard
+
+<Steps>
+<Step title="Log in with a Super Admin account">
+Sign in at `/login`. Your account must hold the `SUPER_ADMIN` global role.
+</Step>
+<Step title="Open the Super Admin Dashboard">
+Click **Admin** in the navigation bar, or navigate directly to `/admin`. The dashboard loads with the health indicator and quick-link tiles.
+</Step>
+<Step title="Verify your health status">
+Review the health badge in the header. If it shows yellow (DEGRADED) or red (DOWN), navigate to [System Health](/guide/admin/health) to investigate before making any configuration changes.
+</Step>
+<Step title="Choose a sub-section">
+Click any tile or use the sidebar to jump to the area you need.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Only Super Admins can promote other Super Admins.** The initial Super Admin account is created during platform bootstrap; subsequent promotions happen on the [Platform Users](/guide/admin/users) page.
+- **Org Admins cannot see this section.** The `/admin` routes are role-gated; unauthorized users are redirected automatically.
+- **Dashboard health is a summary.** The badge reflects the overall `status` field from `/api/health`. For component-level detail (database, memory, disk, etc.) use the dedicated [System Health](/guide/admin/health) page.
+
+---
+
+## Related
+
+- [Platform Users](/guide/admin/users)
+- [Organizations](/guide/admin/organizations)
+- [System Health](/guide/admin/health)
+- [Application Logs](/guide/admin/logs)
+- [Platform Analytics](/guide/admin/analytics)
+- [Platform Security](/guide/admin/security)
+- [Security Policy](/guide/admin/security-policy)

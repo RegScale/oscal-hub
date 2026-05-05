@@ -1,0 +1,94 @@
+---
+title: System Health
+description: Real-time view of all platform component health — database, storage, memory, disk, and OSCAL library — refreshing every 30 seconds.
+lastUpdated: 2026-05-04
+---
+
+# System Health
+
+The System Health page at `/admin/health` provides a real-time view of every infrastructure component that OSCAL Hub depends on. The page polls the backend automatically every 30 seconds so you can watch for transitions without manual refreshes.
+
+This is the in-UI rendering of the `/api/health/detailed` endpoint. The same data powers external monitoring dashboards and alerting integrations.
+
+---
+
+## What it shows
+
+Each component appears as a row in the health table with a status indicator and a timestamp for the last successful check.
+
+| Component | What is checked |
+|---|---|
+| **Database** | PostgreSQL connectivity and query response time |
+| **Storage** | File storage backend read/write availability |
+| **Memory** | JVM heap usage and system RSS; warns when heap exceeds threshold |
+| **Disk Space** | Available disk on the primary data volume |
+| **OSCAL Library** | Model class registry — confirms the OSCAL Java library is loaded and functional |
+
+Status values:
+
+| Status | Color | Meaning |
+|---|---|---|
+| `UP` | Green | Component is healthy |
+| `DEGRADED` | Yellow | Component is responding but performance or capacity is below threshold |
+| `DOWN` | Red | Component is unreachable or returning errors |
+
+The overall platform status at the top of the page reflects the worst-case across all components: if any component is `DOWN`, the banner shows `DOWN`.
+
+---
+
+## Health API endpoints
+
+The health data in this UI is also available directly via the following endpoints for integration with external monitoring tools:
+
+| Endpoint | Auth required | Purpose |
+|---|---|---|
+| `GET /api/health` | None | Simple JSON health summary (`{ "status": "UP" }`) |
+| `GET /api/health/ping` | None | Returns `"OK"` (HTTP 200) or HTTP 503 — ideal for uptime monitors |
+| `GET /api/health/detailed` | `SUPER_ADMIN` | Full component breakdown with system metadata |
+| `GET /api/health/component/{name}` | `SUPER_ADMIN` | Health of a single named component (e.g., `database`, `memory`) |
+
+<Callout type="info">
+Use `/api/health/ping` for external monitoring tools such as UptimeRobot, Kubernetes liveness and readiness probes, and load-balancer health checks. It returns the plain string `"OK"` with HTTP 200 when healthy and HTTP 503 when the platform is down — no JSON parsing required.
+</Callout>
+
+---
+
+## Investigating a degraded or down component
+
+<Steps>
+<Step title="Navigate to System Health">
+Go to `/admin/health` or click the System Health tile on the Super Admin Dashboard.
+</Step>
+<Step title="Identify the affected component">
+Review the component table. Components with a yellow or red status indicator require attention.
+</Step>
+<Step title="Click the component row for details">
+Expanding a component row shows the last error message, the time of the most recent status transition, and historical up/down durations.
+</Step>
+<Step title="Check Application Logs">
+Navigate to [Application Logs](/guide/admin/logs) and filter by `ERROR` level. Look for recent entries from the affected subsystem (e.g., `database`, `storage`).
+</Step>
+<Step title="Use the individual component endpoint">
+Call `GET /api/health/component/{name}` from the terminal or Swagger UI for a raw JSON response that includes additional diagnostic fields not shown in the UI.
+</Step>
+<Step title="Resolve and verify">
+After addressing the underlying issue (e.g., restarting a dependent service, freeing disk space), monitor the component row — it should transition back to `UP` within the next polling cycle.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Auto-refresh is enabled by default.** The page polls every 30 seconds. You can toggle auto-refresh off via the switch in the page header if you need a stable snapshot for screenshots or incident documentation.
+- **Memory thresholds are configurable.** The default warning threshold for JVM heap is 80% utilization. This can be adjusted in `application.properties` (`management.health.memory.threshold`).
+- **OSCAL Library health does not check external sources.** It verifies that the library classes are loaded in the JVM; it does not validate live OSCAL content or network connectivity to nist.gov.
+- **History is not persisted.** The status history shown in expanded component rows is in-memory and resets on server restart.
+
+---
+
+## Related
+
+- [Application Logs](/guide/admin/logs)
+- [Platform Analytics](/guide/admin/analytics)
+- [Super Admin Overview](/guide/admin/overview)

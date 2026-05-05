@@ -1,0 +1,99 @@
+---
+title: Organizations
+description: Create, edit, and manage every organization on the platform, including access-request review on behalf of any org.
+lastUpdated: 2026-05-04
+---
+
+# Organizations
+
+The Organizations page at `/admin/organizations` gives Super Admins a complete view of every organization on the platform. From here you can create new organizations, edit their details, and — via the per-org sub-pages — review and act on access requests for any org even when the org has no active Org Admin.
+
+---
+
+## Sub-pages
+
+Each organization has two dedicated sub-pages accessible from the organizations list:
+
+| Sub-page | Route | Purpose |
+|---|---|---|
+| Edit org | `/admin/organizations/[id]` | Modify org name, contact info, and settings |
+| Access requests | `/admin/organizations/[id]/requests` | Review pending access requests for that org |
+
+---
+
+## Create a new organization
+
+<Steps>
+<Step title="Navigate to Organizations">
+Go to `/admin/organizations` or click the Organizations tile on the Super Admin Dashboard.
+</Step>
+<Step title="Click New Organization">
+Click the **New Organization** button in the top-right corner of the page.
+</Step>
+<Step title="Fill in the org name">
+Enter a unique, human-readable name for the organization. This name appears in the org switcher and all admin views.
+</Step>
+<Step title="Set the initial admin email">
+Enter the email address of the user who will be the first `ORG_ADMIN` for this org. If the user does not have a platform account yet, an invitation will be sent automatically.
+</Step>
+<Step title="Click Create">
+Click **Create**. The new org appears in the table, and the initial admin receives an email invitation (if they were not already a platform user) or a role-assignment notification.
+</Step>
+</Steps>
+
+---
+
+## Edit an organization
+
+<Steps>
+<Step title="Find the organization">
+Use the search bar or scroll the table to locate the org. The table shows org name, member count, creation date, and status.
+</Step>
+<Step title="Open the org record">
+Click the org's row or the edit icon to navigate to `/admin/organizations/[id]`.
+</Step>
+<Step title="Edit fields">
+Update the org name, billing contact, description, or any other editable fields.
+</Step>
+<Step title="Save">
+Click **Save**. Changes take effect immediately and are visible to Org Admins on their next page load.
+</Step>
+</Steps>
+
+---
+
+## Approve or deny access requests on behalf of an org
+
+Super Admins can process access requests for any organization, even if that org has no active Org Admin.
+
+<Steps>
+<Step title="Open the org record">
+Navigate to `/admin/organizations/[id]` by clicking the org row.
+</Step>
+<Step title="Open the Requests tab">
+Click the **Requests** tab (or navigate to `/admin/organizations/[id]/requests`). The page lists all pending access requests for the selected org.
+</Step>
+<Step title="Review each request">
+For each request, review the requester's name, email, and stated reason. Click a row to expand details.
+</Step>
+<Step title="Approve or deny">
+Click **Approve** to grant the requester membership in the org (they receive an email confirmation), or **Deny** to reject the request. Denied requests can include an optional reason that is sent to the requester.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Deactivate instead of delete.** Deleting an organization permanently removes all of its data — memberships, history, and settings. If you need to suspend an org, deactivate it instead; deactivated orgs are hidden from org switchers but their data is preserved.
+- **Org names must be unique.** The platform enforces uniqueness at creation time; renaming an org to an existing name will fail with a validation error.
+- **Initial admin must have a valid email.** The invitation flow depends on email delivery. If the invite is not received, you can manually assign the `ORG_ADMIN` role via [Platform Users](/guide/admin/users).
+- **Access requests flow.** Normally, `ORG_ADMIN` users handle access requests for their own org on `/org-admin/requests`. The Super Admin path at `/admin/organizations/[id]/requests` is the fallback for unmanaged orgs or escalations.
+
+---
+
+## Related
+
+- [Platform Users](/guide/admin/users)
+- [Org Admin Access Requests](/guide/org-admin/access-requests)
+- [Super Admin Overview](/guide/admin/overview)

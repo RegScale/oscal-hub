@@ -1,0 +1,74 @@
+---
+title: Platform Analytics
+description: Platform-wide metrics showing total users and organizations, operation volume by type, feature adoption, and growth trends.
+lastUpdated: 2026-05-04
+---
+
+# Platform Analytics
+
+The Platform Analytics page at `/admin/analytics` is the board-level view of OSCAL Hub activity. It aggregates data across all organizations and all users so you can see how the platform is being adopted and where usage is growing or declining.
+
+This is different from the per-organization analytics available to Org Admins at `/org-admin/analytics`. That page shows what one org is doing; this page shows what the entire platform is doing.
+
+---
+
+## What it shows
+
+### Summary tiles
+
+At the top of the page, four summary tiles give instant totals for the selected time range:
+
+| Tile | What it shows |
+|---|---|
+| **Total Users** | Count of registered platform accounts (active + locked) |
+| **Total Organizations** | Count of organizations (active + deactivated) |
+| **Operations** | Total OSCAL operations (validate, convert, resolve, etc.) across all orgs |
+| **Active Users** | Distinct users who logged in at least once in the time range |
+
+### Charts and trends
+
+Below the tiles, charts show:
+
+- **Operation volume by type** — Validation, conversion, profile resolution, and catalog browsing broken out as a stacked area or bar chart over time.
+- **Feature adoption** — Which features (AI, visualization, history, etc.) have been enabled or used, and by how many orgs.
+- **User growth** — New user registrations over the selected time range.
+- **Org growth** — New organization creations over time.
+
+---
+
+## Reviewing analytics
+
+<Steps>
+<Step title="Navigate to Platform Analytics">
+Go to `/admin/analytics` or click the Analytics tile on the Super Admin Dashboard.
+</Step>
+<Step title="Choose a time range">
+Use the date-range picker in the top-right corner to set your reporting window. Common presets include Last 7 days, Last 30 days, and Last 12 months.
+</Step>
+<Step title="Review the summary tiles">
+Check the four summary tiles to get a quick read on scale and activity. Significant drops in Active Users or Operations may indicate an incident or deployment issue worth investigating.
+</Step>
+<Step title="Inspect the charts">
+Hover over chart data points to see exact values. Use the chart legend to toggle individual series on or off when one dimension dominates the view.
+</Step>
+<Step title="Cross-reference with Health and Logs">
+If you see an unexpected dip in operations, cross-reference with [System Health](/guide/admin/health) and [Application Logs](/guide/admin/logs) for the same time period to rule out infrastructure causes.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Board-level view only.** This page does not break down metrics by individual user or show PII. For per-org detail, use the Org Admin Analytics page for the relevant organization.
+- **Data is aggregated, not real-time.** Analytics figures update on a scheduled cadence (typically hourly). If you need real-time operation counts, check [Application Logs](/guide/admin/logs) filtered to `INFO` with an operations keyword.
+- **Feature adoption is adoption at org level.** A feature is considered "adopted" by an org if at least one user in that org has used it within the time range.
+- **Exports are not yet available in the UI.** To extract raw analytics data for external reporting, query the backend API or the analytics tables in the database directly.
+
+---
+
+## Related
+
+- [Org Admin Analytics](/guide/org-admin/analytics)
+- [System Health](/guide/admin/health)
+- [Super Admin Overview](/guide/admin/overview)
