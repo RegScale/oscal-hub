@@ -199,10 +199,23 @@
         </dependency>
 
         <!-- Anthropic Java SDK for Claude API integration -->
+        <!-- Exclude swagger-annotations (non-Jakarta): both this jar and
+             swagger-annotations-jakarta ship io.swagger.v3.oas.annotations.media.Schema
+             at the same FQCN. Whichever the classloader picks wins. The non-Jakarta
+             variant pinned at 2.2.31 lacks $dynamicRef(), causing NoSuchMethodError
+             at runtime when springdoc/Schema introspection runs. We use the Jakarta
+             variant (springdoc transitive 2.2.38), so exclude this one to avoid the
+             collision. -->
         <dependency>
             <groupId>com.anthropic</groupId>
             <artifactId>anthropic-java</artifactId>
             <version>${anthropic-java.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.swagger.core.v3</groupId>
+                    <artifactId>swagger-annotations</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Apache Tika for multi-format document extraction (PDF, Word, HTML, Excel, etc.) -->
