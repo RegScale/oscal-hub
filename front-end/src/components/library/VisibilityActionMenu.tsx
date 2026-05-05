@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import { libraryPublishApi, type Visibility } from '@/lib/api/library';
 
 interface VisibilityActionMenuProps {
@@ -98,13 +99,38 @@ export function VisibilityActionMenu({
         visibility: pending.next,
         reason: pending.isForceUnpublish ? reason.trim() : undefined,
       });
+      showSuccessToast(pending.next, pending.isForceUnpublish);
       onChanged();
       setPending(null);
       setReason('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to change visibility');
+      const message = e instanceof Error ? e.message : 'Failed to change visibility';
+      setError(message);
+      toast.error('Visibility change failed', { description: message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const showSuccessToast = (next: Visibility, isForceUnpublish: boolean) => {
+    if (isForceUnpublish) {
+      toast.success('Item force-unpublished', {
+        description: 'The item is no longer visible in the public catalog. Reason recorded in the audit log.',
+      });
+      return;
+    }
+    if (next === 'PUBLIC') {
+      toast.success('Item published', {
+        description: 'Now visible to anyone in the public catalog.',
+      });
+    } else if (next === 'ORGANIZATION') {
+      toast.success('Item shared with organization', {
+        description: 'Members of your organization can now view and download it.',
+      });
+    } else {
+      toast.success('Item is now private', {
+        description: 'Only you can see this item.',
+      });
     }
   };
 
