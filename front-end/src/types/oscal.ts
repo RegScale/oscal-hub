@@ -231,6 +231,9 @@ export interface CustomRuleResponse {
   createdDate: string; // ISO 8601 date string
   updatedDate: string; // ISO 8601 date string
   createdBy?: string;
+  aiGenerated?: boolean;
+  generationPrompt?: string;
+  generationModel?: string;
 }
 
 // Library Types
