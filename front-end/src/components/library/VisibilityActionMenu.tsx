@@ -41,12 +41,12 @@ const visibilityCopy: Record<Visibility, { label: string; effect: string }> = {
   ORGANIZATION: {
     label: 'Share with Org',
     effect:
-      'Members of your organization will be able to view and download this item. It will not appear in the public catalog.',
+      'Members of your organization will be able to view and download this item. It will not appear in OSCAL Data Products.',
   },
   PUBLIC: {
     label: 'Publish',
     effect:
-      'The item will appear in the public catalog at /catalog and be downloadable by anyone with an account. Existing ratings and comments will become visible.',
+      'The item will appear in OSCAL Data Products at /catalog and be downloadable by anyone with an account. Existing ratings and comments will become visible.',
   },
 };
 
@@ -115,13 +115,13 @@ export function VisibilityActionMenu({
   const showSuccessToast = (next: Visibility, isForceUnpublish: boolean) => {
     if (isForceUnpublish) {
       toast.success('Item force-unpublished', {
-        description: 'The item is no longer visible in the public catalog. Reason recorded in the audit log.',
+        description: 'The item is no longer visible in OSCAL Data Products. Reason recorded in the audit log.',
       });
       return;
     }
     if (next === 'PUBLIC') {
       toast.success('Item published', {
-        description: 'Now visible to anyone in the public catalog.',
+        description: 'Now visible to anyone in OSCAL Data Products.',
       });
     } else if (next === 'ORGANIZATION') {
       toast.success('Item shared with organization', {

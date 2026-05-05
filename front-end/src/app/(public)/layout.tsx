@@ -22,7 +22,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       </header>
       <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
       <footer className="border-t border-border bg-muted/30 py-4 text-center text-xs text-muted-foreground">
-        Public OSCAL content. Sign in to download or rate.
+        OSCAL Data Products — public content. Sign in to download or rate.
       </footer>
     </div>
   );

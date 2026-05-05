@@ -55,7 +55,7 @@ export default function PublicCatalogPage() {
       <header className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <Library className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Public Catalog</h1>
+          <h1 className="text-2xl font-bold">OSCAL Data Products</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           Browse OSCAL content shared by the community. Sign in to download or rate.

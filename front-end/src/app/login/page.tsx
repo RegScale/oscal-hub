@@ -85,7 +85,7 @@ function LoginPageContent() {
         </Link>
         <p className="text-center text-sm text-muted-foreground mb-8">
           <Link href="/catalog" className="hover:underline">
-            Browse the public catalog
+            Browse OSCAL Data Products
           </Link>
           <span className="mx-2">·</span>
           No account needed

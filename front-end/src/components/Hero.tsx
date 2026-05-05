@@ -40,7 +40,7 @@ export function Hero() {
           <Link href="/catalog">
             <Button size="lg" variant="outline" className="text-lg px-8">
               <Library className="h-5 w-5 mr-2" />
-              Browse Public Catalog
+              Browse OSCAL Data Products
             </Button>
           </Link>
           <a
