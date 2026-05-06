@@ -53,17 +53,38 @@ BEGIN
 
     IF auth_count > 0 OR tpl_count > 0 THEN
         RAISE EXCEPTION
-          'V1.6 backfill incomplete. Authorizations missing org: % (ids: %). Templates missing org: % (ids: %). A SUPER_ADMIN must assign an active OrganizationMembership to each creator (or delete the orphan row), then re-run the migration.',
+          'V1.6 backfill incomplete. Authorizations missing org: % (ids: %, creator column: authorized_by). Templates missing org: % (ids: %, creator column: created_by). A SUPER_ADMIN must assign an active OrganizationMembership to each listed creator (or delete the orphan row), then re-run the migration.',
           auth_count, COALESCE(auth_ids, ''), tpl_count, COALESCE(tpl_ids, '');
     END IF;
 END $$;
 
--- 4. Enforce NOT NULL and FK.
-ALTER TABLE authorizations
-    ALTER COLUMN organization_id SET NOT NULL;
+-- 4. Enforce NOT NULL and FK. No ON DELETE clause: deleting an Organization
+--    with referencing authorizations should fail noisily, not silently cascade.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'authorizations'
+          AND column_name = 'organization_id'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE authorizations
+            ALTER COLUMN organization_id SET NOT NULL;
+    END IF;
+END $$;
 
-ALTER TABLE authorization_templates
-    ALTER COLUMN organization_id SET NOT NULL;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'authorization_templates'
+          AND column_name = 'organization_id'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE authorization_templates
+            ALTER COLUMN organization_id SET NOT NULL;
+    END IF;
+END $$;
 
 ALTER TABLE authorizations
     DROP CONSTRAINT IF EXISTS fk_authorizations_organization;
