@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.AuthorizationNotFoundException;
 import gov.nist.oscal.tools.api.model.ConditionOfApprovalRequest;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
@@ -40,6 +42,9 @@ public class AuthorizationService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AuthorizationOrgContext orgContext;
+
     /**
      * Create a new authorization
      */
@@ -55,11 +60,13 @@ public class AuthorizationService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        AuthorizationTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new RuntimeException("Template not found: " + templateId));
+        Organization userOrg = orgContext.requirePrimaryOrganization(user);
+        AuthorizationTemplate template = templateRepository.findByIdAndOrganization(templateId, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(templateId));
 
         // Create authorization
         Authorization authorization = new Authorization(name, sspItemId, template, user);
+        authorization.setOrganization(userOrg);
         authorization.setSarItemId(sarItemId);
         authorization.setVariableValues(variableValues);
 
@@ -115,8 +122,9 @@ public class AuthorizationService {
                                             List<ConditionOfApprovalRequest> conditionRequests) {
         logger.info("Updating authorization: {} by user: {}", id, username);
 
-        Authorization authorization = authorizationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(id));
 
         // Update name
         if (name != null) {
@@ -235,8 +243,9 @@ public class AuthorizationService {
     public void deleteAuthorization(Long id, String username) {
         logger.info("Deleting authorization: {} by user: {}", id, username);
 
-        Authorization authorization = authorizationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(id));
 
         // Check if user is the creator (you may want to add admin role check)
         if (!authorization.getAuthorizedBy().getUsername().equals(username)) {
@@ -253,6 +262,58 @@ public class AuthorizationService {
     @Transactional
     public Authorization save(Authorization authorization) {
         return authorizationRepository.save(authorization);
+    }
+
+    // ==================== Org-scoped methods (multi-tenant isolation) ====================
+
+    /**
+     * Get all authorizations scoped to the current user's primary organization
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> getAllAuthorizationsForUser(String username) {
+        Organization org = resolveUserOrg(username);
+        return authorizationRepository.findByOrganization(org);
+    }
+
+    /**
+     * Get a single authorization by ID, scoped to the current user's primary organization
+     */
+    @Transactional(readOnly = true)
+    public Authorization getAuthorizationForUser(Long id, String username) {
+        Organization org = resolveUserOrg(username);
+        return authorizationRepository.findByIdAndOrganization(id, org)
+                .orElseThrow(() -> new AuthorizationNotFoundException(id));
+    }
+
+    /**
+     * Search authorizations scoped to the current user's primary organization
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> searchAuthorizationsForUser(String username, String searchTerm) {
+        Organization org = resolveUserOrg(username);
+        if (searchTerm == null || searchTerm.isBlank()) {
+            return authorizationRepository.findByOrganization(org);
+        }
+        return authorizationRepository.searchByNameOrSspItemIdAndOrganization(searchTerm, org);
+    }
+
+    /**
+     * Get authorizations for a specific SSP, scoped to the current user's primary organization
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> getAuthorizationsBySspForUser(String sspItemId, String username) {
+        Organization org = resolveUserOrg(username);
+        return authorizationRepository.findBySspItemIdAndOrganization(sspItemId, org);
+    }
+
+    /**
+     * Resolve the primary organization for a username
+     */
+    private Organization resolveUserOrg(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User '" + username + "' not found."));
+        return orgContext.requirePrimaryOrganization(user);
     }
 
     /**
