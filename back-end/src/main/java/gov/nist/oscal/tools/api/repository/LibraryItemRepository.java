@@ -265,4 +265,110 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
         WHERE li.itemId = :itemId AND li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC
         """)
     Optional<LibraryItem> findPublicByItemId(@Param("itemId") String itemId);
+
+    // ==================== Public Analytics Queries ====================
+    // Aggregations over PUBLIC items only — these power the /catalog tabs.
+
+    /**
+     * Most-downloaded PUBLIC items, ordered by downloadCount desc.
+     * Pageable controls limit (e.g., PageRequest.of(0, 10)).
+     */
+    @Query("SELECT li FROM LibraryItem li " +
+           "WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           "ORDER BY li.downloadCount DESC, li.lastPublishedAt DESC")
+    List<LibraryItem> findMostDownloadedPublic(Pageable pageable);
+
+    /**
+     * Top-rated PUBLIC items. Items with at least :minRatings ratings only —
+     * a single 5-star rating shouldn't dominate the leaderboard. Tie-break by
+     * total rating count so well-loved items beat lightly-rated ones at the
+     * same average. Returns rows of [LibraryItem, avgRating, totalRatings].
+     */
+    @Query(value = """
+        SELECT li, AVG(r.rating) AS avgRating, COUNT(r) AS totalRatings
+        FROM LibraryItem li
+        JOIN LibraryItemRating r ON r.libraryItem.id = li.id
+        WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC
+        GROUP BY li.id
+        HAVING COUNT(r) >= :minRatings
+        ORDER BY AVG(r.rating) DESC, COUNT(r) DESC, li.lastPublishedAt DESC
+        """)
+    List<Object[]> findTopRatedPublic(@Param("minRatings") long minRatings, Pageable pageable);
+
+    /**
+     * Top user contributors — counts of PUBLIC items they've published, with
+     * total downloads across those items. Returns rows of:
+     *   [userId, username, firstName, lastName, uploadCount, totalDownloads]
+     */
+    @Query("SELECT li.createdBy.id, li.createdBy.username, " +
+           "       li.createdBy.firstName, li.createdBy.lastName, " +
+           "       COUNT(li), COALESCE(SUM(li.downloadCount), 0) " +
+           "FROM LibraryItem li " +
+           "WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           "  AND li.createdBy IS NOT NULL " +
+           "GROUP BY li.createdBy.id, li.createdBy.username, li.createdBy.firstName, li.createdBy.lastName " +
+           "ORDER BY COUNT(li) DESC, COALESCE(SUM(li.downloadCount), 0) DESC")
+    List<Object[]> findTopUserContributorsPublic(Pageable pageable);
+
+    /**
+     * Top organization contributors — counts of PUBLIC items their members
+     * have published. Returns rows of:
+     *   [organizationId, organizationName, logoUrl, uploadCount, totalDownloads]
+     */
+    @Query("SELECT li.organization.id, li.organization.name, li.organization.logoUrl, " +
+           "       COUNT(li), COALESCE(SUM(li.downloadCount), 0) " +
+           "FROM LibraryItem li " +
+           "WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC " +
+           "  AND li.organization IS NOT NULL " +
+           "GROUP BY li.organization.id, li.organization.name, li.organization.logoUrl " +
+           "ORDER BY COUNT(li) DESC, COALESCE(SUM(li.downloadCount), 0) DESC")
+    List<Object[]> findTopOrgContributorsPublic(Pageable pageable);
+
+    /**
+     * Per-OSCAL-type stats over PUBLIC items: count, average downloads, and
+     * average rating. Average rating is computed via a correlated subquery
+     * over LibraryItemRating so items without ratings don't drag the mean
+     * to zero. Returns rows of:
+     *   [oscalType, itemCount, avgDownloads, avgRating]
+     */
+    @Query(value = """
+        SELECT li.oscal_type,
+               COUNT(li.id),
+               COALESCE(AVG(li.download_count), 0),
+               COALESCE((
+                   SELECT AVG(r.rating)
+                   FROM library_item_ratings r
+                   JOIN library_items li2 ON li2.id = r.library_item_id
+                   WHERE li2.visibility = 'PUBLIC' AND li2.oscal_type = li.oscal_type
+               ), 0)
+        FROM library_items li
+        WHERE li.visibility = 'PUBLIC'
+        GROUP BY li.oscal_type
+        ORDER BY COUNT(li.id) DESC
+        """, nativeQuery = true)
+    List<Object[]> getTypeStatsPublic();
+
+    /**
+     * Uploads-over-time on PUBLIC items, bucketed by ISO week, since :since.
+     * Native Postgres query (uses date_trunc). Returns rows of [weekStart, count].
+     */
+    @Query(value = """
+        SELECT date_trunc('week', li.created_at) AS bucket, COUNT(li.id)
+        FROM library_items li
+        WHERE li.visibility = 'PUBLIC' AND li.created_at >= :since
+        GROUP BY bucket
+        ORDER BY bucket
+        """, nativeQuery = true)
+    List<Object[]> getUploadsPerWeekPublic(@Param("since") java.time.LocalDateTime since);
+
+    /**
+     * Top-level public-catalog totals.
+     */
+    @Query("SELECT COUNT(li) FROM LibraryItem li " +
+           "WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC")
+    long countPublic();
+
+    @Query("SELECT COALESCE(SUM(li.downloadCount), 0) FROM LibraryItem li " +
+           "WHERE li.visibility = gov.nist.oscal.tools.api.entity.Visibility.PUBLIC")
+    long sumDownloadsPublic();
 }

@@ -550,4 +550,23 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
 
     @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
     List<Object[]> countTopUsersByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    // ========================================
+    // Library download trend queries
+    // ========================================
+
+    /**
+     * Library item downloads bucketed by ISO week since :since. Powers the
+     * public catalog "Downloads over time" chart. Returns rows of
+     * [weekStart, count]. Native query so we can use date_trunc — JPQL has
+     * no portable equivalent.
+     */
+    @Query(value = """
+        SELECT date_trunc('week', a.timestamp) AS bucket, COUNT(a.id)
+        FROM audit_events a
+        WHERE a.event_type = 'LIBRARY_ITEM_DOWNLOAD' AND a.timestamp >= :since
+        GROUP BY bucket
+        ORDER BY bucket
+        """, nativeQuery = true)
+    List<Object[]> getLibraryDownloadsPerWeek(@Param("since") LocalDateTime since);
 }

@@ -121,6 +121,13 @@ public class SecurityConfig {
                 // items but must sign in to download them.
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items/*").permitAll()
+                // Public analytics tabs (Highest Rated, Most Downloaded, Top
+                // Contributors, Analytics charts) — all aggregate over PUBLIC
+                // items only, no auth required.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/most-downloaded").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/top-rated").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/top-contributors").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/analytics").permitAll()
                 // Spring's /error forward: when an unhandled controller exception
                 // bubbles up, Spring forwards to /error to render the response. If
                 // /error itself required auth, server-side 500s would be masked as

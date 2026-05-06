@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  User, LogOut, Settings, Cog, Library, ChevronDown,
+  Library, ChevronDown,
   FileText, Hammer, ShieldCheck, BarChart3, FileCheck,
   ArrowRightLeft, Folders, Clock, GitMerge,
   BookOpen, Code2,
@@ -17,6 +17,7 @@ import {
 // Swagger path. Mirrors the helper on the home page.
 const SWAGGER_URL = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090/api').replace(/\/api\/?$/, '')}/swagger-ui/index.html`;
 import { OrganizationSwitcher } from '@/components/organization-switcher';
+import { UserAvatarMenu } from '@/components/UserAvatarMenu';
 
 interface UserAction {
   href: string;
@@ -48,11 +49,9 @@ export function Navigation() {
   // the Browse link. Letting the global Navigation cover those routes keeps
   // the primary nav consistent everywhere; the popovers and login state both
   // still render correctly because the AuthProvider lives in the root layout.
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
-  const [isOrgAdminUser, setIsOrgAdminUser] = useState(false);
-  const [hasOrgContext, setHasOrgContext] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
 
   // Check localStorage on mount to determine admin status
@@ -63,11 +62,8 @@ export function Navigation() {
       try {
         const userData = JSON.parse(storedUser);
         setIsSuperAdminUser(userData.globalRole === 'SUPER_ADMIN');
-        setIsOrgAdminUser(userData.orgRole === 'ORG_ADMIN');
-        setHasOrgContext(!!userData.organizationId);
       } catch (e) {
         setIsSuperAdminUser(false);
-        setIsOrgAdminUser(false);
       }
     }
   }, []);
@@ -76,18 +72,12 @@ export function Navigation() {
   useEffect(() => {
     if (user) {
       setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
-      setIsOrgAdminUser(user.orgRole === 'ORG_ADMIN');
-      setHasOrgContext(!!user.organizationId);
     }
   }, [user]);
 
   // Check if user is super admin
   const isSuperAdmin = () => {
     return isSuperAdminUser || user?.globalRole === 'SUPER_ADMIN';
-  };
-
-  const isOrgAdmin = () => {
-    return isOrgAdminUser || user?.orgRole === 'ORG_ADMIN' || hasOrgContext;
   };
 
   return (
@@ -168,49 +158,8 @@ export function Navigation() {
           <div className="flex items-center space-x-4">
             {mounted && isAuthenticated && user ? (
               <>
-                <Link href="/profile">
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                    <User className="h-4 w-4" aria-hidden="true" />
-                    <span className="font-medium">{user.username}</span>
-                  </div>
-                </Link>
                 {!isSuperAdmin() && <OrganizationSwitcher />}
-                {!isSuperAdmin() && isOrgAdmin() && (
-                  <Link href="/org-admin">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-2"
-                      title="Setup - Admin Panel"
-                      aria-label="Setup - Admin Panel"
-                    >
-                      <Cog className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </Link>
-                )}
-                {isSuperAdmin() && (
-                  <Link href="/admin">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-2"
-                      title="Admin Dashboard"
-                      aria-label="Admin Dashboard"
-                    >
-                      <Settings className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </Link>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={logout}
-                  className="flex items-center space-x-2"
-                  aria-label="Logout"
-                >
-                  <LogOut className="h-4 w-4" aria-hidden="true" />
-                  <span>Logout</span>
-                </Button>
+                <UserAvatarMenu />
               </>
             ) : mounted ? (
               <Link href="/login">

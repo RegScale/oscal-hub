@@ -160,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organization: response.organization,
         phoneNumber: response.phoneNumber,
         logo: response.logo,
+        avatar: response.avatar,
       };
 
       // Save to state
@@ -202,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organization: response.organization,
         phoneNumber: response.phoneNumber,
         logo: response.logo,
+        avatar: response.avatar,
       };
 
       // Save to state

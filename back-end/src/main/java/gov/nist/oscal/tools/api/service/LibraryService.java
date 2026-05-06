@@ -8,7 +8,10 @@ import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.Visibility;
 import gov.nist.oscal.tools.api.model.AuditEventType;
+import gov.nist.oscal.tools.api.model.library.PublicCatalogAnalytics;
+import gov.nist.oscal.tools.api.model.library.PublicCatalogTopContributors;
 import gov.nist.oscal.tools.api.model.library.VisibilityChangeRequest;
+import gov.nist.oscal.tools.api.repository.AuditEventRepository;
 import gov.nist.oscal.tools.api.repository.LibraryItemRatingRepository;
 import gov.nist.oscal.tools.api.repository.LibraryItemRepository;
 import gov.nist.oscal.tools.api.repository.LibraryTagRepository;
@@ -63,6 +66,9 @@ public class LibraryService {
 
     @Autowired
     private LibraryItemRatingRepository libraryItemRatingRepository;
+
+    @Autowired(required = false)
+    private AuditEventRepository auditEventRepository;
 
     /**
      * Create a new library item with initial version
@@ -268,7 +274,50 @@ public class LibraryService {
         item.incrementDownloadCount();
         libraryItemRepository.save(item);
 
+        logDownloadAudit(item, item.getCurrentVersion(), caller, "AUTHENTICATED");
+
         return storageService.getLibraryFileContent(item.getCurrentVersion().getFilePath());
+    }
+
+    /**
+     * Record a LIBRARY_ITEM_DOWNLOAD audit event. Best-effort — never let an
+     * audit failure block the actual download.
+     */
+    private void logDownloadAudit(LibraryItem item, LibraryVersion version, User caller, String channel) {
+        if (auditLogService == null) {
+            return;
+        }
+        try {
+            String username = caller != null ? caller.getUsername() : "anonymous";
+            Long userId = caller != null ? caller.getId() : null;
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("itemId", item.getItemId());
+            metadata.put("title", item.getTitle());
+            metadata.put("oscalType", item.getOscalType());
+            metadata.put("channel", channel); // PUBLIC_LATEST, PUBLIC_VERSION, AUTHENTICATED
+            if (version != null) {
+                metadata.put("versionId", version.getVersionId());
+                metadata.put("versionNumber", version.getVersionNumber());
+                metadata.put("format", version.getFormat());
+            }
+            if (item.getOrganization() != null) {
+                metadata.put("organizationId", item.getOrganization().getId());
+                metadata.put("organizationName", item.getOrganization().getName());
+            }
+
+            auditLogService.logEvent(
+                    AuditEventType.LIBRARY_ITEM_DOWNLOAD,
+                    username,
+                    userId,
+                    "SUCCESS",
+                    item.getItemId(),
+                    "DOWNLOAD",
+                    metadata
+            );
+        } catch (RuntimeException e) {
+            logger.warn("Failed to record download audit for item {}: {}", item.getItemId(), e.getMessage());
+        }
     }
 
     /**
@@ -759,6 +808,11 @@ public class LibraryService {
 
     @Transactional
     public Optional<VersionDownload> getPublicLatestContent(String itemId) {
+        return getPublicLatestContent(itemId, null);
+    }
+
+    @Transactional
+    public Optional<VersionDownload> getPublicLatestContent(String itemId, User caller) {
         return libraryItemRepository.findPublicByItemId(itemId)
             .filter(item -> item.getCurrentVersion() != null)
             .map(item -> {
@@ -766,6 +820,7 @@ public class LibraryService {
                 String content = storageService.getLibraryFileContent(v.getFilePath());
                 item.incrementDownloadCount();
                 libraryItemRepository.save(item);
+                logDownloadAudit(item, v, caller, "PUBLIC_LATEST");
                 return new VersionDownload(content == null ? "" : content,
                                             v.getFileName(), v.getFormat());
             });
@@ -773,6 +828,11 @@ public class LibraryService {
 
     @Transactional
     public Optional<VersionDownload> getPublicVersionContent(String itemId, String versionId) {
+        return getPublicVersionContent(itemId, versionId, null);
+    }
+
+    @Transactional
+    public Optional<VersionDownload> getPublicVersionContent(String itemId, String versionId, User caller) {
         return libraryItemRepository.findPublicByItemId(itemId)
             .flatMap(item -> item.getVersions().stream()
                 .filter(v -> versionId.equals(v.getVersionId()))
@@ -781,8 +841,160 @@ public class LibraryService {
                     String content = storageService.getLibraryFileContent(v.getFilePath());
                     item.incrementDownloadCount();
                     libraryItemRepository.save(item);
+                    logDownloadAudit(item, v, caller, "PUBLIC_VERSION");
                     return new VersionDownload(content == null ? "" : content,
                                                 v.getFileName(), v.getFormat());
                 }));
+    }
+
+    // ==================== PUBLIC CATALOG ANALYTICS ====================
+    // Aggregations powering the /catalog tabs (Highest Rated, Most Downloaded,
+    // Top Contributors, Analytics). All scope to PUBLIC items only — nothing
+    // private leaks.
+
+    @Transactional(readOnly = true)
+    public List<gov.nist.oscal.tools.api.model.library.PublicItemSummary> getMostDownloadedPublic(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        return libraryItemRepository.findMostDownloadedPublic(
+                org.springframework.data.domain.PageRequest.of(0, safeLimit))
+            .stream()
+            .map(item -> {
+                Double avg = libraryItemRatingRepository.averageRatingForItem(item.getId());
+                Long total = libraryItemRatingRepository.countRatingsForItem(item.getId());
+                return gov.nist.oscal.tools.api.model.library.PublicItemSummary
+                        .fromEntity(item, avg, total);
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<gov.nist.oscal.tools.api.model.library.PublicItemSummary> getTopRatedPublic(int limit, long minRatings) {
+        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        long safeMin = Math.max(minRatings, 1);
+        return libraryItemRepository.findTopRatedPublic(safeMin,
+                org.springframework.data.domain.PageRequest.of(0, safeLimit))
+            .stream()
+            .map(row -> {
+                LibraryItem item = (LibraryItem) row[0];
+                Double avg = row[1] == null ? null : ((Number) row[1]).doubleValue();
+                Long total = row[2] == null ? null : ((Number) row[2]).longValue();
+                return gov.nist.oscal.tools.api.model.library.PublicItemSummary
+                        .fromEntity(item, avg, total);
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PublicCatalogTopContributors getTopContributorsPublic(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        var pageable = org.springframework.data.domain.PageRequest.of(0, safeLimit);
+
+        List<PublicCatalogTopContributors.UserContributor> users =
+                libraryItemRepository.findTopUserContributorsPublic(pageable).stream()
+                        .map(row -> {
+                            Long userId = row[0] == null ? null : ((Number) row[0]).longValue();
+                            String username = (String) row[1];
+                            String firstName = (String) row[2];
+                            String lastName = (String) row[3];
+                            long uploads = row[4] == null ? 0L : ((Number) row[4]).longValue();
+                            long downloads = row[5] == null ? 0L : ((Number) row[5]).longValue();
+                            String displayName = buildDisplayName(firstName, lastName, username);
+                            return new PublicCatalogTopContributors.UserContributor(
+                                    userId, username, displayName, uploads, downloads);
+                        })
+                        .collect(Collectors.toList());
+
+        List<PublicCatalogTopContributors.OrgContributor> orgs =
+                libraryItemRepository.findTopOrgContributorsPublic(pageable).stream()
+                        .map(row -> {
+                            Long orgId = row[0] == null ? null : ((Number) row[0]).longValue();
+                            String name = (String) row[1];
+                            String logoUrl = (String) row[2];
+                            long uploads = row[3] == null ? 0L : ((Number) row[3]).longValue();
+                            long downloads = row[4] == null ? 0L : ((Number) row[4]).longValue();
+                            return new PublicCatalogTopContributors.OrgContributor(
+                                    orgId, name, logoUrl, uploads, downloads);
+                        })
+                        .collect(Collectors.toList());
+
+        return new PublicCatalogTopContributors(users, orgs);
+    }
+
+    private static String buildDisplayName(String firstName, String lastName, String username) {
+        StringBuilder sb = new StringBuilder();
+        if (firstName != null && !firstName.isBlank()) sb.append(firstName.trim());
+        if (lastName != null && !lastName.isBlank()) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(lastName.trim());
+        }
+        return sb.length() > 0 ? sb.toString() : username;
+    }
+
+    @Transactional(readOnly = true)
+    public PublicCatalogAnalytics getPublicAnalytics(int weeksBack) {
+        int weeks = Math.min(Math.max(weeksBack, 1), 104); // cap at 2 years
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusWeeks(weeks);
+
+        long totalItems = libraryItemRepository.countPublic();
+        long totalDownloads = libraryItemRepository.sumDownloadsPublic();
+
+        // Contributor / org counts come from the per-leaderboard queries with
+        // a generous limit — public-catalog cardinality is small.
+        var unbounded = org.springframework.data.domain.PageRequest.of(0, 1000);
+        long contributorCount = libraryItemRepository.findTopUserContributorsPublic(unbounded).size();
+        long organizationCount = libraryItemRepository.findTopOrgContributorsPublic(unbounded).size();
+
+        List<PublicCatalogAnalytics.TypeStat> byType =
+                libraryItemRepository.getTypeStatsPublic().stream()
+                        .map(row -> new PublicCatalogAnalytics.TypeStat(
+                                (String) row[0],
+                                row[1] == null ? 0L : ((Number) row[1]).longValue(),
+                                row[2] == null ? 0.0 : ((Number) row[2]).doubleValue(),
+                                row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()))
+                        .collect(Collectors.toList());
+
+        List<PublicCatalogAnalytics.TimeBucket> uploadsOverTime =
+                libraryItemRepository.getUploadsPerWeekPublic(since).stream()
+                        .map(LibraryService::toTimeBucket)
+                        .collect(Collectors.toList());
+
+        // Downloads-over-time is sourced from the audit log so we get one
+        // row per actual download event (we only started recording these
+        // events after the audit-log change shipped, so historical buckets
+        // before that date will read as zero).
+        List<PublicCatalogAnalytics.TimeBucket> downloadsOverTime =
+                auditEventRepository == null
+                        ? List.of()
+                        : auditEventRepository.getLibraryDownloadsPerWeek(since).stream()
+                                .map(LibraryService::toTimeBucket)
+                                .collect(Collectors.toList());
+
+        return new PublicCatalogAnalytics(
+                new PublicCatalogAnalytics.Totals(
+                        totalItems, totalDownloads, contributorCount, organizationCount),
+                byType,
+                uploadsOverTime,
+                downloadsOverTime);
+    }
+
+    /**
+     * Shared converter for native time-bucket queries. Postgres returns
+     * date_trunc as java.sql.Timestamp; convert to LocalDate (the start of
+     * the week) which round-trips cleanly to JSON.
+     */
+    private static PublicCatalogAnalytics.TimeBucket toTimeBucket(Object[] row) {
+        Object ts = row[0];
+        java.time.LocalDate weekStart;
+        if (ts instanceof java.sql.Timestamp t) {
+            weekStart = t.toLocalDateTime().toLocalDate();
+        } else if (ts instanceof java.time.LocalDateTime ldt) {
+            weekStart = ldt.toLocalDate();
+        } else if (ts instanceof java.time.LocalDate ld) {
+            weekStart = ld;
+        } else {
+            weekStart = java.time.LocalDate.now();
+        }
+        long count = row[1] == null ? 0L : ((Number) row[1]).longValue();
+        return new PublicCatalogAnalytics.TimeBucket(weekStart, count);
     }
 }

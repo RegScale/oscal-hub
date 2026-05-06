@@ -453,7 +453,18 @@ public enum AuditEventType {
      * <p>Risk Level: LOW</p>
      * <p>Retention: MEDIUM</p>
      */
-    LIBRARY_ITEM_VISIBILITY_CHANGED("Library", "Library item visibility changed", "LOW");
+    LIBRARY_ITEM_VISIBILITY_CHANGED("Library", "Library item visibility changed", "LOW"),
+
+    /**
+     * Library item content was downloaded. Captured for both authenticated
+     * downloads via /api/library/{id}/content and anonymous downloads via
+     * /api/public/catalog/items/{id}/content. Powers the public catalog
+     * analytics "Downloads over time" chart and lets us reconstruct who
+     * downloaded what when (for content-provenance and abuse review).
+     * <p>Risk Level: LOW (read access; routine activity)</p>
+     * <p>Retention: 90 days (LOW default)</p>
+     */
+    LIBRARY_ITEM_DOWNLOAD("Library", "Library item downloaded", "LOW");
 
     // ========================================
     // Enum Fields

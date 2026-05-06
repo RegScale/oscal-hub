@@ -464,6 +464,57 @@ class ApiClient {
   }
 
   /**
+   * Upload user avatar (base64-encoded data URL). Distinct from uploadLogo,
+   * which sets the company logo used in authorization templates.
+   */
+  async uploadAvatar(avatar: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/avatar`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ avatar }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload avatar';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            errorMessage = error.error || error.message || errorMessage;
+          } else {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          }
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+
+        if (response.status === 403) {
+          throw new Error('Access denied. Please make sure you are logged in.');
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        user.avatar = result.avatar;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Validate an OSCAL document
    */
   async validate(
@@ -3058,15 +3109,21 @@ class ApiClient {
 
       const result = await response.json();
 
-      // Get existing user data to preserve firstName/lastName
+      // Preserve fields not returned by select-organization (firstName,
+      // lastName, logo, avatar) so they don't get wiped from the header
+      // mid-session.
       const existingUser = localStorage.getItem('user');
       let firstName = '';
       let lastName = '';
+      let logo: string | undefined;
+      let avatar: string | undefined;
       if (existingUser) {
         try {
           const parsed = JSON.parse(existingUser);
           firstName = parsed.firstName || '';
           lastName = parsed.lastName || '';
+          logo = parsed.logo;
+          avatar = parsed.avatar;
         } catch (e) {
           // ignore
         }
@@ -3085,6 +3142,8 @@ class ApiClient {
         orgRole: result.orgRole,
         globalRole: result.globalRole,
         mustChangePassword: result.mustChangePassword,
+        logo,
+        avatar,
       }));
 
       return result;
@@ -3125,15 +3184,20 @@ class ApiClient {
 
       const result = await response.json();
 
-      // Get existing user data to preserve firstName/lastName
+      // Preserve fields not returned by switch-organization so they don't
+      // get wiped (firstName, lastName, logo, avatar).
       const existingUser = localStorage.getItem('user');
       let firstName = '';
       let lastName = '';
+      let logo: string | undefined;
+      let avatar: string | undefined;
       if (existingUser) {
         try {
           const parsed = JSON.parse(existingUser);
           firstName = parsed.firstName || '';
           lastName = parsed.lastName || '';
+          logo = parsed.logo;
+          avatar = parsed.avatar;
         } catch (e) {
           // ignore
         }
@@ -3152,6 +3216,8 @@ class ApiClient {
         orgRole: result.orgRole,
         globalRole: result.globalRole,
         mustChangePassword: result.mustChangePassword,
+        logo,
+        avatar,
       }));
 
       return result;

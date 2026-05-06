@@ -22,6 +22,52 @@ export interface PublicCatalogPage {
   size: number;
 }
 
+export interface UserContributor {
+  userId: number | null;
+  username: string;
+  displayName: string;
+  uploadCount: number;
+  totalDownloads: number;
+}
+
+export interface OrgContributor {
+  organizationId: number | null;
+  name: string;
+  logoUrl: string | null;
+  uploadCount: number;
+  totalDownloads: number;
+}
+
+export interface PublicCatalogTopContributors {
+  users: UserContributor[];
+  organizations: OrgContributor[];
+}
+
+export interface TypeStat {
+  oscalType: string;
+  itemCount: number;
+  avgDownloads: number;
+  avgRating: number;
+}
+
+export interface TimeBucket {
+  /** ISO date string for the start of the week (Monday). */
+  weekStart: string;
+  count: number;
+}
+
+export interface PublicCatalogAnalytics {
+  totals: {
+    totalItems: number;
+    totalDownloads: number;
+    contributorCount: number;
+    organizationCount: number;
+  };
+  byType: TypeStat[];
+  uploadsOverTime: TimeBucket[];
+  downloadsOverTime: TimeBucket[];
+}
+
 async function fetchPublicJson(url: string): Promise<any> {
   const r = await fetch(url, { headers: { Accept: "application/json" } });
   if (!r.ok) {
@@ -66,6 +112,20 @@ export const publicCatalogApi = {
       ?? suggestedFilename ?? `${itemId}.json`;
     triggerBlobDownload(blob, filename);
   },
+
+  /** Top-N PUBLIC items by download count. */
+  mostDownloaded: (limit = 10): Promise<PublicItemSummary[]> =>
+    fetchPublicJson(`${PUBLIC_BASE}/most-downloaded?limit=${limit}`),
+
+  /** Top-N PUBLIC items by average rating (with a minimum-rating-count floor). */
+  topRated: (limit = 10, minRatings = 1): Promise<PublicItemSummary[]> =>
+    fetchPublicJson(`${PUBLIC_BASE}/top-rated?limit=${limit}&minRatings=${minRatings}`),
+
+  topContributors: (limit = 10): Promise<PublicCatalogTopContributors> =>
+    fetchPublicJson(`${PUBLIC_BASE}/top-contributors?limit=${limit}`),
+
+  analytics: (weeksBack = 26): Promise<PublicCatalogAnalytics> =>
+    fetchPublicJson(`${PUBLIC_BASE}/analytics?weeks=${weeksBack}`),
 
   /** Same as download() but for a specific version. */
   downloadVersion: async (itemId: string, versionId: string, suggestedFilename?: string): Promise<void> => {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Lock, Save, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Save, Loader2, Upload, Image as ImageIcon, UserCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,10 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [pendingLogo, setPendingLogo] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatar, setPendingAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Update form state when user data loads
   useEffect(() => {
@@ -52,6 +55,7 @@ export default function ProfilePage() {
       setOrganization(user.organization || '');
       setPhoneNumber(user.phoneNumber || '');
       setLogoPreview(user.logo || null);
+      setAvatarPreview(user.avatar || null);
     }
   }, [user]);
 
@@ -121,8 +125,8 @@ export default function ProfilePage() {
         updates.phoneNumber = phoneNumber;
       }
 
-      // Check if there are any changes (including logo)
-      if (Object.keys(updates).length === 0 && !pendingLogo) {
+      // Check if there are any changes (including logo or avatar)
+      if (Object.keys(updates).length === 0 && !pendingLogo && !pendingAvatar) {
         setErrorMessage('No changes to save');
         setIsUpdating(false);
         return;
@@ -137,6 +141,12 @@ export default function ProfilePage() {
       if (pendingLogo) {
         await apiClient.uploadLogo(pendingLogo);
         setPendingLogo(null);
+      }
+
+      // Upload avatar if there's a pending avatar change
+      if (pendingAvatar) {
+        await apiClient.uploadAvatar(pendingAvatar);
+        setPendingAvatar(null);
       }
 
       // Fetch the updated user data from the server
@@ -180,6 +190,7 @@ export default function ProfilePage() {
       setOrganization(updatedUser.organization || '');
       setPhoneNumber(updatedUser.phoneNumber || '');
       setLogoPreview(updatedUser.logo || null);
+      setAvatarPreview(updatedUser.avatar || null);
 
       setSuccessMessage('Profile updated successfully');
       toast.success('Profile updated successfully');
@@ -221,6 +232,40 @@ export default function ProfilePage() {
       setLogoPreview(base64Logo);
       setPendingLogo(base64Logo);
       toast.success('Logo selected. Click "Save Profile" or "Save All Changes" to upload.');
+    };
+    reader.onerror = () => {
+      setErrorMessage('Failed to read file. Please try again.');
+      toast.error('Failed to read file');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please select an image file');
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Same 2MB cap as the logo upload — backend reuses the logo validator.
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMessage('Avatar file size must be less than 2MB');
+      toast.error('Avatar file size must be less than 2MB');
+      return;
+    }
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Avatar = reader.result as string;
+      setAvatarPreview(base64Avatar);
+      setPendingAvatar(base64Avatar);
+      toast.success('Avatar selected. Click "Save Profile" or "Save All Changes" to upload.');
     };
     reader.onerror = () => {
       setErrorMessage('Failed to read file. Please try again.');
@@ -286,6 +331,58 @@ export default function ProfilePage() {
                 <Label className="text-sm text-muted-foreground">User ID</Label>
                 <p className="text-sm font-mono text-muted-foreground">{user?.userId}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Avatar Upload Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCircle className="h-5 w-5" />
+                Avatar
+              </CardTitle>
+              <CardDescription>
+                Picture shown next to your name in the header. If no avatar is set, your initials are shown instead.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {avatarPreview && (
+                <div className="flex justify-center p-4 border rounded-lg bg-muted/50">
+                  <img
+                    src={avatarPreview}
+                    alt="User avatar"
+                    className="h-24 w-24 rounded-full object-cover"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUpdating}
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {avatarPreview ? 'Change Avatar' : 'Select Avatar'}
+                </Button>
+              </div>
+              {pendingAvatar && (
+                <p className="text-sm text-amber-600 font-medium">
+                  Avatar selected. Click &quot;Save Profile&quot; or &quot;Save All Changes&quot; below to upload.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Supported formats: PNG, JPG, GIF (max 2MB). Square images work best — round-cropped in the header.
+              </p>
             </CardContent>
           </Card>
 
