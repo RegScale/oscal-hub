@@ -46,6 +46,10 @@ public class Authorization {
     @JoinColumn(name = "authorized_by", nullable = false)
     private User authorizedBy;
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
+
     @Column(name = "authorized_at", nullable = false)
     private LocalDateTime authorizedAt;
 
@@ -392,5 +396,13 @@ public class Authorization {
 
     public void setCertificateVerificationNotes(String certificateVerificationNotes) {
         this.certificateVerificationNotes = certificateVerificationNotes;
+    }
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
     }
 }
