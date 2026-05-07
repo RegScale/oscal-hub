@@ -3,6 +3,7 @@ package gov.nist.oscal.tools.api.model;
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
 import org.junit.jupiter.api.Test;
 
@@ -87,9 +88,14 @@ class AuthorizationResponseTest {
         variableValues.put("systemName", "Test System");
         variableValues.put("authorizationDate", "2025-01-01");
 
+        // Create mock organization
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         // Create mock authorization
         Authorization authorization = mock(Authorization.class);
         when(authorization.getId()).thenReturn(1L);
+        when(authorization.getOrganization()).thenReturn(mockOrg);
         when(authorization.getName()).thenReturn("Production System ATO");
         when(authorization.getSspItemId()).thenReturn("ssp-12345");
         when(authorization.getSarItemId()).thenReturn("sar-67890");
@@ -170,8 +176,12 @@ class AuthorizationResponseTest {
         when(template.getId()).thenReturn(1L);
         when(template.getName()).thenReturn("Template");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         Authorization authorization = mock(Authorization.class);
         when(authorization.getId()).thenReturn(1L);
+        when(authorization.getOrganization()).thenReturn(mockOrg);
         when(authorization.getName()).thenReturn("Auth");
         when(authorization.getSspItemId()).thenReturn("ssp-1");
         when(authorization.getTemplate()).thenReturn(template);

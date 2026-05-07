@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.model;
 
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -38,9 +39,14 @@ class AuthorizationTemplateResponseTest {
         User updater = mock(User.class);
         when(updater.getUsername()).thenReturn("jane.smith");
 
+        // Create mock organization
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         // Create mock template
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(1L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("ATO Template");
         when(template.getContent()).thenReturn("Authorization content with {{variable1}} and {{variable2}}");
         when(template.getCreatedBy()).thenReturn(creator);
@@ -68,8 +74,12 @@ class AuthorizationTemplateResponseTest {
         User creator = mock(User.class);
         when(creator.getUsername()).thenReturn("original.user");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(2L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("New Template");
         when(template.getContent()).thenReturn("Content");
         when(template.getCreatedBy()).thenReturn(creator);
@@ -167,8 +177,12 @@ class AuthorizationTemplateResponseTest {
         User creator = mock(User.class);
         when(creator.getUsername()).thenReturn("user");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(1L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("Template");
         when(template.getContent()).thenReturn("No variables");
         when(template.getCreatedBy()).thenReturn(creator);
@@ -189,8 +203,12 @@ class AuthorizationTemplateResponseTest {
         User creator = mock(User.class);
         when(creator.getUsername()).thenReturn("user");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(1L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("Complex Template");
         when(template.getContent()).thenReturn("Content with many variables");
         when(template.getCreatedBy()).thenReturn(creator);
@@ -298,8 +316,12 @@ class AuthorizationTemplateResponseTest {
         User creator = mock(User.class);
         when(creator.getUsername()).thenReturn("template.creator");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(10L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("System Authorization Template");
         when(template.getContent()).thenReturn("Authorization for {{systemName}} expires on {{expirationDate}}");
         when(template.getCreatedBy()).thenReturn(creator);
@@ -326,8 +348,12 @@ class AuthorizationTemplateResponseTest {
         User creator = mock(User.class);
         when(creator.getUsername()).thenReturn("user");
 
+        Organization mockOrg = new Organization();
+        mockOrg.setId(100L);
+
         AuthorizationTemplate template = mock(AuthorizationTemplate.class);
         when(template.getId()).thenReturn(1L);
+        when(template.getOrganization()).thenReturn(mockOrg);
         when(template.getName()).thenReturn("Template");
         when(template.getContent()).thenReturn("Content");
         when(template.getCreatedBy()).thenReturn(creator);
