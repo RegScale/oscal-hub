@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,8 +50,33 @@ class FedrampPoamExcelParserTest {
 
             org.assertj.core.api.Assertions.assertThatThrownBy(
                     () -> new FedrampPoamExcelParser().parse(new ByteArrayInputStream(xlsx)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("POA&M");
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST))
+                    .hasMessageContaining("POA&M")
+                    .hasMessageContaining("Cover Page");
+        }
+    }
+
+    @Test
+    void recognizesAlternateSheetNaming() throws Exception {
+        try (XSSFWorkbook wb = new XSSFWorkbook()) {
+            // Variant: word order swapped + no ampersand
+            Sheet s = wb.createSheet("POAM Open Items 2024");
+            writeHeader(s);
+            Row r = s.createRow(1);
+            r.createCell(0).setCellValue("X-1");
+            r.createCell(1).setCellValue("Alt-named");
+            r.createCell(3).setCellValue("Low");
+            r.createCell(7).setCellValue("Ongoing");
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            wb.write(out);
+
+            ParsedPoam parsed = new FedrampPoamExcelParser().parse(new ByteArrayInputStream(out.toByteArray()));
+            assertThat(parsed.items()).hasSize(1);
+            assertThat(parsed.items().get(0).status())
+                    .isEqualTo(ConMonItemStatus.OPEN);
         }
     }
 

@@ -7,7 +7,9 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,10 +19,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * Parses a FedRAMP POA&amp;M Excel template (.xlsx). Looks for sheets whose names
- * contain "Open POA&amp;M Items" and/or "Closed POA&amp;M Items" (case-insensitive).
+ * contain both an open/closed indicator and a POA&amp;M indicator (case-insensitive).
+ * Recognized variants include "Open POA&amp;M Items", "POA&amp;M Open Items 2024",
+ * "POAM Open Items", "Closed POAM", etc.
  * Header row matched permissively against known columns.
  */
 @Component
@@ -28,12 +33,18 @@ public class FedrampPoamExcelParser {
 
     public ParsedPoam parse(InputStream input) {
         try (Workbook wb = WorkbookFactory.create(input)) {
-            Sheet open = findSheet(wb, "open poa&m items");
-            Sheet closed = findSheet(wb, "closed poa&m items");
+            Sheet open = findOpenSheet(wb);
+            Sheet closed = findClosedSheet(wb);
             if (open == null && closed == null) {
-                throw new IllegalArgumentException(
-                        "Workbook does not contain expected POA&M sheets " +
-                        "(\"Open POA&M Items\" or \"Closed POA&M Items\").");
+                List<String> actualSheets = new ArrayList<>();
+                for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+                    actualSheets.add(wb.getSheetAt(i).getSheetName());
+                }
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Workbook does not contain a POA&M sheet. Found sheets: " + actualSheets
+                                + ". Expected at least one sheet whose name contains \"Open\" or \"Closed\" together with \"POA&M\" (or \"POAM\")."
+                );
             }
 
             List<ParsedPoamItem> items = new ArrayList<>();
@@ -44,17 +55,27 @@ public class FedrampPoamExcelParser {
                 items.addAll(parseSheet(closed, ConMonItemStatus.CLOSED));
             }
             return new ParsedPoam(null, null, null, null, items);
-        } catch (IllegalArgumentException e) {
+        } catch (ResponseStatusException e) {
             throw e;
         } catch (IOException e) {
             throw new RuntimeException("Failed to read Excel workbook: " + e.getMessage(), e);
         }
     }
 
-    private Sheet findSheet(Workbook wb, String needle) {
+    private static Sheet findOpenSheet(Workbook wb) {
+        return findSheet(wb, name -> name.contains("open") && (name.contains("poa&m") || name.contains("poam")));
+    }
+
+    private static Sheet findClosedSheet(Workbook wb) {
+        return findSheet(wb, name -> name.contains("closed") && (name.contains("poa&m") || name.contains("poam")));
+    }
+
+    private static Sheet findSheet(Workbook wb, Predicate<String> matcher) {
         for (int i = 0; i < wb.getNumberOfSheets(); i++) {
             Sheet s = wb.getSheetAt(i);
-            if (s.getSheetName() != null && s.getSheetName().toLowerCase().contains(needle)) return s;
+            if (s.getSheetName() != null && matcher.test(s.getSheetName().toLowerCase())) {
+                return s;
+            }
         }
         return null;
     }
