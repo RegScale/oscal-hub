@@ -21,22 +21,8 @@ ignore:
       type: npm
       location: "/usr/lib/node_modules/**"
 
-  # ----------------------------------------------------------------
-  # Spring Boot 4.0.6 bundles Netty 4.2.12.Final via its dependency
-  # management. Fixes are available in newer Netty releases; resolved
-  # by either bumping Spring Boot to a patch release that picks up the
-  # fix or by overriding <netty.version> in back-end/pom.xml. Tracked
-  # as a separate dependency-bump PR — see PR description.
-  # ----------------------------------------------------------------
-  - vulnerability: GHSA-2c5c-chwr-9hqw      # netty-codec-http3 — high
-  - vulnerability: GHSA-57rv-r2g8-2cj3      # netty-codec-http  — high
-  - vulnerability: GHSA-cm33-6792-r9fm      # netty-codec-dns   — high
-  - vulnerability: GHSA-mj4r-2hfc-f8p6      # netty-codec-compression — high
-  - vulnerability: GHSA-rwm7-x88c-3g2p      # netty-transport-native-epoll — high
-
-  # ----------------------------------------------------------------
-  # PostgreSQL JDBC 42.7.10 (org.postgresql:postgresql).
-  # Fixed in a newer 42.7.x patch. Resolved by bumping the postgresql
-  # dependency in back-end/pom.xml. Tracked as a separate bump PR.
-  # ----------------------------------------------------------------
-  - vulnerability: GHSA-98qh-xjc8-98pq      # postgresql JDBC — high
+  # The Netty 4.2.x and PostgreSQL JDBC entries previously here were resolved
+  # by overriding <netty.version> and <postgresql.version> in back-end/pom.xml.
+  # If those overrides are reverted (e.g. when a Spring Boot patch release
+  # ships the same fixes), the corresponding findings should not return —
+  # add fresh entries here only after deliberate review.
