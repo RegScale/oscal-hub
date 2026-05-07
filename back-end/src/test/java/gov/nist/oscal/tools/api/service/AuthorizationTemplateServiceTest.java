@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
@@ -32,14 +33,22 @@ class AuthorizationTemplateServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuthorizationOrgContext orgContext;
+
     @InjectMocks
     private AuthorizationTemplateService authorizationTemplateService;
 
     private User mockUser;
     private AuthorizationTemplate mockTemplate;
+    private Organization mockOrg;
 
     @BeforeEach
     void setUp() {
+        mockOrg = new Organization();
+        mockOrg.setId(1L);
+        mockOrg.setName("Test Org");
+
         mockUser = new User();
         mockUser.setId(1L);
         mockUser.setUsername("testuser");
@@ -56,6 +65,7 @@ class AuthorizationTemplateServiceTest {
     @Test
     void testCreateTemplate_success() {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
         when(templateRepository.save(any(AuthorizationTemplate.class))).thenReturn(mockTemplate);
 
         AuthorizationTemplate result = authorizationTemplateService.createTemplate(
@@ -67,7 +77,7 @@ class AuthorizationTemplateServiceTest {
         assertNotNull(result);
         assertEquals("Test Template", result.getName());
 
-        verify(userRepository).findByUsername("testuser");
+        verify(userRepository, atLeast(1)).findByUsername("testuser");
         verify(templateRepository).save(any(AuthorizationTemplate.class));
     }
 
@@ -85,8 +95,9 @@ class AuthorizationTemplateServiceTest {
 
     @Test
     void testUpdateTemplate_success() {
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
         when(templateRepository.save(any(AuthorizationTemplate.class))).thenReturn(mockTemplate);
 
         AuthorizationTemplate result = authorizationTemplateService.updateTemplate(
@@ -97,14 +108,15 @@ class AuthorizationTemplateServiceTest {
         );
 
         assertNotNull(result);
-        verify(templateRepository).findById(1L);
+        verify(templateRepository).findByIdAndOrganization(1L, mockOrg);
         verify(templateRepository).save(any(AuthorizationTemplate.class));
     }
 
     @Test
     void testUpdateTemplate_partialUpdate() {
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
         when(templateRepository.save(any(AuthorizationTemplate.class))).thenReturn(mockTemplate);
 
         // Only update name, leave content as null
@@ -121,19 +133,19 @@ class AuthorizationTemplateServiceTest {
 
     @Test
     void testUpdateTemplate_notFound() {
-        when(templateRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(999L, mockOrg)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
             authorizationTemplateService.updateTemplate(999L, "Name", "Content", "testuser");
         });
 
-        verify(templateRepository).findById(999L);
         verify(templateRepository, never()).save(any());
     }
 
     @Test
     void testUpdateTemplate_userNotFound() {
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
         when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -267,35 +279,42 @@ class AuthorizationTemplateServiceTest {
 
     @Test
     void testDeleteTemplate_success() {
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
 
         authorizationTemplateService.deleteTemplate(1L, "testuser");
 
-        verify(templateRepository).findById(1L);
+        verify(templateRepository).findByIdAndOrganization(1L, mockOrg);
         verify(templateRepository).delete(mockTemplate);
     }
 
     @Test
     void testDeleteTemplate_notFound() {
-        when(templateRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(999L, mockOrg)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
             authorizationTemplateService.deleteTemplate(999L, "testuser");
         });
 
-        verify(templateRepository).findById(999L);
         verify(templateRepository, never()).delete(any());
     }
 
     @Test
     void testDeleteTemplate_notCreator() {
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
+        User otherUser = new User();
+        otherUser.setId(99L);
+        otherUser.setUsername("otheruser");
+        when(userRepository.findByUsername("otheruser")).thenReturn(Optional.of(otherUser));
+        when(orgContext.requirePrimaryOrganization(otherUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
 
         assertThrows(RuntimeException.class, () -> {
             authorizationTemplateService.deleteTemplate(1L, "otheruser");
         });
 
-        verify(templateRepository).findById(1L);
         verify(templateRepository, never()).delete(any());
     }
 

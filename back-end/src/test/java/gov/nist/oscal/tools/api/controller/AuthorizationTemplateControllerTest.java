@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.config.RateLimitConfig;
 import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.AuthorizationTemplateRequest;
 import gov.nist.oscal.tools.api.security.JwtUtil;
@@ -64,12 +65,17 @@ class AuthorizationTemplateControllerTest {
     }
 
     private AuthorizationTemplate createMockTemplate(Long id, String name, String content, User user) {
+        Organization org = new Organization();
+        org.setId(1L);
+        org.setName("Test Org");
+
         AuthorizationTemplate template = new AuthorizationTemplate();
         template.setId(id);
         template.setName(name);
         template.setContent(content);
         template.setCreatedBy(user);
         template.setLastUpdatedBy(user);
+        template.setOrganization(org);
         template.setCreatedAt(java.time.LocalDateTime.now());
         template.setLastUpdatedAt(java.time.LocalDateTime.now());
         return template;
@@ -184,7 +190,7 @@ class AuthorizationTemplateControllerTest {
 
         Set<String> variables = new HashSet<>(Arrays.asList("var1"));
 
-        when(templateService.getTemplate(1L)).thenReturn(template);
+        when(templateService.getTemplateForUser(1L, "testuser")).thenReturn(template);
         when(templateService.extractVariables(anyString())).thenReturn(variables);
 
         // Act & Assert
@@ -194,20 +200,20 @@ class AuthorizationTemplateControllerTest {
                 .andExpect(jsonPath("$.name").value("Test Template"))
                 .andExpect(jsonPath("$.variables.length()").value(1));
 
-        verify(templateService, times(1)).getTemplate(1L);
+        verify(templateService, times(1)).getTemplateForUser(1L, "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetTemplate_notFound_returns404() throws Exception {
         // Arrange
-        when(templateService.getTemplate(999L)).thenThrow(new RuntimeException("Not found"));
+        when(templateService.getTemplateForUser(999L, "testuser")).thenThrow(new RuntimeException("Not found"));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/999"))
                 .andExpect(status().isNotFound());
 
-        verify(templateService, times(1)).getTemplate(999L);
+        verify(templateService, times(1)).getTemplateForUser(999L, "testuser");
     }
 
     @Test
@@ -223,7 +229,7 @@ class AuthorizationTemplateControllerTest {
 
         List<AuthorizationTemplate> templates = Arrays.asList(template1, template2);
 
-        when(templateService.getAllTemplates()).thenReturn(templates);
+        when(templateService.getAllTemplatesForUser("testuser")).thenReturn(templates);
         when(templateService.extractVariables(anyString())).thenReturn(new HashSet<>());
 
         // Act & Assert
@@ -233,14 +239,14 @@ class AuthorizationTemplateControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Template 1"))
                 .andExpect(jsonPath("$[1].name").value("Template 2"));
 
-        verify(templateService, times(1)).getAllTemplates();
+        verify(templateService, times(1)).getAllTemplatesForUser("testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetAllTemplates_serviceException_returns500() throws Exception {
         // Arrange
-        when(templateService.getAllTemplates()).thenThrow(new RuntimeException("Service error"));
+        when(templateService.getAllTemplatesForUser("testuser")).thenThrow(new RuntimeException("Service error"));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates"))
@@ -257,7 +263,7 @@ class AuthorizationTemplateControllerTest {
 
         List<AuthorizationTemplate> templates = Arrays.asList(template1);
 
-        when(templateService.getRecentlyUpdated(10)).thenReturn(templates);
+        when(templateService.getRecentlyUpdatedForUser("testuser", 10)).thenReturn(templates);
         when(templateService.extractVariables(anyString())).thenReturn(new HashSet<>());
 
         // Act & Assert
@@ -267,28 +273,28 @@ class AuthorizationTemplateControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Recent Template"));
 
-        verify(templateService, times(1)).getRecentlyUpdated(10);
+        verify(templateService, times(1)).getRecentlyUpdatedForUser("testuser", 10);
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetRecentlyUpdated_defaultLimit_uses10() throws Exception {
         // Arrange
-        when(templateService.getRecentlyUpdated(10)).thenReturn(Arrays.asList());
+        when(templateService.getRecentlyUpdatedForUser("testuser", 10)).thenReturn(Arrays.asList());
         when(templateService.extractVariables(anyString())).thenReturn(new HashSet<>());
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/recent"))
                 .andExpect(status().isOk());
 
-        verify(templateService, times(1)).getRecentlyUpdated(10);
+        verify(templateService, times(1)).getRecentlyUpdatedForUser("testuser", 10);
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetRecentlyUpdated_serviceException_returns500() throws Exception {
         // Arrange
-        when(templateService.getRecentlyUpdated(anyInt())).thenThrow(new RuntimeException("Service error"));
+        when(templateService.getRecentlyUpdatedForUser(anyString(), anyInt())).thenThrow(new RuntimeException("Service error"));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/recent"))
@@ -305,7 +311,7 @@ class AuthorizationTemplateControllerTest {
 
         List<AuthorizationTemplate> templates = Arrays.asList(template1);
 
-        when(templateService.searchTemplates("matching")).thenReturn(templates);
+        when(templateService.searchTemplatesForUser("testuser", "matching")).thenReturn(templates);
         when(templateService.extractVariables(anyString())).thenReturn(new HashSet<>());
 
         // Act & Assert
@@ -315,28 +321,28 @@ class AuthorizationTemplateControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Matching Template"));
 
-        verify(templateService, times(1)).searchTemplates("matching");
+        verify(templateService, times(1)).searchTemplatesForUser("testuser", "matching");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testSearchTemplates_noQuery_searchesAll() throws Exception {
         // Arrange
-        when(templateService.searchTemplates(null)).thenReturn(Arrays.asList());
+        when(templateService.searchTemplatesForUser("testuser", null)).thenReturn(Arrays.asList());
         when(templateService.extractVariables(anyString())).thenReturn(new HashSet<>());
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/search"))
                 .andExpect(status().isOk());
 
-        verify(templateService, times(1)).searchTemplates(null);
+        verify(templateService, times(1)).searchTemplatesForUser("testuser", null);
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testSearchTemplates_serviceException_returns500() throws Exception {
         // Arrange
-        when(templateService.searchTemplates(anyString())).thenThrow(new RuntimeException("Service error"));
+        when(templateService.searchTemplatesForUser(anyString(), anyString())).thenThrow(new RuntimeException("Service error"));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/search")
@@ -348,30 +354,35 @@ class AuthorizationTemplateControllerTest {
     @WithMockUser(username = "testuser")
     void testGetTemplateVariables_success_returnsVariables() throws Exception {
         // Arrange
+        User mockUser = createMockUser("testuser");
+        AuthorizationTemplate template = createMockTemplate(
+                1L, "Test Template", "Content with {{var1}} {{var2}} {{var3}}", mockUser);
+
         Set<String> variables = new HashSet<>(Arrays.asList("var1", "var2", "var3"));
 
-        when(templateService.extractVariablesFromTemplate(1L)).thenReturn(variables);
+        when(templateService.getTemplateForUser(1L, "testuser")).thenReturn(template);
+        when(templateService.extractVariables(anyString())).thenReturn(variables);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/1/variables"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.variables.length()").value(3));
 
-        verify(templateService, times(1)).extractVariablesFromTemplate(1L);
+        verify(templateService, times(1)).getTemplateForUser(1L, "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetTemplateVariables_notFound_returns404() throws Exception {
         // Arrange
-        when(templateService.extractVariablesFromTemplate(999L))
+        when(templateService.getTemplateForUser(999L, "testuser"))
                 .thenThrow(new RuntimeException("Not found"));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorization-templates/999/variables"))
                 .andExpect(status().isNotFound());
 
-        verify(templateService, times(1)).extractVariablesFromTemplate(999L);
+        verify(templateService, times(1)).getTemplateForUser(999L, "testuser");
     }
 
     @Test
