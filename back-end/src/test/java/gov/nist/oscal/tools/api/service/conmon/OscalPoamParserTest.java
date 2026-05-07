@@ -30,6 +30,22 @@ class OscalPoamParserTest {
     }
 
     @Test
+    void parsesRealWorldRev5JsonWith100Items() throws Exception {
+        OscalPoamParser parser = new OscalPoamParser();
+        try (InputStream in = getClass().getResourceAsStream("/conmon/oscal_poam_real_world.json")) {
+            assertThat(in).as("real-world fixture must be on classpath").isNotNull();
+            ParsedPoam parsed = parser.parse(in, ConMonSourceFormat.OSCAL_JSON);
+
+            // The file has 100 poam-items per jq inspection.
+            assertThat(parsed.items()).hasSize(100);
+
+            // Spot-check the first item carries through external_id and title
+            assertThat(parsed.items().get(0).externalId()).isNotBlank();
+            assertThat(parsed.items().get(0).title()).contains("POAM-0001");
+        }
+    }
+
+    @Test
     void emptyContent_throws() {
         OscalPoamParser parser = new OscalPoamParser();
         org.assertj.core.api.Assertions.assertThatThrownBy(

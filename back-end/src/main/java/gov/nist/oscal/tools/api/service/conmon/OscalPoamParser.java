@@ -1,9 +1,14 @@
 package gov.nist.oscal.tools.api.service.conmon;
 
 import gov.nist.oscal.tools.api.entity.ConMonSourceFormat;
+import gov.nist.secauto.metaschema.core.datatype.markup.MarkupLine;
+import gov.nist.secauto.metaschema.core.datatype.markup.MarkupMultiline;
 import gov.nist.secauto.metaschema.databind.io.Format;
 import gov.nist.secauto.oscal.lib.OscalBindingContext;
+import gov.nist.secauto.oscal.lib.model.Metadata;
 import gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones;
+import gov.nist.secauto.oscal.lib.model.PoamItem;
+import gov.nist.secauto.oscal.lib.model.Property;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -11,7 +16,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,9 +23,12 @@ import java.util.Map;
 
 /**
  * Parses an OSCAL POAM document (JSON, XML, or YAML) into the parser's
- * intermediate ParsedPoam shape. Reflection is used for traversing the
- * Metaschema-bound model to keep this resilient to library version
- * differences in field-name casing or wrapper classes.
+ * intermediate ParsedPoam shape.
+ *
+ * <p>Typed calls are used throughout (no reflection) so that MarkupLine and
+ * MarkupMultiline fields are rendered via {@code toMarkdown()} — which returns
+ * the actual text — rather than {@code toString()}, which returns the internal
+ * AST debug representation and NOT the text content.
  */
 @Component
 public class OscalPoamParser {
@@ -56,50 +63,51 @@ public class OscalPoamParser {
     }
 
     private static ParsedPoam toParsedPoam(PlanOfActionAndMilestones poam) {
-        String uuid = invokeStringGetter(poam, "getUuid");
-        Object metadata = invokeGetter(poam, "getMetadata");
-        String oscalVersion = metadata == null ? null : invokeStringGetter(metadata, "getOscalVersion");
-        String title = metadata == null ? null : invokeStringGetter(metadata, "getTitle");
-        Object lastModifiedRaw = metadata == null ? null : invokeGetter(metadata, "getLastModified");
-        LocalDateTime lastModified = parseInstantToLocal(lastModifiedRaw);
+        String uuid = poam.getUuid() == null ? null : poam.getUuid().toString();
 
-        Object itemsRaw = invokeGetter(poam, "getPoamItems");
-        List<?> rawItems = itemsRaw instanceof List<?> ? (List<?>) itemsRaw : List.of();
+        Metadata metadata = poam.getMetadata();
+        String oscalVersion = metadata == null ? null : metadata.getOscalVersion();
+        String title = metadata == null ? null : markupLineToString(metadata.getTitle());
+        LocalDateTime lastModified = metadata == null ? null
+                : parseZonedToLocal(metadata.getLastModified());
 
-        List<ParsedPoamItem> items = new ArrayList<>(rawItems.size());
-        for (Object raw : rawItems) {
-            items.add(toParsedItem(raw));
+        List<PoamItem> rawItems = poam.getPoamItems();
+        List<ParsedPoamItem> items = new ArrayList<>(rawItems == null ? 0 : rawItems.size());
+        if (rawItems != null) {
+            for (PoamItem item : rawItems) {
+                items.add(toParsedItem(item));
+            }
         }
         return new ParsedPoam(uuid, oscalVersion, title, lastModified, items);
     }
 
-    private static ParsedPoamItem toParsedItem(Object raw) {
-        String externalId = invokeStringGetter(raw, "getUuid");
-        String itemTitle = invokeStringGetter(raw, "getTitle");
-        String description = invokeStringGetter(raw, "getDescription");
+    private static ParsedPoamItem toParsedItem(PoamItem item) {
+        String externalId = item.getUuid() == null ? null : item.getUuid().toString();
+        String itemTitle = markupLineToString(item.getTitle());
+        String description = markupMultilineToString(item.getDescription());
 
-        // Look for FedRAMP-style status prop
-        Object propsRaw = invokeGetter(raw, "getProps");
-        List<?> props = propsRaw instanceof List<?> ? (List<?>) propsRaw : List.of();
+        // Look for FedRAMP-style status prop (any namespace)
+        List<Property> props = item.getProps();
         String statusKeyword = null;
         Map<String, Object> extra = new HashMap<>();
-        for (Object p : props) {
-            String name = invokeStringGetter(p, "getName");
-            String value = invokeStringGetter(p, "getValue");
-            if ("status".equalsIgnoreCase(name)) {
-                statusKeyword = value;
-            } else if (name != null) {
-                extra.put("prop:" + name, value);
+        if (props != null) {
+            for (Property p : props) {
+                String name = p.getName();
+                String value = p.getValue();
+                if ("status".equalsIgnoreCase(name)) {
+                    statusKeyword = value;
+                } else if (name != null) {
+                    extra.put("prop:" + name, value);
+                }
             }
         }
 
         // Linked-finding rollup (best-effort; many POAMs don't include this)
         List<String> findingStatuses = new ArrayList<>();
-        Object related = invokeGetter(raw, "getRelatedFindings");
-        if (related instanceof List<?> rl) {
-            for (Object rf : rl) {
-                String fStatus = invokeStringGetter(rf, "getStatus");
-                if (fStatus != null) findingStatuses.add(fStatus);
+        List<PoamItem.RelatedFinding> relatedFindings = item.getRelatedFindings();
+        if (relatedFindings != null) {
+            for (PoamItem.RelatedFinding rf : relatedFindings) {
+                // RelatedFinding only carries a finding-uuid reference; no inline status
             }
         }
 
@@ -121,30 +129,23 @@ public class OscalPoamParser {
         );
     }
 
-    private static Object invokeGetter(Object target, String name) {
-        if (target == null) return null;
-        try {
-            var m = target.getClass().getMethod(name);
-            return m.invoke(target);
-        } catch (NoSuchMethodException e) {
-            return null;
-        } catch (ReflectiveOperationException e) {
-            return null;
-        }
+    // -------------------------------------------------------------------------
+    // Markup helpers — use toMarkdown() to get actual text, not toString() which
+    // returns the internal AST debug representation.
+    // -------------------------------------------------------------------------
+
+    private static String markupLineToString(MarkupLine markup) {
+        if (markup == null) return null;
+        return markup.toMarkdown();
     }
 
-    private static String invokeStringGetter(Object target, String name) {
-        Object v = invokeGetter(target, name);
-        return v == null ? null : v.toString();
+    private static String markupMultilineToString(MarkupMultiline markup) {
+        if (markup == null) return null;
+        return markup.toMarkdown();
     }
 
-    private static LocalDateTime parseInstantToLocal(Object instant) {
-        if (instant == null) return null;
-        try {
-            if (instant instanceof java.time.Instant i) return LocalDateTime.ofInstant(i, ZoneOffset.UTC);
-            if (instant instanceof java.time.OffsetDateTime o) return o.toLocalDateTime();
-            if (instant instanceof java.time.ZonedDateTime z) return z.toLocalDateTime();
-        } catch (Exception ignore) {}
-        return null;
+    private static LocalDateTime parseZonedToLocal(java.time.ZonedDateTime zdt) {
+        if (zdt == null) return null;
+        return zdt.toLocalDateTime();
     }
 }
