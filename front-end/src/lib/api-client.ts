@@ -70,6 +70,10 @@ import type {
   AuthorizationRole,
   AuthorizationGrantResponse,
   OrgMemberResponse,
+  AuthorizationDocumentResponse,
+  PackageCompletenessResponse,
+  UpdateDocumentMetadataRequest,
+  DocumentType,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 import type {
@@ -5686,6 +5690,174 @@ class ApiClient {
       return await response.json();
     } catch (error) {
       console.error('Failed to list org members:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List documents attached to an authorization
+   */
+  async listDocuments(
+    authorizationId: number,
+    options?: { type?: DocumentType; q?: string }
+  ): Promise<AuthorizationDocumentResponse[]> {
+    try {
+      const params = new URLSearchParams();
+      if (options?.type) params.set('type', options.type);
+      if (options?.q) params.set('q', options.q);
+      const qs = params.toString();
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents${qs ? `?${qs}` : ''}`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list documents: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list documents:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a document to an authorization
+   */
+  async uploadDocument(
+    authorizationId: number,
+    file: File,
+    metadata: {
+      documentType: DocumentType;
+      description?: string;
+      tags?: string;
+      version?: string;
+      effectiveDate?: string;
+      expiresAt?: string;
+    }
+  ): Promise<AuthorizationDocumentResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', metadata.documentType);
+      if (metadata.description) formData.append('description', metadata.description);
+      if (metadata.tags) formData.append('tags', metadata.tags);
+      if (metadata.version) formData.append('version', metadata.version);
+      if (metadata.effectiveDate) formData.append('effectiveDate', metadata.effectiveDate);
+      if (metadata.expiresAt) formData.append('expiresAt', metadata.expiresAt);
+
+      // Multipart: must NOT set Content-Type so the browser sets the boundary.
+      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await fetch(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents`,
+        { method: 'POST', headers, body: formData }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload document: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to upload document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update metadata on an existing authorization document
+   */
+  async updateDocumentMetadata(
+    authorizationId: number,
+    documentId: number,
+    body: UpdateDocumentMetadataRequest
+  ): Promise<AuthorizationDocumentResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(body),
+        },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update document metadata: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update document metadata:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a document from an authorization
+   */
+  async deleteDocument(authorizationId: number, documentId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete document: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download a document from an authorization
+   */
+  async downloadDocument(authorizationId: number, documentId: number): Promise<Blob> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}/download`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        30000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to download document: ${response.status}`);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get package completeness for an authorization
+   */
+  async getPackageCompleteness(authorizationId: number): Promise<PackageCompletenessResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/completeness`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to load package completeness: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to load package completeness:', error);
       throw error;
     }
   }
