@@ -50,6 +50,13 @@ public class Authorization {
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "share_with_org_default_role", length = 32)
+    private AuthorizationRole shareWithOrgDefaultRole;
+
+    @OneToMany(mappedBy = "authorization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<AuthorizationGrant> grants = new ArrayList<>();
+
     @Column(name = "authorized_at", nullable = false)
     private LocalDateTime authorizedAt;
 
@@ -404,5 +411,21 @@ public class Authorization {
 
     public void setOrganization(Organization organization) {
         this.organization = organization;
+    }
+
+    public AuthorizationRole getShareWithOrgDefaultRole() {
+        return shareWithOrgDefaultRole;
+    }
+
+    public void setShareWithOrgDefaultRole(AuthorizationRole shareWithOrgDefaultRole) {
+        this.shareWithOrgDefaultRole = shareWithOrgDefaultRole;
+    }
+
+    public List<AuthorizationGrant> getGrants() {
+        return grants;
+    }
+
+    public void setGrants(List<AuthorizationGrant> grants) {
+        this.grants = grants;
     }
 }
