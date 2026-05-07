@@ -687,6 +687,99 @@ public class FileStorageService {
         return OscalFormat.JSON; // default
     }
 
+    /**
+     * Save raw bytes to a caller-supplied storage path. Caller is responsible
+     * for path uniqueness (typically by including a UUID). Used by
+     * document/binary upload flows; the OSCAL text-file API uses its own
+     * path scheme.
+     *
+     * For local storage, PathSanitizer.safeResolve validates the path stays within
+     * LOCAL_STORAGE_DIR. For Azure, PathSanitizer.isPathSafe is used to reject
+     * traversal patterns before passing the relative path to the blob client.
+     */
+    @WithSpan
+    public String saveBinary(@SpanAttribute("storagePath") String storagePath,
+                             byte[] bytes,
+                             String contentType) {
+        try {
+            if (useLocalStorage) {
+                Path target = PathSanitizer.safeResolve(LOCAL_STORAGE_DIR, storagePath);
+                Files.createDirectories(target.getParent());
+                Files.write(target, bytes);
+                // Return the relative path (relative to LOCAL_STORAGE_DIR)
+                return Paths.get(LOCAL_STORAGE_DIR).relativize(target).toString();
+            } else {
+                if (!PathSanitizer.isPathSafe(storagePath)) {
+                    throw new IllegalArgumentException("Invalid storage path: path traversal detected");
+                }
+                BlobClient blob = containerClient.getBlobClient(storagePath);
+                blob.upload(BinaryData.fromBytes(bytes), true);
+                if (contentType != null && !contentType.isBlank()) {
+                    blob.setHttpHeaders(new com.azure.storage.blob.models.BlobHttpHeaders()
+                            .setContentType(contentType));
+                }
+                return storagePath;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save binary to " + storagePath, e);
+        }
+    }
+
+    /**
+     * Load raw bytes from a caller-supplied storage path. Returns null if the
+     * path does not exist; callers should treat that as "missing blob, but
+     * the entity row may still exist" and surface a 500.
+     */
+    @WithSpan
+    public byte[] loadBinary(@SpanAttribute("storagePath") String storagePath) {
+        try {
+            if (useLocalStorage) {
+                Path target = PathSanitizer.safeResolve(LOCAL_STORAGE_DIR, storagePath);
+                if (!Files.exists(target)) {
+                    return null;
+                }
+                return Files.readAllBytes(target);
+            } else {
+                if (!PathSanitizer.isPathSafe(storagePath)) {
+                    throw new IllegalArgumentException("Invalid storage path: path traversal detected");
+                }
+                BlobClient blob = containerClient.getBlobClient(storagePath);
+                if (!blob.exists()) {
+                    return null;
+                }
+                return blob.downloadContent().toBytes();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load binary from " + storagePath, e);
+        }
+    }
+
+    /**
+     * Delete a binary by storage path. Returns true if a blob existed and was
+     * deleted, false if it didn't exist (idempotent).
+     */
+    @WithSpan
+    public boolean deleteBinary(@SpanAttribute("storagePath") String storagePath) {
+        try {
+            if (useLocalStorage) {
+                Path target = PathSanitizer.safeResolve(LOCAL_STORAGE_DIR, storagePath);
+                return Files.deleteIfExists(target);
+            } else {
+                if (!PathSanitizer.isPathSafe(storagePath)) {
+                    throw new IllegalArgumentException("Invalid storage path: path traversal detected");
+                }
+                BlobClient blob = containerClient.getBlobClient(storagePath);
+                if (!blob.exists()) {
+                    return false;
+                }
+                blob.delete();
+                return true;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete binary at " + storagePath, e);
+        }
+    }
+
     private OscalModelType detectModelType(String fileName) {
         String lowerFileName = fileName.toLowerCase();
         if (lowerFileName.contains("catalog")) {
