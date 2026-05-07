@@ -11,6 +11,8 @@ import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.exception.AuthorizationNotFoundException;
+import gov.nist.oscal.tools.api.exception.InsufficientAuthorizationRoleException;
 import gov.nist.oscal.tools.api.repository.AuthorizationGrantRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
@@ -251,7 +253,7 @@ class AuthorizationControllerTest {
         when(authorizationService.updateAuthorization(
                 anyLong(), anyString(), anyMap(), anyString(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), any(), anyList()))
-                .thenThrow(new RuntimeException("Authorization not found"));
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(put("/api/authorizations/999")
@@ -284,7 +286,7 @@ class AuthorizationControllerTest {
     void testGetAuthorization_notFound_returns404() throws Exception {
         // Arrange
         when(authorizationService.getAuthorizationForUser(999L, "testuser"))
-                .thenThrow(new RuntimeException("Authorization not found"));
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/999"))
@@ -465,8 +467,8 @@ class AuthorizationControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testDeleteAuthorization_notCreator_returns403() throws Exception {
-        // Arrange
-        doThrow(new RuntimeException("Only the creator can delete this authorization"))
+        // Arrange — service now throws InsufficientAuthorizationRoleException (@ResponseStatus FORBIDDEN)
+        doThrow(new InsufficientAuthorizationRoleException("VIEWER", "OWNER"))
                 .when(authorizationService).deleteAuthorization(1L, "testuser");
 
         // Act & Assert
@@ -480,8 +482,8 @@ class AuthorizationControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testDeleteAuthorization_notFound_returns404() throws Exception {
-        // Arrange
-        doThrow(new RuntimeException("Authorization not found"))
+        // Arrange — service now throws AuthorizationNotFoundException (@ResponseStatus NOT_FOUND)
+        doThrow(new AuthorizationNotFoundException(999L))
                 .when(authorizationService).deleteAuthorization(999L, "testuser");
 
         // Act & Assert
@@ -538,14 +540,13 @@ class AuthorizationControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testGetSignatureDetails_authorizationNotFound_returns404() throws Exception {
-        // Arrange
+        // Arrange — AuthorizationNotFoundException (@ResponseStatus NOT_FOUND) propagates naturally
         when(authorizationService.getAuthorizationForUser(999L, "testuser"))
-                .thenThrow(new RuntimeException("Authorization not found"));
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/999/signature"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Authorization not found"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

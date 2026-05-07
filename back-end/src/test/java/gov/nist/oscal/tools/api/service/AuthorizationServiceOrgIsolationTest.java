@@ -84,7 +84,10 @@ class AuthorizationServiceOrgIsolationTest {
     void getAuthorization_inUserOrg_returnsRow() {
         when(userRepo.findByUsername("alice")).thenReturn(Optional.of(alice));
         when(orgContext.requirePrimaryOrganization(alice)).thenReturn(orgA);
-        when(authRepo.findByIdAndOrganization(1L, orgA)).thenReturn(Optional.of(auth(1L, orgA)));
+        Authorization a = auth(1L, orgA);
+        when(authRepo.findByIdAndOrganization(1L, orgA)).thenReturn(Optional.of(a));
+        // Alice is the creator — access guard returns OWNER so the access check passes.
+        when(accessGuard.effectiveRole(a, alice)).thenReturn(AuthorizationRole.OWNER);
 
         Authorization result = service.getAuthorizationForUser(1L, "alice");
 

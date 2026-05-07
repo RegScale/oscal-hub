@@ -126,26 +126,26 @@ public class AuthorizationController {
             @PathVariable Long id,
             @RequestBody AuthorizationRequest request,
             Principal principal) {
-        try {
-            Authorization authorization = authorizationService.updateAuthorization(
-                    id,
-                    request.getName(),
-                    request.getVariableValues(),
-                    principal.getName(),
-                    request.getDateAuthorized(),
-                    request.getDateExpired(),
-                    request.getSystemOwner(),
-                    request.getSecurityManager(),
-                    request.getAuthorizingOfficial(),
-                    request.getEditedContent(),
-                    request.getConditions()
-            );
+        // No broad catch here — AuthorizationNotFoundException (@ResponseStatus 404),
+        // InsufficientAuthorizationRoleException (@ResponseStatus 403), and
+        // NoActiveOrganizationException (@ResponseStatus 403) all propagate to
+        // Spring's exception resolver so the correct HTTP status is returned.
+        Authorization authorization = authorizationService.updateAuthorization(
+                id,
+                request.getName(),
+                request.getVariableValues(),
+                principal.getName(),
+                request.getDateAuthorized(),
+                request.getDateExpired(),
+                request.getSystemOwner(),
+                request.getSecurityManager(),
+                request.getAuthorizingOfficial(),
+                request.getEditedContent(),
+                request.getConditions()
+        );
 
-            User currentUser = requireCurrentUser(principal);
-            return ResponseEntity.ok(toResponse(authorization, currentUser));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+        User currentUser = requireCurrentUser(principal);
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
     }
 
     @Operation(
@@ -159,14 +159,12 @@ public class AuthorizationController {
     @GetMapping("/{id}")
     public ResponseEntity<AuthorizationResponse> getAuthorization(@PathVariable Long id,
                                                                   Principal principal) {
-        try {
-            Authorization authorization = authorizationService.getAuthorizationForUser(
-                    id, principal.getName());
-            User currentUser = requireCurrentUser(principal);
-            return ResponseEntity.ok(toResponse(authorization, currentUser));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+        // AuthorizationNotFoundException (@ResponseStatus 404) and
+        // NoActiveOrganizationException (@ResponseStatus 403) propagate naturally.
+        Authorization authorization = authorizationService.getAuthorizationForUser(
+                id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
     }
 
     @Operation(
@@ -278,17 +276,12 @@ public class AuthorizationController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAuthorization(@PathVariable Long id, Principal principal) {
-        try {
-            authorizationService.deleteAuthorization(id, principal.getName());
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Only the creator")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        // No broad catch here — AuthorizationNotFoundException (@ResponseStatus 404),
+        // InsufficientAuthorizationRoleException (@ResponseStatus 403), and
+        // NoActiveOrganizationException (@ResponseStatus 403) all propagate to
+        // Spring's exception resolver so the correct HTTP status is returned.
+        authorizationService.deleteAuthorization(id, principal.getName());
+        return ResponseEntity.ok().build();
     }
 
     // ===== Digital Signature Endpoints =====
