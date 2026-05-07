@@ -191,9 +191,11 @@ public class AuthorizationTemplateController {
         @ApiResponse(responseCode = "404", description = "Template not found")
     })
     @GetMapping("/{id}/variables")
-    public ResponseEntity<Map<String, Set<String>>> getTemplateVariables(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Set<String>>> getTemplateVariables(@PathVariable Long id,
+                                                                         Principal principal) {
         try {
-            Set<String> variables = templateService.extractVariablesFromTemplate(id);
+            AuthorizationTemplate template = templateService.getTemplateForUser(id, principal.getName());
+            Set<String> variables = templateService.extractVariables(template.getContent());
             return ResponseEntity.ok(Map.of("variables", variables));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
