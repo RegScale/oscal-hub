@@ -626,6 +626,29 @@ export interface AuthorizationTemplateResponse {
   variables: string[]; // Extracted variables from content
 }
 
+// Authorization ACL / Grant Types
+export type AuthorizationRole = 'OWNER' | 'EDITOR' | 'CONTRIBUTOR' | 'VIEWER';
+
+export interface AuthorizationGrantResponse {
+  id: number;
+  userId: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: AuthorizationRole;
+  grantedByUsername?: string;
+  grantedAt: string;
+}
+
+export interface OrgMemberResponse {
+  userId: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 // Authorization Types
 export interface AuthorizationRequest {
   name: string;
@@ -678,6 +701,10 @@ export interface AuthorizationResponse {
   certificateVerified?: boolean;
   certificateVerificationDate?: string; // ISO 8601 date string
   certificateVerificationNotes?: string;
+
+  // ACL / sharing fields
+  effectiveRole?: AuthorizationRole;
+  shareWithOrgDefaultRole?: AuthorizationRole | null;
 }
 
 // Condition of Approval Types
