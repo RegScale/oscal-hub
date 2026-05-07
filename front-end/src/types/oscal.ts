@@ -616,6 +616,7 @@ export interface AuthorizationTemplateRequest {
 
 export interface AuthorizationTemplateResponse {
   id: number;
+  organizationId: number;
   name: string;
   content: string;
   createdBy: string;
@@ -643,6 +644,7 @@ export interface AuthorizationRequest {
 
 export interface AuthorizationResponse {
   id: number;
+  organizationId: number;
   name: string;
   sspItemId: string;
   sarItemId?: string; // Optional SAR item ID
@@ -813,8 +815,6 @@ export interface ComponentHealth {
 export interface ApplicationInfo {
   name: string;
   version: string;
-  profile: string;
-  uptime: string;
   startTime: string;
 }
 
@@ -832,10 +832,7 @@ export interface HealthSystemInfo {
 
 export interface EnvironmentInfo {
   javaVersion: string;
-  javaVendor: string;
   osName: string;
-  osVersion: string;
-  osArch: string;
   timezone: string;
 }
 
