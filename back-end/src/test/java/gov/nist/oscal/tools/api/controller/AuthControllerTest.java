@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.config.RateLimitConfig;
 import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.GlobalExceptionHandler;
+import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
@@ -25,6 +27,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -35,6 +38,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -42,6 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
+@Import(GlobalExceptionHandler.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
@@ -128,17 +134,72 @@ class AuthControllerTest {
         request.setEmail("new@example.com");
 
         when(authService.register(any(RegisterRequest.class)))
-                .thenThrow(new RuntimeException("Username already exists"));
+                .thenThrow(new UsernameAlreadyExistsException("Username already exists"));
 
         // When & Then
         mockMvc.perform(post("/api/auth/register")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("Username already exists"));
 
         verify(authService, times(1)).register(any(RegisterRequest.class));
+    }
+
+    @Test
+    void testRegister_dataIntegrityViolation_returns409WithoutLeakingDetails() throws Exception {
+        // Reproduces the scenario in the bug screenshot: a database-level constraint
+        // violation escapes the service. The response must not leak SQL fragments,
+        // table/column names, constraint identifiers, or another user's email.
+        String leakyMessage = "could not execute statement [ERROR: duplicate key value violates "
+                + "unique constraint \"uk6dotkott2kjsp8vw4d0m25fb7\" Detail: Key (email)="
+                + "(victim@example.com) already exists.] [insert into users "
+                + "(account_locked_until,city,created_at,email) values (?,?,?,?)]";
+
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setPassword("password123");
+        request.setEmail("victim@example.com");
+
+        when(authService.register(any(RegisterRequest.class)))
+                .thenThrow(new DataIntegrityViolationException(leakyMessage));
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/register")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error", not(containsString("constraint"))))
+                .andExpect(jsonPath("$.error", not(containsString("SQL"))))
+                .andExpect(jsonPath("$.error", not(containsString("insert into"))))
+                .andExpect(jsonPath("$.error", not(containsString("duplicate key"))))
+                .andExpect(jsonPath("$.error", not(containsString("uk6dotkott"))))
+                .andExpect(jsonPath("$.error", not(containsString("victim@example.com"))));
+    }
+
+    @Test
+    void testRegister_unhandledException_returns500WithGenericMessage() throws Exception {
+        // Any unexpected RuntimeException should map to 500 with a generic message,
+        // never echoing the original message back to the client.
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setPassword("password123");
+        request.setEmail("new@example.com");
+
+        when(authService.register(any(RegisterRequest.class)))
+                .thenThrow(new RuntimeException("internal: connection refused at jdbc:postgresql://internal-host:5432/proddb"));
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/register")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error", not(containsString("jdbc:"))))
+                .andExpect(jsonPath("$.error", not(containsString("internal-host"))))
+                .andExpect(jsonPath("$.error", not(containsString("proddb"))));
     }
 
     @Test
@@ -434,22 +495,47 @@ class AuthControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testUpdateProfile_serviceException() throws Exception {
-        // Given
+        // Given — an unexpected RuntimeException from the service should now map to 500
+        // generic, not echo the message back. This is the leak-prevention contract.
         Map<String, String> updates = new HashMap<>();
         updates.put("email", "invalid-email");
 
         when(authService.updateProfile(eq("testuser"), any()))
-                .thenThrow(new RuntimeException("Invalid email format"));
+                .thenThrow(new RuntimeException("internal: jdbc connection failure"));
 
         // When & Then
         mockMvc.perform(put("/api/auth/profile")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updates)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid email format"));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error", not(containsString("jdbc"))));
 
         verify(authService, times(1)).updateProfile(eq("testuser"), any());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testUpdateProfile_dataIntegrityViolation_doesNotLeakDetails() throws Exception {
+        // Same leak-prevention contract for the profile-update path.
+        Map<String, String> updates = new HashMap<>();
+        updates.put("email", "victim@example.com");
+
+        String leakyMessage = "could not execute statement [ERROR: duplicate key value "
+                + "violates unique constraint \"uk6dotkott2kjsp8vw4d0m25fb7\" Detail: "
+                + "Key (email)=(victim@example.com) already exists.]";
+
+        when(authService.updateProfile(eq("testuser"), any()))
+                .thenThrow(new DataIntegrityViolationException(leakyMessage));
+
+        mockMvc.perform(put("/api/auth/profile")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updates)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error", not(containsString("constraint"))))
+                .andExpect(jsonPath("$.error", not(containsString("uk6dotkott"))))
+                .andExpect(jsonPath("$.error", not(containsString("victim@example.com"))));
     }
 
     @Test

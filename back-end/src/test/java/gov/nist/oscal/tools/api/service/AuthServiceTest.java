@@ -9,6 +9,7 @@ import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
 import gov.nist.oscal.tools.api.model.RegisterRequest;
@@ -17,7 +18,6 @@ import gov.nist.oscal.tools.api.repository.OrganizationRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -153,7 +153,7 @@ class AuthServiceTest {
         when(userRepository.existsByUsername("existinguser")).thenReturn(true);
 
         // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        UsernameAlreadyExistsException exception = assertThrows(UsernameAlreadyExistsException.class, () -> {
             authService.register(request);
         });
 
@@ -162,24 +162,32 @@ class AuthServiceTest {
     }
 
     @Test
-    @Disabled("Email uniqueness check not yet implemented in AuthService.register()")
-    void testRegister_existingEmail_throwsException() {
-        // Given
+    void testRegister_existingEmail_succeeds() {
+        // The project intentionally allows multiple users to share an email
+        // (see migrations V1.11/V1.21 — duplicate emails arise legitimately when
+        // a user submits an access request and later self-registers, or holds
+        // accounts across multiple organizations). Registration with an
+        // already-known email must succeed without a uniqueness check.
         RegisterRequest request = new RegisterRequest();
         request.setUsername("newuser");
         request.setEmail("existing@example.com");
         request.setPassword("ValidPassword123!");
 
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
-        when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
-
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            authService.register(request);
+        // Even if existsByEmail were stubbed to return true, register() must not consult it.
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(99L);
+            return u;
         });
+        when(userDetailsService.loadUserByUsername("newuser")).thenReturn(mockUserDetails);
+        when(jwtUtil.generateToken(any(UserDetails.class))).thenReturn("token");
 
-        assertEquals("Email already exists", exception.getMessage());
-        verify(userRepository, never()).save(any(User.class));
+        AuthResponse response = authService.register(request);
+
+        assertNotNull(response);
+        verify(userRepository).save(any(User.class));
+        verify(userRepository, never()).existsByEmail(anyString());
     }
 
     @Test
@@ -326,25 +334,20 @@ class AuthServiceTest {
     }
 
     @Test
-    @Disabled("Email uniqueness check not yet implemented in AuthService.updateProfile()")
-    void testUpdateProfile_emailAlreadyInUse_throwsException() {
-        // Given
-        User otherUser = new User();
-        otherUser.setId(2L);
-        otherUser.setEmail("existing@example.com");
-
+    void testUpdateProfile_emailAlreadyInUse_succeeds() {
+        // Email is not unique across users; updating to an email another user already
+        // holds must be allowed (project intent — see V1.21 migration).
         Map<String, String> updates = new HashMap<>();
         updates.put("email", "existing@example.com");
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(userRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(otherUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // When & Then
-        assertThrows(RuntimeException.class, () -> {
-            authService.updateProfile("testuser", updates);
-        });
+        User updatedUser = authService.updateProfile("testuser", updates);
 
-        verify(userRepository, never()).save(any(User.class));
+        assertEquals("existing@example.com", updatedUser.getEmail());
+        verify(userRepository).save(testUser);
+        verify(userRepository, never()).findByEmail(anyString());
     }
 
     @Test
