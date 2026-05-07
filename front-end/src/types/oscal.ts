@@ -1117,6 +1117,83 @@ export interface UpdateDocumentMetadataRequest {
   expiresAt?: string | null;
 }
 
+// Continuous Monitoring (ConMon) Types
+export type ConMonItemStatus = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+export type ConMonSourceFormat = 'OSCAL_JSON' | 'OSCAL_XML' | 'OSCAL_YAML' | 'FEDRAMP_XLSX';
+
+export interface ConMonReconciliationCounts {
+  newCount: number;
+  closedCount: number;
+  reopenedCount: number;
+  stillOpenCount: number;
+  removedCount: number;
+  changedCount: number;
+  previousSnapshotId?: number | null;
+}
+
+export interface ConMonSnapshotSummary {
+  id: number;
+  authorizationId: number;
+  uploadedAt: string;
+  uploadedByUsername?: string | null;
+  sourceFormat: ConMonSourceFormat;
+  originalFilename: string;
+  oscalUuid?: string | null;
+  oscalVersion?: string | null;
+  metadataTitle?: string | null;
+  metadataLastModified?: string | null;
+  openCount: number;
+  closedCount: number;
+  unknownCount: number;
+  notes?: string | null;
+  reconciliation?: ConMonReconciliationCounts | null;
+}
+
+export interface ConMonPoamItem {
+  id: number;
+  externalId: string;
+  title: string;
+  description?: string | null;
+  status: ConMonItemStatus;
+  rawStatus?: string | null;
+  severity?: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' | null;
+  weaknessSource?: string | null;
+  scheduledCompletionDate?: string | null;
+  actualCompletionDate?: string | null;
+  pointOfContact?: string | null;
+  riskRating?: string | null;
+}
+
+export interface ConMonChangedItem {
+  current: ConMonPoamItem;
+  previous: ConMonPoamItem;
+  fieldsChanged: string[];
+}
+
+export interface ConMonReconciliationDetail {
+  snapshotId: number;
+  previousSnapshotId: number;
+  newCount: number;
+  closedCount: number;
+  reopenedCount: number;
+  stillOpenCount: number;
+  removedCount: number;
+  changedCount: number;
+  newItems: ConMonPoamItem[];
+  newlyClosedItems: ConMonPoamItem[];
+  reopenedItems: ConMonPoamItem[];
+  removedItems: ConMonPoamItem[];
+  changedItems: ConMonChangedItem[];
+}
+
+export interface ConMonAnalytics {
+  openCountSeries: Array<{ date: string; open: number; closed: number; unknown: number }>;
+  severitySeriesByDate: Array<{ date: string; low: number; moderate: number; high: number; critical: number }>;
+  currentStatusBreakdown: Array<{ label: string; count: number }>;
+  agingBuckets: Array<{ bucket: string; count: number }>;
+  meanTimeToCloseDays?: number | null;
+}
+
 // Artifact Comment (reuses LibraryComment structure)
 export interface ArtifactComment {
   commentId: string;
