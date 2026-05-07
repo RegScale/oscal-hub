@@ -815,6 +815,8 @@ export interface ComponentHealth {
 export interface ApplicationInfo {
   name: string;
   version: string;
+  profile: string;
+  uptime: string;
   startTime: string;
 }
 
@@ -832,7 +834,10 @@ export interface HealthSystemInfo {
 
 export interface EnvironmentInfo {
   javaVersion: string;
+  javaVendor: string;
   osName: string;
+  osVersion: string;
+  osArch: string;
   timezone: string;
 }
 
