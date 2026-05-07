@@ -1,7 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationGrant;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
+import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.repository.AuthorizationGrantRepository;
+import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.oscal.tools.api.service.AuthorizationAccessGuard;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
 import gov.nist.oscal.tools.api.service.DigitalSignatureService;
 import gov.nist.oscal.tools.api.telemetry.EventNames;
@@ -36,15 +43,24 @@ public class AuthorizationController {
     private final AuthorizationService authorizationService;
     private final DigitalSignatureService digitalSignatureService;
     private final TelemetryService telemetryService;
+    private final AuthorizationAccessGuard accessGuard;
+    private final AuthorizationGrantRepository grantRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public AuthorizationController(
             AuthorizationService authorizationService,
             DigitalSignatureService digitalSignatureService,
-            TelemetryService telemetryService) {
+            TelemetryService telemetryService,
+            AuthorizationAccessGuard accessGuard,
+            AuthorizationGrantRepository grantRepository,
+            UserRepository userRepository) {
         this.authorizationService = authorizationService;
         this.digitalSignatureService = digitalSignatureService;
         this.telemetryService = telemetryService;
+        this.accessGuard = accessGuard;
+        this.grantRepository = grantRepository;
+        this.userRepository = userRepository;
     }
 
     @Operation(
@@ -87,8 +103,9 @@ public class AuthorizationController {
                 logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
             }
 
+            User currentUser = requireCurrentUser(principal);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new AuthorizationResponse(authorization));
+                    .body(toResponse(authorization, currentUser));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -123,7 +140,8 @@ public class AuthorizationController {
                     request.getConditions()
             );
 
-            return ResponseEntity.ok(new AuthorizationResponse(authorization));
+            User currentUser = requireCurrentUser(principal);
+            return ResponseEntity.ok(toResponse(authorization, currentUser));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -143,7 +161,8 @@ public class AuthorizationController {
         try {
             Authorization authorization = authorizationService.getAuthorizationForUser(
                     id, principal.getName());
-            return ResponseEntity.ok(new AuthorizationResponse(authorization));
+            User currentUser = requireCurrentUser(principal);
+            return ResponseEntity.ok(toResponse(authorization, currentUser));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -161,8 +180,9 @@ public class AuthorizationController {
         try {
             List<Authorization> authorizations =
                     authorizationService.getAllAuthorizationsForUser(principal.getName());
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -188,8 +208,9 @@ public class AuthorizationController {
                     .sorted((a, b) -> b.getAuthorizedAt().compareTo(a.getAuthorizedAt()))
                     .limit(limit)
                     .toList();
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -211,8 +232,9 @@ public class AuthorizationController {
         try {
             List<Authorization> authorizations =
                     authorizationService.getAuthorizationsBySspForUser(sspItemId, principal.getName());
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -234,8 +256,9 @@ public class AuthorizationController {
         try {
             List<Authorization> authorizations =
                     authorizationService.searchAuthorizationsForUser(principal.getName(), q);
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -510,5 +533,171 @@ public class AuthorizationController {
             logger.error("Verification failed for authorization {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    // ===== Grant Management Endpoints =====
+
+    @Operation(
+        summary = "List grants for an authorization",
+        description = "List all user grants on a specific authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grants retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization not found")
+    })
+    @GetMapping("/{id}/grants")
+    public ResponseEntity<List<AuthorizationGrantResponse>> listGrants(@PathVariable Long id,
+                                                                       Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        List<AuthorizationGrantResponse> grants = grantRepository.findByAuthorization(authorization).stream()
+                .map(AuthorizationGrantResponse::new)
+                .toList();
+        return ResponseEntity.ok(grants);
+    }
+
+    @Operation(
+        summary = "Add a grant to an authorization",
+        description = "Grant a user a specific role on an authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Grant created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or user not in org"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or user not found")
+    })
+    @PostMapping("/{id}/grants")
+    public ResponseEntity<AuthorizationGrantResponse> addGrant(@PathVariable Long id,
+                                                               @Valid @RequestBody AuthorizationGrantRequest request,
+                                                               Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        User grantee = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User " + request.getUserId() + " not found."));
+
+        // Reject grants for users not in the authorization's organization.
+        if (!isInSameOrg(authorization, grantee)) {
+            throw new IllegalArgumentException("User is not a member of this authorization's organization.");
+        }
+
+        AuthorizationGrant grant = grantRepository.findByAuthorizationAndUser(authorization, grantee)
+                .orElseGet(() -> new AuthorizationGrant(authorization, grantee, request.getRole(), currentUser));
+        grant.setRole(request.getRole());
+        grant.setGrantedBy(currentUser);
+        grantRepository.save(grant);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AuthorizationGrantResponse(grant));
+    }
+
+    @Operation(
+        summary = "Update a grant on an authorization",
+        description = "Change the role for an existing grant (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grant updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or grant not found")
+    })
+    @PatchMapping("/{id}/grants/{grantId}")
+    public ResponseEntity<AuthorizationGrantResponse> updateGrant(@PathVariable Long id,
+                                                                  @PathVariable Long grantId,
+                                                                  @Valid @RequestBody AuthorizationGrantRequest request,
+                                                                  Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        AuthorizationGrant grant = grantRepository.findById(grantId)
+                .filter(g -> g.getAuthorization().getId().equals(id))
+                .orElseThrow(() -> new IllegalArgumentException("Grant " + grantId + " not found on authorization " + id));
+
+        grant.setRole(request.getRole());
+        grant.setGrantedBy(currentUser);
+        grantRepository.save(grant);
+
+        return ResponseEntity.ok(new AuthorizationGrantResponse(grant));
+    }
+
+    @Operation(
+        summary = "Remove a grant from an authorization",
+        description = "Revoke a user's access grant on an authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Grant removed successfully"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or grant not found")
+    })
+    @DeleteMapping("/{id}/grants/{grantId}")
+    public ResponseEntity<Void> removeGrant(@PathVariable Long id,
+                                            @PathVariable Long grantId,
+                                            Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        AuthorizationGrant grant = grantRepository.findById(grantId)
+                .filter(g -> g.getAuthorization().getId().equals(id))
+                .orElseThrow(() -> new IllegalArgumentException("Grant " + grantId + " not found on authorization " + id));
+
+        grantRepository.delete(grant);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "Set or clear the share-with-org default role",
+        description = "Set a default role for all org members on this authorization (requires OWNER role). "
+                + "Pass null to clear. Allowed values: VIEWER, CONTRIBUTOR, EDITOR."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Share-with-org setting updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid role (OWNER not allowed as default)"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization not found")
+    })
+    @PatchMapping("/{id}/share-with-org")
+    public ResponseEntity<AuthorizationResponse> setShareWithOrg(@PathVariable Long id,
+                                                                 @RequestBody ShareWithOrgRequest request,
+                                                                 Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        if (request.getRole() != null && !AuthorizationRole.isAssignableAsShareDefault(request.getRole())) {
+            throw new IllegalArgumentException("Cannot set share-with-org default to " + request.getRole()
+                    + ". Allowed: VIEWER, CONTRIBUTOR, EDITOR.");
+        }
+
+        authorization.setShareWithOrgDefaultRole(request.getRole());
+        authorizationService.save(authorization);
+
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
+    }
+
+    // ===== Private helpers =====
+
+    private AuthorizationResponse toResponse(Authorization authorization, User currentUser) {
+        AuthorizationResponse response = new AuthorizationResponse(authorization);
+        response.setEffectiveRole(accessGuard.effectiveRole(authorization, currentUser));
+        response.setShareWithOrgDefaultRole(authorization.getShareWithOrgDefaultRole());
+        return response;
+    }
+
+    private User requireCurrentUser(Principal principal) {
+        return userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User '" + principal.getName() + "' not found."));
+    }
+
+    private boolean isInSameOrg(Authorization authorization, User user) {
+        return user.getOrganizationMemberships().stream()
+                .anyMatch(m -> m.getOrganization().getId().equals(authorization.getOrganization().getId())
+                        && m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE);
     }
 }
