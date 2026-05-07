@@ -5915,7 +5915,7 @@ class ApiClient {
   }
 
   async listConMonItems(authorizationId: number, snapshotId: number,
-                        opts?: { status?: 'OPEN'|'CLOSED'|'UNKNOWN'; severity?: string; q?: string;
+                        opts?: { status?: 'OPEN'|'CLOSED'|'UNKNOWN'; severity?: string; overdue?: boolean; q?: string;
                                  page?: number; size?: number }): Promise<{
     items: import('@/types/oscal').ConMonPoamItem[];
     totalElements: number;
@@ -5926,6 +5926,7 @@ class ApiClient {
     const params = new URLSearchParams();
     if (opts?.status) params.set('status', opts.status);
     if (opts?.severity) params.set('severity', opts.severity);
+    if (opts?.overdue) params.set('overdue', 'true');
     if (opts?.q) params.set('q', opts.q);
     if (opts?.page !== undefined) params.set('page', String(opts.page));
     if (opts?.size !== undefined) params.set('size', String(opts.size));
