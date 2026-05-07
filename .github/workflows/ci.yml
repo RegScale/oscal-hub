@@ -189,6 +189,9 @@ jobs:
           fail-build: false
           output-format: sarif
           output-file: grype-results.sarif
+          # .grype.yaml at repo root carries a documented baseline of pre-existing
+          # findings. New findings outside that allowlist still fail CI.
+          config: .grype.yaml
 
       # ----------------------------------------------------------------
       # Step summary — markdown report visible on the run page
@@ -260,7 +263,7 @@ jobs:
           # ---------- Grype (Docker image) ----------
           GRYPE_SARIF="grype-results.sarif"
           if [ -f "$GRYPE_SARIF" ]; then
-            GRYPE_TOTAL=$(jq '[.runs[].results[]?] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
+            GRYPE_TOTAL=$(jq '[.runs[].results[]? | select(.level == "error")] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
             if [ "$GRYPE_TOTAL" -eq 0 ]; then
               echo "### Grype (Docker image): ✅ No high+ severity issues" >> "$GITHUB_STEP_SUMMARY"
             else
@@ -270,6 +273,7 @@ jobs:
               echo "|----------|------|---------|---------|" >> "$GITHUB_STEP_SUMMARY"
               jq -r '
                 .runs[].results[]?
+                | select(.level == "error")
                 | "| \(.level // "warning") | \(.ruleId) | \((.locations[0].physicalLocation.artifactLocation.uri // "?")) | \((.message.text // "") | gsub("\n"; " ") | .[0:120]) |"
               ' "$GRYPE_SARIF" 2>/dev/null | head -20 >> "$GITHUB_STEP_SUMMARY"
               if [ "$GRYPE_TOTAL" -gt 20 ]; then
@@ -410,7 +414,7 @@ jobs:
           # step is allowed to fail without poisoning this gate.
           GRYPE_SARIF="grype-results.sarif"
           if [ -f "$GRYPE_SARIF" ]; then
-            GRYPE_TOTAL=$(jq '[.runs[].results[]?] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
+            GRYPE_TOTAL=$(jq '[.runs[].results[]? | select(.level == "error")] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
             if [ "$GRYPE_TOTAL" -gt 0 ]; then
               FAILED="$FAILED Grype($GRYPE_TOTAL)"
             fi

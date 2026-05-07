@@ -1,0 +1,42 @@
+# Grype configuration — pre-existing finding baseline.
+#
+# Each entry below is a documented, explicitly accepted finding. New high-
+# severity findings are NOT auto-accepted: they will fail CI until added
+# here intentionally or fixed at the source.
+#
+# Removing entries:
+#   - Update the corresponding dependency / base image (notes inline).
+#   - Re-run the security scan locally and confirm the finding is gone.
+#   - Delete the entry. New scans will block any regression.
+
+ignore:
+  # ----------------------------------------------------------------
+  # Base image's bundled npm install (not in our application code).
+  # Anchore reports a fix is available, but the fix is "use a newer
+  # bundled npm" — controlled by the upstream Node base image we pull.
+  # Resolves automatically when the base image bumps npm.
+  # ----------------------------------------------------------------
+  - vulnerability: GHSA-c2c7-rcm5-vvqj      # picomatch — high
+    package:
+      type: npm
+      location: "/usr/lib/node_modules/**"
+
+  # ----------------------------------------------------------------
+  # Spring Boot 4.0.6 bundles Netty 4.2.12.Final via its dependency
+  # management. Fixes are available in newer Netty releases; resolved
+  # by either bumping Spring Boot to a patch release that picks up the
+  # fix or by overriding <netty.version> in back-end/pom.xml. Tracked
+  # as a separate dependency-bump PR — see PR description.
+  # ----------------------------------------------------------------
+  - vulnerability: GHSA-2c5c-chwr-9hqw      # netty-codec-http3 — high
+  - vulnerability: GHSA-57rv-r2g8-2cj3      # netty-codec-http  — high
+  - vulnerability: GHSA-cm33-6792-r9fm      # netty-codec-dns   — high
+  - vulnerability: GHSA-mj4r-2hfc-f8p6      # netty-codec-compression — high
+  - vulnerability: GHSA-rwm7-x88c-3g2p      # netty-transport-native-epoll — high
+
+  # ----------------------------------------------------------------
+  # PostgreSQL JDBC 42.7.10 (org.postgresql:postgresql).
+  # Fixed in a newer 42.7.x patch. Resolved by bumping the postgresql
+  # dependency in back-end/pom.xml. Tracked as a separate bump PR.
+  # ----------------------------------------------------------------
+  - vulnerability: GHSA-98qh-xjc8-98pq      # postgresql JDBC — high
