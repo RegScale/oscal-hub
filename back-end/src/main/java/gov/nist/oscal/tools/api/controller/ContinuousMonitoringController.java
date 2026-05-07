@@ -106,6 +106,7 @@ public class ContinuousMonitoringController {
                                                      @PathVariable Long snapshotId,
                                                      @RequestParam(value = "status", required = false) ConMonItemStatus status,
                                                      @RequestParam(value = "severity", required = false) String severity,
+                                                     @RequestParam(value = "overdue", defaultValue = "false") boolean overdue,
                                                      @RequestParam(value = "q", required = false) String q,
                                                      @RequestParam(value = "page", defaultValue = "0") int page,
                                                      @RequestParam(value = "size", defaultValue = "50") int size,
@@ -113,7 +114,7 @@ public class ContinuousMonitoringController {
         Authorization authorization = authorizationService.getAuthorizationForUser(authorizationId, principal.getName());
         ConMonSnapshot snap = requireSnapshot(authorization, snapshotId);
 
-        Page<ConMonPoamItem> result = itemRepository.search(snap, status, severity, q,
+        Page<ConMonPoamItem> result = itemRepository.search(snap, status, severity, overdue, java.time.LocalDate.now(), q,
                 PageRequest.of(page, Math.min(size, 200)));
 
         List<ConMonPoamItemResponse> rows = result.stream().map(ConMonPoamItemResponse::new).toList();

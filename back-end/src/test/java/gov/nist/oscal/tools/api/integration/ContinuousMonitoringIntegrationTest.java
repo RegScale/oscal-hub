@@ -229,6 +229,41 @@ class ContinuousMonitoringIntegrationTest {
                     .andExpect(jsonPath("$.openCountSeries").isArray())
                     .andExpect(jsonPath("$.currentStatusBreakdown").isArray());
         }
+
+        @Test
+        @WithMockUser("alice")
+        @DisplayName("Items endpoint filters by overdue=true")
+        void items_filterOverdue() throws Exception {
+            Long snapshotId = uploadXlsx("first.xlsx", 1, 0); // 1 open item, 0 closed
+
+            // Snapshot has 1 OPEN item with no scheduledCompletionDate (synthetic helper doesn't set it).
+            // Expect overdue=true to return 0 results since the item has no deadline.
+            mockMvc.perform(get("/api/authorizations/" + authA.getId()
+                            + "/conmon/snapshots/" + snapshotId + "/items")
+                            .param("overdue", "true"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(0));
+
+            // Without overdue filter, the item is returned.
+            mockMvc.perform(get("/api/authorizations/" + authA.getId()
+                            + "/conmon/snapshots/" + snapshotId + "/items"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1));
+        }
+
+        @Test
+        @WithMockUser("alice")
+        @DisplayName("Analytics endpoint exposes SLA stats and severity breakdown")
+        void analytics_includesSlaAndSeverity() throws Exception {
+            uploadXlsx("a.xlsx", 2, 0);
+
+            mockMvc.perform(get("/api/authorizations/" + authA.getId() + "/conmon/analytics"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.slaStats").exists())
+                    .andExpect(jsonPath("$.slaStats.openTotal").value(2))
+                    .andExpect(jsonPath("$.currentSeverityBreakdown").isArray())
+                    .andExpect(jsonPath("$.severitySeriesByDate").doesNotExist());
+        }
     }
 
     // ========================================================================

@@ -7,7 +7,6 @@ import gov.nist.oscal.tools.api.entity.ConMonSnapshot;
 import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse;
 import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.AgingBucket;
 import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.DonutSegment;
-import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.SeveritySeriesPoint;
 import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.TimeSeriesPoint;
 import gov.nist.oscal.tools.api.repository.ConMonSnapshotRepository;
 import org.springframework.stereotype.Service;
@@ -32,10 +31,11 @@ public class ConMonAnalyticsService {
         List<ConMonSnapshot> snaps = snapshotRepository.findByAuthorizationOrderByUploadedAtDesc(authorization);
         ConMonAnalyticsResponse r = new ConMonAnalyticsResponse();
         r.setOpenCountSeries(timeSeries(snaps));
-        r.setSeveritySeriesByDate(severitySeries(snaps));
+        r.setCurrentSeverityBreakdown(currentSeverityBreakdown(snaps));
         r.setCurrentStatusBreakdown(currentDonut(snaps));
         r.setAgingBuckets(agingBuckets(snaps));
         r.setMeanTimeToCloseDays(meanTimeToClose(snaps));
+        r.setSlaStats(slaStats(snaps));
         return r;
     }
 
@@ -52,22 +52,46 @@ public class ConMonAnalyticsService {
         return out;
     }
 
-    private List<SeveritySeriesPoint> severitySeries(List<ConMonSnapshot> snaps) {
-        List<SeveritySeriesPoint> out = new ArrayList<>(snaps.size());
-        for (int i = snaps.size() - 1; i >= 0; i--) {
-            ConMonSnapshot s = snaps.get(i);
-            int low = 0, mod = 0, high = 0, crit = 0;
-            for (ConMonPoamItem it : s.getItems()) {
-                if (it.getStatus() != ConMonItemStatus.OPEN) continue;
-                String sev = it.getSeverity();
-                if ("LOW".equals(sev)) low++;
-                else if ("MODERATE".equals(sev)) mod++;
-                else if ("HIGH".equals(sev)) high++;
-                else if ("CRITICAL".equals(sev)) crit++;
-            }
-            out.add(new SeveritySeriesPoint(s.getUploadedAt().toLocalDate(), low, mod, high, crit));
+    private List<DonutSegment> currentSeverityBreakdown(List<ConMonSnapshot> snaps) {
+        if (snaps.isEmpty()) return List.of();
+        ConMonSnapshot latest = snaps.get(0);
+        int low = 0, mod = 0, high = 0, crit = 0, unspec = 0;
+        for (ConMonPoamItem it : latest.getItems()) {
+            if (it.getStatus() != ConMonItemStatus.OPEN) continue;
+            String sev = it.getSeverity();
+            if ("LOW".equals(sev)) low++;
+            else if ("MODERATE".equals(sev)) mod++;
+            else if ("HIGH".equals(sev)) high++;
+            else if ("CRITICAL".equals(sev)) crit++;
+            else unspec++;
         }
+        List<DonutSegment> out = new ArrayList<>();
+        if (crit > 0) out.add(new DonutSegment("Critical", crit));
+        if (high > 0) out.add(new DonutSegment("High", high));
+        if (mod > 0) out.add(new DonutSegment("Moderate", mod));
+        if (low > 0) out.add(new DonutSegment("Low", low));
+        if (unspec > 0) out.add(new DonutSegment("Unspecified", unspec));
         return out;
+    }
+
+    private ConMonAnalyticsResponse.SlaStats slaStats(List<ConMonSnapshot> snaps) {
+        if (snaps.isEmpty()) {
+            return new ConMonAnalyticsResponse.SlaStats(0, 0, 0, 0, null);
+        }
+        ConMonSnapshot latest = snaps.get(0);
+        LocalDate today = LocalDate.now();
+        int total = 0, within = 0, overdue = 0, noDeadline = 0;
+        for (ConMonPoamItem it : latest.getItems()) {
+            if (it.getStatus() != ConMonItemStatus.OPEN) continue;
+            total++;
+            LocalDate d = it.getScheduledCompletionDate();
+            if (d == null) noDeadline++;
+            else if (d.isBefore(today)) overdue++;
+            else within++;
+        }
+        int considered = within + overdue;
+        Double pct = considered == 0 ? null : ((within * 100.0) / considered);
+        return new ConMonAnalyticsResponse.SlaStats(total, within, overdue, noDeadline, pct);
     }
 
     private List<DonutSegment> currentDonut(List<ConMonSnapshot> snaps) {
