@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
@@ -23,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +34,7 @@ class AuthorizationServiceOrgIsolationTest {
     @Mock AuthorizationTemplateRepository templateRepo;
     @Mock UserRepository userRepo;
     @Mock AuthorizationOrgContext orgContext;
+    @Mock AuthorizationAccessGuard accessGuard;
 
     @InjectMocks
     AuthorizationService service;
@@ -67,6 +70,9 @@ class AuthorizationServiceOrgIsolationTest {
         when(userRepo.findByUsername("alice")).thenReturn(Optional.of(alice));
         when(orgContext.requirePrimaryOrganization(alice)).thenReturn(orgA);
         when(authRepo.findByOrganization(orgA)).thenReturn(List.of(auth(1L, orgA), auth(2L, orgA)));
+        // Guard returns OWNER for alice on every authorization in orgA
+        when(accessGuard.effectiveRole(any(Authorization.class), eq(alice)))
+                .thenReturn(AuthorizationRole.OWNER);
 
         List<Authorization> result = service.getAllAuthorizationsForUser("alice");
 

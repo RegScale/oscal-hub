@@ -45,6 +45,9 @@ public class AuthorizationService {
     @Autowired
     private AuthorizationOrgContext orgContext;
 
+    @Autowired
+    private AuthorizationAccessGuard accessGuard;
+
     /**
      * Create a new authorization
      */
@@ -125,6 +128,10 @@ public class AuthorizationService {
         Organization userOrg = resolveUserOrg(username);
         Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
                 .orElseThrow(() -> new AuthorizationNotFoundException(id));
+
+        accessGuard.requireWriteDetails(authorization,
+                userRepository.findByUsername(username)
+                        .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found.")));
 
         // Update name
         if (name != null) {
@@ -247,10 +254,9 @@ public class AuthorizationService {
         Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
                 .orElseThrow(() -> new AuthorizationNotFoundException(id));
 
-        // Check if user is the creator (you may want to add admin role check)
-        if (!authorization.getAuthorizedBy().getUsername().equals(username)) {
-            throw new RuntimeException("Only the creator can delete this authorization");
-        }
+        accessGuard.requireDelete(authorization,
+                userRepository.findByUsername(username)
+                        .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found.")));
 
         authorizationRepository.delete(authorization);
         logger.info("Deleted authorization: {}", id);
@@ -272,7 +278,13 @@ public class AuthorizationService {
     @Transactional(readOnly = true)
     public List<Authorization> getAllAuthorizationsForUser(String username) {
         Organization org = resolveUserOrg(username);
-        return authorizationRepository.findByOrganization(org);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+        // TODO(perf): replace with a single JPQL/SQL query that joins grants
+        // and applies the access predicate when authorization counts grow large.
+        return authorizationRepository.findByOrganization(org).stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
     }
 
     /**
@@ -291,10 +303,14 @@ public class AuthorizationService {
     @Transactional(readOnly = true)
     public List<Authorization> searchAuthorizationsForUser(String username, String searchTerm) {
         Organization org = resolveUserOrg(username);
-        if (searchTerm == null || searchTerm.isBlank()) {
-            return authorizationRepository.findByOrganization(org);
-        }
-        return authorizationRepository.searchByNameOrSspItemIdAndOrganization(searchTerm, org);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+        List<Authorization> raw = (searchTerm == null || searchTerm.isBlank())
+                ? authorizationRepository.findByOrganization(org)
+                : authorizationRepository.searchByNameOrSspItemIdAndOrganization(searchTerm, org);
+        return raw.stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
     }
 
     /**
@@ -303,7 +319,11 @@ public class AuthorizationService {
     @Transactional(readOnly = true)
     public List<Authorization> getAuthorizationsBySspForUser(String sspItemId, String username) {
         Organization org = resolveUserOrg(username);
-        return authorizationRepository.findBySspItemIdAndOrganization(sspItemId, org);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+        return authorizationRepository.findBySspItemIdAndOrganization(sspItemId, org).stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
     }
 
     /**
