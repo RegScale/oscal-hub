@@ -17,12 +17,14 @@ import java.util.List;
 public interface ConMonPoamItemRepository extends JpaRepository<ConMonPoamItem, Long> {
     List<ConMonPoamItem> findBySnapshot(ConMonSnapshot snapshot);
 
+    // Note: COALESCE prevents PostgreSQL bytea error when LOWER() receives NULL parameter.
+    // See: https://github.com/spring-projects/spring-data-jpa/issues/3928
     @Query("SELECT i FROM ConMonPoamItem i WHERE i.snapshot = :snapshot " +
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:severity IS NULL OR i.severity = :severity) " +
-           "AND (:overdue = FALSE OR (i.scheduledCompletionDate IS NOT NULL AND i.scheduledCompletionDate < :today)) " +
-           "AND (:q IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', :q, '%')) " +
-           "                OR LOWER(i.externalId) LIKE LOWER(CONCAT('%', :q, '%')))")
+           "AND (:overdue = false OR (i.scheduledCompletionDate IS NOT NULL AND i.scheduledCompletionDate < :today)) " +
+           "AND (:q IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', COALESCE(:q, ''), '%')) " +
+           "                OR LOWER(COALESCE(i.externalId, '')) LIKE LOWER(CONCAT('%', COALESCE(:q, ''), '%')))")
     Page<ConMonPoamItem> search(
             @Param("snapshot") ConMonSnapshot snapshot,
             @Param("status") ConMonItemStatus status,

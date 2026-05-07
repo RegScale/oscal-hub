@@ -5934,7 +5934,10 @@ class ApiClient {
     const response = await this.fetchWithTimeout(
       `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/items${qs ? `?${qs}` : ''}`,
       { method: 'GET', headers: this.getAuthHeaders() }, 8000);
-    if (!response.ok) throw new Error(`Failed to list items: ${response.status}`);
+    if (!response.ok) {
+      const message = await this.readErrorMessage(response);
+      throw new Error(`Failed to list items (${response.status}): ${message}`);
+    }
     return await response.json();
   }
 
