@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.service;
 
+import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
@@ -39,6 +40,9 @@ public class UserManagementService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
 
     /**
      * Get all users in an organization
@@ -151,9 +155,15 @@ public class UserManagementService {
     }
 
     /**
-     * Reset a user's password
-     * Generates a new temporary password and sets mustChangePassword flag
-     * Returns the temporary password (should be sent to user via email in production)
+     * Reset a user's password.
+     *
+     * <p>Generates a single-use temporary password, sets the {@code mustChangePassword}
+     * flag, and emails the temporary password to the user. The plaintext password is
+     * never returned to the caller and never written to logs — the only surface that
+     * sees it is the outbound email.
+     *
+     * @return a map containing {@code username} and {@code email} of the user whose
+     *         password was reset, suitable for confirming the action to the admin UI
      */
     @Transactional
     public Map<String, String> resetPassword(Long userId, Long organizationId, Long adminId) {
@@ -161,27 +171,22 @@ public class UserManagementService {
 
         OrganizationMembership membership = getMembershipAndValidate(userId, organizationId, adminId);
         User user = membership.getUser();
+        User admin = userRepository.findById(adminId).orElse(null);
 
-        // Generate temporary password
         String tempPassword = generateTemporaryPassword();
 
-        // Update user password and set mustChangePassword flag
         user.setPassword(passwordEncoder.encode(tempPassword));
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // TODO: Send email with temporary password (if email service is configured)
-        // For now, return it in the response (in production, this should be emailed)
-        logger.warn("TEMPORARY PASSWORD for user {}: {}", user.getUsername(), tempPassword);
-        logger.warn("User must change password on next login");
+        emailService.sendPasswordReset(user, tempPassword, admin);
 
         Map<String, String> result = new HashMap<>();
-        result.put("tempPassword", tempPassword);
         result.put("username", user.getUsername());
         result.put("email", user.getEmail());
 
-        logger.info("Reset password for user {}", userId);
+        logger.info("Reset password for user {} (email dispatched)", userId);
         return result;
     }
 

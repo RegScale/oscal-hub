@@ -1,10 +1,12 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.AuditEvent;
+import gov.nist.oscal.tools.api.model.AuditEventResponse;
 import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuditLogStats;
 import gov.nist.oscal.tools.api.repository.AuditEventRepository;
 import gov.nist.oscal.tools.api.service.SiemForwardingService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +43,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/logs")
 @Tag(name = "Admin Audit Logs", description = "Audit log viewing and management for administrators")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
+@Hidden
 public class AuditLogController {
 
     private final AuditEventRepository auditEventRepository;
@@ -63,7 +66,7 @@ public class AuditLogController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved logs"),
         @ApiResponse(responseCode = "403", description = "Access denied - SUPER_ADMIN required")
     })
-    public ResponseEntity<Page<AuditEvent>> getAllLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getAllLogs(
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size (max 100)") @RequestParam(defaultValue = "50") int size,
             @Parameter(description = "Filter by username") @RequestParam(required = false) String username,
@@ -105,12 +108,12 @@ public class AuditLogController {
             result = auditEventRepository.findAllByOrderByTimestampDesc(pageable);
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/raw")
     @Operation(summary = "Get raw access logs", description = "Retrieve API access logs (Authentication and Data Access categories)")
-    public ResponseEntity<Page<AuditEvent>> getRawLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getRawLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -119,18 +122,20 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findRawLogsByUsername(username, pageable));
+            result = auditEventRepository.findRawLogsByUsername(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findRawLogsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findRawLogsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findRawLogs(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findRawLogs(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/security")
     @Operation(summary = "Get security logs", description = "Retrieve security-related logs (Security, Authorization categories and HIGH risk events)")
-    public ResponseEntity<Page<AuditEvent>> getSecurityLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getSecurityLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -139,18 +144,20 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findSecurityEventsByUsername(username, pageable));
+            result = auditEventRepository.findSecurityEventsByUsername(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findSecurityEventsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findSecurityEventsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findAllSecurityEvents(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findAllSecurityEvents(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/errors")
     @Operation(summary = "Get error logs", description = "Retrieve logs with FAILURE or ERROR outcomes")
-    public ResponseEntity<Page<AuditEvent>> getErrorLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getErrorLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -159,31 +166,34 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findErrorsByUsername(username, pageable));
+            result = auditEventRepository.findErrorsByUsername(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findErrorsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findErrorsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findAllFailedEvents(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findAllFailedEvents(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search logs", description = "Search logs by keyword in username, resource, URL, or error message")
-    public ResponseEntity<Page<AuditEvent>> searchLogs(
+    public ResponseEntity<Page<AuditEventResponse>> searchLogs(
             @Parameter(description = "Search keyword") @RequestParam String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
 
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(auditEventRepository.searchByKeyword(q, pageable));
+        return ResponseEntity.ok(auditEventRepository.searchByKeyword(q, pageable).map(AuditEventResponse::from));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get log by ID", description = "Retrieve a specific audit log entry by ID")
-    public ResponseEntity<AuditEvent> getLogById(@PathVariable Long id) {
+    public ResponseEntity<AuditEventResponse> getLogById(@PathVariable Long id) {
         return auditEventRepository.findById(id)
+            .map(AuditEventResponse::from)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }

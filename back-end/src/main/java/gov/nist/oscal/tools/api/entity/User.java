@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
+    @JsonIgnore
     @Column(nullable = false, length = 255)
     private String password; // BCrypt hashed password
 
@@ -100,6 +102,7 @@ public class User {
     @ColumnDefault("false")
     private Boolean mfaEnabled = false;
 
+    @JsonIgnore
     @Column(name = "mfa_secret", length = 512)
     private String mfaSecret; // Encrypted TOTP secret
 

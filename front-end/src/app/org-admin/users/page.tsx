@@ -45,7 +45,7 @@ export default function OrgAdminUsersPage() {
   const [processingUserId, setProcessingUserId] = useState<number | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [tempPasswordData, setTempPasswordData] = useState<{ tempPassword: string; username: string; email: string } | null>(null);
+  const [resetConfirmation, setResetConfirmation] = useState<{ username: string; email: string } | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<'org-users' | 'assign-users'>('org-users');
 
@@ -205,7 +205,7 @@ export default function OrgAdminUsersPage() {
       setError(null);
       setSuccess(null);
       const result = await apiClient.resetOrgUserPassword(organizationId, userId);
-      setTempPasswordData(result);
+      setResetConfirmation(result);
       setShowPasswordModal(true);
     } catch (err) {
       console.error('Failed to reset password:', err);
@@ -550,23 +550,19 @@ export default function OrgAdminUsersPage() {
           </div>
         )}
 
-        {/* Temp Password Modal */}
-        {showPasswordModal && tempPasswordData && (
+        {/* Password Reset Confirmation Modal */}
+        {showPasswordModal && resetConfirmation && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Password Reset</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                A temporary password has been generated for <strong>{tempPasswordData.username}</strong> ({tempPasswordData.email}).
+                A temporary password has been emailed to <strong>{resetConfirmation.username}</strong> at <strong>{resetConfirmation.email}</strong>.
               </p>
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-md p-3 mb-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Temporary Password:</p>
-                <p className="text-lg font-mono font-bold text-gray-900 dark:text-white select-all">{tempPasswordData.tempPassword}</p>
-              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                The user will be required to change this password on their next login.
+                The user will be required to change this password on their next login. If they do not receive the email, ask them to check spam or contact support.
               </p>
               <button
-                onClick={() => { setShowPasswordModal(false); setTempPasswordData(null); }}
+                onClick={() => { setShowPasswordModal(false); setResetConfirmation(null); }}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Done

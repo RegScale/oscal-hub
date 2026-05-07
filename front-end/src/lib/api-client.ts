@@ -5111,7 +5111,7 @@ class ApiClient {
     }
   }
 
-  async resetOrgUserPassword(organizationId: number, userId: number): Promise<{ tempPassword: string; username: string; email: string }> {
+  async resetOrgUserPassword(organizationId: number, userId: number): Promise<{ username: string; email: string }> {
     try {
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/org-admin/users/${userId}/reset-password?organizationId=${organizationId}`,

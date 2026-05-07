@@ -2,6 +2,7 @@ package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.model.AnalyticsResponse;
 import gov.nist.oscal.tools.api.service.AnalyticsService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/analytics")
 @Tag(name = "Analytics", description = "Analytics and reporting endpoints for super admins")
+@Hidden
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;

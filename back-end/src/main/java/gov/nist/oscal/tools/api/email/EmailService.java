@@ -13,4 +13,5 @@ public interface EmailService {
     void sendAccessRequestApproved(UserAccessRequest request, User approver);
     void sendAccessRequestRejected(UserAccessRequest request, User rejector, String reason);
     void sendInvitation(Invitation invitation, User inviter, Organization org);
+    void sendPasswordReset(User user, String tempPassword, User adminWhoReset);
 }

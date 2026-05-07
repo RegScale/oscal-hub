@@ -17,6 +17,7 @@ import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrganizationService;
 import gov.nist.oscal.tools.api.service.UserAccessRequestService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @Tag(name = "Organization Management", description = "Super Admin APIs for managing organizations")
+@Hidden
 public class OrganizationController {
 
     @Autowired

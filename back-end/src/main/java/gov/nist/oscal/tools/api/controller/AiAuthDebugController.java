@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/ai/whoami")
 @Profile("dev")
+@Hidden
 public class AiAuthDebugController {
 
     @Operation(summary = "Dev-only: return the current Spring Security Authentication state")

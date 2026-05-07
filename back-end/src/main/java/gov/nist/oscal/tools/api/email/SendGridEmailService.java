@@ -103,6 +103,17 @@ public class SendGridEmailService implements EmailService {
              inviter.getUsername() + " invited you to join " + org.getName(), vars);
     }
 
+    @Override
+    public void sendPasswordReset(User user, String tempPassword, User adminWhoReset) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("username", user.getUsername());
+        vars.put("tempPassword", tempPassword);
+        vars.put("adminName", adminWhoReset == null ? "an administrator" : adminWhoReset.getUsername());
+        vars.put("loginUrl", baseUrl + "/login");
+        send("password-reset", user.getEmail(),
+             "Your OSCAL Hub password was reset", vars);
+    }
+
     private void send(String template, String to, String subject, Map<String, String> vars) {
         try {
             String html = renderer.renderFromClasspath("email-templates/" + template + ".html", vars);
