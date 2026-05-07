@@ -22,7 +22,6 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.sql.Connection;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -191,8 +190,6 @@ public class HealthCheckService {
         ApplicationInfo info = new ApplicationInfo();
         info.setName(applicationName);
         info.setVersion(applicationVersion);
-        info.setProfile(activeProfile);
-        info.setUptime(formatDuration(Duration.ofMillis(runtimeMXBean.getUptime())));
         info.setStartTime(Instant.ofEpochMilli(runtimeMXBean.getStartTime()).toString());
 
         return info;
@@ -758,33 +755,9 @@ public class HealthCheckService {
         EnvironmentInfo info = new EnvironmentInfo();
 
         info.setJavaVersion(System.getProperty("java.version"));
-        info.setJavaVendor(System.getProperty("java.vendor"));
         info.setOsName(System.getProperty("os.name"));
-        info.setOsVersion(System.getProperty("os.version"));
-        info.setOsArch(System.getProperty("os.arch"));
         info.setTimezone(TimeZone.getDefault().getID());
 
         return info;
-    }
-
-    private String formatDuration(Duration duration) {
-        long days = duration.toDays();
-        long hours = duration.toHours() % 24;
-        long minutes = duration.toMinutes() % 60;
-        long seconds = duration.getSeconds() % 60;
-
-        StringBuilder sb = new StringBuilder();
-        if (days > 0) {
-            sb.append(days).append("d ");
-        }
-        if (hours > 0 || days > 0) {
-            sb.append(hours).append("h ");
-        }
-        if (minutes > 0 || hours > 0 || days > 0) {
-            sb.append(minutes).append("m ");
-        }
-        sb.append(seconds).append("s");
-
-        return sb.toString().trim();
     }
 }

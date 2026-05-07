@@ -162,8 +162,6 @@ class HealthCheckServiceTest {
         assertNotNull(response.getApplication());
         assertEquals("oscal-cli-api", response.getApplication().getName());
         assertEquals("1.0.0", response.getApplication().getVersion());
-        assertEquals("test", response.getApplication().getProfile());
-        assertNotNull(response.getApplication().getUptime());
         assertNotNull(response.getApplication().getStartTime());
 
         // Components

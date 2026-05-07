@@ -105,8 +105,6 @@ class DetailedHealthResponseTest {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.setName("oscal-cli-api");
         appInfo.setVersion("1.0.0");
-        appInfo.setProfile("test");
-        appInfo.setUptime("2d 5h 30m 15s");
         appInfo.setStartTime("2025-02-14T05:00:00Z");
         response.setApplication(appInfo);
 
@@ -148,8 +146,6 @@ class DetailedHealthResponseTest {
 
         assertNull(appInfo.getName());
         assertNull(appInfo.getVersion());
-        assertNull(appInfo.getProfile());
-        assertNull(appInfo.getUptime());
         assertNull(appInfo.getStartTime());
     }
 
@@ -159,14 +155,10 @@ class DetailedHealthResponseTest {
 
         appInfo.setName("oscal-cli-api");
         appInfo.setVersion("1.0.0");
-        appInfo.setProfile("production");
-        appInfo.setUptime("10d 2h 30m 45s");
         appInfo.setStartTime("2025-02-06T08:00:00Z");
 
         assertEquals("oscal-cli-api", appInfo.getName());
         assertEquals("1.0.0", appInfo.getVersion());
-        assertEquals("production", appInfo.getProfile());
-        assertEquals("10d 2h 30m 45s", appInfo.getUptime());
         assertEquals("2025-02-06T08:00:00Z", appInfo.getStartTime());
     }
 
@@ -177,27 +169,11 @@ class DetailedHealthResponseTest {
 
         appInfo.setName(null);
         appInfo.setVersion(null);
-        appInfo.setProfile(null);
-        appInfo.setUptime(null);
         appInfo.setStartTime(null);
 
         assertNull(appInfo.getName());
         assertNull(appInfo.getVersion());
-        assertNull(appInfo.getProfile());
-        assertNull(appInfo.getUptime());
         assertNull(appInfo.getStartTime());
-    }
-
-    @Test
-    void testApplicationInfo_differentProfiles() {
-        ApplicationInfo devInfo = new ApplicationInfo();
-        devInfo.setProfile("dev");
-
-        ApplicationInfo prodInfo = new ApplicationInfo();
-        prodInfo.setProfile("prod");
-
-        assertEquals("dev", devInfo.getProfile());
-        assertEquals("prod", prodInfo.getProfile());
     }
 
     // ========== SystemInfo Tests ==========
@@ -311,10 +287,7 @@ class DetailedHealthResponseTest {
         EnvironmentInfo envInfo = new EnvironmentInfo();
 
         assertNull(envInfo.getJavaVersion());
-        assertNull(envInfo.getJavaVendor());
         assertNull(envInfo.getOsName());
-        assertNull(envInfo.getOsVersion());
-        assertNull(envInfo.getOsArch());
         assertNull(envInfo.getTimezone());
     }
 
@@ -323,17 +296,11 @@ class DetailedHealthResponseTest {
         EnvironmentInfo envInfo = new EnvironmentInfo();
 
         envInfo.setJavaVersion("17.0.2");
-        envInfo.setJavaVendor("Eclipse Adoptium");
         envInfo.setOsName("Linux");
-        envInfo.setOsVersion("5.15.0");
-        envInfo.setOsArch("amd64");
         envInfo.setTimezone("America/New_York");
 
         assertEquals("17.0.2", envInfo.getJavaVersion());
-        assertEquals("Eclipse Adoptium", envInfo.getJavaVendor());
         assertEquals("Linux", envInfo.getOsName());
-        assertEquals("5.15.0", envInfo.getOsVersion());
-        assertEquals("amd64", envInfo.getOsArch());
         assertEquals("America/New_York", envInfo.getTimezone());
     }
 
@@ -343,17 +310,11 @@ class DetailedHealthResponseTest {
         envInfo.setJavaVersion("17");
 
         envInfo.setJavaVersion(null);
-        envInfo.setJavaVendor(null);
         envInfo.setOsName(null);
-        envInfo.setOsVersion(null);
-        envInfo.setOsArch(null);
         envInfo.setTimezone(null);
 
         assertNull(envInfo.getJavaVersion());
-        assertNull(envInfo.getJavaVendor());
         assertNull(envInfo.getOsName());
-        assertNull(envInfo.getOsVersion());
-        assertNull(envInfo.getOsArch());
         assertNull(envInfo.getTimezone());
     }
 
@@ -362,14 +323,10 @@ class DetailedHealthResponseTest {
         EnvironmentInfo envInfo = new EnvironmentInfo();
 
         envInfo.setJavaVersion("17.0.2");
-        envInfo.setJavaVendor("Eclipse Adoptium");
         envInfo.setOsName("Linux");
-        envInfo.setOsVersion("5.15.0-91-generic");
-        envInfo.setOsArch("amd64");
         envInfo.setTimezone("UTC");
 
         assertEquals("Linux", envInfo.getOsName());
-        assertEquals("amd64", envInfo.getOsArch());
     }
 
     @Test
@@ -377,14 +334,10 @@ class DetailedHealthResponseTest {
         EnvironmentInfo envInfo = new EnvironmentInfo();
 
         envInfo.setJavaVersion("17.0.2");
-        envInfo.setJavaVendor("Eclipse Adoptium");
         envInfo.setOsName("Mac OS X");
-        envInfo.setOsVersion("14.2.1");
-        envInfo.setOsArch("aarch64");
         envInfo.setTimezone("America/Los_Angeles");
 
         assertEquals("Mac OS X", envInfo.getOsName());
-        assertEquals("aarch64", envInfo.getOsArch());
     }
 
     @Test
@@ -392,30 +345,10 @@ class DetailedHealthResponseTest {
         EnvironmentInfo envInfo = new EnvironmentInfo();
 
         envInfo.setJavaVersion("17.0.2");
-        envInfo.setJavaVendor("Oracle Corporation");
         envInfo.setOsName("Windows 11");
-        envInfo.setOsVersion("10.0");
-        envInfo.setOsArch("amd64");
         envInfo.setTimezone("America/New_York");
 
         assertEquals("Windows 11", envInfo.getOsName());
-        assertEquals("amd64", envInfo.getOsArch());
-    }
-
-    @Test
-    void testEnvironmentInfo_differentJavaVendors() {
-        EnvironmentInfo adoptium = new EnvironmentInfo();
-        adoptium.setJavaVendor("Eclipse Adoptium");
-
-        EnvironmentInfo oracle = new EnvironmentInfo();
-        oracle.setJavaVendor("Oracle Corporation");
-
-        EnvironmentInfo amazon = new EnvironmentInfo();
-        amazon.setJavaVendor("Amazon.com Inc.");
-
-        assertEquals("Eclipse Adoptium", adoptium.getJavaVendor());
-        assertEquals("Oracle Corporation", oracle.getJavaVendor());
-        assertEquals("Amazon.com Inc.", amazon.getJavaVendor());
     }
 
     @Test
