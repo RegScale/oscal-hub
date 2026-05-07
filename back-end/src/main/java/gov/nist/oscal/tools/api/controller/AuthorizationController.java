@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.security.cert.X509Certificate;
@@ -578,12 +579,15 @@ public class AuthorizationController {
         accessGuard.requireManageGrants(authorization, currentUser);
 
         User grantee = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
                         "User " + request.getUserId() + " not found."));
 
         // Reject grants for users not in the authorization's organization.
         if (!isInSameOrg(authorization, grantee)) {
-            throw new IllegalArgumentException("User is not a member of this authorization's organization.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "User is not a member of this authorization's organization.");
         }
 
         AuthorizationGrant grant = grantRepository.findByAuthorizationAndUser(authorization, grantee)
@@ -617,7 +621,9 @@ public class AuthorizationController {
 
         AuthorizationGrant grant = grantRepository.findById(grantId)
                 .filter(g -> g.getAuthorization().getId().equals(id))
-                .orElseThrow(() -> new IllegalArgumentException("Grant " + grantId + " not found on authorization " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Grant " + grantId + " not found on authorization " + id));
 
         grant.setRole(request.getRole());
         grant.setGrantedBy(currentUser);
@@ -645,7 +651,9 @@ public class AuthorizationController {
 
         AuthorizationGrant grant = grantRepository.findById(grantId)
                 .filter(g -> g.getAuthorization().getId().equals(id))
-                .orElseThrow(() -> new IllegalArgumentException("Grant " + grantId + " not found on authorization " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Grant " + grantId + " not found on authorization " + id));
 
         grantRepository.delete(grant);
         return ResponseEntity.noContent().build();
@@ -671,8 +679,10 @@ public class AuthorizationController {
         accessGuard.requireManageGrants(authorization, currentUser);
 
         if (request.getRole() != null && !AuthorizationRole.isAssignableAsShareDefault(request.getRole())) {
-            throw new IllegalArgumentException("Cannot set share-with-org default to " + request.getRole()
-                    + ". Allowed: VIEWER, CONTRIBUTOR, EDITOR.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot set share-with-org default to " + request.getRole()
+                            + ". Allowed: VIEWER, CONTRIBUTOR, EDITOR.");
         }
 
         authorization.setShareWithOrgDefaultRole(request.getRole());

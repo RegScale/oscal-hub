@@ -795,25 +795,18 @@ class AuthorizationControllerTest {
 
     @Test
     @WithMockUser(username = "testuser")
-    void setShareWithOrg_ownerRole_rejectsWithException() throws Exception {
-        // The controller throws IllegalArgumentException for OWNER role.
-        // Without a @ControllerAdvice mapping IllegalArgumentException → 400,
-        // Spring Boot 4 / MockMvc re-throws the raw exception rather than mapping
-        // it to a 500 response. We assert the exception propagates with the expected
-        // message. A follow-up should add a global @ControllerAdvice to map
-        // IllegalArgumentException → 400 so clients receive a proper error response.
+    void setShareWithOrg_ownerRole_returns400() throws Exception {
         Authorization auth = mockAuthorizationForGrants(1L);
         when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(auth);
 
         ShareWithOrgRequest body = new ShareWithOrgRequest();
         body.setRole(AuthorizationRole.OWNER);
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-                Exception.class,
-                () -> mockMvc.perform(patch("/api/authorizations/1/share-with-org")
+        mockMvc.perform(patch("/api/authorizations/1/share-with-org")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body))));
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
     }
 
     private Authorization mockAuthorizationForGrants(Long id) {
