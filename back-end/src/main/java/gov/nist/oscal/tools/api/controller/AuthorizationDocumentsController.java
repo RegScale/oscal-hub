@@ -184,7 +184,10 @@ public class AuthorizationDocumentsController {
     }
 
     private AuthorizationDocument requireDocument(Authorization authorization, Long documentId) {
-        return documentRepository.findByIdAndAuthorization(documentId, authorization)
+        // Use the service method so that the LAZY authorization and uploadedBy
+        // associations are force-initialized inside a transaction before the
+        // controller maps them to a DTO.
+        return documentService.findByIdAndAuthorization(documentId, authorization)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Document " + documentId + " not found on authorization " + authorization.getId()));
     }

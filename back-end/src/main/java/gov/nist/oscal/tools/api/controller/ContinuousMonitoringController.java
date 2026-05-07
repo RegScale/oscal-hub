@@ -11,7 +11,6 @@ import gov.nist.oscal.tools.api.model.conmon.ConMonPoamItemResponse;
 import gov.nist.oscal.tools.api.model.conmon.ConMonReconciliationResponse;
 import gov.nist.oscal.tools.api.model.conmon.ConMonSnapshotSummary;
 import gov.nist.oscal.tools.api.repository.ConMonPoamItemRepository;
-import gov.nist.oscal.tools.api.repository.ConMonSnapshotRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.AuthorizationAccessGuard;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
@@ -45,7 +44,6 @@ public class ContinuousMonitoringController {
     private final AuthorizationAccessGuard accessGuard;
     private final ConMonService conMonService;
     private final ConMonAnalyticsService analyticsService;
-    private final ConMonSnapshotRepository snapshotRepository;
     private final ConMonPoamItemRepository itemRepository;
     private final UserRepository userRepository;
 
@@ -53,14 +51,12 @@ public class ContinuousMonitoringController {
                                           AuthorizationAccessGuard accessGuard,
                                           ConMonService conMonService,
                                           ConMonAnalyticsService analyticsService,
-                                          ConMonSnapshotRepository snapshotRepository,
                                           ConMonPoamItemRepository itemRepository,
                                           UserRepository userRepository) {
         this.authorizationService = authorizationService;
         this.accessGuard = accessGuard;
         this.conMonService = conMonService;
         this.analyticsService = analyticsService;
-        this.snapshotRepository = snapshotRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
     }
@@ -84,7 +80,9 @@ public class ContinuousMonitoringController {
     public ResponseEntity<List<ConMonSnapshotSummary>> list(@PathVariable Long authorizationId,
                                                             Principal principal) {
         Authorization authorization = authorizationService.getAuthorizationForUser(authorizationId, principal.getName());
-        List<ConMonSnapshot> snaps = snapshotRepository.findByAuthorizationOrderByUploadedAtDesc(authorization);
+        // Use the service method so LAZY associations are initialized inside a transaction
+        // before we build DTOs here (preventing LazyInitializationException in production).
+        List<ConMonSnapshot> snaps = conMonService.listSnapshots(authorization);
         List<ConMonSnapshotSummary> out = new ArrayList<>(snaps.size());
         for (ConMonSnapshot s : snaps) {
             out.add(new ConMonSnapshotSummary(s, conMonService.findReconciliation(s).orElse(null)));
@@ -97,6 +95,8 @@ public class ContinuousMonitoringController {
                                                      @PathVariable Long snapshotId,
                                                      Principal principal) {
         Authorization authorization = authorizationService.getAuthorizationForUser(authorizationId, principal.getName());
+        // Use the service method so LAZY associations (authorization, uploadedBy, items)
+        // are eagerly loaded within the transaction before DTO mapping.
         ConMonSnapshot snap = requireSnapshot(authorization, snapshotId);
         return ResponseEntity.ok(new ConMonSnapshotSummary(snap, conMonService.findReconciliation(snap).orElse(null)));
     }
@@ -131,8 +131,11 @@ public class ContinuousMonitoringController {
                                                                        @PathVariable Long snapshotId,
                                                                        Principal principal) {
         Authorization authorization = authorizationService.getAuthorizationForUser(authorizationId, principal.getName());
+        // requireSnapshot already eagerly loads current.getItems() via findSnapshotWithAssociations.
         ConMonSnapshot current = requireSnapshot(authorization, snapshotId);
-        ConMonReconciliation rec = conMonService.findReconciliation(current).orElseThrow(() ->
+        // Use the eager-loading variant so rec.getPreviousSnapshot() and its items
+        // collection are initialized inside a transaction before buildDiff iterates them.
+        ConMonReconciliation rec = conMonService.findReconciliationWithAssociations(current).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No reconciliation for snapshot " + snapshotId + " (likely the first snapshot)."));
 
@@ -240,7 +243,10 @@ public class ContinuousMonitoringController {
     }
 
     private ConMonSnapshot requireSnapshot(Authorization authorization, Long snapshotId) {
-        return snapshotRepository.findByIdAndAuthorization(snapshotId, authorization)
+        // Use the service method so that LAZY associations (authorization, uploadedBy,
+        // items) are force-initialized inside a transaction before any DTO mapping or
+        // guard checks that touch those fields (e.g. snap.getUploadedBy().getId()).
+        return conMonService.findSnapshotWithAssociations(snapshotId, authorization)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Snapshot " + snapshotId + " not found on authorization " + authorization.getId()));
     }

@@ -11,6 +11,7 @@ import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.SeveritySer
 import gov.nist.oscal.tools.api.model.conmon.ConMonAnalyticsResponse.TimeSeriesPoint;
 import gov.nist.oscal.tools.api.repository.ConMonSnapshotRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +27,7 @@ public class ConMonAnalyticsService {
         this.snapshotRepository = snapshotRepository;
     }
 
+    @Transactional(readOnly = true)
     public ConMonAnalyticsResponse forAuthorization(Authorization authorization) {
         List<ConMonSnapshot> snaps = snapshotRepository.findByAuthorizationOrderByUploadedAtDesc(authorization);
         ConMonAnalyticsResponse r = new ConMonAnalyticsResponse();

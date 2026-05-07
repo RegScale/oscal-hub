@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -116,13 +117,40 @@ public class AuthorizationDocumentService {
     public List<AuthorizationDocument> list(Authorization authorization,
                                             DocumentType typeFilter,
                                             String searchTerm) {
+        List<AuthorizationDocument> docs;
         if (typeFilter != null) {
-            return repository.findByAuthorizationAndType(authorization, typeFilter);
+            docs = repository.findByAuthorizationAndType(authorization, typeFilter);
+        } else if (searchTerm != null && !searchTerm.isBlank()) {
+            docs = repository.searchInAuthorization(authorization, searchTerm.trim());
+        } else {
+            docs = repository.findByAuthorizationOrderByUploadedAtDesc(authorization);
         }
-        if (searchTerm != null && !searchTerm.isBlank()) {
-            return repository.searchInAuthorization(authorization, searchTerm.trim());
+        // Force-load LAZY associations while still inside the transaction so the
+        // controller can safely call new AuthorizationDocumentResponse(doc) after
+        // the transaction boundary closes (preventing LazyInitializationException).
+        for (AuthorizationDocument doc : docs) {
+            if (doc.getAuthorization() != null) doc.getAuthorization().getId();
+            if (doc.getUploadedBy() != null) doc.getUploadedBy().getUsername();
         }
-        return repository.findByAuthorizationOrderByUploadedAtDesc(authorization);
+        return docs;
+    }
+
+    /**
+     * Fetches a single document by id and authorization, eagerly initializing
+     * the LAZY {@code authorization} and {@code uploadedBy} associations so that
+     * the controller can safely build response DTOs after the transaction closes.
+     * Returns an empty Optional if the document does not exist or belongs to a
+     * different authorization.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AuthorizationDocument> findByIdAndAuthorization(
+            Long documentId, Authorization authorization) {
+        return repository.findByIdAndAuthorization(documentId, authorization)
+                .map(doc -> {
+                    if (doc.getAuthorization() != null) doc.getAuthorization().getId();
+                    if (doc.getUploadedBy() != null) doc.getUploadedBy().getUsername();
+                    return doc;
+                });
     }
 
     public byte[] download(AuthorizationDocument doc) {

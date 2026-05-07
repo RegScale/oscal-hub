@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -118,8 +119,60 @@ public class ConMonService {
         return saved;
     }
 
+    /**
+     * Returns all snapshots for an authorization with the LAZY {@code authorization}
+     * and {@code uploadedBy} associations eagerly initialized so that the controller
+     * can safely build response DTOs after the transaction boundary closes.
+     */
+    @Transactional(readOnly = true)
+    public List<ConMonSnapshot> listSnapshots(Authorization authorization) {
+        List<ConMonSnapshot> snaps =
+                snapshotRepository.findByAuthorizationOrderByUploadedAtDesc(authorization);
+        for (ConMonSnapshot s : snaps) {
+            if (s.getAuthorization() != null) s.getAuthorization().getId();
+            if (s.getUploadedBy() != null) s.getUploadedBy().getUsername();
+        }
+        return snaps;
+    }
+
+    /**
+     * Returns a single snapshot by id and authorization with LAZY associations
+     * eagerly initialized (authorization, uploadedBy, and the items collection
+     * needed by reconciliation / buildDiff). Returns an empty Optional if not found.
+     */
+    @Transactional(readOnly = true)
+    public Optional<ConMonSnapshot> findSnapshotWithAssociations(Long snapshotId,
+                                                                  Authorization authorization) {
+        return snapshotRepository.findByIdAndAuthorization(snapshotId, authorization)
+                .map(s -> {
+                    if (s.getAuthorization() != null) s.getAuthorization().getId();
+                    if (s.getUploadedBy() != null) s.getUploadedBy().getUsername();
+                    // Force-load the items collection so buildDiff / reconciliation
+                    // can iterate it after the transaction closes.
+                    s.getItems().size();
+                    return s;
+                });
+    }
+
     public Optional<ConMonReconciliation> findReconciliation(ConMonSnapshot snapshot) {
         return reconciliationRepository.findBySnapshot(snapshot);
+    }
+
+    /**
+     * Returns the reconciliation for a snapshot with the previousSnapshot's
+     * associations eagerly initialized (including its items collection for buildDiff).
+     */
+    @Transactional(readOnly = true)
+    public Optional<ConMonReconciliation> findReconciliationWithAssociations(ConMonSnapshot snapshot) {
+        return reconciliationRepository.findBySnapshot(snapshot).map(rec -> {
+            ConMonSnapshot prev = rec.getPreviousSnapshot();
+            if (prev != null) {
+                if (prev.getAuthorization() != null) prev.getAuthorization().getId();
+                if (prev.getUploadedBy() != null) prev.getUploadedBy().getUsername();
+                prev.getItems().size();
+            }
+            return rec;
+        });
     }
 
     @Transactional
