@@ -10,6 +10,7 @@ import gov.nist.oscal.tools.api.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
  * </pre>
  */
 @Service
+@Profile("dimsync")
 public class DimensionSyncJob {
 
     private static final Logger log = LoggerFactory.getLogger(DimensionSyncJob.class);
