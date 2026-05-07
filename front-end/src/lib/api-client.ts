@@ -67,6 +67,9 @@ import type {
   ArtifactAnalytics,
   ArtifactComment,
   ArtifactVisibility,
+  AuthorizationRole,
+  AuthorizationGrantResponse,
+  OrgMemberResponse,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 import type {
@@ -5531,6 +5534,160 @@ class ApiClient {
       { method: 'DELETE', headers: this.getAuthHeaders() },
       5000
     );
+  }
+
+  /**
+   * List all grants for an authorization
+   */
+  async listGrants(authorizationId: number): Promise<AuthorizationGrantResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list grants: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list grants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a grant to an authorization
+   */
+  async addGrant(
+    authorizationId: number,
+    userId: number,
+    role: AuthorizationRole
+  ): Promise<AuthorizationGrantResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ userId, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to add grant: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to add grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update the role on an existing grant
+   */
+  async updateGrant(
+    authorizationId: number,
+    grantId: number,
+    role: AuthorizationRole
+  ): Promise<AuthorizationGrantResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants/${grantId}`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          // Backend ignores userId on PATCH, but the request body type requires it.
+          body: JSON.stringify({ userId: 0, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update grant: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a grant from an authorization
+   */
+  async removeGrant(authorizationId: number, grantId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants/${grantId}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to remove grant: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to remove grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set or clear the share-with-org default role for an authorization
+   */
+  async setShareWithOrg(
+    authorizationId: number,
+    role: AuthorizationRole | null
+  ): Promise<AuthorizationResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/share-with-org`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update share-with-org: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update share-with-org:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List all members in the current user's organization
+   */
+  async listMyOrgMembers(): Promise<OrgMemberResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/organizations/me/members`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list org members: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list org members:', error);
+      throw error;
+    }
   }
 }
 
