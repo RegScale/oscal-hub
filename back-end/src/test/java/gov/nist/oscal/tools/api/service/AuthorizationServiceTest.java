@@ -5,6 +5,7 @@ import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.InsufficientAuthorizationRoleException;
 import gov.nist.oscal.tools.api.model.ConditionOfApprovalRequest;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
@@ -39,6 +40,9 @@ class AuthorizationServiceTest {
 
     @Mock
     private AuthorizationOrgContext orgContext;
+
+    @Mock
+    private AuthorizationAccessGuard accessGuard;
 
     @InjectMocks
     private AuthorizationService authorizationService;
@@ -453,13 +457,15 @@ class AuthorizationServiceTest {
         when(userRepository.findByUsername("otheruser")).thenReturn(Optional.of(otherUser));
         when(orgContext.requirePrimaryOrganization(otherUser)).thenReturn(mockOrg);
         when(authorizationRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockAuthorization));
+        doThrow(new InsufficientAuthorizationRoleException("none", "OWNER"))
+                .when(accessGuard).requireDelete(any(Authorization.class), any(User.class));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             authorizationService.deleteAuthorization(1L, "otheruser");
         });
 
-        assertEquals("Only the creator can delete this authorization", exception.getMessage());
+        assertEquals("Insufficient role: have none, need OWNER.", exception.getMessage());
         verify(authorizationRepository, never()).delete(any(Authorization.class));
     }
 
