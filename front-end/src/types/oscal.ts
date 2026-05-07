@@ -1186,12 +1186,21 @@ export interface ConMonReconciliationDetail {
   changedItems: ConMonChangedItem[];
 }
 
+export interface ConMonSlaStats {
+  openTotal: number;
+  withinSla: number;
+  overdue: number;
+  withoutDeadline: number;
+  slaPercent: number | null;
+}
+
 export interface ConMonAnalytics {
   openCountSeries: Array<{ date: string; open: number; closed: number; unknown: number }>;
-  severitySeriesByDate: Array<{ date: string; low: number; moderate: number; high: number; critical: number }>;
+  currentSeverityBreakdown: Array<{ label: string; count: number }>;
   currentStatusBreakdown: Array<{ label: string; count: number }>;
   agingBuckets: Array<{ bucket: string; count: number }>;
   meanTimeToCloseDays?: number | null;
+  slaStats: ConMonSlaStats;
 }
 
 // Artifact Comment (reuses LibraryComment structure)
