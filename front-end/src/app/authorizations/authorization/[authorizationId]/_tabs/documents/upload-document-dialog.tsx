@@ -60,7 +60,8 @@ export function UploadDocumentDialog({ authorizationId, open, onOpenChange, onUp
       onUploaded();
       onOpenChange(false);
     } catch (e) {
-      toast.error('Upload failed');
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      toast.error(msg, { duration: 8000 });
     } finally {
       setUploading(false);
     }

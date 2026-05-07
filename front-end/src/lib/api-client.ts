@@ -124,6 +124,20 @@ class ApiClient {
     }
   }
 
+  private async readErrorMessage(response: Response): Promise<string> {
+    try {
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const body = await response.json();
+        return body.message || body.error || `HTTP ${response.status}`;
+      }
+      const text = await response.text();
+      return text || `HTTP ${response.status}`;
+    } catch {
+      return `HTTP ${response.status}`;
+    }
+  }
+
   private async fetchWithTimeout(
     url: string,
     options: RequestInit,
@@ -5761,7 +5775,8 @@ class ApiClient {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to upload document: ${response.status}`);
+        const message = await this.readErrorMessage(response);
+        throw new Error(message);
       }
 
       return await response.json();
@@ -5884,7 +5899,10 @@ class ApiClient {
     const response = await fetch(
       `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots`,
       { method: 'POST', headers, body: formData });
-    if (!response.ok) throw new Error(`Failed to upload snapshot: ${response.status}`);
+    if (!response.ok) {
+      const message = await this.readErrorMessage(response);
+      throw new Error(message);
+    }
     return await response.json();
   }
 

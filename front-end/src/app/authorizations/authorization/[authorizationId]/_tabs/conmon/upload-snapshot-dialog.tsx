@@ -31,8 +31,9 @@ export function UploadSnapshotDialog({ authorizationId, open, onOpenChange, onUp
       setFile(null); setNotes('');
       onUploaded();
       onOpenChange(false);
-    } catch {
-      toast.error('Upload failed');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      toast.error(msg, { duration: 8000 });
     } finally {
       setUploading(false);
     }
