@@ -1063,6 +1063,60 @@ export interface ArtifactAnalytics {
   }>;
 }
 
+// Authorization Document Types
+export type DocumentType =
+  | 'VULNERABILITY_SCAN'
+  | 'PENETRATION_TEST'
+  | 'ASSET_INVENTORY'
+  | 'SSP'
+  | 'SAR'
+  | 'CONFIGURATION_BASELINE'
+  | 'CONTINGENCY_PLAN'
+  | 'INCIDENT_RESPONSE_PLAN'
+  | 'AUDIT_REPORT'
+  | 'AUTHORIZATION_LETTER'
+  | 'CHANGE_NOTICE_TICKET'
+  | 'RISK_ASSESSMENT'
+  | 'BUSINESS_CONTINUITY_PLAN'
+  | 'DISASTER_RECOVERY_PLAN'
+  | 'BUSINESS_IMPACT_ASSESSMENT'
+  | 'OTHER';
+
+export interface AuthorizationDocumentResponse {
+  id: number;
+  authorizationId: number;
+  originalFilename: string;
+  fileSize: number;
+  contentType: string;
+  documentType: DocumentType;
+  description?: string | null;
+  tags?: string | null;
+  version?: string | null;
+  effectiveDate?: string | null;
+  expiresAt?: string | null;
+  uploadedByUsername?: string | null;
+  uploadedAt: string;
+}
+
+export interface PackageCompletenessItem {
+  documentType: DocumentType;
+  presentCount: number;
+  satisfied: boolean;
+}
+
+export interface PackageCompletenessResponse {
+  coreDocuments: PackageCompletenessItem[];
+}
+
+export interface UpdateDocumentMetadataRequest {
+  documentType?: DocumentType;
+  description?: string | null;
+  tags?: string | null;
+  version?: string | null;
+  effectiveDate?: string | null;
+  expiresAt?: string | null;
+}
+
 // Artifact Comment (reuses LibraryComment structure)
 export interface ArtifactComment {
   commentId: string;
