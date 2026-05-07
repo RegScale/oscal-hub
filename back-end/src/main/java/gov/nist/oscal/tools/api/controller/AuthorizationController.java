@@ -282,7 +282,8 @@ public class AuthorizationController {
     @PostMapping("/sign-with-cert")
     public ResponseEntity<SignatureResult> signWithClientCertificate(
             @RequestBody SignRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            Principal principal) {
 
         logger.info("Sign request for authorization {}", request.getAuthorizationId());
 
@@ -311,9 +312,14 @@ public class AuthorizationController {
                                 "Certificate validation failed: " + validation.getNotes()));
             }
 
+            // Load authorization scoped to the current user's organization — prevents
+            // cross-org signing by rejecting IDs that don't belong to this user's org.
+            Authorization authorization = authorizationService.getAuthorizationForUser(
+                    request.getAuthorizationId(), principal.getName());
+
             // Sign the authorization
             SignatureResult result = digitalSignatureService.signAuthorization(
-                    request.getAuthorizationId(),
+                    authorization,
                     clientCert
             );
 

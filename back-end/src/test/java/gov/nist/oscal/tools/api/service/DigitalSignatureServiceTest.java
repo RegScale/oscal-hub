@@ -5,7 +5,6 @@ import gov.nist.oscal.tools.api.model.CertificateInfo;
 import gov.nist.oscal.tools.api.model.CertificateValidationResult;
 import gov.nist.oscal.tools.api.model.SignatureResult;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +24,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,13 +82,12 @@ class DigitalSignatureServiceTest {
 
     @Test
     void testSignAuthorization_success() throws Exception {
-        when(authorizationRepository.findById(1L)).thenReturn(Optional.of(mockAuthorization));
         when(authorizationRepository.save(any(Authorization.class))).thenReturn(mockAuthorization);
 
         // Mock certificate encoding
         when(mockCertificate.getEncoded()).thenReturn("test-certificate-bytes".getBytes());
 
-        SignatureResult result = digitalSignatureService.signAuthorization(1L, mockCertificate);
+        SignatureResult result = digitalSignatureService.signAuthorization(mockAuthorization, mockCertificate);
 
         assertNotNull(result);
         assertTrue(result.isSuccess());
@@ -100,20 +97,7 @@ class DigitalSignatureServiceTest {
         assertNotNull(result.getSignatureTimestamp());
         assertEquals("Authorization successfully signed", result.getMessage());
 
-        verify(authorizationRepository).findById(1L);
         verify(authorizationRepository).save(any(Authorization.class));
-    }
-
-    @Test
-    void testSignAuthorization_authorizationNotFound() {
-        when(authorizationRepository.findById(999L)).thenReturn(Optional.empty());
-
-        assertThrows(EntityNotFoundException.class, () -> {
-            digitalSignatureService.signAuthorization(999L, mockCertificate);
-        });
-
-        verify(authorizationRepository).findById(999L);
-        verify(authorizationRepository, never()).save(any());
     }
 
     @Test
@@ -332,7 +316,6 @@ class DigitalSignatureServiceTest {
 
     @Test
     void testSignAuthorization_storesAllCertificateData() throws Exception {
-        when(authorizationRepository.findById(1L)).thenReturn(Optional.of(mockAuthorization));
         when(authorizationRepository.save(any(Authorization.class))).thenAnswer(invocation -> {
             Authorization savedAuth = invocation.getArgument(0);
 
@@ -357,7 +340,7 @@ class DigitalSignatureServiceTest {
 
         when(mockCertificate.getEncoded()).thenReturn("test-certificate-bytes".getBytes());
 
-        digitalSignatureService.signAuthorization(1L, mockCertificate);
+        digitalSignatureService.signAuthorization(mockAuthorization, mockCertificate);
 
         verify(authorizationRepository).save(any(Authorization.class));
     }
