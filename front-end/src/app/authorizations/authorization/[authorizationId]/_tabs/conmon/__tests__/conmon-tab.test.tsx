@@ -20,9 +20,6 @@ vi.mock('../upload-snapshot-dialog', () => ({
   UploadSnapshotDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="upload-snapshot-dialog">upload-dialog</div> : null,
 }));
-vi.mock('../items-drawer', () => ({
-  ItemsDrawer: () => <div data-testid="items-drawer" />,
-}));
 vi.mock('../analytics-dashboard', () => ({
   AnalyticsDashboard: () => <div data-testid="analytics-dashboard" />,
 }));

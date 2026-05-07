@@ -11,7 +11,6 @@ import { KpiTiles } from './conmon/kpi-tiles';
 import { ReconciliationBanner } from './conmon/reconciliation-banner';
 import { AnalyticsDashboard } from './conmon/analytics-dashboard';
 import { SnapshotHistoryTable } from './conmon/snapshot-history-table';
-import { ItemsDrawer } from './conmon/items-drawer';
 import { UploadSnapshotDialog } from './conmon/upload-snapshot-dialog';
 import { PoamItemsTable } from './conmon/poam-items-table';
 import type { AuthorizationResponse, ConMonAnalytics, ConMonSnapshotSummary } from '@/types/oscal';
@@ -26,7 +25,6 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [drawerSnapshotId, setDrawerSnapshotId] = useState<number | null>(null);
   const [activeSubtab, setActiveSubtab] = useState<'analytics' | 'open' | 'overdue' | 'closed'>('analytics');
 
   const role = authorization.effectiveRole;
@@ -132,7 +130,6 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
               <SnapshotHistoryTable
                 snapshots={snapshots}
                 canDelete={canDeleteSnapshot}
-                onView={(s) => setDrawerSnapshotId(s.id)}
                 onDownload={(s) => void handleDownload(s)}
                 onDelete={(s) => void handleDelete(s)}
               />
@@ -173,12 +170,6 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         onUploaded={refresh}
-      />
-
-      <ItemsDrawer
-        authorizationId={authorization.id}
-        snapshotId={drawerSnapshotId}
-        onClose={() => setDrawerSnapshotId(null)}
       />
     </div>
   );
