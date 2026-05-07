@@ -74,6 +74,9 @@ import type {
   PackageCompletenessResponse,
   UpdateDocumentMetadataRequest,
   DocumentType,
+  ConMonSnapshotSummary,
+  ConMonReconciliationDetail,
+  ConMonAnalytics,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 import type {
@@ -5860,6 +5863,83 @@ class ApiClient {
       console.error('Failed to load package completeness:', error);
       throw error;
     }
+  }
+
+  // ---- Continuous Monitoring (ConMon) ----
+
+  async listConMonSnapshots(authorizationId: number): Promise<ConMonSnapshotSummary[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to list snapshots: ${response.status}`);
+    return await response.json();
+  }
+
+  async uploadConMonSnapshot(authorizationId: number, file: File, notes?: string): Promise<ConMonSnapshotSummary> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (notes) formData.append('notes', notes);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots`,
+      { method: 'POST', headers, body: formData });
+    if (!response.ok) throw new Error(`Failed to upload snapshot: ${response.status}`);
+    return await response.json();
+  }
+
+  async getConMonReconciliation(authorizationId: number, snapshotId: number): Promise<ConMonReconciliationDetail> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/reconciliation`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to load reconciliation: ${response.status}`);
+    return await response.json();
+  }
+
+  async listConMonItems(authorizationId: number, snapshotId: number,
+                        opts?: { status?: 'OPEN'|'CLOSED'|'UNKNOWN'; severity?: string; q?: string;
+                                 page?: number; size?: number }): Promise<{
+    items: import('@/types/oscal').ConMonPoamItem[];
+    totalElements: number;
+    totalPages: number;
+    page: number;
+    size: number;
+  }> {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set('status', opts.status);
+    if (opts?.severity) params.set('severity', opts.severity);
+    if (opts?.q) params.set('q', opts.q);
+    if (opts?.page !== undefined) params.set('page', String(opts.page));
+    if (opts?.size !== undefined) params.set('size', String(opts.size));
+    const qs = params.toString();
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/items${qs ? `?${qs}` : ''}`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to list items: ${response.status}`);
+    return await response.json();
+  }
+
+  async deleteConMonSnapshot(authorizationId: number, snapshotId: number): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}`,
+      { method: 'DELETE', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to delete snapshot: ${response.status}`);
+  }
+
+  async downloadConMonSnapshot(authorizationId: number, snapshotId: number): Promise<Blob> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/download`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 30000);
+    if (!response.ok) throw new Error(`Failed to download snapshot: ${response.status}`);
+    return await response.blob();
+  }
+
+  async getConMonAnalytics(authorizationId: number): Promise<ConMonAnalytics> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/analytics`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to load analytics: ${response.status}`);
+    return await response.json();
   }
 }
 
