@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Loader2, Plus } from 'lucide-react';
+import { Trash2, Loader2, Plus, HelpCircle } from 'lucide-react';
+import { RoleHelpDialog } from './role-help-dialog';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { UserPicker } from '@/components/user-picker';
@@ -32,6 +33,7 @@ export function SharingAccessCard({ authorization, onAuthorizationUpdated }: Pro
   const [pickerValue, setPickerValue] = useState<number | null>(null);
   const [pickerRole, setPickerRole] = useState<AuthorizationRole>('VIEWER');
   const [adding, setAdding] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     void refresh();
@@ -114,7 +116,19 @@ export function SharingAccessCard({ authorization, onAuthorizationUpdated }: Pro
 
   return (
     <Card className="p-6">
-      <h2 className="mb-1 text-lg font-semibold">Sharing &amp; Access</h2>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Sharing &amp; Access</h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setHelpOpen(true)}
+          aria-label="Show access levels help"
+        >
+          <HelpCircle className="mr-1 h-4 w-4" />
+          What do these roles mean?
+        </Button>
+      </div>
       <p className="mb-4 text-sm text-muted-foreground">
         Manage who can view, edit, or contribute to this authorization within your organization.
       </p>
@@ -141,7 +155,11 @@ export function SharingAccessCard({ authorization, onAuthorizationUpdated }: Pro
       </section>
 
       <section className="mb-6">
-        <h3 className="mb-2 text-sm font-medium">Add a person</h3>
+        <h3 className="mb-1 text-sm font-medium">Add a person</h3>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Pick a colleague from your organization and choose what they can do.
+          OWNER lets them manage access too. Click &quot;What do these roles mean?&quot; above for details.
+        </p>
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <UserPicker
@@ -214,6 +232,8 @@ export function SharingAccessCard({ authorization, onAuthorizationUpdated }: Pro
           </div>
         )}
       </section>
+
+      <RoleHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </Card>
   );
 }
