@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public class AuthorizationResponse {
 
     private Long id;
+    private Long organizationId;
     private String name;
     private String sspItemId;
     private String sarItemId;
@@ -54,6 +55,7 @@ public class AuthorizationResponse {
 
     public AuthorizationResponse(Authorization authorization) {
         this.id = authorization.getId();
+        this.organizationId = authorization.getOrganization().getId();
         this.name = authorization.getName();
         this.sspItemId = authorization.getSspItemId();
         this.sarItemId = authorization.getSarItemId();
@@ -131,6 +133,14 @@ public class AuthorizationResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(Long organizationId) {
+        this.organizationId = organizationId;
     }
 
     public String getName() {

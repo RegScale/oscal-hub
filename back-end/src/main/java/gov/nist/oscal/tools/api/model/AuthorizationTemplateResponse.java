@@ -11,6 +11,7 @@ import java.util.Set;
 public class AuthorizationTemplateResponse {
 
     private Long id;
+    private Long organizationId;
     private String name;
     private String content;
     private String createdBy;
@@ -25,6 +26,7 @@ public class AuthorizationTemplateResponse {
 
     public AuthorizationTemplateResponse(AuthorizationTemplate template, Set<String> variables) {
         this.id = template.getId();
+        this.organizationId = template.getOrganization().getId();
         this.name = template.getName();
         this.content = template.getContent();
 
@@ -56,6 +58,14 @@ public class AuthorizationTemplateResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(Long organizationId) {
+        this.organizationId = organizationId;
     }
 
     public String getName() {
