@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -34,10 +35,14 @@ import { MarkdownPreview } from '@/components/markdown-preview';
 import { DigitalSignatureStep } from '@/components/digital-signature-step';
 import { toast } from 'sonner';
 import { HelpButton } from '@/components/HelpButton';
+import { OverviewTab } from './_tabs/overview-tab';
+import { ContinuousMonitoringTab } from './_tabs/conmon-tab';
+import { DocumentsTab } from './_tabs/documents-tab';
 
 export default function AuthorizationDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   const authorizationId = params.authorizationId as string;
@@ -70,6 +75,19 @@ export default function AuthorizationDetailPage() {
   const [showCertDetails, setShowCertDetails] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showSigningPanel, setShowSigningPanel] = useState(false);
+
+  // Tab state with URL sync
+  const tabParam = searchParams.get('tab');
+  const initialTab =
+    tabParam === 'conmon' || tabParam === 'documents' ? tabParam : 'overview';
+  const [activeTab, setActiveTab] = useState<'overview' | 'conmon' | 'documents'>(initialTab);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState({}, '', url.toString());
+  }, [activeTab]);
 
   useEffect(() => {
     if (isAuthenticated && authorizationId) {
@@ -277,6 +295,7 @@ export default function AuthorizationDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-12 px-4">
+        {/* Page chrome — back button + header */}
         <div className="mb-8">
           <Button
             variant="ghost"
@@ -301,593 +320,617 @@ export default function AuthorizationDetailPage() {
           </div>
         </div>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Authorization Details</h2>
-            <div className="flex gap-2">
-              {!isEditing && (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(true)}
-                  disabled={authorization.authorizedBy !== user?.username}
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              )}
-              {isEditing && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    disabled={saving}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSaveEdit}
-                    disabled={saving}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+        {/* Tabbed navigation */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'conmon' | 'documents')}>
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="conmon">Continuous Monitoring</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+          </TabsList>
 
-          <div className="space-y-6">
-            {/* Authorization Metadata */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">Authorization Details</h3>
-
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="edit-name">Authorization Name</Label>
-                    <Input
-                      id="edit-name"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Enter authorization name"
-                    />
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <Label htmlFor="edit-date-authorized">Date Authorized</Label>
-                      <Input
-                        id="edit-date-authorized"
-                        type="date"
-                        value={editDateAuthorized}
-                        onChange={(e) => setEditDateAuthorized(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-date-expired">Date Expired</Label>
-                      <Input
-                        id="edit-date-expired"
-                        type="date"
-                        value={editDateExpired}
-                        onChange={(e) => setEditDateExpired(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <Label htmlFor="edit-system-owner">System Owner</Label>
-                      <Input
-                        id="edit-system-owner"
-                        value={editSystemOwner}
-                        onChange={(e) => setEditSystemOwner(e.target.value)}
-                        placeholder="Enter system owner"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-security-manager">Security Manager</Label>
-                      <Input
-                        id="edit-security-manager"
-                        value={editSecurityManager}
-                        onChange={(e) => setEditSecurityManager(e.target.value)}
-                        placeholder="Enter security manager"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="edit-authorizing-official">Authorizing Official</Label>
-                    <Input
-                      id="edit-authorizing-official"
-                      value={editAuthorizingOfficial}
-                      onChange={(e) => setEditAuthorizingOfficial(e.target.value)}
-                      placeholder="Enter authorizing official"
-                    />
+          <TabsContent value="overview" className="mt-6">
+            <OverviewTab
+              authorization={authorization}
+              onAuthorizationUpdated={(updated) => setAuthorization(updated)}
+            >
+              {/* Existing detail-card content — unchanged */}
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Authorization Details</h2>
+                  <div className="flex gap-2">
+                    {!isEditing && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(true)}
+                        disabled={authorization.authorizedBy !== user?.username}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+                    {isEditing && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          disabled={saving}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveEdit}
+                          disabled={saving}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {saving ? 'Saving...' : 'Save'}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {(authorization.dateAuthorized || authorization.dateExpired) && (
-                    <Card className="p-4 bg-slate-800 border-slate-700">
-                      <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
-                      <div className="space-y-2">
-                        {authorization.dateAuthorized && (
-                          <div>
-                            <Label className="text-xs text-slate-400">Date Authorized</Label>
-                            <p className="font-medium">{new Date(authorization.dateAuthorized).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}</p>
-                          </div>
-                        )}
-                        {authorization.dateExpired && (
-                          <div>
-                            <Label className="text-xs text-slate-400">Date Expired</Label>
-                            <p className="font-medium">{new Date(authorization.dateExpired).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}</p>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  )}
 
-                  {(authorization.systemOwner || authorization.securityManager || authorization.authorizingOfficial) && (
-                    <Card className="p-4 bg-slate-800 border-slate-700">
-                      <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
-                      <div className="space-y-2">
-                        {authorization.systemOwner && (
-                          <div>
-                            <Label className="text-xs text-slate-400">System Owner</Label>
-                            <p className="font-medium">{authorization.systemOwner}</p>
-                          </div>
-                        )}
-                        {authorization.securityManager && (
-                          <div>
-                            <Label className="text-xs text-slate-400">Security Manager</Label>
-                            <p className="font-medium">{authorization.securityManager}</p>
-                          </div>
-                        )}
-                        {authorization.authorizingOfficial && (
-                          <div>
-                            <Label className="text-xs text-slate-400">Authorizing Official</Label>
-                            <p className="font-medium">{authorization.authorizingOfficial}</p>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  )}
-                </div>
-              )}
-            </div>
+                <div className="space-y-6">
+                  {/* Authorization Metadata */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Authorization Details</h3>
 
-            {/* Digital Signature Section */}
-            {(authorization.signerCertificate || authorization.electronicSignatureImage || authorization.signatureTimestamp || authorization.digitalSignatureMethod) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">
-                  {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronic Signature' : 'Digital Signature'}
-                </h3>
-
-                <Card className="p-4 bg-blue-900/10 border-blue-800">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
-                        <CheckCircle2 className="h-6 w-6 text-white" />
-                      </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">
-                          {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronically Signed' : 'Digitally Signed'}
-                        </h4>
-                        {authorization.certificateVerified && (
-                          <Badge className="bg-green-600 text-white">Verified</Badge>
-                        )}
-                      </div>
-
-                      {/* Electronic Signature Image */}
-                      {authorization.electronicSignatureImage && authorization.digitalSignatureMethod === 'ELECTRONIC' && (
-                        <div className="mb-4 p-4 bg-slate-800 rounded border-2 border-dashed border-slate-500">
-                          <Label className="text-xs text-slate-400 mb-2 block">Signature</Label>
-                          <img
-                            src={authorization.electronicSignatureImage}
-                            alt="Electronic Signature"
-                            className="max-w-full h-auto"
-                            style={{ maxHeight: '150px' }}
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="edit-name">Authorization Name</Label>
+                          <Input
+                            id="edit-name"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Enter authorization name"
                           />
                         </div>
-                      )}
 
-                      <div className="grid gap-3 md:grid-cols-2 text-sm">
-                        <div>
-                          <Label className="text-xs text-slate-400">Signer</Label>
-                          <p className="font-medium">{authorization.signerCommonName || 'Unknown'}</p>
-                        </div>
-
-                        {authorization.signerEmail && (
+                        <div className="grid gap-4 md:grid-cols-2">
                           <div>
-                            <Label className="text-xs text-slate-400">Email</Label>
-                            <p className="font-medium">{authorization.signerEmail}</p>
-                          </div>
-                        )}
-
-                        {authorization.signerEdipi && (
-                          <div>
-                            <Label className="text-xs text-slate-400">EDIPI</Label>
-                            <p className="font-medium font-mono">{authorization.signerEdipi}</p>
-                          </div>
-                        )}
-
-                        {authorization.signatureTimestamp && (
-                          <div>
-                            <Label className="text-xs text-slate-400">Signed On</Label>
-                            <p className="font-medium">
-                              {new Date(authorization.signatureTimestamp).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-4 flex gap-2">
-                        {/* Only show certificate details button for CAC/PIV signatures */}
-                        {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowCertDetails(!showCertDetails)}
-                          >
-                            {showCertDetails ? (
-                              <>
-                                <ChevronUp className="h-4 w-4 mr-2" />
-                                Hide Certificate Details
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="h-4 w-4 mr-2" />
-                                Show Certificate Details
-                              </>
-                            )}
-                          </Button>
-                        )}
-
-                        {/* Only show re-verify button for CAC/PIV signatures */}
-                        {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleVerifySignature}
-                            disabled={verifying}
-                          >
-                            {verifying ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Verifying...
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCcw className="h-4 w-4 mr-2" />
-                                Re-verify
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-
-                      {showCertDetails && (
-                        <div className="mt-4 p-4 bg-slate-900/50 rounded border border-slate-700">
-                          <h5 className="font-semibold mb-3 text-sm">Certificate Information</h5>
-                          <div className="grid gap-3 text-xs">
-                            {authorization.certificateIssuer && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Issuer</Label>
-                                <p className="font-mono text-xs break-all">{authorization.certificateIssuer}</p>
-                              </div>
-                            )}
-
-                            {authorization.certificateSerial && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Serial Number</Label>
-                                <p className="font-mono text-xs">{authorization.certificateSerial}</p>
-                              </div>
-                            )}
-
-                            <div className="grid gap-3 md:grid-cols-2">
-                              {authorization.certificateNotBefore && (
-                                <div>
-                                  <Label className="text-xs text-slate-400">Valid From</Label>
-                                  <p className="text-xs">
-                                    {new Date(authorization.certificateNotBefore).toLocaleDateString('en-US', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })}
-                                  </p>
-                                </div>
-                              )}
-
-                              {authorization.certificateNotAfter && (
-                                <div>
-                                  <Label className="text-xs text-slate-400">Valid Until</Label>
-                                  <p className="text-xs">
-                                    {new Date(authorization.certificateNotAfter).toLocaleDateString('en-US', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            {authorization.certificateVerified !== null && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Verification Status</Label>
-                                <div className="flex items-center gap-2 mt-1">
-                                  {authorization.certificateVerified ? (
-                                    <>
-                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                      <span className="text-xs text-green-500">Verified</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <X className="h-4 w-4 text-red-500" />
-                                      <span className="text-xs text-red-500">Not Verified</span>
-                                    </>
-                                  )}
-                                  {authorization.certificateVerificationDate && (
-                                    <span className="text-xs text-slate-400 ml-2">
-                                      on {new Date(authorization.certificateVerificationDate).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                </div>
-                                {authorization.certificateVerificationNotes && (
-                                  <p className="text-xs text-slate-400 mt-1">{authorization.certificateVerificationNotes}</p>
-                                )}
-                              </div>
-                            )}
-
-                            {authorization.documentHash && (
-                              <div>
-                                <Label className="text-xs text-slate-400">Document Hash (SHA-256)</Label>
-                                <p className="font-mono text-xs break-all">{authorization.documentHash}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* Sign/Update Signature Section */}
-            {!showSigningPanel && authorization.authorizedBy === user?.username && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-lg font-semibold">
-                    {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Authorization'}
-                  </h3>
-                </div>
-                <Card className="p-4 bg-slate-800/50 border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-300">
-                        {authorization.signatureTimestamp || authorization.digitalSignatureMethod
-                          ? 'You can update or replace the existing signature on this authorization.'
-                          : 'This authorization has not been signed yet. Add a digital or electronic signature.'}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => setShowSigningPanel(true)}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      <Pen className="h-4 w-4 mr-2" />
-                      {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Now'}
-                    </Button>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* Signing Panel */}
-            {showSigningPanel && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-lg font-semibold">Sign Authorization</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowSigningPanel(false)}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                </div>
-                <DigitalSignatureStep
-                  authorizationId={parseInt(authorizationId)}
-                  authorizationName={authorization.name}
-                  onSignatureComplete={async (result) => {
-                    toast.success(`Authorization signed by ${result.signerName || 'Unknown'}`);
-                    setShowSigningPanel(false);
-                    await loadAuthorization(); // Reload to show updated signature
-                  }}
-                  onSkip={() => {
-                    setShowSigningPanel(false);
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Conditions of Approval */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-lg font-semibold">Conditions of Approval</h3>
-                {isEditing && (
-                  <Button
-                    onClick={() => setEditConditions([...editConditions, {
-                      condition: '',
-                      conditionType: 'MANDATORY',
-                      dueDate: ''
-                    }])}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Condition
-                  </Button>
-                )}
-              </div>
-
-              {isEditing ? (
-                <div className="space-y-3">
-                  {editConditions.length === 0 ? (
-                    <p className="text-sm text-slate-400">No conditions. Click &quot;Add Condition&quot; to add one.</p>
-                  ) : (
-                    editConditions.map((condition, index) => (
-                      <Card
-                        key={index}
-                        className={`p-4 ${
-                          condition.conditionType === 'MANDATORY'
-                            ? 'bg-red-900/10 border-red-800'
-                            : 'bg-yellow-900/10 border-yellow-800'
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <div className={condition.conditionType === 'MANDATORY' ? 'flex-1' : 'flex-[2]'}>
-                              <Label htmlFor={`condition-type-${index}`}>Type</Label>
-                              <Select
-                                value={condition.conditionType}
-                                onValueChange={(value: 'MANDATORY' | 'RECOMMENDED') => {
-                                  const updated = [...editConditions];
-                                  updated[index].conditionType = value;
-                                  if (value === 'RECOMMENDED') {
-                                    updated[index].dueDate = '';
-                                  }
-                                  setEditConditions(updated);
-                                }}
-                              >
-                                <SelectTrigger id={`condition-type-${index}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="MANDATORY">MANDATORY</SelectItem>
-                                  <SelectItem value="RECOMMENDED">RECOMMENDED</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {condition.conditionType === 'MANDATORY' && (
-                              <div className="flex-1">
-                                <Label htmlFor={`condition-due-${index}`}>Due Date</Label>
-                                <Input
-                                  id={`condition-due-${index}`}
-                                  type="date"
-                                  value={condition.dueDate || ''}
-                                  onChange={(e) => {
-                                    const updated = [...editConditions];
-                                    updated[index].dueDate = e.target.value;
-                                    setEditConditions(updated);
-                                  }}
-                                />
-                              </div>
-                            )}
-                            <div className="flex items-end">
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => {
-                                  const updated = editConditions.filter((_, i) => i !== index);
-                                  setEditConditions(updated);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <Label htmlFor="edit-date-authorized">Date Authorized</Label>
+                            <Input
+                              id="edit-date-authorized"
+                              type="date"
+                              value={editDateAuthorized}
+                              onChange={(e) => setEditDateAuthorized(e.target.value)}
+                            />
                           </div>
                           <div>
-                            <Label htmlFor={`condition-text-${index}`}>Condition</Label>
-                            <Textarea
-                              id={`condition-text-${index}`}
-                              value={condition.condition}
-                              onChange={(e) => {
-                                const updated = [...editConditions];
-                                updated[index].condition = e.target.value;
-                                setEditConditions(updated);
-                              }}
-                              placeholder="Enter condition details"
-                              rows={3}
+                            <Label htmlFor="edit-date-expired">Date Expired</Label>
+                            <Input
+                              id="edit-date-expired"
+                              type="date"
+                              value={editDateExpired}
+                              onChange={(e) => setEditDateExpired(e.target.value)}
                             />
                           </div>
                         </div>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              ) : (
-                authorization.conditions && authorization.conditions.length > 0 ? (
-                  <div className="space-y-2">
-                    {authorization.conditions.map((condition, index) => (
-                      <Card
-                        key={condition.id}
-                        className={`p-4 ${
-                          condition.conditionType === 'MANDATORY'
-                            ? 'bg-red-900/10 border-red-800'
-                            : 'bg-yellow-900/10 border-yellow-800'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Badge
-                            variant={condition.conditionType === 'MANDATORY' ? 'destructive' : 'default'}
-                            className={
-                              condition.conditionType === 'MANDATORY'
-                                ? 'bg-red-600 text-white mt-0.5'
-                                : 'bg-yellow-600 text-white mt-0.5'
-                            }
-                          >
-                            {condition.conditionType}
-                          </Badge>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label htmlFor="edit-system-owner">System Owner</Label>
+                            <Input
+                              id="edit-system-owner"
+                              value={editSystemOwner}
+                              onChange={(e) => setEditSystemOwner(e.target.value)}
+                              placeholder="Enter system owner"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-security-manager">Security Manager</Label>
+                            <Input
+                              id="edit-security-manager"
+                              value={editSecurityManager}
+                              onChange={(e) => setEditSecurityManager(e.target.value)}
+                              placeholder="Enter security manager"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-authorizing-official">Authorizing Official</Label>
+                          <Input
+                            id="edit-authorizing-official"
+                            value={editAuthorizingOfficial}
+                            onChange={(e) => setEditAuthorizingOfficial(e.target.value)}
+                            placeholder="Enter authorizing official"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {(authorization.dateAuthorized || authorization.dateExpired) && (
+                          <Card className="p-4 bg-slate-800 border-slate-700">
+                            <h4 className="font-semibold mb-3 text-sm text-slate-300">Authorization Dates</h4>
+                            <div className="space-y-2">
+                              {authorization.dateAuthorized && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Date Authorized</Label>
+                                  <p className="font-medium">{new Date(authorization.dateAuthorized).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}</p>
+                                </div>
+                              )}
+                              {authorization.dateExpired && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Date Expired</Label>
+                                  <p className="font-medium">{new Date(authorization.dateExpired).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )}
+
+                        {(authorization.systemOwner || authorization.securityManager || authorization.authorizingOfficial) && (
+                          <Card className="p-4 bg-slate-800 border-slate-700">
+                            <h4 className="font-semibold mb-3 text-sm text-slate-300">Stakeholders</h4>
+                            <div className="space-y-2">
+                              {authorization.systemOwner && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">System Owner</Label>
+                                  <p className="font-medium">{authorization.systemOwner}</p>
+                                </div>
+                              )}
+                              {authorization.securityManager && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Security Manager</Label>
+                                  <p className="font-medium">{authorization.securityManager}</p>
+                                </div>
+                              )}
+                              {authorization.authorizingOfficial && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Authorizing Official</Label>
+                                  <p className="font-medium">{authorization.authorizingOfficial}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Digital Signature Section */}
+                  {(authorization.signerCertificate || authorization.electronicSignatureImage || authorization.signatureTimestamp || authorization.digitalSignatureMethod) && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold border-b pb-2">
+                        {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronic Signature' : 'Digital Signature'}
+                      </h3>
+
+                      <Card className="p-4 bg-blue-900/10 border-blue-800">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0">
+                            <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                              <CheckCircle2 className="h-6 w-6 text-white" />
+                            </div>
+                          </div>
+
                           <div className="flex-1">
-                            <p className="text-sm">{condition.condition}</p>
-                            {condition.dueDate && (
-                              <p className="text-xs text-slate-400 mt-1">
-                                Due: {new Date(condition.dueDate).toLocaleDateString()}
-                              </p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-lg">
+                                {authorization.digitalSignatureMethod === 'ELECTRONIC' ? 'Electronically Signed' : 'Digitally Signed'}
+                              </h4>
+                              {authorization.certificateVerified && (
+                                <Badge className="bg-green-600 text-white">Verified</Badge>
+                              )}
+                            </div>
+
+                            {/* Electronic Signature Image */}
+                            {authorization.electronicSignatureImage && authorization.digitalSignatureMethod === 'ELECTRONIC' && (
+                              <div className="mb-4 p-4 bg-slate-800 rounded border-2 border-dashed border-slate-500">
+                                <Label className="text-xs text-slate-400 mb-2 block">Signature</Label>
+                                <img
+                                  src={authorization.electronicSignatureImage}
+                                  alt="Electronic Signature"
+                                  className="max-w-full h-auto"
+                                  style={{ maxHeight: '150px' }}
+                                />
+                              </div>
+                            )}
+
+                            <div className="grid gap-3 md:grid-cols-2 text-sm">
+                              <div>
+                                <Label className="text-xs text-slate-400">Signer</Label>
+                                <p className="font-medium">{authorization.signerCommonName || 'Unknown'}</p>
+                              </div>
+
+                              {authorization.signerEmail && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Email</Label>
+                                  <p className="font-medium">{authorization.signerEmail}</p>
+                                </div>
+                              )}
+
+                              {authorization.signerEdipi && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">EDIPI</Label>
+                                  <p className="font-medium font-mono">{authorization.signerEdipi}</p>
+                                </div>
+                              )}
+
+                              {authorization.signatureTimestamp && (
+                                <div>
+                                  <Label className="text-xs text-slate-400">Signed On</Label>
+                                  <p className="font-medium">
+                                    {new Date(authorization.signatureTimestamp).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-4 flex gap-2">
+                              {/* Only show certificate details button for CAC/PIV signatures */}
+                              {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowCertDetails(!showCertDetails)}
+                                >
+                                  {showCertDetails ? (
+                                    <>
+                                      <ChevronUp className="h-4 w-4 mr-2" />
+                                      Hide Certificate Details
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-4 w-4 mr-2" />
+                                      Show Certificate Details
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+
+                              {/* Only show re-verify button for CAC/PIV signatures */}
+                              {authorization.digitalSignatureMethod !== 'ELECTRONIC' && authorization.signerCertificate && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleVerifySignature}
+                                  disabled={verifying}
+                                >
+                                  {verifying ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Verifying...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCcw className="h-4 w-4 mr-2" />
+                                      Re-verify
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+
+                            {showCertDetails && (
+                              <div className="mt-4 p-4 bg-slate-900/50 rounded border border-slate-700">
+                                <h5 className="font-semibold mb-3 text-sm">Certificate Information</h5>
+                                <div className="grid gap-3 text-xs">
+                                  {authorization.certificateIssuer && (
+                                    <div>
+                                      <Label className="text-xs text-slate-400">Issuer</Label>
+                                      <p className="font-mono text-xs break-all">{authorization.certificateIssuer}</p>
+                                    </div>
+                                  )}
+
+                                  {authorization.certificateSerial && (
+                                    <div>
+                                      <Label className="text-xs text-slate-400">Serial Number</Label>
+                                      <p className="font-mono text-xs">{authorization.certificateSerial}</p>
+                                    </div>
+                                  )}
+
+                                  <div className="grid gap-3 md:grid-cols-2">
+                                    {authorization.certificateNotBefore && (
+                                      <div>
+                                        <Label className="text-xs text-slate-400">Valid From</Label>
+                                        <p className="text-xs">
+                                          {new Date(authorization.certificateNotBefore).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                          })}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {authorization.certificateNotAfter && (
+                                      <div>
+                                        <Label className="text-xs text-slate-400">Valid Until</Label>
+                                        <p className="text-xs">
+                                          {new Date(authorization.certificateNotAfter).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                          })}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {authorization.certificateVerified !== null && (
+                                    <div>
+                                      <Label className="text-xs text-slate-400">Verification Status</Label>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {authorization.certificateVerified ? (
+                                          <>
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span className="text-xs text-green-500">Verified</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X className="h-4 w-4 text-red-500" />
+                                            <span className="text-xs text-red-500">Not Verified</span>
+                                          </>
+                                        )}
+                                        {authorization.certificateVerificationDate && (
+                                          <span className="text-xs text-slate-400 ml-2">
+                                            on {new Date(authorization.certificateVerificationDate).toLocaleDateString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {authorization.certificateVerificationNotes && (
+                                        <p className="text-xs text-slate-400 mt-1">{authorization.certificateVerificationNotes}</p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {authorization.documentHash && (
+                                    <div>
+                                      <Label className="text-xs text-slate-400">Document Hash (SHA-256)</Label>
+                                      <p className="font-mono text-xs break-all">{authorization.documentHash}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
                       </Card>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* Sign/Update Signature Section */}
+                  {!showSigningPanel && authorization.authorizedBy === user?.username && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h3 className="text-lg font-semibold">
+                          {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Authorization'}
+                        </h3>
+                      </div>
+                      <Card className="p-4 bg-slate-800/50 border-slate-700">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-slate-300">
+                              {authorization.signatureTimestamp || authorization.digitalSignatureMethod
+                                ? 'You can update or replace the existing signature on this authorization.'
+                                : 'This authorization has not been signed yet. Add a digital or electronic signature.'}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setShowSigningPanel(true)}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            <Pen className="h-4 w-4 mr-2" />
+                            {authorization.signatureTimestamp || authorization.digitalSignatureMethod ? 'Update Signature' : 'Sign Now'}
+                          </Button>
+                        </div>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Signing Panel */}
+                  {showSigningPanel && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h3 className="text-lg font-semibold">Sign Authorization</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowSigningPanel(false)}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                      <DigitalSignatureStep
+                        authorizationId={parseInt(authorizationId)}
+                        authorizationName={authorization.name}
+                        onSignatureComplete={async (result) => {
+                          toast.success(`Authorization signed by ${result.signerName || 'Unknown'}`);
+                          setShowSigningPanel(false);
+                          await loadAuthorization(); // Reload to show updated signature
+                        }}
+                        onSkip={() => {
+                          setShowSigningPanel(false);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Conditions of Approval */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-lg font-semibold">Conditions of Approval</h3>
+                      {isEditing && (
+                        <Button
+                          onClick={() => setEditConditions([...editConditions, {
+                            condition: '',
+                            conditionType: 'MANDATORY',
+                            dueDate: ''
+                          }])}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Condition
+                        </Button>
+                      )}
+                    </div>
+
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        {editConditions.length === 0 ? (
+                          <p className="text-sm text-slate-400">No conditions. Click &quot;Add Condition&quot; to add one.</p>
+                        ) : (
+                          editConditions.map((condition, index) => (
+                            <Card
+                              key={index}
+                              className={`p-4 ${
+                                condition.conditionType === 'MANDATORY'
+                                  ? 'bg-red-900/10 border-red-800'
+                                  : 'bg-yellow-900/10 border-yellow-800'
+                              }`}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex gap-2">
+                                  <div className={condition.conditionType === 'MANDATORY' ? 'flex-1' : 'flex-[2]'}>
+                                    <Label htmlFor={`condition-type-${index}`}>Type</Label>
+                                    <Select
+                                      value={condition.conditionType}
+                                      onValueChange={(value: 'MANDATORY' | 'RECOMMENDED') => {
+                                        const updated = [...editConditions];
+                                        updated[index].conditionType = value;
+                                        if (value === 'RECOMMENDED') {
+                                          updated[index].dueDate = '';
+                                        }
+                                        setEditConditions(updated);
+                                      }}
+                                    >
+                                      <SelectTrigger id={`condition-type-${index}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="MANDATORY">MANDATORY</SelectItem>
+                                        <SelectItem value="RECOMMENDED">RECOMMENDED</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {condition.conditionType === 'MANDATORY' && (
+                                    <div className="flex-1">
+                                      <Label htmlFor={`condition-due-${index}`}>Due Date</Label>
+                                      <Input
+                                        id={`condition-due-${index}`}
+                                        type="date"
+                                        value={condition.dueDate || ''}
+                                        onChange={(e) => {
+                                          const updated = [...editConditions];
+                                          updated[index].dueDate = e.target.value;
+                                          setEditConditions(updated);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex items-end">
+                                    <Button
+                                      variant="destructive"
+                                      size="icon"
+                                      onClick={() => {
+                                        const updated = editConditions.filter((_, i) => i !== index);
+                                        setEditConditions(updated);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`condition-text-${index}`}>Condition</Label>
+                                  <Textarea
+                                    id={`condition-text-${index}`}
+                                    value={condition.condition}
+                                    onChange={(e) => {
+                                      const updated = [...editConditions];
+                                      updated[index].condition = e.target.value;
+                                      setEditConditions(updated);
+                                    }}
+                                    placeholder="Enter condition details"
+                                    rows={3}
+                                  />
+                                </div>
+                              </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      authorization.conditions && authorization.conditions.length > 0 ? (
+                        <div className="space-y-2">
+                          {authorization.conditions.map((condition, index) => (
+                            <Card
+                              key={condition.id}
+                              className={`p-4 ${
+                                condition.conditionType === 'MANDATORY'
+                                  ? 'bg-red-900/10 border-red-800'
+                                  : 'bg-yellow-900/10 border-yellow-800'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <Badge
+                                  variant={condition.conditionType === 'MANDATORY' ? 'destructive' : 'default'}
+                                  className={
+                                    condition.conditionType === 'MANDATORY'
+                                      ? 'bg-red-600 text-white mt-0.5'
+                                      : 'bg-yellow-600 text-white mt-0.5'
+                                  }
+                                >
+                                  {condition.conditionType}
+                                </Badge>
+                                <div className="flex-1">
+                                  <p className="text-sm">{condition.condition}</p>
+                                  {condition.dueDate && (
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      Due: {new Date(condition.dueDate).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-400">No conditions of approval</p>
+                      )
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-400">No conditions of approval</p>
-                )
-              )}
-            </div>
 
-            {/* Authorization Document */}
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold border-b pb-2">Authorization Document</h3>
-              <p className="text-xs text-slate-400 mb-2">Scroll to view the complete document</p>
-              <MarkdownPreview
-                content={authorization.completedContent}
-                height="600px"
-              />
-            </div>
-          </div>
-        </Card>
+                  {/* Authorization Document */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold border-b pb-2">Authorization Document</h3>
+                    <p className="text-xs text-slate-400 mb-2">Scroll to view the complete document</p>
+                    <MarkdownPreview
+                      content={authorization.completedContent}
+                      height="600px"
+                    />
+                  </div>
+                </div>
+              </Card>
+            </OverviewTab>
+          </TabsContent>
+
+          <TabsContent value="conmon" className="mt-6">
+            <ContinuousMonitoringTab />
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-6">
+            <DocumentsTab />
+          </TabsContent>
+        </Tabs>
       </div>
-
     </div>
   );
 }
