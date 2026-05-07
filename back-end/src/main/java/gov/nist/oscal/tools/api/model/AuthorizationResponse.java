@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.model;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,6 +16,8 @@ public class AuthorizationResponse {
 
     private Long id;
     private Long organizationId;
+    private AuthorizationRole effectiveRole;
+    private AuthorizationRole shareWithOrgDefaultRole;
     private String name;
     private String sspItemId;
     private String sarItemId;
@@ -124,6 +127,7 @@ public class AuthorizationResponse {
         this.certificateVerified = authorization.getCertificateVerified();
         this.certificateVerificationDate = authorization.getCertificateVerificationDate();
         this.certificateVerificationNotes = authorization.getCertificateVerificationNotes();
+        this.shareWithOrgDefaultRole = authorization.getShareWithOrgDefaultRole();
     }
 
     // Getters and Setters
@@ -390,5 +394,21 @@ public class AuthorizationResponse {
 
     public void setCertificateVerificationNotes(String certificateVerificationNotes) {
         this.certificateVerificationNotes = certificateVerificationNotes;
+    }
+
+    public AuthorizationRole getEffectiveRole() {
+        return effectiveRole;
+    }
+
+    public void setEffectiveRole(AuthorizationRole effectiveRole) {
+        this.effectiveRole = effectiveRole;
+    }
+
+    public AuthorizationRole getShareWithOrgDefaultRole() {
+        return shareWithOrgDefaultRole;
+    }
+
+    public void setShareWithOrgDefaultRole(AuthorizationRole shareWithOrgDefaultRole) {
+        this.shareWithOrgDefaultRole = shareWithOrgDefaultRole;
     }
 }
