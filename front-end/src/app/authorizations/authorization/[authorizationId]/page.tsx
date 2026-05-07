@@ -923,7 +923,7 @@ export default function AuthorizationDetailPage() {
           </TabsContent>
 
           <TabsContent value="conmon" className="mt-6">
-            <ContinuousMonitoringTab />
+            <ContinuousMonitoringTab authorization={authorization!} />
           </TabsContent>
 
           <TabsContent value="documents" className="mt-6">
