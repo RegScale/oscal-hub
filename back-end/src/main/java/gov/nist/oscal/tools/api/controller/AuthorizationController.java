@@ -138,9 +138,11 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "404", description = "Authorization not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<AuthorizationResponse> getAuthorization(@PathVariable Long id) {
+    public ResponseEntity<AuthorizationResponse> getAuthorization(@PathVariable Long id,
+                                                                  Principal principal) {
         try {
-            Authorization authorization = authorizationService.getAuthorization(id);
+            Authorization authorization = authorizationService.getAuthorizationForUser(
+                    id, principal.getName());
             return ResponseEntity.ok(new AuthorizationResponse(authorization));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
@@ -155,9 +157,10 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "200", description = "Authorizations retrieved successfully")
     })
     @GetMapping
-    public ResponseEntity<List<AuthorizationResponse>> getAllAuthorizations() {
+    public ResponseEntity<List<AuthorizationResponse>> getAllAuthorizations(Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getAllAuthorizations();
+            List<Authorization> authorizations =
+                    authorizationService.getAllAuthorizationsForUser(principal.getName());
             List<AuthorizationResponse> responses = authorizations.stream()
                     .map(AuthorizationResponse::new)
                     .collect(Collectors.toList());
@@ -176,9 +179,15 @@ public class AuthorizationController {
     })
     @GetMapping("/recent")
     public ResponseEntity<List<AuthorizationResponse>> getRecentlyAuthorized(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getRecentlyAuthorized(limit);
+            List<Authorization> all =
+                    authorizationService.getAllAuthorizationsForUser(principal.getName());
+            List<Authorization> authorizations = all.stream()
+                    .sorted((a, b) -> b.getAuthorizedAt().compareTo(a.getAuthorizedAt()))
+                    .limit(limit)
+                    .toList();
             List<AuthorizationResponse> responses = authorizations.stream()
                     .map(AuthorizationResponse::new)
                     .collect(Collectors.toList());
@@ -196,9 +205,12 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "200", description = "Authorizations retrieved successfully")
     })
     @GetMapping("/ssp/{sspItemId}")
-    public ResponseEntity<List<AuthorizationResponse>> getAuthorizationsBySsp(@PathVariable String sspItemId) {
+    public ResponseEntity<List<AuthorizationResponse>> getAuthorizationsBySsp(
+            @PathVariable String sspItemId,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getAuthorizationsBySsp(sspItemId);
+            List<Authorization> authorizations =
+                    authorizationService.getAuthorizationsBySspForUser(sspItemId, principal.getName());
             List<AuthorizationResponse> responses = authorizations.stream()
                     .map(AuthorizationResponse::new)
                     .collect(Collectors.toList());
@@ -217,9 +229,11 @@ public class AuthorizationController {
     })
     @GetMapping("/search")
     public ResponseEntity<List<AuthorizationResponse>> searchAuthorizations(
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.searchAuthorizations(q);
+            List<Authorization> authorizations =
+                    authorizationService.searchAuthorizationsForUser(principal.getName(), q);
             List<AuthorizationResponse> responses = authorizations.stream()
                     .map(AuthorizationResponse::new)
                     .collect(Collectors.toList());
