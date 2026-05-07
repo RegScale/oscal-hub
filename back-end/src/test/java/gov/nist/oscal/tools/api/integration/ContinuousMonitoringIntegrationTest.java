@@ -255,36 +255,45 @@ class ContinuousMonitoringIntegrationTest {
     }
 
     /**
-     * Synthesizes a minimal FedRAMP-shaped XLSX workbook in-memory using POI.
-     * Open items use IDs P-1..P-N; closed items also use P-1..P-M so that
-     * a second upload with openRows=0,closedRows=1 produces an open→closed
+     * Synthesizes a minimal FedRAMP Rev 5-shaped XLSX workbook in-memory using POI.
+     * Uses a single "POA&amp;M" sheet with headers on row 2 (index 1) and data from row 3.
+     * Open items use IDs P-1..P-N; false-positive (closed) items also use P-1..P-M so
+     * that a second upload with openRows=0,falsePositiveRows=1 produces an open→closed
      * transition on P-1 relative to a prior upload with openRows=1.
      */
-    private byte[] fedrampWorkbook(int openRows, int closedRows) throws Exception {
+    private byte[] fedrampWorkbook(int openRows, int falsePositiveRows) throws Exception {
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
-            if (openRows > 0) {
-                Sheet s = wb.createSheet("Open POA&M Items");
-                writeHeader(s);
-                for (int i = 0; i < openRows; i++) {
-                    Row r = s.createRow(1 + i);
-                    r.createCell(0).setCellValue("P-" + (i + 1));
-                    r.createCell(1).setCellValue("Open weakness " + (i + 1));
-                    r.createCell(3).setCellValue("High");
-                    r.createCell(7).setCellValue("Ongoing");
-                }
+            Sheet s = wb.createSheet("POA&M");
+
+            // Row 1 (index 0): sparse section labels — ignored by the parser
+            Row r1 = s.createRow(0);
+            r1.createCell(0).setCellValue("Identification");
+            r1.createCell(2).setCellValue("Weakness Details");
+
+            // Row 2 (index 1): Rev 5 headers
+            writeHeader(s);
+
+            // Columns (0-based): 0=POA&M ID, 2=Weakness Name, 18=Original Risk Rating,
+            //                    21=False Positive
+            int nextRow = 2; // data starts at row index 2
+
+            for (int i = 0; i < openRows; i++) {
+                Row r = s.createRow(nextRow++);
+                r.createCell(0).setCellValue("P-" + (i + 1));
+                r.createCell(2).setCellValue("Open weakness " + (i + 1));
+                r.createCell(18).setCellValue("High");
+                // False Positive column left blank → OPEN
             }
-            if (closedRows > 0) {
-                Sheet s = wb.createSheet("Closed POA&M Items");
-                writeHeader(s);
-                for (int i = 0; i < closedRows; i++) {
-                    // Use the same external IDs as the open sheet to drive transitions
-                    Row r = s.createRow(1 + i);
-                    r.createCell(0).setCellValue("P-" + (i + 1));
-                    r.createCell(1).setCellValue("Closed weakness " + (i + 1));
-                    r.createCell(3).setCellValue("High");
-                    r.createCell(7).setCellValue("Completed");
-                }
+
+            for (int i = 0; i < falsePositiveRows; i++) {
+                // Use the same external IDs as the open rows to drive transitions
+                Row r = s.createRow(nextRow++);
+                r.createCell(0).setCellValue("P-" + (i + 1));
+                r.createCell(2).setCellValue("False positive weakness " + (i + 1));
+                r.createCell(18).setCellValue("High");
+                r.createCell(21).setCellValue("Yes"); // False Positive → CLOSED
             }
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             wb.write(out);
             return out.toByteArray();
@@ -292,10 +301,17 @@ class ContinuousMonitoringIntegrationTest {
     }
 
     private void writeHeader(Sheet s) {
-        Row h = s.createRow(0);
+        Row h = s.createRow(1); // Rev 5: headers on row index 1
         String[] cols = {
-            "POA&M Item ID", "Weakness Name", "Weakness Description", "Severity",
-            "Scheduled Completion Date", "Actual Completion Date", "Point of Contact", "Status"
+            "POA&M ID", "Controls Affected", "Weakness Name", "Weakness Description",
+            "Weakness Detector Source", "Weakness Source Identifier", "Asset Identifier",
+            "Point of Contact", "Resources Required ($)", "Overall Remediation Plan",
+            "Original Detection Date", "Scheduled Completion Date", "Planned Milestones",
+            "Milestone Changes", "Status Date", "Vendor Dependency",
+            "Last Vendor Check-in Date", "Vendor Dependent Product Name",
+            "Original Risk Rating", "Adjusted Risk Rating", "Risk Adjustment",
+            "False Positive", "Operational Requirement", "Deviation Rationale",
+            "Supporting Documents", "Comments", "Auto-Approve"
         };
         for (int i = 0; i < cols.length; i++) h.createCell(i).setCellValue(cols[i]);
     }

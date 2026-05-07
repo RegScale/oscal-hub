@@ -19,42 +19,35 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 /**
- * Parses a FedRAMP POA&amp;M Excel template (.xlsx). Looks for sheets whose names
- * contain both an open/closed indicator and a POA&amp;M indicator (case-insensitive).
- * Recognized variants include "Open POA&amp;M Items", "POA&amp;M Open Items 2024",
- * "POAM Open Items", "Closed POAM", etc.
- * Header row matched permissively against known columns.
+ * Parses a FedRAMP Rev 5 POA&amp;M Excel template (.xlsx).
+ *
+ * Expected shape:
+ *   - One data sheet named "POA&amp;M" (or a close variant containing "poa&amp;m"/"poam"
+ *     and not flagged as info/cover/README).
+ *   - Headers are on row 2 (index 1). Row 1 contains sparse section group labels
+ *     ("Identification", "Weakness Details", ...) which are ignored.
+ *   - Data rows start on row 3 (index 2).
+ *   - There is no explicit Status column. Items default to OPEN. Rows with
+ *     "False Positive" set to a truthy value are marked CLOSED.
  */
 @Component
 public class FedrampPoamExcelParser {
 
     public ParsedPoam parse(InputStream input) {
         try (Workbook wb = WorkbookFactory.create(input)) {
-            Sheet open = findOpenSheet(wb);
-            Sheet closed = findClosedSheet(wb);
-            if (open == null && closed == null) {
-                List<String> actualSheets = new ArrayList<>();
+            Sheet data = findDataSheet(wb);
+            if (data == null) {
+                List<String> actual = new ArrayList<>();
                 for (int i = 0; i < wb.getNumberOfSheets(); i++) {
-                    actualSheets.add(wb.getSheetAt(i).getSheetName());
+                    actual.add(wb.getSheetAt(i).getSheetName());
                 }
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Workbook does not contain a POA&M sheet. Found sheets: " + actualSheets
-                                + ". Expected at least one sheet whose name contains \"Open\" or \"Closed\" together with \"POA&M\" (or \"POAM\")."
-                );
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Workbook does not contain a recognizable POA&M sheet. Found sheets: " + actual
+                                + ". Expected a FedRAMP Rev 5 template with a sheet named \"POA&M\".");
             }
-
-            List<ParsedPoamItem> items = new ArrayList<>();
-            if (open != null) {
-                items.addAll(parseSheet(open, ConMonItemStatus.OPEN));
-            }
-            if (closed != null) {
-                items.addAll(parseSheet(closed, ConMonItemStatus.CLOSED));
-            }
-            return new ParsedPoam(null, null, null, null, items);
+            return new ParsedPoam(null, null, null, null, parseSheet(data));
         } catch (ResponseStatusException e) {
             throw e;
         } catch (IOException e) {
@@ -62,29 +55,26 @@ public class FedrampPoamExcelParser {
         }
     }
 
-    private static Sheet findOpenSheet(Workbook wb) {
-        return findSheet(wb, name -> name.contains("open") && (name.contains("poa&m") || name.contains("poam")));
-    }
-
-    private static Sheet findClosedSheet(Workbook wb) {
-        return findSheet(wb, name -> name.contains("closed") && (name.contains("poa&m") || name.contains("poam")));
-    }
-
-    private static Sheet findSheet(Workbook wb, Predicate<String> matcher) {
+    /**
+     * Find the POA&amp;M data sheet. Excludes cover/info/README sheets.
+     * Match by sheet-name substring "poa&amp;m" or "poam".
+     */
+    private static Sheet findDataSheet(Workbook wb) {
         for (int i = 0; i < wb.getNumberOfSheets(); i++) {
             Sheet s = wb.getSheetAt(i);
-            if (s.getSheetName() != null && matcher.test(s.getSheetName().toLowerCase())) {
-                return s;
-            }
+            String name = s.getSheetName() == null ? "" : s.getSheetName().toLowerCase();
+            boolean nameMatch = name.contains("poa&m") || name.contains("poam");
+            boolean isMeta = name.contains("info") || name.contains("cover") || name.contains("read");
+            if (nameMatch && !isMeta) return s;
         }
         return null;
     }
 
-    private List<ParsedPoamItem> parseSheet(Sheet sheet, ConMonItemStatus sheetStatus) {
+    private List<ParsedPoamItem> parseSheet(Sheet sheet) {
         List<ParsedPoamItem> rows = new ArrayList<>();
-        if (sheet.getLastRowNum() < 1) return rows;
+        if (sheet.getLastRowNum() < 2) return rows; // Need header (row index 1) + at least one data row
 
-        Row header = sheet.getRow(0);
+        Row header = sheet.getRow(1);
         if (header == null) return rows;
 
         Map<String, Integer> col = new LinkedHashMap<>();
@@ -96,16 +86,23 @@ public class FedrampPoamExcelParser {
             }
         }
 
-        Integer cId = matchColumn(col, "poa&m item id", "item id", "id");
+        Integer cId = matchColumn(col, "poa&m id", "poam id", "item id", "id");
         Integer cTitle = matchColumn(col, "weakness name", "title", "weakness");
         Integer cDesc = matchColumn(col, "weakness description", "description");
-        Integer cSev = matchColumn(col, "severity");
+        Integer cDetector = matchColumn(col, "weakness detector source", "weakness source");
+        Integer cSev = matchColumn(col, "original risk rating", "adjusted risk rating", "severity", "risk rating");
         Integer cSched = matchColumn(col, "scheduled completion date", "scheduled");
-        Integer cActual = matchColumn(col, "actual completion date", "actual");
         Integer cPoc = matchColumn(col, "point of contact", "poc");
-        Integer cStatus = matchColumn(col, "status");
+        Integer cFalsePositive = matchColumn(col, "false positive");
 
-        for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+        if (cId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "POA&M sheet does not have a recognizable POA&M ID column on row 2. " +
+                    "Expected one of: \"POA&M ID\", \"POAM ID\", \"Item ID\", or \"ID\". " +
+                    "Found columns: " + col.keySet());
+        }
+
+        for (int r = 2; r <= sheet.getLastRowNum(); r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
             String externalId = cellString(row, cId);
@@ -114,10 +111,20 @@ public class FedrampPoamExcelParser {
             String description = cellString(row, cDesc);
             String severityRaw = cellString(row, cSev);
             String severity = normalizeSeverity(severityRaw);
+            String detector = cellString(row, cDetector);
             LocalDate sched = cellDate(row, cSched);
-            LocalDate actual = cellDate(row, cActual);
             String poc = cellString(row, cPoc);
-            String rawStatus = cellString(row, cStatus);
+            String falsePositive = cellString(row, cFalsePositive);
+
+            ConMonItemStatus status;
+            String rawStatus;
+            if (falsePositive != null && isTruthy(falsePositive)) {
+                status = ConMonItemStatus.CLOSED;
+                rawStatus = "False Positive";
+            } else {
+                status = ConMonItemStatus.OPEN;
+                rawStatus = null;
+            }
 
             Map<String, Object> extra = new HashMap<>();
             if (severityRaw != null && severity == null) extra.put("rawSeverity", severityRaw);
@@ -126,12 +133,12 @@ public class FedrampPoamExcelParser {
                     externalId,
                     title == null ? "(untitled)" : title,
                     description,
-                    sheetStatus,
+                    status,
                     rawStatus,
                     severity,
-                    null,
+                    detector,
                     sched,
-                    actual,
+                    null,
                     poc,
                     null,
                     extra));
@@ -146,6 +153,12 @@ public class FedrampPoamExcelParser {
             }
         }
         return null;
+    }
+
+    private static boolean isTruthy(String v) {
+        if (v == null) return false;
+        String n = v.trim().toLowerCase();
+        return n.equals("yes") || n.equals("y") || n.equals("true") || n.equals("1") || n.equals("x");
     }
 
     private static String stringValue(Cell c) {
