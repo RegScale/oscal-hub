@@ -445,6 +445,13 @@
             <version>4.3.0</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Apache POI for FedRAMP POA&M Excel parsing (PR 4 ConMon) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
     </dependencies>
 
     <build>
