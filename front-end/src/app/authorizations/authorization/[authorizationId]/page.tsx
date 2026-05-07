@@ -927,7 +927,7 @@ export default function AuthorizationDetailPage() {
           </TabsContent>
 
           <TabsContent value="documents" className="mt-6">
-            <DocumentsTab />
+            <DocumentsTab authorization={authorization!} />
           </TabsContent>
         </Tabs>
       </div>
