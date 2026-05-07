@@ -21,11 +21,12 @@ const STATUS_COLORS: Record<string, string> = {
   Unknown: '#9CA3AF',
 };
 
-const SEVERITY_COLORS = {
-  low: '#3B82F6',
-  moderate: '#F59E0B',
-  high: '#EF4444',
-  critical: '#7C2D12',
+const SEVERITY_COLORS: Record<string, string> = {
+  Critical: '#7C2D12',
+  High: '#EF4444',
+  Moderate: '#F59E0B',
+  Low: '#3B82F6',
+  Unspecified: '#9CA3AF',
 };
 
 export function AnalyticsDashboard({ analytics, loading }: Props) {
@@ -57,20 +58,31 @@ export function AnalyticsDashboard({ analytics, loading }: Props) {
       </Card>
 
       <Card className="p-4">
-        <h3 className="mb-2 text-sm font-semibold">Open POAMs by severity over time</h3>
-        <LazyResponsiveContainer width="100%" height={240}>
-          <LazyBarChart data={analytics.severitySeriesByDate}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-            <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 11 }} />
-            <YAxis stroke="#9CA3AF" tick={{ fontSize: 11 }} />
-            <Tooltip contentStyle={tooltipStyle} />
-            <Legend />
-            <Bar dataKey="critical" stackId="sev" fill={SEVERITY_COLORS.critical} />
-            <Bar dataKey="high" stackId="sev" fill={SEVERITY_COLORS.high} />
-            <Bar dataKey="moderate" stackId="sev" fill={SEVERITY_COLORS.moderate} />
-            <Bar dataKey="low" stackId="sev" fill={SEVERITY_COLORS.low} />
-          </LazyBarChart>
-        </LazyResponsiveContainer>
+        <h3 className="mb-2 text-sm font-semibold">Open POAMs by severity (current)</h3>
+        {analytics.currentSeverityBreakdown.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">No open items in the latest snapshot.</p>
+        ) : (
+          <LazyResponsiveContainer width="100%" height={240}>
+            <LazyPieChart>
+              <Pie
+                data={analytics.currentSeverityBreakdown}
+                cx="50%" cy="50%"
+                innerRadius={50} outerRadius={80}
+                paddingAngle={2}
+                dataKey="count"
+                nameKey="label"
+                label={(p: any) => `${p.label || ''} (${((Number(p.percent) || 0) * 100).toFixed(0)}%)`}
+                labelLine={false}
+              >
+                {analytics.currentSeverityBreakdown.map((seg, i) => (
+                  <Cell key={i} fill={SEVERITY_COLORS[seg.label] || '#6B7280'} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend />
+            </LazyPieChart>
+          </LazyResponsiveContainer>
+        )}
       </Card>
 
       <Card className="p-4">
