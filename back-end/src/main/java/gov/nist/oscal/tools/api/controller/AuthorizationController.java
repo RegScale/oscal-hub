@@ -353,7 +353,8 @@ public class AuthorizationController {
     })
     @PostMapping("/sign-electronically")
     public ResponseEntity<SignatureResult> signElectronically(
-            @RequestBody ElectronicSignatureRequest request) {
+            @RequestBody ElectronicSignatureRequest request,
+            Principal principal) {
 
         logger.info("Electronic signature request for authorization {}", request.getAuthorizationId());
 
@@ -371,8 +372,9 @@ public class AuthorizationController {
         }
 
         try {
-            // Get the authorization
-            Authorization auth = authorizationService.getAuthorization(request.getAuthorizationId());
+            // Get the authorization scoped to the current user's organization
+            Authorization auth = authorizationService.getAuthorizationForUser(
+                    request.getAuthorizationId(), principal.getName());
 
             // Save electronic signature
             auth.setDigitalSignatureMethod("ELECTRONIC");
@@ -424,9 +426,10 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "404", description = "Authorization or signature not found")
     })
     @GetMapping("/{id}/signature")
-    public ResponseEntity<SignatureDetailsResponse> getSignatureDetails(@PathVariable Long id) {
+    public ResponseEntity<SignatureDetailsResponse> getSignatureDetails(@PathVariable Long id,
+                                                                        Principal principal) {
         try {
-            Authorization auth = authorizationService.getAuthorization(id);
+            Authorization auth = authorizationService.getAuthorizationForUser(id, principal.getName());
 
             if (auth.getSignerCertificate() == null) {
                 logger.debug("No signature found for authorization {}", id);
@@ -468,9 +471,10 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "500", description = "Verification failed")
     })
     @PostMapping("/{id}/verify-signature")
-    public ResponseEntity<SignatureVerificationResponse> verifySignature(@PathVariable Long id) {
+    public ResponseEntity<SignatureVerificationResponse> verifySignature(@PathVariable Long id,
+                                                                         Principal principal) {
         try {
-            Authorization auth = authorizationService.getAuthorization(id);
+            Authorization auth = authorizationService.getAuthorizationForUser(id, principal.getName());
 
             if (auth.getSignerCertificate() == null) {
                 logger.debug("No signature to verify for authorization {}", id);

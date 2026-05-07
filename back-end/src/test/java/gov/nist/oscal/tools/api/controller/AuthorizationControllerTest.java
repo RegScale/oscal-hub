@@ -476,7 +476,7 @@ class AuthorizationControllerTest {
         authorization.setSignatureTimestamp(LocalDateTime.now());
         authorization.setCertificateVerified(true);
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/1/signature"))
@@ -485,7 +485,7 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.signerName").value("John Doe"))
                 .andExpect(jsonPath("$.signerEmail").value("john.doe@example.com"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
     }
 
     @Test
@@ -496,21 +496,21 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate(null); // No signature
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/1/signature"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("No signature found"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetSignatureDetails_authorizationNotFound_returns404() throws Exception {
         // Arrange
-        when(authorizationService.getAuthorization(999L))
+        when(authorizationService.getAuthorizationForUser(999L, "testuser"))
                 .thenThrow(new RuntimeException("Authorization not found"));
 
         // Act & Assert
@@ -531,7 +531,7 @@ class AuthorizationControllerTest {
         validationResult.setValid(true);
         validationResult.setNotes("Certificate is valid");
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
         when(digitalSignatureService.verifyCertificate("CERTIFICATE_DATA")).thenReturn(validationResult);
         when(authorizationService.save(any(Authorization.class))).thenReturn(authorization);
 
@@ -542,7 +542,7 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.valid").value(true))
                 .andExpect(jsonPath("$.notes").value("Certificate is valid"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
         verify(digitalSignatureService, times(1)).verifyCertificate("CERTIFICATE_DATA");
         verify(authorizationService, times(1)).save(any(Authorization.class));
     }
@@ -555,14 +555,14 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate(null); // No signature
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(post("/api/authorizations/1/verify-signature")
                 .with(csrf()))
                 .andExpect(status().isNotFound());
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
         verify(digitalSignatureService, never()).verifyCertificate(anyString());
     }
 
@@ -574,7 +574,7 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate("CERTIFICATE_DATA");
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
         when(digitalSignatureService.verifyCertificate("CERTIFICATE_DATA"))
                 .thenThrow(new RuntimeException("Verification error"));
 
