@@ -120,7 +120,10 @@ public class ContinuousMonitoringController {
                 ? ConMonItemStatus.OPEN
                 : status;
 
-        Page<ConMonPoamItem> result = itemRepository.search(snap, effectiveStatus, severity, overdue, java.time.LocalDate.now(), q,
+        // pgjdbc binds untyped null as bytea, which crashes the LOWER(...)/LIKE branch
+        // on the search query. Coerce q to "" so the bind type is always varchar.
+        String qParam = (q == null) ? "" : q;
+        Page<ConMonPoamItem> result = itemRepository.search(snap, effectiveStatus, severity, overdue, java.time.LocalDate.now(), qParam,
                 PageRequest.of(page, Math.min(size, 200)));
 
         List<ConMonPoamItemResponse> rows = result.stream().map(ConMonPoamItemResponse::new).toList();
