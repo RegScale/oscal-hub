@@ -45,8 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * These tests run through the full Spring Security + JPA stack with a real H2
  * database and MockMvc. They verify the actual HTTP behaviour produced by the
  * combination of AuthorizationAccessGuard, AuthorizationService, and
- * AuthorizationController — including places where the current implementation
- * differs from a strict "private-by-default" spec (noted in test display names).
+ * AuthorizationController.
  *
  * Role resolution summary (AuthorizationAccessGuard):
  *   SUPER_ADMIN global role  → effective OWNER (bypasses org check)
@@ -56,20 +55,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   shareWithOrgDefaultRole  → fallback for org members with no explicit grant
  *   no role at all           → null (access denied)
  *
- * Implementation notes that affect expected HTTP status codes:
- *   - GET /{id} wraps the service call in try-catch(Exception) → 404 on any error.
- *     getAuthorizationForUser() is org-scoped but NOT access-guard-filtered, so
- *     same-org users without a grant still receive 200 (not 404).
- *   - PUT /{id} wraps everything in try-catch(Exception) → 404 even for 403 cases.
- *   - DELETE /{id} only returns 403 when the message contains "Only the creator",
- *     but InsufficientAuthorizationRoleException says "Insufficient role…", so
- *     insufficient-role deletes return 404 (not 403).
- *   - listGrants / addGrant / share-with-org are NOT wrapped in generic try-catch,
- *     so InsufficientAuthorizationRoleException (@ResponseStatus 403) propagates
- *     correctly.
- *   - SUPER_ADMIN users without an org membership trigger NoActiveOrganizationException
- *     inside the org-context resolver; org-scoped endpoints return 404 (GET/PUT/DELETE)
- *     or 403 (grant endpoints) for such users.
+ * Expected HTTP status codes per the RBAC spec:
+ *   - GET /{id}: private-by-default — org members with no grant receive 404 (not 200).
+ *     SUPER_ADMINs bypass org scoping and receive 200 when the resource exists.
+ *   - PUT /{id}: InsufficientAuthorizationRoleException propagates as 403 Forbidden.
+ *   - DELETE /{id}: InsufficientAuthorizationRoleException propagates as 403 Forbidden.
+ *   - listGrants / addGrant / share-with-org: InsufficientAuthorizationRoleException
+ *     (@ResponseStatus 403) propagates correctly.
+ *   - SUPER_ADMIN bypasses org scoping on all read/write paths.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -146,13 +139,13 @@ class AuthorizationAclIntegrationTest {
 
         @Test
         @WithMockUser("bob")
-        @DisplayName("same-org user without grant gets 200 — getAuthorizationForUser is org-scoped only, not access-guard-filtered")
-        void sameOrgNoGrant_ok_notFiltered() throws Exception {
-            // NOTE: The current implementation does NOT apply the access guard on the
-            // single-resource GET path — only the list path filters by effectiveRole.
-            // A same-org user therefore receives 200 even without a grant.
+        @DisplayName("same-org user without grant gets 404 — private-by-default, access guard enforced on read")
+        void sameOrgNoGrant_notFound() throws Exception {
+            // Private-by-default: the access guard is enforced on the single-resource GET path.
+            // An org member with no grant (and no shareWithOrg role) receives 404 so that
+            // authorization existence is not leaked to unauthorized users.
             mockMvc.perform(get("/api/authorizations/" + authA.getId()))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -184,12 +177,13 @@ class AuthorizationAclIntegrationTest {
 
         @Test
         @WithMockUser("dave")
-        @DisplayName("SUPER_ADMIN without org membership gets 404 — NoActiveOrganizationException caught as Exception")
-        void superAdminNoOrg_notFound() throws Exception {
-            // dave has no org membership, so resolveUserOrg throws NoActiveOrganizationException.
-            // The controller wraps all exceptions as 404.
+        @DisplayName("SUPER_ADMIN without org membership gets 200 — SUPER_ADMIN bypasses org scoping")
+        void superAdminNoOrg_ok() throws Exception {
+            // dave has no org membership, but SUPER_ADMIN bypasses org scoping entirely.
+            // The service performs a direct findById (not org-scoped) and grants effective OWNER,
+            // so the resource is returned with 200.
             mockMvc.perform(get("/api/authorizations/" + authA.getId()))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isOk());
         }
 
         @Test
@@ -277,27 +271,29 @@ class AuthorizationAclIntegrationTest {
 
         @Test
         @WithMockUser("bob")
-        @DisplayName("VIEWER cannot update — InsufficientAuthorizationRoleException caught as Exception → 404")
+        @DisplayName("VIEWER cannot update — InsufficientAuthorizationRoleException propagates as 403 Forbidden")
         void viewer_blocked() throws Exception {
             grant(authA, bob, AuthorizationRole.VIEWER, alice);
-            // The controller wraps all exceptions as 404 (not 403).
+            // InsufficientAuthorizationRoleException (@ResponseStatus 403) propagates naturally;
+            // the controller no longer suppresses it with a broad catch-all.
             mockMvc.perform(put("/api/authorizations/" + authA.getId())
                             .with(csrf())
                             .contentType("application/json")
                             .content(updateBody()))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden());
         }
 
         @Test
         @WithMockUser("bob")
-        @DisplayName("CONTRIBUTOR cannot update — InsufficientAuthorizationRoleException caught as Exception → 404")
+        @DisplayName("CONTRIBUTOR cannot update — InsufficientAuthorizationRoleException propagates as 403 Forbidden")
         void contributor_blocked() throws Exception {
             grant(authA, bob, AuthorizationRole.CONTRIBUTOR, alice);
+            // InsufficientAuthorizationRoleException (@ResponseStatus 403) propagates naturally.
             mockMvc.perform(put("/api/authorizations/" + authA.getId())
                             .with(csrf())
                             .contentType("application/json")
                             .content(updateBody()))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -356,14 +352,13 @@ class AuthorizationAclIntegrationTest {
 
         @Test
         @WithMockUser("bob")
-        @DisplayName("EDITOR cannot delete — InsufficientAuthorizationRoleException message does not match 'Only the creator' → caught as 404")
+        @DisplayName("EDITOR cannot delete — InsufficientAuthorizationRoleException propagates as 403 Forbidden")
         void editor_blocked() throws Exception {
             grant(authA, bob, AuthorizationRole.EDITOR, alice);
-            // requireDelete throws InsufficientAuthorizationRoleException.
-            // The controller only returns 403 when message.contains("Only the creator").
-            // Since the message is "Insufficient role…", this falls to the catch-all 404.
+            // InsufficientAuthorizationRoleException (@ResponseStatus 403) propagates naturally;
+            // the controller no longer uses message-sniffing or a broad catch-all.
             mockMvc.perform(delete("/api/authorizations/" + authA.getId()).with(csrf()))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden());
         }
 
         @Test
