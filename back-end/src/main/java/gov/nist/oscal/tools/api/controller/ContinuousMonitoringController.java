@@ -114,7 +114,13 @@ public class ContinuousMonitoringController {
         Authorization authorization = authorizationService.getAuthorizationForUser(authorizationId, principal.getName());
         ConMonSnapshot snap = requireSnapshot(authorization, snapshotId);
 
-        Page<ConMonPoamItem> result = itemRepository.search(snap, status, severity, overdue, java.time.LocalDate.now(), q,
+        // When overdue is requested without an explicit status, scope to OPEN items
+        // (overdue items are by definition open POAMs whose scheduled date has passed).
+        ConMonItemStatus effectiveStatus = (overdue && status == null)
+                ? ConMonItemStatus.OPEN
+                : status;
+
+        Page<ConMonPoamItem> result = itemRepository.search(snap, effectiveStatus, severity, overdue, java.time.LocalDate.now(), q,
                 PageRequest.of(page, Math.min(size, 200)));
 
         List<ConMonPoamItemResponse> rows = result.stream().map(ConMonPoamItemResponse::new).toList();

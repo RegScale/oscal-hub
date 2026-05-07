@@ -20,9 +20,7 @@ public interface ConMonPoamItemRepository extends JpaRepository<ConMonPoamItem, 
     @Query("SELECT i FROM ConMonPoamItem i WHERE i.snapshot = :snapshot " +
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:severity IS NULL OR i.severity = :severity) " +
-           "AND (:overdue = false OR (i.status = gov.nist.oscal.tools.api.entity.ConMonItemStatus.OPEN " +
-           "                          AND i.scheduledCompletionDate IS NOT NULL " +
-           "                          AND i.scheduledCompletionDate < :today)) " +
+           "AND (:overdue = FALSE OR (i.scheduledCompletionDate IS NOT NULL AND i.scheduledCompletionDate < :today)) " +
            "AND (:q IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', :q, '%')) " +
            "                OR LOWER(i.externalId) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<ConMonPoamItem> search(
