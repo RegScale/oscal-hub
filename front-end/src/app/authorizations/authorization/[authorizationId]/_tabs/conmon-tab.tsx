@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
@@ -12,6 +13,7 @@ import { AnalyticsDashboard } from './conmon/analytics-dashboard';
 import { SnapshotHistoryTable } from './conmon/snapshot-history-table';
 import { ItemsDrawer } from './conmon/items-drawer';
 import { UploadSnapshotDialog } from './conmon/upload-snapshot-dialog';
+import { PoamItemsTable } from './conmon/poam-items-table';
 import type { AuthorizationResponse, ConMonAnalytics, ConMonSnapshotSummary } from '@/types/oscal';
 
 interface Props {
@@ -25,6 +27,7 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [drawerSnapshotId, setDrawerSnapshotId] = useState<number | null>(null);
+  const [activeSubtab, setActiveSubtab] = useState<'analytics' | 'open' | 'overdue' | 'closed'>('analytics');
 
   const role = authorization.effectiveRole;
   const canUpload = role === 'OWNER' || role === 'EDITOR' || role === 'CONTRIBUTOR';
@@ -60,6 +63,7 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
     const prev = snapshots.find((s) => s.id === latest.reconciliation?.previousSnapshotId);
     return prev?.uploadedAt ?? null;
   })();
+  const latestSnapshotId = latest?.id ?? null;
 
   const handleDownload = async (s: ConMonSnapshotSummary) => {
     try {
@@ -80,7 +84,7 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
     } catch { toast.error('Delete failed'); }
   };
 
-  const canDelete = (s: ConMonSnapshotSummary) => {
+  const canDeleteSnapshot = (s: ConMonSnapshotSummary) => {
     if (role === 'OWNER' || role === 'EDITOR') return true;
     if (role === 'CONTRIBUTOR') return s.uploadedByUsername === currentUsername();
     return false;
@@ -98,7 +102,7 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
         )}
       </div>
 
-      <KpiTiles latest={latest} />
+      <KpiTiles latest={latest} analytics={analytics} />
 
       {latest?.reconciliation && (
         <ReconciliationBanner
@@ -108,24 +112,61 @@ export function ContinuousMonitoringTab({ authorization }: Props) {
         />
       )}
 
-      <AnalyticsDashboard analytics={analytics} loading={analyticsLoading} />
+      <Tabs value={activeSubtab} onValueChange={(v) => setActiveSubtab(v as 'analytics' | 'open' | 'overdue' | 'closed')}>
+        <TabsList>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="open">Open</TabsTrigger>
+          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="closed">Closed</TabsTrigger>
+        </TabsList>
 
-      <Card className="p-4">
-        <h3 className="mb-2 text-sm font-semibold">Snapshot history</h3>
-        {loading ? (
-          <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
-          </div>
-        ) : (
-          <SnapshotHistoryTable
-            snapshots={snapshots}
-            canDelete={canDelete}
-            onView={(s) => setDrawerSnapshotId(s.id)}
-            onDownload={(s) => void handleDownload(s)}
-            onDelete={(s) => void handleDelete(s)}
+        <TabsContent value="analytics" className="mt-4 space-y-4">
+          <AnalyticsDashboard analytics={analytics} loading={analyticsLoading} />
+          <Card className="p-4">
+            <h3 className="mb-2 text-sm font-semibold">Snapshot history</h3>
+            {loading ? (
+              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : (
+              <SnapshotHistoryTable
+                snapshots={snapshots}
+                canDelete={canDeleteSnapshot}
+                onView={(s) => setDrawerSnapshotId(s.id)}
+                onDownload={(s) => void handleDownload(s)}
+                onDelete={(s) => void handleDelete(s)}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="open" className="mt-4">
+          <PoamItemsTable
+            authorizationId={authorization.id}
+            snapshotId={latestSnapshotId}
+            status="OPEN"
+            emptyMessage="No open items in the latest snapshot."
           />
-        )}
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="overdue" className="mt-4">
+          <PoamItemsTable
+            authorizationId={authorization.id}
+            snapshotId={latestSnapshotId}
+            overdue={true}
+            emptyMessage="No overdue items — all open POAMs are within their scheduled completion date."
+          />
+        </TabsContent>
+
+        <TabsContent value="closed" className="mt-4">
+          <PoamItemsTable
+            authorizationId={authorization.id}
+            snapshotId={latestSnapshotId}
+            status="CLOSED"
+            emptyMessage="No closed items in the latest snapshot."
+          />
+        </TabsContent>
+      </Tabs>
 
       <UploadSnapshotDialog
         authorizationId={authorization.id}

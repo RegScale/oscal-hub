@@ -29,6 +29,9 @@ vi.mock('../analytics-dashboard', () => ({
 vi.mock('../reconciliation-banner', () => ({
   ReconciliationBanner: () => <div data-testid="reconciliation-banner" />,
 }));
+vi.mock('../poam-items-table', () => ({
+  PoamItemsTable: () => <div data-testid="poam-items-table" />,
+}));
 
 function makeAuth(overrides: Partial<AuthorizationResponse> = {}): AuthorizationResponse {
   return {
@@ -48,16 +51,25 @@ function makeAuth(overrides: Partial<AuthorizationResponse> = {}): Authorization
   } as AuthorizationResponse;
 }
 
+const mockAnalytics = {
+  openCountSeries: [],
+  currentSeverityBreakdown: [],
+  currentStatusBreakdown: [],
+  agingBuckets: [],
+  slaStats: {
+    openTotal: 0,
+    withinSla: 0,
+    overdue: 0,
+    withoutDeadline: 0,
+    slaPercent: null,
+  },
+};
+
 describe('ContinuousMonitoringTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (apiClient.listConMonSnapshots as any).mockResolvedValue([]);
-    (apiClient.getConMonAnalytics as any).mockResolvedValue({
-      openCountSeries: [],
-      severitySeriesByDate: [],
-      currentStatusBreakdown: [],
-      agingBuckets: [],
-    });
+    (apiClient.getConMonAnalytics as any).mockResolvedValue(mockAnalytics);
   });
 
   it('shows Upload snapshot button for CONTRIBUTOR', async () => {
