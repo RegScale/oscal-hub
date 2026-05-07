@@ -9,6 +9,7 @@ import gov.nist.secauto.oscal.lib.model.Metadata;
 import gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones;
 import gov.nist.secauto.oscal.lib.model.PoamItem;
 import gov.nist.secauto.oscal.lib.model.Property;
+import gov.nist.secauto.oscal.lib.model.Risk;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -71,17 +72,29 @@ public class OscalPoamParser {
         LocalDateTime lastModified = metadata == null ? null
                 : parseZonedToLocal(metadata.getLastModified());
 
+        // Build a UUID -> risk-status map so we can roll up linked risk statuses
+        // when individual poam-items don't carry a status prop directly.
+        Map<String, String> riskStatusByUuid = new HashMap<>();
+        List<Risk> risks = poam.getRisks();
+        if (risks != null) {
+            for (Risk r : risks) {
+                if (r.getUuid() != null && r.getStatus() != null) {
+                    riskStatusByUuid.put(r.getUuid().toString(), r.getStatus());
+                }
+            }
+        }
+
         List<PoamItem> rawItems = poam.getPoamItems();
         List<ParsedPoamItem> items = new ArrayList<>(rawItems == null ? 0 : rawItems.size());
         if (rawItems != null) {
             for (PoamItem item : rawItems) {
-                items.add(toParsedItem(item));
+                items.add(toParsedItem(item, riskStatusByUuid));
             }
         }
         return new ParsedPoam(uuid, oscalVersion, title, lastModified, items);
     }
 
-    private static ParsedPoamItem toParsedItem(PoamItem item) {
+    private static ParsedPoamItem toParsedItem(PoamItem item, Map<String, String> riskStatusByUuid) {
         String externalId = item.getUuid() == null ? null : item.getUuid().toString();
         String itemTitle = markupLineToString(item.getTitle());
         String description = markupMultilineToString(item.getDescription());
@@ -102,16 +115,19 @@ public class OscalPoamParser {
             }
         }
 
-        // Linked-finding rollup (best-effort; many POAMs don't include this)
-        List<String> findingStatuses = new ArrayList<>();
-        List<PoamItem.RelatedFinding> relatedFindings = item.getRelatedFindings();
-        if (relatedFindings != null) {
-            for (PoamItem.RelatedFinding rf : relatedFindings) {
-                // RelatedFinding only carries a finding-uuid reference; no inline status
+        // If no direct status prop, roll up the linked risks' statuses.
+        List<String> linkedStatuses = new ArrayList<>();
+        List<PoamItem.AssociatedRisk> relatedRisks = item.getRelatedRisks();
+        if (relatedRisks != null) {
+            for (PoamItem.AssociatedRisk ar : relatedRisks) {
+                if (ar.getRiskUuid() != null) {
+                    String s = riskStatusByUuid.get(ar.getRiskUuid().toString());
+                    if (s != null) linkedStatuses.add(s);
+                }
             }
         }
 
-        var derived = PoamStatusDeriver.derive(statusKeyword, findingStatuses);
+        var derived = PoamStatusDeriver.derive(statusKeyword, linkedStatuses);
 
         return new ParsedPoamItem(
                 externalId,

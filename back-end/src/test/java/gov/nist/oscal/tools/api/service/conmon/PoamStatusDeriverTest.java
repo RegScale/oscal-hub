@@ -64,4 +64,20 @@ class PoamStatusDeriverTest {
         var r = PoamStatusDeriver.derive(null, List.of("closed", "ongoing"));
         assertThat(r.status()).isEqualTo(ConMonItemStatus.OPEN);
     }
+
+    @Test
+    void oscalRiskStatuses_yieldOpenForActiveStates() {
+        assertThat(PoamStatusDeriver.derive(null, List.of("investigating")).status())
+                .isEqualTo(ConMonItemStatus.OPEN);
+        assertThat(PoamStatusDeriver.derive(null, List.of("remediating")).status())
+                .isEqualTo(ConMonItemStatus.OPEN);
+        assertThat(PoamStatusDeriver.derive(null, List.of("deviation-approved")).status())
+                .isEqualTo(ConMonItemStatus.OPEN);
+    }
+
+    @Test
+    void oscalRiskStatuses_yieldClosedForClosed() {
+        assertThat(PoamStatusDeriver.derive(null, List.of("closed")).status())
+                .isEqualTo(ConMonItemStatus.CLOSED);
+    }
 }

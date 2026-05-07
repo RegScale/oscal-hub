@@ -42,6 +42,17 @@ class OscalPoamParserTest {
             // Spot-check the first item carries through external_id and title
             assertThat(parsed.items().get(0).externalId()).isNotBlank();
             assertThat(parsed.items().get(0).title()).contains("POAM-0001");
+
+            // After the risk-status rollup fix: items linked to risks with active OSCAL statuses
+            // (deviation-approved, investigating, remediating, etc.) should be OPEN.
+            long openCount = parsed.items().stream().filter(i -> i.status() == gov.nist.oscal.tools.api.entity.ConMonItemStatus.OPEN).count();
+            long closedCount = parsed.items().stream().filter(i -> i.status() == gov.nist.oscal.tools.api.entity.ConMonItemStatus.CLOSED).count();
+            long unknownCount = parsed.items().stream().filter(i -> i.status() == gov.nist.oscal.tools.api.entity.ConMonItemStatus.UNKNOWN).count();
+            // We expect MOST items to be OPEN (since the file uses risk statuses like
+            // "deviation-approved", "investigating", "remediating") and few/none UNKNOWN.
+            assertThat(openCount + closedCount).isGreaterThan(0).withFailMessage(
+                    "Expected at least some items to have a derived status (open/closed) via risk linkage. " +
+                    "Got open=%d, closed=%d, unknown=%d", openCount, closedCount, unknownCount);
         }
     }
 

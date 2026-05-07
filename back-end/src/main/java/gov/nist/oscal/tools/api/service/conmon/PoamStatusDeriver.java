@@ -17,7 +17,10 @@ public final class PoamStatusDeriver {
             "completed", "closed", "false-positive", "false positive", "not-applicable", "not applicable");
     private static final Set<String> OPEN_KEYWORDS = Set.of(
             "ongoing", "open", "risk-accepted", "risk accepted",
-            "operational-requirement", "operational requirement", "pending");
+            "operational-requirement", "operational requirement", "pending",
+            // OSCAL risk-status vocabulary (https://pages.nist.gov/OSCAL/...)
+            "investigating", "remediating", "deviation-requested", "deviation requested",
+            "deviation-approved", "deviation approved");
 
     public record DerivedStatus(ConMonItemStatus status, String rawStatus) {}
 
