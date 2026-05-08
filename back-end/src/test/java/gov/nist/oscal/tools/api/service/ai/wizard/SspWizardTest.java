@@ -127,4 +127,143 @@ class SspWizardTest {
         assertThat(reqs.get(0).path("control-id").asText()).isEqualTo("ac-1");
         assertThat(reqs.get(0).path("props").get(0).path("name").asText()).isEqualTo("ai-confidence");
     }
+
+    @Test
+    void withProfileOverridesOutlineControlIds() throws Exception {
+        AnthropicClient client = mock(AnthropicClient.class);
+        AiSessionEventStream stream = mock(AiSessionEventStream.class);
+        KnowledgeLoader knowledge = mock(KnowledgeLoader.class);
+        DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
+        ProfileSourceLoader profileLoader = mock(ProfileSourceLoader.class);
+        ProfileControlIdExtractor extractor = mock(ProfileControlIdExtractor.class);
+        UserRepository users = mock(UserRepository.class);
+        when(knowledge.systemFor(WizardKind.SSP)).thenReturn("system");
+
+        User caller = new User();
+        when(users.findById(7L)).thenReturn(Optional.of(caller));
+        when(profileLoader.load(eq("library:profile-x"), eq(caller))).thenReturn("{\"profile\":{}}");
+        when(extractor.extract("{\"profile\":{}}")).thenReturn(Optional.of(java.util.List.of("au-1", "au-2", "au-3")));
+
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("System Security Plan")), any()))
+                .thenReturn(new AnthropicResult(OUTLINE_JSON, 100, 50));
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirement entries")), any()))
+                .thenReturn(new AnthropicResult("""
+                    [
+                      {"uuid":"u1","control-id":"au-1","description":"D","props":[{"name":"ai-confidence","ns":"https://oscal-hub.io/ns","value":"high"}]},
+                      {"uuid":"u2","control-id":"au-2","description":"D","props":[{"name":"ai-confidence","ns":"https://oscal-hub.io/ns","value":"high"}]},
+                      {"uuid":"u3","control-id":"au-3","description":"D","props":[{"name":"ai-confidence","ns":"https://oscal-hub.io/ns","value":"high"}]}
+                    ]
+                    """, 50, 30));
+
+        SspWizard wizard = new SspWizard(client, stream, knowledge, normalizer,
+                new SspPromptBuilder(), new SspChunkingStrategy(),
+                profileLoader, extractor, users);
+
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
+                "sk-ant-xxx", "claude-opus-4-7", "Source", "library:profile-x");
+
+        WizardOutcome outcome = wizard.run(ctx);
+        assertThat(outcome.success()).isTrue();
+
+        ArgumentCaptor<SessionEvent> ev = ArgumentCaptor.forClass(SessionEvent.class);
+        verify(stream, atLeastOnce()).publish(eq(ctx.sessionId()), ev.capture());
+        JsonNode doc = extractCompletedDocument(ev.getAllValues());
+        JsonNode reqs = doc.path("system-security-plan")
+                .path("control-implementation")
+                .path("implemented-requirements");
+        assertThat(reqs.size()).isEqualTo(3);
+        assertThat(reqs.get(0).path("control-id").asText()).isEqualTo("au-1");
+        // import-profile.href reflects the user's choice
+        assertThat(doc.path("system-security-plan").path("import-profile").path("href").asText())
+                .isEqualTo("library:profile-x");
+    }
+
+    @Test
+    void profileResolutionFailureFallsBackToOutlineControls() throws Exception {
+        AnthropicClient client = mock(AnthropicClient.class);
+        AiSessionEventStream stream = mock(AiSessionEventStream.class);
+        KnowledgeLoader knowledge = mock(KnowledgeLoader.class);
+        DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
+        ProfileSourceLoader profileLoader = mock(ProfileSourceLoader.class);
+        ProfileControlIdExtractor extractor = mock(ProfileControlIdExtractor.class);
+        UserRepository users = mock(UserRepository.class);
+        when(knowledge.systemFor(WizardKind.SSP)).thenReturn("system");
+
+        User caller = new User();
+        when(users.findById(7L)).thenReturn(Optional.of(caller));
+        when(profileLoader.load(eq("https://bad.test/p.json"), eq(caller)))
+                .thenThrow(new IllegalArgumentException("404 Not Found"));
+
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("System Security Plan")), any()))
+                .thenReturn(new AnthropicResult(OUTLINE_JSON, 100, 50));
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirement entries")), any()))
+                .thenReturn(new AnthropicResult(CHUNK_JSON, 50, 30));
+
+        SspWizard wizard = new SspWizard(client, stream, knowledge, normalizer,
+                new SspPromptBuilder(), new SspChunkingStrategy(),
+                profileLoader, extractor, users);
+
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
+                "sk-ant-xxx", "claude-opus-4-7", "Source", "https://bad.test/p.json");
+
+        WizardOutcome outcome = wizard.run(ctx);
+        assertThat(outcome.success()).isTrue();
+
+        ArgumentCaptor<SessionEvent> ev = ArgumentCaptor.forClass(SessionEvent.class);
+        verify(stream, atLeastOnce()).publish(eq(ctx.sessionId()), ev.capture());
+
+        assertThat(hasProgressContaining(ev.getAllValues(), "Profile resolution failed")).isTrue();
+        assertThat(hasProgressContaining(ev.getAllValues(), "falling back")).isTrue();
+
+        // Assembled doc uses the outline's control IDs (ac-1, ac-2)
+        JsonNode doc = extractCompletedDocument(ev.getAllValues());
+        JsonNode reqs = doc.path("system-security-plan")
+                .path("control-implementation")
+                .path("implemented-requirements");
+        assertThat(reqs.size()).isEqualTo(2);
+    }
+
+    @Test
+    void includeAllProfileFallsBackToOutlineControls() throws Exception {
+        AnthropicClient client = mock(AnthropicClient.class);
+        AiSessionEventStream stream = mock(AiSessionEventStream.class);
+        KnowledgeLoader knowledge = mock(KnowledgeLoader.class);
+        DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
+        ProfileSourceLoader profileLoader = mock(ProfileSourceLoader.class);
+        ProfileControlIdExtractor extractor = mock(ProfileControlIdExtractor.class);
+        UserRepository users = mock(UserRepository.class);
+        when(knowledge.systemFor(WizardKind.SSP)).thenReturn("system");
+
+        User caller = new User();
+        when(users.findById(7L)).thenReturn(Optional.of(caller));
+        when(profileLoader.load(eq("library:include-all-profile"), eq(caller)))
+                .thenReturn("{\"profile\":{\"imports\":[{\"include-all\":{}}]}}");
+        when(extractor.extract("{\"profile\":{\"imports\":[{\"include-all\":{}}]}}"))
+                .thenReturn(Optional.empty());
+
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("System Security Plan")), any()))
+                .thenReturn(new AnthropicResult(OUTLINE_JSON, 100, 50));
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirement entries")), any()))
+                .thenReturn(new AnthropicResult(CHUNK_JSON, 50, 30));
+
+        SspWizard wizard = new SspWizard(client, stream, knowledge, normalizer,
+                new SspPromptBuilder(), new SspChunkingStrategy(),
+                profileLoader, extractor, users);
+
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
+                "sk-ant-xxx", "claude-opus-4-7", "Source", "library:include-all-profile");
+
+        WizardOutcome outcome = wizard.run(ctx);
+        assertThat(outcome.success()).isTrue();
+
+        ArgumentCaptor<SessionEvent> ev = ArgumentCaptor.forClass(SessionEvent.class);
+        verify(stream, atLeastOnce()).publish(eq(ctx.sessionId()), ev.capture());
+        assertThat(hasProgressContaining(ev.getAllValues(), "include-all")).isTrue();
+
+        JsonNode doc = extractCompletedDocument(ev.getAllValues());
+        JsonNode reqs = doc.path("system-security-plan")
+                .path("control-implementation")
+                .path("implemented-requirements");
+        assertThat(reqs.size()).isEqualTo(2);
+    }
 }
