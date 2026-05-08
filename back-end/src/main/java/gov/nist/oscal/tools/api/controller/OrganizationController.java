@@ -17,6 +17,7 @@ import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrganizationService;
 import gov.nist.oscal.tools.api.service.UserAccessRequestService;
+import gov.nist.oscal.tools.api.service.UserManagementService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,6 +27,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -63,6 +67,9 @@ public class OrganizationController {
     @Autowired
     private OrganizationMembershipRepository organizationMembershipRepository;
 
+    @Autowired
+    private UserManagementService userManagementService;
+
     @Operation(
         summary = "Get all users",
         description = "Retrieve all users in the system. Super Admin only."
@@ -73,6 +80,7 @@ public class OrganizationController {
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @GetMapping("/users")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getAllUsers() {
         List<User> users = userRepository.findAll();
         List<Map<String, Object>> response = users.stream()
@@ -81,11 +89,117 @@ public class OrganizationController {
                     user.put("id", u.getId());
                     user.put("username", u.getUsername());
                     user.put("email", u.getEmail());
+                    user.put("firstName", u.getFirstName());
+                    user.put("lastName", u.getLastName());
                     user.put("globalRole", u.getGlobalRole().toString());
+                    user.put("enabled", u.getEnabled());
+
+                    List<Map<String, Object>> orgs = organizationMembershipRepository.findByUser(u).stream()
+                            .map(m -> {
+                                Map<String, Object> org = new HashMap<>();
+                                org.put("id", m.getOrganization().getId());
+                                org.put("name", m.getOrganization().getName());
+                                org.put("role", m.getRole().toString());
+                                return org;
+                            })
+                            .collect(Collectors.toList());
+                    user.put("organizations", orgs);
+
                     return user;
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Archive user", description = "Disable a user account so they can no longer log in. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/archive")
+    public ResponseEntity<?> archiveUser(@PathVariable Long userId) {
+        try {
+            Long adminId = currentAdminId();
+            if (adminId != null && adminId.equals(userId)) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "You cannot archive your own account");
+                return ResponseEntity.badRequest().body(error);
+            }
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            user.setEnabled(false);
+            userRepository.save(user);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User archived. They can no longer log in.");
+            response.put("username", user.getUsername());
+            response.put("enabled", false);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(summary = "Unarchive user", description = "Re-enable an archived user account. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/unarchive")
+    public ResponseEntity<?> unarchiveUser(@PathVariable Long userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            user.setEnabled(true);
+            userRepository.save(user);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User unarchived. They can log in again.");
+            response.put("username", user.getUsername());
+            response.put("enabled", true);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(summary = "Reset user password (admin)",
+            description = "Reset a user's password. Body fields: password (optional, auto-generated if omitted), notify (default true; if false, the plaintext password is returned in the response so the admin can deliver it out-of-band). Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/reset-password")
+    public ResponseEntity<?> resetUserPassword(@PathVariable Long userId, @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            Long adminId = currentAdminId();
+            if (adminId == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Could not resolve current admin user");
+                return ResponseEntity.status(401).body(error);
+            }
+            String customPassword = body != null && body.get("password") != null ? body.get("password").toString() : null;
+            boolean notify = body == null || body.get("notify") == null || Boolean.parseBoolean(body.get("notify").toString());
+
+            Map<String, String> result = userManagementService.resetPasswordByAdmin(userId, adminId, customPassword, notify);
+            Map<String, Object> response = new HashMap<>();
+            response.put("username", result.get("username"));
+            response.put("email", result.get("email"));
+            if (notify) {
+                response.put("message", "Password reset. A temporary password has been emailed to the user; they must change it on next login.");
+                response.put("notified", true);
+            } else {
+                response.put("message", "Password reset. Deliver the password to the user securely; they will be required to change it on next login.");
+                response.put("notified", false);
+                response.put("password", result.get("password"));
+            }
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    private Long currentAdminId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) return null;
+        return userRepository.findByUsername(auth.getName())
+                .map(User::getId)
+                .orElse(null);
     }
 
     @Operation(

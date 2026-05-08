@@ -127,6 +127,30 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.outcome IN ('FAILURE', 'ERROR') AND a.timestamp >= :since")
     long countErrorsSince(@Param("since") LocalDateTime since);
 
+    // ----- Username-scoped counts (for per-user stats tiles) -----
+    // (countByUsername(String) already defined further down — reused here.)
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.timestamp >= :since")
+    long countByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND (a.category = 'Security' OR a.riskLevel = 'HIGH') AND a.timestamp >= :since")
+    long countSecurityEventsByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.outcome IN ('FAILURE', 'ERROR') AND a.timestamp >= :since")
+    long countErrorsByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.riskLevel = 'HIGH' AND a.reviewed = false")
+    long countUnreviewedHighRiskByUsername(@Param("username") String username);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.category = :category")
+    long countByUsernameAndCategory(@Param("username") String username, @Param("category") String category);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.riskLevel = :riskLevel")
+    long countByUsernameAndRiskLevel(@Param("username") String username, @Param("riskLevel") String riskLevel);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.outcome = :outcome")
+    long countByUsernameAndOutcome(@Param("username") String username, @Param("outcome") String outcome);
+
     // ========================================
     // Find by User
     // ========================================

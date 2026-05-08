@@ -124,7 +124,7 @@ public class AuditLogController {
 
         Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            result = auditEventRepository.findRawLogsByUsername(username, pageable);
+            result = auditEventRepository.findByUsernameOrderByTimestampDesc(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
             result = auditEventRepository.findRawLogsByRiskLevel(riskLevel, pageable);
         } else {
@@ -203,19 +203,24 @@ public class AuditLogController {
     // ========================================
 
     @GetMapping("/stats")
-    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs (cached for 1 minute)")
-    @Cacheable(value = "auditStats", key = "'stats'")
-    public ResponseEntity<AuditLogStats> getStats() {
+    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs. Pass ?username=<u> to scope to one user.")
+    @Cacheable(value = "auditStats", key = "#username != null && !#username.isBlank() ? 'user:' + #username : 'stats'")
+    public ResponseEntity<AuditLogStats> getStats(@RequestParam(required = false) String username) {
+        if (username != null && !username.isBlank()) {
+            return ResponseEntity.ok(getStatsForUser(username));
+        }
+        return ResponseEntity.ok(getGlobalStats());
+    }
+
+    private AuditLogStats getGlobalStats() {
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
 
-        // Total counts
         long totalLogs = auditEventRepository.count();
         long logsToday = auditEventRepository.countEventsSince(startOfToday);
         long securityEventsToday = auditEventRepository.countSecurityEventsSince(startOfToday);
         long errorsToday = auditEventRepository.countErrorsSince(startOfToday);
         long highRiskUnreviewed = auditEventRepository.countUnreviewedHighRiskEvents();
 
-        // Breakdown by category
         Map<String, Long> byCategory = new HashMap<>();
         byCategory.put("Authentication", auditEventRepository.countByCategory("Authentication"));
         byCategory.put("Authorization", auditEventRepository.countByCategory("Authorization"));
@@ -224,24 +229,53 @@ public class AuditLogController {
         byCategory.put("Security", auditEventRepository.countByCategory("Security"));
         byCategory.put("System", auditEventRepository.countByCategory("System"));
 
-        // Breakdown by risk level
         Map<String, Long> byRiskLevel = new HashMap<>();
         byRiskLevel.put("LOW", auditEventRepository.countByRiskLevel("LOW"));
         byRiskLevel.put("MEDIUM", auditEventRepository.countByRiskLevel("MEDIUM"));
         byRiskLevel.put("HIGH", auditEventRepository.countByRiskLevel("HIGH"));
 
-        // Breakdown by outcome
         Map<String, Long> byOutcome = new HashMap<>();
         byOutcome.put("SUCCESS", auditEventRepository.countByOutcome("SUCCESS"));
         byOutcome.put("FAILURE", auditEventRepository.countByOutcome("FAILURE"));
         byOutcome.put("ERROR", auditEventRepository.countByOutcome("ERROR"));
 
-        AuditLogStats stats = new AuditLogStats(
+        return new AuditLogStats(
             totalLogs, logsToday, securityEventsToday, errorsToday, highRiskUnreviewed,
             byCategory, byRiskLevel, byOutcome
         );
+    }
 
-        return ResponseEntity.ok(stats);
+    private AuditLogStats getStatsForUser(String username) {
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
+        long totalLogs = auditEventRepository.countByUsername(username);
+        long logsToday = auditEventRepository.countByUsernameSince(username, startOfToday);
+        long securityEventsToday = auditEventRepository.countSecurityEventsByUsernameSince(username, startOfToday);
+        long errorsToday = auditEventRepository.countErrorsByUsernameSince(username, startOfToday);
+        long highRiskUnreviewed = auditEventRepository.countUnreviewedHighRiskByUsername(username);
+
+        Map<String, Long> byCategory = new HashMap<>();
+        byCategory.put("Authentication", auditEventRepository.countByUsernameAndCategory(username, "Authentication"));
+        byCategory.put("Authorization", auditEventRepository.countByUsernameAndCategory(username, "Authorization"));
+        byCategory.put("Data Access", auditEventRepository.countByUsernameAndCategory(username, "Data Access"));
+        byCategory.put("Configuration", auditEventRepository.countByUsernameAndCategory(username, "Configuration"));
+        byCategory.put("Security", auditEventRepository.countByUsernameAndCategory(username, "Security"));
+        byCategory.put("System", auditEventRepository.countByUsernameAndCategory(username, "System"));
+
+        Map<String, Long> byRiskLevel = new HashMap<>();
+        byRiskLevel.put("LOW", auditEventRepository.countByUsernameAndRiskLevel(username, "LOW"));
+        byRiskLevel.put("MEDIUM", auditEventRepository.countByUsernameAndRiskLevel(username, "MEDIUM"));
+        byRiskLevel.put("HIGH", auditEventRepository.countByUsernameAndRiskLevel(username, "HIGH"));
+
+        Map<String, Long> byOutcome = new HashMap<>();
+        byOutcome.put("SUCCESS", auditEventRepository.countByUsernameAndOutcome(username, "SUCCESS"));
+        byOutcome.put("FAILURE", auditEventRepository.countByUsernameAndOutcome(username, "FAILURE"));
+        byOutcome.put("ERROR", auditEventRepository.countByUsernameAndOutcome(username, "ERROR"));
+
+        return new AuditLogStats(
+            totalLogs, logsToday, securityEventsToday, errorsToday, highRiskUnreviewed,
+            byCategory, byRiskLevel, byOutcome
+        );
     }
 
     // ========================================

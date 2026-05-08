@@ -22,10 +22,15 @@ interface AllUser {
   id: number;
   username: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   globalRole: string;
   enabled: boolean;
+  organizations: Array<{
+    id: number;
+    name: string;
+    role: string;
+  }>;
 }
 
 interface OrgOption {

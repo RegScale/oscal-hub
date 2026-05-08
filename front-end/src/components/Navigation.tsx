@@ -68,11 +68,10 @@ export function Navigation() {
     }
   }, []);
 
-  // Also update when user changes
+  // Also update when user changes — including logout (user → null), where we
+  // must reset the flag or stale super-admin state hides Browse/Docs.
   useEffect(() => {
-    if (user) {
-      setIsSuperAdminUser(user.globalRole === 'SUPER_ADMIN');
-    }
+    setIsSuperAdminUser(user?.globalRole === 'SUPER_ADMIN');
   }, [user]);
 
   // Check if user is super admin
@@ -91,24 +90,28 @@ export function Navigation() {
                 OSCAL Hub
               </div>
             </Link>
-            {/* Browse — visible to everyone (logged-in or out). */}
-            <Link
-              href="/catalog"
-              className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Library className="h-4 w-4" />
-              Browse
-            </Link>
-            {/* Documentation — always visible. Opens the in-app user guide. */}
-            <Link
-              href="/guide"
-              className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <BookOpen className="h-4 w-4" />
-              Documentation
-            </Link>
-            {/* APIs — authenticated users only. Opens Swagger UI in a new tab. */}
-            {mounted && isAuthenticated && (
+            {/* Browse — visible to everyone except super admins. */}
+            {!(mounted && isSuperAdmin()) && (
+              <Link
+                href="/catalog"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Library className="h-4 w-4" />
+                Browse
+              </Link>
+            )}
+            {/* Documentation — visible to everyone except super admins. */}
+            {!(mounted && isSuperAdmin()) && (
+              <Link
+                href="/guide"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <BookOpen className="h-4 w-4" />
+                Documentation
+              </Link>
+            )}
+            {/* APIs — authenticated non-admin users only. */}
+            {mounted && isAuthenticated && !isSuperAdmin() && (
               <a
                 href={SWAGGER_URL}
                 target="_blank"
@@ -119,9 +122,9 @@ export function Navigation() {
                 APIs
               </a>
             )}
-            {/* Actions — every authenticated user. Mirrors the dashboard tiles
-                on / so the same set of jumps is one click away from anywhere. */}
-            {mounted && isAuthenticated && (
+            {/* Actions — every authenticated non-admin user. Super admins
+                only see the back-end admin panel via the logo + avatar menu. */}
+            {mounted && isAuthenticated && !isSuperAdmin() && (
               <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
                 <PopoverTrigger asChild>
                   <button

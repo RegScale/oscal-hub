@@ -1,46 +1,72 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import {
-  FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, Download, Cloud, BookOpen,
+  FileCheck, ArrowRightLeft, Library, BarChart3, ShieldCheck, BookOpen,
   Zap, Users, RefreshCw, Shield, AlertCircle, Clock, FileX, Mail, CheckCircle2, XCircle,
-  Building2, Briefcase, Code, UserCheck, Play, HelpCircle, ChevronDown, Award, Github, Star,
-  Terminal
+  Building2, Briefcase, Code, UserCheck, HelpCircle, ChevronLeft, ChevronRight,
+  Sparkles, Wand2, FileSearch, KeyRound, Brain, Workflow, Upload, GitBranch, ClipboardCheck, Plug,
+  Hammer, FileText, Folders, GitMerge,
 } from 'lucide-react';
 import { SystemHealth } from '@/components/SystemHealth';
-import { useState } from 'react';
+import { useRef } from 'react';
+
+const FEATURES = [
+  { icon: Library, title: 'Library', description: 'Browse, share, and download example OSCAL documents from the community.' },
+  { icon: FileText, title: 'Artifacts', description: 'Markdown templates with variables for compliance docs — generate consistent narratives at scale.' },
+  { icon: Hammer, title: 'Build', description: 'Visually create catalogs, profiles, components, SSPs, AP/AR/POA&M without writing OSCAL by hand.' },
+  { icon: ShieldCheck, title: 'Authorizations', description: 'Create, track, and manage system authorizations with conditions and expirations.' },
+  { icon: BarChart3, title: 'Visualize', description: 'Explore OSCAL documents through interactive control coverage and dependency graphs.' },
+  { icon: FileCheck, title: 'Validate', description: 'Check OSCAL against schema, constraints, and your org&rsquo;s custom rules in one click.' },
+  { icon: ArrowRightLeft, title: 'Convert', description: 'Round-trip between XML, JSON, and YAML with side-by-side preview.' },
+  { icon: FileCheck, title: 'Validation Rules', description: 'Browse the rules checked during validation — and write your own with AI assistance.' },
+  { icon: Folders, title: 'Batch', description: 'Process many files at once with live progress tracking and a results summary.' },
+  { icon: Clock, title: 'History', description: 'Every operation logged and re-runnable. Audit trail and quick redo in one view.' },
+  { icon: GitMerge, title: 'Resolve', description: 'Resolve OSCAL profiles into the underlying baseline catalog with full traceability.' },
+];
 
 export function Hero() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const featuresRef = useRef<HTMLDivElement | null>(null);
 
-  const toggleFaq = (index: number) => {
-    setOpenFaq(openFaq === index ? null : index);
+  const scrollFeatures = (direction: 1 | -1) => {
+    const el = featuresRef.current;
+    if (!el) return;
+    // Scroll by roughly one card-width (the cards are 320px wide with 16px gap).
+    el.scrollBy({ left: direction * 336, behavior: 'smooth' });
   };
 
   return (
     <div className="container mx-auto px-4 py-16">
       {/* Hero Section */}
-      <div className="text-center mb-16">
-        <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-          Welcome to OSCAL Hub
+      <div className="relative text-center mb-16">
+        {/* Decorative glow — modern gradient mesh behind the headline. Sits
+            behind the text via -z-10 and is fully decorative (pointer-events
+            disabled, hidden from assistive tech via aria-hidden). */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-10 -z-10 flex justify-center">
+          <div className="h-72 w-[80%] max-w-3xl rounded-full bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/20 blur-3xl opacity-70" />
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-semibold tracking-wide uppercase mb-6">
+          <Sparkles className="h-3.5 w-3.5" />
+          100% Free &amp; Open Source
+        </div>
+        <h1 className="text-5xl sm:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent leading-tight">
+          OSCAL — Made Easy
         </h1>
-        <p className="text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
-          Your comprehensive platform for working with OSCAL (Open Security Controls Assessment Language) documents.
-          Validate, convert, and manage security compliance content with ease.
+        <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
+          The fastest way to author, validate, and ship OSCAL — the machine-readable compliance standard behind FedRAMP, NIST 800-53, and CMMC. AI turns the source documents you already have — PDFs, STIGs, CIS benchmarks — into valid OSCAL in minutes, not weeks.
         </p>
-        <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-8">
-          100% Free & Open Source
-        </p>
-        <div className="flex flex-wrap gap-4 justify-center">
+        <div className="flex flex-wrap gap-3 justify-center">
           <Link href="/login?mode=signup">
             <Button size="lg" className="text-lg px-8">
-              Sign Up Now
+              Get Started — Free
             </Button>
           </Link>
           <Link href="/catalog">
             <Button size="lg" variant="outline" className="text-lg px-8">
               <Library className="h-5 w-5 mr-2" />
-              Browse OSCAL Data Products
+              Browse the Library
             </Button>
           </Link>
           <a
@@ -49,16 +75,17 @@ export function Hero() {
             rel="noopener noreferrer"
           >
             <Button size="lg" variant="outline" className="text-lg px-8">
-              Learn About OSCAL
+              <BookOpen className="h-5 w-5 mr-2" />
+              What is OSCAL?
             </Button>
           </a>
         </div>
       </div>
 
       {/* Problem Statement Section */}
-      <div className="bg-gradient-to-r from-red-50/30 to-orange-50/30 dark:from-red-950/10 dark:to-orange-950/10 rounded-lg p-8 mb-16 border border-red-200/50 dark:border-red-800/50">
+      <div className="mb-16">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold mb-4">Security Compliance is Hard. It Doesn't Have to Be.</h2>
+          <h2 className="text-3xl font-bold mb-4">Security Compliance is Hard. It Doesn&rsquo;t Have to Be.</h2>
           <p className="text-muted-foreground max-w-3xl mx-auto">
             Federal agencies and contractors spend thousands of hours on manual compliance work that could be automated.
           </p>
@@ -121,86 +148,164 @@ export function Hero() {
         </div>
         <div className="text-center mt-8">
           <p className="text-lg font-semibold text-foreground">
-            OSCAL Hub automates what used to take weeks.
+            OSCAL takes months of manual work to minutes of automation.
           </p>
         </div>
       </div>
 
       {/* Features Section */}
       <div className="mb-16">
-        <h2 className="text-3xl font-bold text-center mb-8">Features</h2>
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3">One Tool, the Whole OSCAL Lifecycle</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            From authoring to validation to assessor handoff — every step lives in one place, scripted via REST API or used through a clean UI.
+          </p>
+        </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="border-primary/20">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary/10 w-fit">
-                <FileCheck className="h-8 w-8 text-primary" />
+        <div className="relative">
+          {/* Floating prev/next arrows — overlay the carousel rail so the
+              centered header above stays balanced. Hidden on small screens
+              where touch swipe is the natural affordance. */}
+          <button
+            type="button"
+            onClick={() => scrollFeatures(-1)}
+            aria-label="Previous features"
+            className="hidden sm:inline-flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full border border-border bg-background shadow-md hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollFeatures(1)}
+            aria-label="Next features"
+            className="hidden sm:inline-flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full border border-border bg-background shadow-md hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          <div
+            ref={featuresRef}
+            className="-mx-4 px-4 pb-2 flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {FEATURES.map(({ icon: Icon, title, description }) => (
+              <Card
+                key={title}
+                className="border-primary/20 shrink-0 w-[280px] sm:w-[320px] snap-start hover:shadow-md transition-shadow"
+              >
+                <CardHeader className="space-y-4">
+                  <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                    <Icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl mb-2">{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Section */}
+      <div className="rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-purple-500/10 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 border border-purple-500/30 p-8 sm:p-10 mb-16">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 text-xs font-semibold tracking-wide uppercase mb-4">
+            <Sparkles className="h-3.5 w-3.5" />
+            New
+          </div>
+          <h2 className="text-3xl font-bold mb-3">AI Drafts the OSCAL. You Review It.</h2>
+          <p className="text-muted-foreground max-w-3xl mx-auto">
+            Drop in the source documents you already have — control catalogs as PDFs, DISA STIGs, CIS benchmarks, vendor hardening guides — and AI produces a draft OSCAL artifact you can review, edit, and ship. Hours, not weeks. Schema-validated. Always with a human in the loop.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto mb-8">
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <FileSearch className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">Catalog from Source</CardTitle>
               </div>
-              <div>
-                <CardTitle className="text-xl mb-2">Validate</CardTitle>
-                <CardDescription>
-                  Ensure your OSCAL documents comply with schema constraints and validation rules
-                </CardDescription>
-              </div>
+              <CardDescription className="text-base">
+                Drop a control catalog as PDF, Word, HTML, or pasted text. AI extracts the controls, parameters, and groups, and produces a valid OSCAL catalog you can review side-by-side with the source.
+              </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-primary/20">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary/10 w-fit">
-                <ArrowRightLeft className="h-8 w-8 text-primary" />
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <Workflow className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">Component-Definition from STIG / CIS</CardTitle>
               </div>
-              <div>
-                <CardTitle className="text-xl mb-2">Convert</CardTitle>
-                <CardDescription>
-                  Seamlessly convert between XML, JSON, and YAML formats with side-by-side preview
-                </CardDescription>
-              </div>
+              <CardDescription className="text-base">
+                Upload a DISA STIG, CIS Benchmark, or vendor configuration guide. AI maps each recommendation to NIST 800-53 controls and drafts an OSCAL component-definition with implemented-requirements and statements.
+              </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-primary/20">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary/10 w-fit">
-                <Library className="h-8 w-8 text-primary" />
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <Wand2 className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">AI-Generated Validation Rules</CardTitle>
               </div>
-              <div>
-                <CardTitle className="text-xl mb-2">Library</CardTitle>
-                <CardDescription>
-                  Browse, share, and download example OSCAL documents from the community
-                </CardDescription>
-              </div>
+              <CardDescription className="text-base">
+                Describe the rule you want in plain English (&ldquo;flag any control without a responsible-role&rdquo;) — AI writes the Metaschema constraint, runs it against your sample doc, and shows you the matches before you save it.
+              </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-primary/20">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary/10 w-fit">
-                <BarChart3 className="h-8 w-8 text-primary" />
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <KeyRound className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">Bring Your Own Key &middot; Org-Level Control</CardTitle>
               </div>
-              <div>
-                <CardTitle className="text-xl mb-2">Visualize</CardTitle>
-                <CardDescription>
-                  Explore and understand OSCAL documents through interactive data visualizations
-                </CardDescription>
-              </div>
+              <CardDescription className="text-base">
+                Configure your own Anthropic API key per organization. Token usage and cost are tracked per wizard run, and an admin analytics dashboard shows spend, model selection, and document throughput.
+              </CardDescription>
             </CardHeader>
           </Card>
+        </div>
 
-          <Card className="border-primary/20">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary/10 w-fit">
-                <ShieldCheck className="h-8 w-8 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-xl mb-2">Authorizations</CardTitle>
-                <CardDescription>
-                  Create and manage system authorization documents with customizable templates
-                </CardDescription>
-              </div>
-            </CardHeader>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-background/40">
+            <Brain className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-sm mb-1">Schema-aware</h3>
+              <p className="text-xs text-muted-foreground">
+                Output is validated against the OSCAL Metaschema before it&rsquo;s shown to you.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-background/40">
+            <ClipboardCheck className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-sm mb-1">Human in the loop</h3>
+              <p className="text-xs text-muted-foreground">
+                AI drafts, you review, edit, and sign off. Nothing ships without your approval.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-background/40">
+            <ShieldCheck className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-sm mb-1">Your data stays yours</h3>
+              <p className="text-xs text-muted-foreground">
+                Calls go directly from your org&rsquo;s key to Anthropic. No third-party retention or training.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -454,425 +559,241 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Social Proof Section */}
-      <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-8 mb-16">
-        <h2 className="text-3xl font-bold text-center mb-4">Trusted by Security Professionals</h2>
-        <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Join thousands of compliance professionals who are accelerating their ATO process with OSCAL Hub
-        </p>
-
-        {/* Testimonials */}
-        {/*
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-start mb-4">
-                <div className="flex text-yellow-500">
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                </div>
-              </div>
-              <p className="text-muted-foreground mb-4 italic">
-                "OSCAL Hub reduced our ATO documentation time from 6 weeks to 3 days. The automated validation caught errors we would have missed manually."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold mr-3">
-                  JS
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">John Smith</p>
-                  <p className="text-xs text-muted-foreground">ISSO, Federal Agency</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-start mb-4">
-                <div className="flex text-yellow-500">
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                </div>
-              </div>
-              <p className="text-muted-foreground mb-4 italic">
-                "Finally, a tool that speaks NIST's language natively. The JSON/XML conversion is flawless, and the library saved us from reinventing the wheel."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold mr-3">
-                  JD
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Jane Doe</p>
-                  <p className="text-xs text-muted-foreground">Security Architect, Defense Contractor</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-start mb-4">
-                <div className="flex text-yellow-500">
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                  <Star className="h-5 w-5 fill-current" />
-                </div>
-              </div>
-              <p className="text-muted-foreground mb-4 italic">
-                "The API integration lets us validate OSCAL documents in our CI/CD pipeline. Compliance is now part of our automated workflow."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold mr-3">
-                  MJ
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Mike Johnson</p>
-                  <p className="text-xs text-muted-foreground">DevSecOps Engineer, Tech Startup</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        */}
-      </div>
-
-      {/* Deployment Options Section */}
-      <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg p-8 mb-16">
-        <h2 className="text-3xl font-bold mb-6 text-center">Deployment Options</h2>
-        <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-8">
-          Choose how you want to run OSCAL Hub - command-line for automation, locally for testing, or deploy to Google Cloud, Azure, or AWS for production
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* CLI Deployment */}
-          <Card className="border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-green-500/10 w-fit">
-                <Terminal className="h-8 w-8 text-green-500" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">CLI Mode</CardTitle>
-                <CardDescription className="text-base">
-                  Standalone command-line tool for automation, scripting, and CI/CD pipelines. No database or web interface required.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Free to use
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  2-minute installation
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Perfect for CI/CD and batch processing
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Works 100% offline
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Link href="/guide/reference/deployment/cli" className="w-full">
-                <Button className="w-full" variant="outline">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View CLI Deployment Guide
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-
-          {/* Local Deployment */}
-          <Card className="border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-blue-500/10 w-fit">
-                <Download className="h-8 w-8 text-blue-500" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">Local Deployment</CardTitle>
-                <CardDescription className="text-base">
-                  Run OSCAL Hub on your local machine or VM in minutes. Perfect for testing, development, and offline use.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Free to use
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  5-minute setup with automated script
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Works offline after initial download
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Includes PostgreSQL and pgAdmin
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Link href="/guide/reference/deployment/local" className="w-full">
-                <Button className="w-full" variant="outline">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View Local Deployment Guide
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-
-          {/* Azure Deployment */}
-          <Card className="border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-purple-500/10 w-fit">
-                <Cloud className="h-8 w-8 text-purple-500" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">Azure Deployment</CardTitle>
-                <CardDescription className="text-base">
-                  Deploy to Azure with automated CI/CD, Terraform, and secure Key Vault integration for production environments.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Automated CI/CD with GitHub Actions
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Infrastructure as Code (Terraform)
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Secure secrets with Azure Key Vault
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Auto database migrations on deploy
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Link href="/guide/reference/deployment/azure" className="w-full">
-                <Button className="w-full" variant="outline">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View Azure Deployment Guide
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-
-          {/* Google Cloud Deployment */}
-          <Card className="border-red-200 dark:border-red-800 hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-red-500/10 w-fit">
-                <Cloud className="h-8 w-8 text-red-500" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">Google Cloud Deployment</CardTitle>
-                <CardDescription className="text-base">
-                  Deploy to Google Cloud with Cloud Run, Cloud SQL, and Cloud Storage. Serverless, auto-scaling, and cost-effective.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Serverless with Cloud Run
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Managed PostgreSQL (Cloud SQL)
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Cloud Storage with versioning
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Infrastructure as Code (Terraform)
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Link href="/guide/deployment/gcp" className="w-full">
-                <Button className="w-full" variant="outline">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View GCP Deployment Guide
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-
-          {/* AWS Deployment */}
-          <Card className="border-orange-200 dark:border-orange-800 hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader className="space-y-4">
-              <div className="p-3 rounded-lg bg-orange-500/10 w-fit">
-                <Cloud className="h-8 w-8 text-orange-500" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">AWS Deployment</CardTitle>
-                <CardDescription className="text-base">
-                  Deploy to AWS with Elastic Beanstalk, S3, and RDS. Production-ready with auto-scaling and multi-AZ support.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Auto-scaling with Elastic Beanstalk
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  S3 storage with lifecycle policies
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Multi-AZ RDS PostgreSQL
-                </div>
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  CloudWatch monitoring & alerts
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Link href="/guide/reference/deployment/aws" className="w-full">
-                <Button className="w-full" variant="outline">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View AWS Deployment Guide
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-        </div>
-        <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground">
-            All deployment options provide full OSCAL validation, conversion, and resolution capabilities
+      {/* Use Cases Section */}
+      <div className="rounded-2xl bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-cyan-500/5 dark:from-cyan-500/10 dark:via-blue-500/10 dark:to-cyan-500/10 border border-cyan-500/20 p-8 sm:p-10 mb-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3">How Teams Use OSCAL Hub</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Concrete scenarios from real compliance work — find the one that sounds like your week.
           </p>
         </div>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <Upload className="h-5 w-5 text-blue-500" />
+                </div>
+                <CardTitle className="text-lg">Onboard a control catalog you can&rsquo;t find in OSCAL</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a PDF of an internal or customer-specific catalog (FedRAMP overlays, agency-specific tailoring, ISO 27001).
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> drop it into the AI Catalog wizard, review the extracted controls, save it to your library, and reference it from every SSP that depends on it.
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-      {/* Demo Section */}
-      <div className="mb-16">
-        <h2 className="text-3xl font-bold text-center mb-4">See It In Action</h2>
-        <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Watch how easy it is to validate, convert, and manage OSCAL documents
-        </p>
-        <Card className="max-w-4xl mx-auto">
-          <CardContent className="p-8">
-            <div className="aspect-video bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg flex items-center justify-center border-2 border-dashed border-primary/30 mb-6">
-              <div className="text-center">
-                <Play className="h-16 w-16 text-primary mx-auto mb-4" />
-                <p className="text-lg font-semibold mb-2">Interactive Demo Coming Soon</p>
-                <p className="text-sm text-muted-foreground">
-                  In the meantime, try the live application after signing up
-                </p>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <Workflow className="h-5 w-5 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">Map a STIG to NIST 800-53 controls</CardTitle>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-primary mb-1">1</div>
-                <p className="text-sm text-muted-foreground">Upload your OSCAL file</p>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a DISA STIG or CIS Benchmark you need to wire into a System Security Plan.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> upload the STIG, the AI Component-Definition wizard maps each setting to a control, and you get an OSCAL component you can drop into multiple SSPs.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <ShieldCheck className="h-5 w-5 text-green-500" />
+                </div>
+                <CardTitle className="text-lg">Prepare a FedRAMP / ATO package</CardTitle>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-primary mb-1">2</div>
-                <p className="text-sm text-muted-foreground">Validate in seconds</p>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a system going through authorization and a deadline.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> assemble the SSP from existing components, run schema and constraint validation in one click, resolve the profile into a baseline catalog, and hand the assessor an OSCAL package — not a 200-page Word doc.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-orange-500/10">
+                  <GitBranch className="h-5 w-5 text-orange-500" />
+                </div>
+                <CardTitle className="text-lg">Validate OSCAL in CI/CD</CardTitle>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-primary mb-1">3</div>
-                <p className="text-sm text-muted-foreground">Export to any format</p>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> compliance artifacts checked into git and want every change validated automatically.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> wire the REST API or CLI into your pipeline. Schema, constraint, and custom-rule violations fail the build before they reach an assessor.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-teal-500/10">
+                  <ArrowRightLeft className="h-5 w-5 text-teal-500" />
+                </div>
+                <CardTitle className="text-lg">Convert between XML, JSON, and YAML</CardTitle>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> an SSP in JSON but the assessor wants XML — or you&rsquo;re hand-editing YAML for review.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> convert in seconds with a side-by-side preview. Round-trip safe, schema-validated.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-pink-500/10">
+                  <Plug className="h-5 w-5 text-pink-500" />
+                </div>
+                <CardTitle className="text-lg">Author your own validation rules</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> internal review checks (&ldquo;every control needs a responsible-role&rdquo;) that aren&rsquo;t in NIST&rsquo;s baseline.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> describe the rule in plain English, let AI write the Metaschema constraint, run it against your library, and add it to your org&rsquo;s standard validation profile.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <Library className="h-5 w-5 text-indigo-500" />
+                </div>
+                <CardTitle className="text-lg">Reuse community-shared content</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a new system to authorize and don&rsquo;t want to write the same baseline content for the tenth time.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> browse the public library for catalogs, profiles, and components, fork them into your org, customize what&rsquo;s different, and inherit the rest.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-cyan-500/10">
+                  <BarChart3 className="h-5 w-5 text-cyan-500" />
+                </div>
+                <CardTitle className="text-lg">Visualize control coverage and gaps</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> an SSP and an assessor asking &ldquo;which 800-53 controls are actually addressed?&rdquo;
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> open the Visualize view to see implemented vs. inherited vs. gap controls, drill into the implementation statements, and export the picture for the package.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <Folders className="h-5 w-5 text-amber-500" />
+                </div>
+                <CardTitle className="text-lg">Clean up a backlog of OSCAL files</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a folder full of OSCAL artifacts inherited from a prior team and no idea which ones still validate.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> drop the whole batch into the Batch view, get a per-file pass/fail summary with actionable error messages, and prioritize what to fix.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       </div>
 
       {/* FAQ Section */}
-      <div className="mb-16 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
-        <div className="space-y-4">
+      <div className="rounded-2xl bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-indigo-500/5 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-indigo-500/10 border border-indigo-500/20 p-8 sm:p-10 mb-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3">Frequently Asked Questions</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Quick answers to the things most teams ask before signing up.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
             {
-              q: "Is my data secure?",
-              a: "Yes. All data is encrypted at rest and in transit. For convenience, you can also deploy OSCAL Hub on-premises using our local deployment option."
+              q: 'Is my data secure?',
+              a: 'Yes. All data is encrypted at rest and in transit. You can also self-host OSCAL Hub on your own infrastructure.',
             },
             {
-              q: "Do I need to learn OSCAL syntax?",
-              a: "No. Our templates and visual tools handle the complexity. You focus on your security posture while OSCAL Hub manages the technical formatting and validation automatically."
+              q: 'Do I need to learn OSCAL syntax?',
+              a: 'No. Templates and visual tools handle the complexity. You focus on your security posture while OSCAL Hub handles formatting and validation automatically.',
             },
             {
-              q: "Can I import existing Word/Excel documents?",
-              a: "Currently, OSCAL Hub works with OSCAL-native documents (JSON, XML, YAML). We're developing import tools for legacy formats. Contact us for migration assistance."
+              q: 'How do the AI features work?',
+              a: 'You bring your own Anthropic API key per organization. The wizards send the source documents you choose to Anthropic, get a draft back, and validate it against the OSCAL Metaschema before showing you the result. Token usage and cost are tracked per run.',
             },
             {
-              q: "What's the difference between local and Azure deployment?",
-              a: "Local deployment is free and runs on your laptop - perfect for testing and development. Azure deployment provides production-ready hosting with automated backups, scaling, and CI/CD integration."
+              q: 'Can I import existing Word or Excel documents?',
+              a: 'Word and Excel are not native OSCAL formats — but the AI Catalog wizard accepts PDF, Word, HTML, and pasted text and extracts a draft OSCAL catalog you can review and save.',
             },
             {
-              q: "Do you offer training and support?",
-              a: "Yes. We provide comprehensive documentation, onboarding sessions, and community support through our GitHub repository. Enterprise support packages are available for production deployments."
+              q: 'Can I integrate OSCAL Hub with my existing tools?',
+              a: 'Yes. OSCAL Hub exposes a REST API and a CLI for CI/CD pipelines, GRC tools, and custom integrations. Validation, conversion, profile resolution, and batch processing are all scriptable.',
             },
             {
-              q: "Can I integrate OSCAL Hub with my existing tools?",
-              a: "Absolutely. OSCAL Hub provides a REST API for integration with CI/CD pipelines, GRC tools, and custom applications. Check our API documentation for details."
-            }
+              q: 'Do you offer training and support?',
+              a: 'Comprehensive documentation and an in-app user guide are included. Community support runs through our GitHub repository. Reach out for enterprise onboarding and support packages.',
+            },
           ].map((faq, index) => (
-            <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => toggleFaq(index)}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg flex items-center">
-                    <HelpCircle className="h-5 w-5 text-primary mr-3" />
-                    {faq.q}
-                  </h3>
-                  <ChevronDown
-                    className={`h-5 w-5 text-muted-foreground transition-transform ${openFaq === index ? 'transform rotate-180' : ''
-                      }`}
-                  />
-                </div>
-                {openFaq === index && (
-                  <p className="mt-4 text-muted-foreground pl-8">
-                    {faq.a}
-                  </p>
-                )}
-              </CardContent>
+            <Card key={index} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-start gap-3 text-lg">
+                  <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span>{faq.q}</span>
+                </CardTitle>
+                <CardDescription className="pt-2">{faq.a}</CardDescription>
+              </CardHeader>
             </Card>
           ))}
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-        <p className="text-muted-foreground mb-6">
-          Create an account to start working with OSCAL documents today
+      <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 dark:from-blue-500/15 dark:via-purple-500/15 dark:to-blue-500/15 border border-primary/20 p-10 sm:p-14 text-center">
+        <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+          Cut OSCAL authoring time from <span className="text-primary">weeks to hours</span>.
+        </h2>
+        <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+          Free, open source, and built for the way real compliance teams work. Create an account in 60 seconds — no credit card, no demo gate.
         </p>
-        <Link href="/login?mode=signup">
-          <Button size="lg" className="text-lg px-12">
-            Sign Up Now
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Link href="/login?mode=signup">
+            <Button size="lg" className="text-lg px-10">
+              Get Started — Free
+            </Button>
+          </Link>
+          <Link href="/catalog">
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              <Library className="h-5 w-5 mr-2" />
+              Browse the Library First
+            </Button>
+          </Link>
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 text-green-500" /> 100% Free &amp; open source
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 text-green-500" /> Self-host or hosted
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 text-green-500" /> REST API + CLI
+          </span>
+        </div>
       </div>
     </div>
   );

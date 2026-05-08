@@ -3729,10 +3729,13 @@ class ApiClient {
    * Get audit log statistics
    * Super Admin only
    */
-  async getAuditLogStats(): Promise<AuditLogStats> {
+  async getAuditLogStats(username?: string): Promise<AuditLogStats> {
     try {
+      const url = username
+        ? `${API_BASE_URL}/admin/logs/stats?username=${encodeURIComponent(username)}`
+        : `${API_BASE_URL}/admin/logs/stats`;
       const response = await this.fetchWithTimeout(
-        `${API_BASE_URL}/admin/logs/stats`,
+        url,
         {
           method: 'GET',
           headers: this.getAuthHeaders(),
@@ -4965,10 +4968,15 @@ class ApiClient {
     id: number;
     username: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
     globalRole: string;
     enabled: boolean;
+    organizations: Array<{
+      id: number;
+      name: string;
+      role: string;
+    }>;
   }>> {
     try {
       const response = await this.fetchWithTimeout(
@@ -4990,6 +4998,55 @@ class ApiClient {
       console.error('Failed to get all users:', error);
       throw error;
     }
+  }
+
+  async archiveUser(userId: number): Promise<{ message: string; username: string; enabled: boolean }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/archive`,
+      { method: 'POST', headers: this.getAuthHeaders() },
+      5000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to archive user');
+    }
+    return await response.json();
+  }
+
+  async unarchiveUser(userId: number): Promise<{ message: string; username: string; enabled: boolean }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/unarchive`,
+      { method: 'POST', headers: this.getAuthHeaders() },
+      5000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to unarchive user');
+    }
+    return await response.json();
+  }
+
+  async resetUserPassword(
+    userId: number,
+    options?: { password?: string; notify?: boolean }
+  ): Promise<{ message: string; username: string; email: string; notified: boolean; password?: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/reset-password`,
+      {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: options?.password,
+          notify: options?.notify ?? true,
+        }),
+      },
+      10000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to reset password');
+    }
+    return await response.json();
   }
 
   async addMemberToOrg(organizationId: number, userId: number, role: string): Promise<void> {

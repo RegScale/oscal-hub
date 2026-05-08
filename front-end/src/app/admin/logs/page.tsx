@@ -48,6 +48,7 @@ export default function LogsPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(50);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     search: '',
@@ -56,6 +57,20 @@ export default function LogsPage() {
     startDate: '',
     endDate: '',
   });
+
+  // Read URL ?username= directly from window.location and seed the filter.
+  // We only fire the first load once filters reflect the URL — otherwise an
+  // initial load with the empty default filter races and shows all events.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const username = params.get('username') ?? '';
+    if (username) {
+      setFilters((prev) => ({ ...prev, username }));
+      setShowFilters(true);
+    }
+    setFiltersReady(true);
+  }, []);
 
   // Check admin access
   useEffect(() => {
@@ -72,15 +87,16 @@ export default function LogsPage() {
     }
   }, [router]);
 
-  // Load stats
+  // Load stats — scopes to the active username filter when set so the tiles
+  // reflect the same slice of data as the table.
   const loadStats = useCallback(async () => {
     try {
-      const statsData = await apiClient.getAuditLogStats();
+      const statsData = await apiClient.getAuditLogStats(filters.username || undefined);
       setStats(statsData);
     } catch (error) {
       console.error('Failed to load stats:', error);
     }
-  }, []);
+  }, [filters.username]);
 
   // Load logs based on active tab and filters
   const loadLogs = useCallback(async (page = 0) => {
@@ -125,17 +141,13 @@ export default function LogsPage() {
     }
   }, [activeTab, filters, pageSize]);
 
-  // Initial load
+  // Initial + filter-change load — waits until URL-derived filters are seeded.
   useEffect(() => {
+    if (!filtersReady) return;
+    setCurrentPage(0);
     loadStats();
     loadLogs(0);
-  }, [loadStats, loadLogs]);
-
-  // Reload when tab changes
-  useEffect(() => {
-    setCurrentPage(0);
-    loadLogs(0);
-  }, [activeTab]);
+  }, [filtersReady, activeTab, filters.username, loadStats, loadLogs]);
 
   const handleRefresh = () => {
     loadStats();
@@ -257,8 +269,9 @@ export default function LogsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/admin')}
+                onClick={() => router.back()}
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -345,6 +358,30 @@ export default function LogsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Active per-user filter banner */}
+        {filters.username && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
+              <User className="w-4 h-4" />
+              <span>Showing logs for user</span>
+              <span className="font-semibold">@{filters.username}</span>
+              <span className="text-blue-700 dark:text-blue-300">· {totalElements} event{totalElements === 1 ? '' : 's'}</span>
+            </div>
+            <button
+              onClick={() => {
+                setFilters((f) => ({ ...f, username: '' }));
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, '', '/admin/logs');
+                }
+              }}
+              className="flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+            >
+              <X className="w-4 h-4" />
+              Clear
+            </button>
           </div>
         )}
 

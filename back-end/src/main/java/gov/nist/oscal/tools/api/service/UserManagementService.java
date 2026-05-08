@@ -44,6 +44,9 @@ public class UserManagementService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private PasswordValidationService passwordValidationService;
+
     /**
      * Get all users in an organization
      */
@@ -152,6 +155,58 @@ public class UserManagementService {
 
         logger.info("Reactivated user {} in organization {}", userId, organizationId);
         return membership;
+    }
+
+    /**
+     * Reset a user's password as a SUPER_ADMIN (no organization scope required).
+     *
+     * <p>If {@code customPassword} is null/blank, generates a secure temporary password.
+     * If {@code notify} is true, emails the password to the user and only returns
+     * username/email. If {@code notify} is false, returns the plaintext password to
+     * the caller so the admin can deliver it out-of-band — the password is never
+     * logged in this case.
+     */
+    @Transactional
+    public Map<String, String> resetPasswordByAdmin(Long userId, Long adminId, String customPassword, boolean notify) {
+        logger.info("Super-admin {} resetting password for user {} (notify={}, custom={})",
+                adminId, userId, notify, customPassword != null && !customPassword.isBlank());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        User admin = userRepository.findById(adminId).orElse(null);
+
+        if (userId.equals(adminId)) {
+            throw new RuntimeException("You cannot reset your own password from the admin panel");
+        }
+
+        String newPassword;
+        if (customPassword != null && !customPassword.isBlank()) {
+            passwordValidationService.validatePassword(customPassword, user.getUsername());
+            newPassword = customPassword;
+        } else {
+            newPassword = generateTemporaryPassword();
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(true);
+        user.setPasswordChangedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("username", user.getUsername());
+        result.put("email", user.getEmail());
+
+        if (notify) {
+            emailService.sendPasswordReset(user, newPassword, admin);
+            logger.info("Reset password for user {} (email dispatched)", userId);
+        } else {
+            // Out-of-band delivery: surface plaintext to the admin caller only.
+            // Do not log it.
+            result.put("password", newPassword);
+            logger.info("Reset password for user {} (out-of-band; admin will deliver)", userId);
+        }
+
+        return result;
     }
 
     /**
