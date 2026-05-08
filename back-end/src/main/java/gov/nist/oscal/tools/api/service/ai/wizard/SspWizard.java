@@ -115,12 +115,16 @@ public class SspWizard implements Wizard {
             String sensitivityLevel = outline.path("sensitivityLevel").asText("moderate");
             String authorizationBoundary = outline.path("authorizationBoundary").asText("");
 
+            // The LLM occasionally emits malformed UUIDs (spaces, missing chars).
+            // We don't trust any uuid the model produces — overwrite each one with
+            // a freshly-generated value before assembling the doc. This keeps
+            // schema validation green even when the model hallucinates.
             List<JsonNode> informationTypes = new ArrayList<>();
-            for (JsonNode t : outline.path("informationTypes")) informationTypes.add(t);
+            for (JsonNode t : outline.path("informationTypes")) informationTypes.add(withFreshUuid(t));
             List<JsonNode> components = new ArrayList<>();
-            for (JsonNode c : outline.path("components")) components.add(c);
+            for (JsonNode c : outline.path("components")) components.add(withFreshUuid(c));
             List<JsonNode> ussers = new ArrayList<>();
-            for (JsonNode u : outline.path("users")) ussers.add(u);
+            for (JsonNode u : outline.path("users")) ussers.add(withFreshUuid(u));
 
             List<String> controlIds = new ArrayList<>();
             for (JsonNode cid : outline.path("controlIds")) controlIds.add(cid.asText());
@@ -154,7 +158,7 @@ public class SspWizard implements Wizard {
                 try {
                     JsonNode arr = MAPPER.readTree(extractJsonArray(chunkRes.text()));
                     if (arr.isArray()) {
-                        for (JsonNode req : arr) producedRequirements.add(req);
+                        for (JsonNode req : arr) producedRequirements.add(withFreshUuid(req));
                     }
                 } catch (Exception parseEx) {
                     log.warn("SSP wizard sessionId={} chunk {} of {} failed to parse: {}",
@@ -255,6 +259,20 @@ public class SspWizard implements Wizard {
                     + " — falling back to controls inferred from source document."));
             return outlineFallback;
         }
+    }
+
+    /**
+     * Returns a copy of {@code node} with the {@code uuid} field replaced by a
+     * fresh v4 UUID. If {@code node} isn't an object (or is null), returns the
+     * node unchanged. The model's UUIDs are untrustworthy — it occasionally
+     * emits values like "daf bcedd-..." with embedded spaces — so we always
+     * mint our own.
+     */
+    private static JsonNode withFreshUuid(JsonNode node) {
+        if (node == null || !node.isObject()) return node;
+        com.fasterxml.jackson.databind.node.ObjectNode obj = node.deepCopy();
+        obj.put("uuid", UUID.randomUUID().toString());
+        return obj;
     }
 
     private static String extractJson(String text) {
