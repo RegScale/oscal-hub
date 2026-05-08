@@ -54,7 +54,7 @@ export function Hero() {
           OSCAL — Made Easy
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-          The fastest way to author, validate, and ship OSCAL — the machine-readable compliance standard behind FedRAMP, NIST 800-53, and CMMC. AI turns the source documents you already have — PDFs, STIGs, CIS benchmarks — into valid OSCAL in minutes, not weeks.
+          The fastest way to author, validate, and ship OSCAL — the machine-readable compliance standard behind FedRAMP, NIST 800-53, and CMMC. AI turns the source documents you already have — PDFs, STIGs, CIS benchmarks, architecture write-ups, FedRAMP POA&amp;M spreadsheets — into valid OSCAL in minutes, not weeks.
         </p>
         <div className="flex flex-wrap gap-3 justify-center">
           <Link href="/login?mode=signup">
@@ -283,7 +283,7 @@ export function Hero() {
           </div>
           <h2 className="text-3xl font-bold mb-3">AI Drafts the OSCAL. You Review It.</h2>
           <p className="text-muted-foreground max-w-3xl mx-auto">
-            Drop in the source documents you already have — control catalogs as PDFs, DISA STIGs, CIS benchmarks, vendor hardening guides — and AI produces a draft OSCAL artifact you can review, edit, and ship. Hours, not weeks. Schema-validated. Always with a human in the loop.
+            Drop in the source documents you already have — control catalogs as PDFs, DISA STIGs, CIS benchmarks, vendor hardening guides, architecture write-ups, FedRAMP POA&amp;M spreadsheets, pen-test reports — and AI produces a draft OSCAL artifact you can review, edit, and ship. Hours, not weeks. Schema-validated. Always with a human in the loop.
           </p>
         </div>
 
@@ -312,6 +312,34 @@ export function Hero() {
               </div>
               <CardDescription className="text-base">
                 Upload a DISA STIG, CIS Benchmark, or vendor configuration guide. AI maps each recommendation to NIST 800-53 controls and drafts an OSCAL component-definition with implemented-requirements and statements.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <FileText className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">SSP from Architecture Doc</CardTitle>
+              </div>
+              <CardDescription className="text-base">
+                Drop an architecture write-up, system description, or existing draft SSP in any format. Pick a baseline profile (FedRAMP Moderate, etc.) — or skip — and AI drafts an OSCAL System Security Plan with system characteristics, components, and per-control implementation narratives, each scored for confidence.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="border-purple-200/60 dark:border-purple-800/60 bg-background/60 backdrop-blur">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-purple-500/10">
+                  <ClipboardCheck className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">POA&amp;M from Spreadsheet or Pen-Test Report</CardTitle>
+              </div>
+              <CardDescription className="text-base">
+                Drop a FedRAMP POA&amp;M template (.xlsx), a CSV tracker, a penetration-test PDF, or a vulnerability scan summary. AI extracts every weakness with severity, status, due date, and remediation narrative — ready to review in a structured editor and ship as OSCAL.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -683,6 +711,38 @@ export function Hero() {
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-violet-500/10">
+                  <FileText className="h-5 w-5 text-violet-500" />
+                </div>
+                <CardTitle className="text-lg">Turn an architecture doc into an SSP draft</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a design document, security questionnaire, or existing draft SSP and a baseline (FedRAMP Moderate, NIST 800-171) you need to map to.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> drop the doc into the AI SSP wizard, pick a profile from your library (or skip), and AI extracts system characteristics, components, users, and a per-control implementation narrative — each tagged with confidence so you know what to review first.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-rose-500/10">
+                  <ClipboardCheck className="h-5 w-5 text-rose-500" />
+                </div>
+                <CardTitle className="text-lg">Convert a FedRAMP POA&amp;M spreadsheet to OSCAL</CardTitle>
+              </div>
+              <CardDescription>
+                <span className="font-medium text-foreground">You have</span> a FedRAMP POA&amp;M template (.xlsx), a CSV tracker, a pen-test PDF, or a vulnerability scan you need to ship as machine-readable OSCAL.
+                <span className="block mt-3" />
+                <span className="font-medium text-foreground">With OSCAL Hub:</span> drop the file, AI extracts every weakness as a poam-item with severity, status, due date, and remediation narrative. Edit in a structured per-item editor, validate, save, and publish.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 rounded-lg bg-orange-500/10">
                   <GitBranch className="h-5 w-5 text-orange-500" />
                 </div>
@@ -802,7 +862,7 @@ export function Hero() {
             },
             {
               q: 'Can I import existing Word or Excel documents?',
-              a: 'Word and Excel are not native OSCAL formats — but the AI Catalog wizard accepts PDF, Word, HTML, and pasted text and extracts a draft OSCAL catalog you can review and save.',
+              a: 'Word and Excel are not native OSCAL formats — but the AI wizards bridge the gap. Drop a Word or PDF control catalog, an architecture doc, an existing draft SSP, a FedRAMP POA&M .xlsx, a CSV tracker, or a pen-test report, and AI extracts a draft OSCAL artifact (catalog, component-definition, SSP, or POA&M) you can review, edit, and save.',
             },
             {
               q: 'Can I integrate OSCAL Hub with my existing tools?',

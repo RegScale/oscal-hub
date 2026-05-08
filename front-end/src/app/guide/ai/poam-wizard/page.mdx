@@ -1,0 +1,115 @@
+---
+title: AI POA&M Wizard
+description: Turn a FedRAMP POA&M spreadsheet, CSV tracker, pen-test report, or vulnerability scan into a structured OSCAL Plan of Action and Milestones.
+lastUpdated: 2026-05-08
+---
+
+# AI POA&M Wizard
+
+The AI POA&M Wizard reads a source describing weaknesses or findings — a FedRAMP POA&M template (.xlsx), a CSV export, a penetration-test PDF, a vulnerability scan summary, or plain narrative text — and drafts a structured OSCAL Plan of Action and Milestones with one `poam-item` per finding. Each item carries a title, description, POA&M ID, severity, status, scheduled completion date, and an AI-confidence score so you know which entries need the most review.
+
+---
+
+## What it does
+
+The wizard runs a three-pass pipeline:
+
+1. **Ingestion** — The source is parsed via Apache Tika. Excel workbooks (.xlsx, .xls) and CSV are extracted as plain text the model can read; PDFs are passed natively for best fidelity.
+2. **Outline pass** — A single LLM call extracts metadata (title, version, publisher, system this POA&M applies to) plus a list of stable item identifiers (FedRAMP POAM IDs like `V-001`, finding numbers like `F-12`, or sequential labels if the source has none).
+3. **Per-chunk item passes** — Item identifiers are split into chunks of 8 (POA&M items have rich per-row content — multi-paragraph descriptions, several props, dates — so chunks stay small). Each chunk gets its own LLM call that emits one full `poam-item` per identifier with title, description, and props for `poam-id`, `severity` (high / moderate / low), `status` (open / ongoing / risk-accepted / closed), `scheduled-completion-date`, and `ai-confidence`.
+4. **Java assemble pass** — The OSCAL `plan-of-action-and-milestones` envelope is built in code: metadata, optional `import-ssp`, `system-id`, and the merged `poam-items` array. Every UUID the model emitted is overwritten with a fresh v4 — values like `daf bcedd-…` (with embedded spaces) or otherwise malformed UUIDs would fail schema validation, so we don't trust the model for identifiers.
+5. **Handoff** — The draft is passed to the [POA&M editor](/guide/build/poam) with a structured per-item review surface.
+
+Per-pass progress streams to the UI. Long FedRAMP-template runs (200+ items) take several minutes; the wizard retries automatically on transient API errors.
+
+---
+
+## Supported source formats
+
+| Format | Notes |
+|--------|-------|
+| Excel (`.xlsx`, `.xls`) | FedRAMP POA&M template and similar trackers — the standard column set is recognized automatically |
+| CSV | Same column set as the Excel template; columns are inferred |
+| PDF | Penetration-test reports, vulnerability scan summaries — each finding becomes one item |
+| Word (`.docx`) | Findings in narrative format |
+| HTML | Pen-test report exports, vulnerability scanner HTML |
+| Plain text, Markdown | Paste directly or upload a `.txt` / `.md` file |
+
+When the source is a FedRAMP template, the wizard recognizes columns like POAM ID, Weakness Name, Weakness Description, Source, Asset Identifier, Point of Contact, Resources Required, Overall Remediation Plan, Original Detection Date, Scheduled Completion Date, Planned Milestones, Status, and Risk Rating, and maps them into OSCAL `poam-item` fields.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the AI Wizard hub">
+    Navigate to `/ai/wizard` and click the **Draft POA&M from Source** card, then click **Start →**.
+  </Step>
+  <Step title="Upload your source or paste text">
+    Drag-and-drop your `.xlsx`, `.csv`, PDF, Word, or HTML file, or switch to the **Paste text** tab and paste pen-test findings or POA&M tracker text directly.
+  </Step>
+  <Step title="Run the wizard">
+    Click **Run AI Wizard**. The progress stream shows the outline pass identifying items, then per-chunk passes filling in details. A 50-item run typically takes a couple of minutes.
+  </Step>
+  <Step title="Review the structured per-item editor">
+    When generation completes, you land on Step 3 (Body) of the POA&M editor with a structured list — one expandable card per item showing POA&M ID, severity badge (high / moderate / low), status badge (open / ongoing / risk-accepted / closed), and a one-line title preview. Click a card to expand and edit title, POA&M ID, severity, status, scheduled completion date, and the full weakness/remediation narrative. Use the filter input and status dropdown to find items quickly. The **Add item** button creates a new item with default values.
+  </Step>
+  <Step title="Edit metadata and references">
+    Step back to Step 1 (Metadata) for title, version, parties. Step 2 (Import) lets you set an `import-ssp.href` if this POA&M references a specific SSP — but it's optional, leave it empty if you're tracking findings before the SSP exists.
+  </Step>
+  <Step title="Validate and save">
+    On Step 5 (Review & Save), run schema and constraint validation, then click **Save Final** when ready. **Save to Library** publishes it for your org.
+  </Step>
+</Steps>
+
+---
+
+## What gets extracted
+
+For each weakness or finding the source identifies, the wizard produces a `poam-item` with:
+
+- **uuid** — freshly generated v4 (the model's value is discarded).
+- **title** — short weakness/finding title (the FedRAMP template's "Weakness Name" column or equivalent).
+- **description** — full narrative pulling from the source's weakness description, impact, and remediation plan.
+- **props[name="poam-id"]** — the source's native identifier (e.g. `V-001`).
+- **props[name="severity"]** — `high`, `moderate`, or `low` (lowercase). The wizard maps source columns like "Risk Rating", "Severity", or "CVSS rating" into this field.
+- **props[name="status"]** — `open`, `ongoing`, `risk-accepted`, or `closed` (lowercase, hyphenated).
+- **props[name="scheduled-completion-date"]** — ISO `YYYY-MM-DD` or empty if unknown. The wizard never invents a date.
+- **props[name="ai-confidence"]** in the `https://oscal-hub.io/ns` namespace — `high`, `medium`, or `low`. Use this to identify items that need the most review.
+
+The wizard does not yet generate `related-observations`, `related-risks`, or `findings`/`risks`/`observations` arrays. Those are advanced OSCAL POA&M structures that you can add manually in the editor's **Advanced — edit raw JSON body** panel if needed.
+
+---
+
+## AI confidence scoring
+
+Each item carries an `ai-confidence` prop:
+
+- **high** — the source has a complete row/finding with title, description, severity, and a remediation plan or due date.
+- **medium** — the source has the weakness but is missing one or more of: severity, due date, remediation plan.
+- **low** — the source mentions the item only in passing or had to be extrapolated; description reads "Source document does not provide details for this item. To be completed."
+
+Filter the structured editor by status to find items that need work, or open the **Advanced — edit raw JSON body** panel to inspect every prop directly.
+
+---
+
+## Tips and limits
+
+- **FedRAMP templates work best with .xlsx.** Apache POI parses the Excel structure and feeds the model rows in the original order. CSV exports work too but lose the workbook layout cues that help the model interpret column meaning.
+- **Pen-test reports vary widely in quality.** The wizard does well with reports that have explicit per-finding sections, severity ratings, and remediation recommendations. Reports that bury findings inside long narrative paragraphs produce more low-confidence items.
+- **Severity normalizes to OSCAL values.** Source values like "Critical" or "High Risk" are mapped to `high`; "Medium" / "Moderate" to `moderate`; "Low" / "Informational" to `low`. If you use a different scale, check the AI mapping during review.
+- **One bad chunk doesn't kill the run.** Same resilience as the SSP wizard — if a chunk's JSON fails to parse, those items are skipped with a progress warning and the rest of the run completes.
+- **UUIDs are regenerated automatically.** Don't worry if the source spreadsheet has UUID columns that look malformed — every uuid is replaced with a fresh v4 before the doc is assembled.
+- **AI features must be enabled.** If the wizard card is greyed out, ask your Org Admin to enable AI at `/org-admin/ai-settings`.
+
+<Callout type="warn">
+The AI is producing a first pass. Verify every severity rating, status, and due date before treating the POA&M as authoritative. AI severity classification is a first-pass approximation, not a security-significant assessment — re-rate any items that feed risk decisions.
+</Callout>
+
+---
+
+## Related
+
+- [AI Wizards Overview](/guide/ai/overview) — feature gating, cost, and privacy
+- [AI SSP Wizard](/guide/ai/ssp-wizard) — turn an architecture doc into an OSCAL System Security Plan
+- [POA&M Builder](/guide/build/poam) — manual POA&M builder reference

@@ -42,6 +42,8 @@ export const TOC: TocGroup[] = [
       { label: 'Overview', slug: 'ai/overview' },
       { label: 'Catalog Wizard', slug: 'ai/catalog-wizard' },
       { label: 'Component Wizard', slug: 'ai/component-wizard' },
+      { label: 'SSP Wizard', slug: 'ai/ssp-wizard' },
+      { label: 'POA&M Wizard', slug: 'ai/poam-wizard' },
       { label: 'Validation Rule Generator', slug: 'ai/rule-generator' },
     ],
   },
