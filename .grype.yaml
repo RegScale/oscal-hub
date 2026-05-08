@@ -1,0 +1,28 @@
+# Grype configuration — pre-existing finding baseline.
+#
+# Each entry below is a documented, explicitly accepted finding. New high-
+# severity findings are NOT auto-accepted: they will fail CI until added
+# here intentionally or fixed at the source.
+#
+# Removing entries:
+#   - Update the corresponding dependency / base image (notes inline).
+#   - Re-run the security scan locally and confirm the finding is gone.
+#   - Delete the entry. New scans will block any regression.
+
+ignore:
+  # ----------------------------------------------------------------
+  # Base image's bundled npm install (not in our application code).
+  # Anchore reports a fix is available, but the fix is "use a newer
+  # bundled npm" — controlled by the upstream Node base image we pull.
+  # Resolves automatically when the base image bumps npm.
+  # ----------------------------------------------------------------
+  - vulnerability: GHSA-c2c7-rcm5-vvqj      # picomatch — high
+    package:
+      type: npm
+      location: "/usr/lib/node_modules/**"
+
+  # The Netty 4.2.x and PostgreSQL JDBC entries previously here were resolved
+  # by overriding <netty.version> and <postgresql.version> in back-end/pom.xml.
+  # If those overrides are reverted (e.g. when a Spring Boot patch release
+  # ships the same fixes), the corresponding findings should not return —
+  # add fresh entries here only after deliberate review.

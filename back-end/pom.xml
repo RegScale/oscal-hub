@@ -37,6 +37,15 @@
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.4</log4j2.version>
+        <!-- Netty 4.2.13.Final closes 5 high-severity advisories present in 4.2.12.Final
+             (HTTP/3 QPACK unbounded alloc, HttpClientCodec desync, DNS Codec input
+              validation bypass, Lz4FrameDecoder resource exhaustion, epoll DoS).
+             Spring Boot 4.0.6's BOM still pins 4.2.12.Final. Remove this override
+             once a Spring Boot patch release picks up the fix. -->
+        <netty.version>4.2.13.Final</netty.version>
+        <!-- PostgreSQL JDBC 42.7.11 fixes GHSA-98qh-xjc8-98pq (unbounded PBKDF2
+             iterations in SCRAM auth → CPU exhaustion DoS). -->
+        <postgresql.version>42.7.11</postgresql.version>
         <protobuf-java.version>4.34.1</protobuf-java.version>
 
         <!-- Cloud SDK BOM versions -->
