@@ -261,7 +261,11 @@ export function OscalDocumentWizard({
   }, [editingDocument, initialDocument, modelType]);
 
   const importKey = modelImportKey(modelType);
-  const importRequiredForFinal = modelType !== 'plan-of-action-and-milestones';
+  // SSP's import-profile is optional in this app — the AI wizard offers a
+  // "skip profile" mode and users can save and refine the plan without
+  // committing to a baseline yet. POA&M doesn't have an import either.
+  const importRequiredForFinal =
+    modelType !== 'plan-of-action-and-milestones' && modelType !== 'system-security-plan';
 
   const stats = useMemo(() => summarizeOscalDocument(modelType, reassembleDoc(modelType, doc)), [modelType, doc]);
 

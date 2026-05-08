@@ -61,10 +61,10 @@ describe('OscalDocumentWizard', () => {
     expect(monaco.value).toContain('system-characteristics');
   });
 
-  it('flags final-save validation when import-profile href is missing for SSP', () => {
+  it('does not require import-profile href for SSP final save', () => {
     render(<OscalDocumentWizard modelType="system-security-plan" />);
     fireEvent.click(screen.getByRole('button', { name: /5\. Review/i }));
-    expect(screen.getByText(/import-profile href is required/i)).toBeInTheDocument();
+    expect(screen.queryByText(/import-profile href is required/i)).not.toBeInTheDocument();
   });
 
   it('saves an SSP draft without the import href', async () => {
