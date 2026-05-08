@@ -73,7 +73,8 @@ class AiSessionControllerTest {
         when(memberships.findByUserIdAndOrganizationId(eq(42L), eq(1L)))
                 .thenReturn(Optional.of(membership));
 
-        when(orchestrator.start(eq(1L), eq(42L), eq(WizardKind.SMOKE), eq(AiSessionMode.STREAMING), eq("ping")))
+        when(orchestrator.start(eq(1L), eq(42L), eq(WizardKind.SMOKE), eq(AiSessionMode.STREAMING),
+                        eq("ping"), isNull(), isNull(), isNull()))
                 .thenReturn(id);
 
         StartSessionRequest req = new StartSessionRequest();
@@ -169,7 +170,7 @@ class AiSessionControllerTest {
 
         UUID expected = UUID.randomUUID();
         when(orchestrator.start(eq(1L), eq(7L), eq(WizardKind.CATALOG),
-                eq(AiSessionMode.STREAMING), isNull(), any(byte[].class), eq("input.pdf")))
+                eq(AiSessionMode.STREAMING), isNull(), any(byte[].class), eq("input.pdf"), isNull()))
                 .thenReturn(expected);
 
         MockMultipartFile file = new MockMultipartFile("file", "input.pdf",
