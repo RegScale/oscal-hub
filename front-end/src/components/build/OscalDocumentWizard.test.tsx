@@ -169,6 +169,83 @@ describe('OscalDocumentWizard', () => {
     await waitFor(() => expect(getByDisplayValue('Acme Trust Center SSP')).toBeInTheDocument());
   });
 
+  it('renders AI confidence panel on SSP step 3 when body has ai-confidence props', async () => {
+    const draft = {
+      'system-security-plan': {
+        uuid: '00000000-0000-0000-0000-000000000abc',
+        metadata: { title: 't', version: '1', 'oscal-version': '1.1.2', 'last-modified': 'now' },
+        'import-profile': { href: 'library:p-1' },
+        'system-characteristics': {
+          'system-name': 't',
+          description: '',
+          'system-ids': [{ id: 's' }],
+          'security-sensitivity-level': 'moderate',
+          'system-information': { 'information-types': [] },
+          'security-impact-level': {
+            'security-objective-confidentiality': 'moderate',
+            'security-objective-integrity': 'moderate',
+            'security-objective-availability': 'moderate',
+          },
+          status: { state: 'operational' },
+          'authorization-boundary': { description: '' },
+        },
+        'system-implementation': { users: [], components: [] },
+        'control-implementation': {
+          description: '',
+          'implemented-requirements': [
+            {
+              uuid: 'u1',
+              'control-id': 'ac-1',
+              description: 'D1',
+              props: [{ name: 'ai-confidence', ns: 'https://oscal-hub.io/ns', value: 'high' }],
+            },
+            {
+              uuid: 'u2',
+              'control-id': 'ac-2',
+              description: 'D2',
+              props: [{ name: 'ai-confidence', ns: 'https://oscal-hub.io/ns', value: 'low' }],
+            },
+          ],
+        },
+      },
+    };
+
+    render(<OscalDocumentWizard modelType="system-security-plan" initialDocument={draft} />);
+
+    // Wait for the wizard to seed from the initialDocument before navigating.
+    await waitFor(() => expect(screen.getByDisplayValue('t')).toBeInTheDocument());
+
+    // Navigate to step 3 (Body) where the AI confidence panel renders.
+    fireEvent.click(screen.getByRole('button', { name: /3\. Body/i }));
+
+    await waitFor(() => expect(screen.getByText(/AI confidence/i)).toBeInTheDocument());
+    expect(screen.getByText(/1 high/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 medium/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 low/i)).toBeInTheDocument();
+  });
+
+  it('AI confidence panel does not render for non-SSP models', async () => {
+    const draft = {
+      'plan-of-action-and-milestones': {
+        uuid: 'x',
+        metadata: { title: 'p', version: '1', 'oscal-version': '1.1.2', 'last-modified': 'now' },
+        observations: [],
+        risks: [],
+        findings: [],
+        'poam-items': [],
+      },
+    };
+    render(
+      <OscalDocumentWizard
+        modelType="plan-of-action-and-milestones"
+        initialDocument={draft}
+      />,
+    );
+    await waitFor(() => expect(screen.getByDisplayValue('p')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /3\. Body/i }));
+    expect(screen.queryByText(/AI confidence/i)).not.toBeInTheDocument();
+  });
+
   it('loads and edits an existing SSP, preserving the draft flag', async () => {
     getContentMock.mockResolvedValue(
       JSON.stringify({

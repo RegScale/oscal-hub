@@ -30,6 +30,7 @@ import { ImportJsonDialog } from '@/components/build/oscal/ImportJsonDialog';
 import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
 import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import { LazyMonacoEditor } from '@/components/lazy/LazyMonacoEditor';
+import { AiConfidencePanel } from '@/components/build/oscal/AiConfidencePanel';
 import {
   emptyMetadata,
   emptyOscalDocument,
@@ -522,6 +523,9 @@ export function OscalDocumentWizard({
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{bodyError}</AlertDescription>
                 </Alert>
+              )}
+              {modelType === 'system-security-plan' && (
+                <AiConfidencePanel body={doc.body} />
               )}
               <div className="rounded-md border overflow-hidden">
                 <LazyMonacoEditor
