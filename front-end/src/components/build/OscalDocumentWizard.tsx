@@ -52,6 +52,11 @@ import type { OscalModelType } from '@/types/oscal';
 interface OscalDocumentWizardProps {
   modelType: GenericOscalModelSlug;
   editingDocument?: OscalDocumentResponse | null;
+  /**
+   * AI-generated draft to seed a fresh wizard. Ignored when editingDocument
+   * is set. Shape: the wrapped JSON body, e.g. `{ "system-security-plan": {...} }`.
+   */
+  initialDocument?: unknown;
   onSaveComplete?: () => void;
   onCancel?: () => void;
   /**
@@ -156,6 +161,7 @@ function reassembleDoc(modelType: GenericOscalModelSlug, doc: ParsedDocument): R
 export function OscalDocumentWizard({
   modelType,
   editingDocument,
+  initialDocument,
   onSaveComplete,
   onCancel,
   userOrganizationId,
@@ -193,36 +199,56 @@ export function OscalDocumentWizard({
     }
   }, [bodyText]);
 
-  // Load editing doc
+  // Load editing doc, seed from AI draft, or reset to an empty document.
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!editingDocument) {
-        const fresh = emptyParsedDoc(modelType);
+      if (editingDocument) {
+        setIsLoading(true);
+        setError(null);
+        setIsDraft(editingDocument.draft);
+        setSavedDocId(editingDocument.id);
+        try {
+          const raw = await oscalDocumentApi.getContent(editingDocument.id);
+          const next = parseLoadedDoc(modelType, raw);
+          if (!cancelled) {
+            setDoc(next);
+            setBodyText(JSON.stringify(next.body, null, 2));
+            setStep(1);
+          }
+        } catch (e) {
+          if (!cancelled) setError(`Failed to load document: ${e instanceof Error ? e.message : 'unknown'}`);
+        } finally {
+          if (!cancelled) setIsLoading(false);
+        }
+        return;
+      }
+
+      if (initialDocument) {
+        try {
+          const next = parseLoadedDoc(modelType, JSON.stringify(initialDocument));
+          if (!cancelled) {
+            setDoc(next);
+            setBodyText(JSON.stringify(next.body, null, 2));
+            setStep(1);
+            setSuccess(false);
+            setIsDraft(true);
+            setSavedDocId(null);
+          }
+        } catch (e) {
+          if (!cancelled) setError(`Failed to seed document: ${e instanceof Error ? e.message : 'unknown'}`);
+        }
+        return;
+      }
+
+      const fresh = emptyParsedDoc(modelType);
+      if (!cancelled) {
         setDoc(fresh);
         setBodyText(JSON.stringify(fresh.body, null, 2));
         setStep(1);
         setSuccess(false);
         setIsDraft(true);
         setSavedDocId(null);
-        return;
-      }
-      setIsLoading(true);
-      setError(null);
-      setIsDraft(editingDocument.draft);
-      setSavedDocId(editingDocument.id);
-      try {
-        const raw = await oscalDocumentApi.getContent(editingDocument.id);
-        const next = parseLoadedDoc(modelType, raw);
-        if (!cancelled) {
-          setDoc(next);
-          setBodyText(JSON.stringify(next.body, null, 2));
-          setStep(1);
-        }
-      } catch (e) {
-        if (!cancelled) setError(`Failed to load document: ${e instanceof Error ? e.message : 'unknown'}`);
-      } finally {
-        if (!cancelled) setIsLoading(false);
       }
     }
     void load();
@@ -230,7 +256,7 @@ export function OscalDocumentWizard({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingDocument, modelType]);
+  }, [editingDocument, initialDocument, modelType]);
 
   const importKey = modelImportKey(modelType);
   const importRequiredForFinal = modelType !== 'plan-of-action-and-milestones';

@@ -125,6 +125,50 @@ describe('OscalDocumentWizard', () => {
     expect(arg.draft).toBe(false);
   });
 
+  it('initialDocument seeds the wizard with metadata, import, and body', async () => {
+    const draft = {
+      'system-security-plan': {
+        uuid: '00000000-0000-0000-0000-000000000ff0',
+        metadata: {
+          title: 'Acme Trust Center SSP',
+          version: '1.0',
+          'oscal-version': '1.1.2',
+          'last-modified': '2026-05-08T00:00:00Z',
+        },
+        'import-profile': { href: 'library:p-1' },
+        'system-characteristics': {
+          'system-name': 'Acme Trust Center',
+          description: 'Web app',
+          'system-ids': [{ id: 'acme-trust' }],
+          'security-sensitivity-level': 'moderate',
+          'system-information': { 'information-types': [] },
+          'security-impact-level': {
+            'security-objective-confidentiality': 'moderate',
+            'security-objective-integrity': 'moderate',
+            'security-objective-availability': 'moderate',
+          },
+          status: { state: 'operational' },
+          'authorization-boundary': { description: 'Cloud Run.' },
+        },
+        'system-implementation': { users: [], components: [] },
+        'control-implementation': {
+          description: 'Drafted from source',
+          'implemented-requirements': [],
+        },
+      },
+    };
+
+    const { getByDisplayValue } = render(
+      <OscalDocumentWizard
+        modelType="system-security-plan"
+        initialDocument={draft}
+      />,
+    );
+
+    // Title input is populated from initialDocument.metadata.title
+    await waitFor(() => expect(getByDisplayValue('Acme Trust Center SSP')).toBeInTheDocument());
+  });
+
   it('loads and edits an existing SSP, preserving the draft flag', async () => {
     getContentMock.mockResolvedValue(
       JSON.stringify({
