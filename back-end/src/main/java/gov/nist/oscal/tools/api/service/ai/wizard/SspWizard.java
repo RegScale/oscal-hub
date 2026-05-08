@@ -1,7 +1,9 @@
 package gov.nist.oscal.tools.api.service.ai.wizard;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.WizardKind;
 import gov.nist.oscal.tools.api.repository.UserRepository;
@@ -29,7 +31,13 @@ import java.util.UUID;
 public class SspWizard implements Wizard {
 
     private static final Logger log = LoggerFactory.getLogger(SspWizard.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    // Lenient parser: LLM output occasionally embeds raw newlines inside string
+    // values (or, rarely, inside field names) instead of escaping them. Jackson's
+    // default rejects code points <32; ALLOW_UNESCAPED_CONTROL_CHARS lets us
+    // recover the well-meaning-but-loose JSON the model produces.
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+            .build();
     private static final int TOKEN_BUDGET_IN = 5_000_000;
     private static final int TOKEN_BUDGET_OUT = 200_000;
 
@@ -143,9 +151,18 @@ public class SspWizard implements Wizard {
                         msg -> stream.publish(ctx.sessionId(), SessionEvent.progress(msg)));
                 tokensIn += chunkRes.tokensIn();
                 tokensOut += chunkRes.tokensOut();
-                JsonNode arr = MAPPER.readTree(extractJsonArray(chunkRes.text()));
-                if (arr.isArray()) {
-                    for (JsonNode req : arr) producedRequirements.add(req);
+                try {
+                    JsonNode arr = MAPPER.readTree(extractJsonArray(chunkRes.text()));
+                    if (arr.isArray()) {
+                        for (JsonNode req : arr) producedRequirements.add(req);
+                    }
+                } catch (Exception parseEx) {
+                    log.warn("SSP wizard sessionId={} chunk {} of {} failed to parse: {}",
+                            ctx.sessionId(), chunkIndex, chunks.size(), parseEx.getMessage());
+                    stream.publish(ctx.sessionId(), SessionEvent.progress(
+                            "Chunk " + chunkIndex + " of " + chunks.size()
+                            + " produced unparseable JSON — skipping " + chunk.size()
+                            + " controls. You can refine those narratives in the editor."));
                 }
                 if (tokensIn > TOKEN_BUDGET_IN || tokensOut > TOKEN_BUDGET_OUT) {
                     String msg = "Token budget exceeded after chunk " + chunkIndex

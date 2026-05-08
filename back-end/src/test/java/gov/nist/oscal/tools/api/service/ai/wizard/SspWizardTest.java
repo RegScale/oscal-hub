@@ -266,4 +266,93 @@ class SspWizardTest {
                 .path("implemented-requirements");
         assertThat(reqs.size()).isEqualTo(2);
     }
+
+    @Test
+    void chunkWithUnescapedNewlineInDescriptionIsParsedLeniently() throws Exception {
+        AnthropicClient client = mock(AnthropicClient.class);
+        AiSessionEventStream stream = mock(AiSessionEventStream.class);
+        KnowledgeLoader knowledge = mock(KnowledgeLoader.class);
+        DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
+        ProfileSourceLoader profileLoader = mock(ProfileSourceLoader.class);
+        ProfileControlIdExtractor extractor = mock(ProfileControlIdExtractor.class);
+        UserRepository users = mock(UserRepository.class);
+        when(knowledge.systemFor(WizardKind.SSP)).thenReturn("system");
+
+        // Chunk JSON with a real newline inside a description — common LLM drift.
+        // Default Jackson would reject this; the wizard's lenient mapper accepts it.
+        String chunkWithNewline =
+                "[{\"uuid\":\"u1\",\"control-id\":\"ac-1\","
+              + "\"description\":\"First paragraph.\nSecond paragraph.\","
+              + "\"props\":[{\"name\":\"ai-confidence\",\"ns\":\"https://oscal-hub.io/ns\",\"value\":\"medium\"}]},"
+              + "{\"uuid\":\"u2\",\"control-id\":\"ac-2\",\"description\":\"D2\","
+              + "\"props\":[{\"name\":\"ai-confidence\",\"ns\":\"https://oscal-hub.io/ns\",\"value\":\"high\"}]}]";
+
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("System Security Plan")), any()))
+                .thenReturn(new AnthropicResult(OUTLINE_JSON, 100, 50));
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirement entries")), any()))
+                .thenReturn(new AnthropicResult(chunkWithNewline, 50, 30));
+
+        SspWizard wizard = new SspWizard(client, stream, knowledge, normalizer,
+                new SspPromptBuilder(), new SspChunkingStrategy(),
+                profileLoader, extractor, users);
+
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
+                "sk-ant-xxx", "claude-opus-4-7", "Source", null);
+
+        WizardOutcome outcome = wizard.run(ctx);
+        assertThat(outcome.success()).isTrue();
+
+        ArgumentCaptor<SessionEvent> ev = ArgumentCaptor.forClass(SessionEvent.class);
+        verify(stream, atLeastOnce()).publish(eq(ctx.sessionId()), ev.capture());
+        JsonNode doc = extractCompletedDocument(ev.getAllValues());
+        JsonNode reqs = doc.path("system-security-plan")
+                .path("control-implementation")
+                .path("implemented-requirements");
+        // Both entries from the chunk should land in the assembled doc despite
+        // the unescaped newline.
+        assertThat(reqs.size()).isEqualTo(2);
+    }
+
+    @Test
+    void unparseableChunkIsSkippedNotFatal() throws Exception {
+        AnthropicClient client = mock(AnthropicClient.class);
+        AiSessionEventStream stream = mock(AiSessionEventStream.class);
+        KnowledgeLoader knowledge = mock(KnowledgeLoader.class);
+        DocumentNormalizer normalizer = mock(DocumentNormalizer.class);
+        ProfileSourceLoader profileLoader = mock(ProfileSourceLoader.class);
+        ProfileControlIdExtractor extractor = mock(ProfileControlIdExtractor.class);
+        UserRepository users = mock(UserRepository.class);
+        when(knowledge.systemFor(WizardKind.SSP)).thenReturn("system");
+
+        // Junk that the lenient mapper still can't parse — proves the catch
+        // converts a fatal parse error into a progress warning + skipped chunk.
+        String unparseable = "this is not JSON at all { broken";
+
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("System Security Plan")), any()))
+                .thenReturn(new AnthropicResult(OUTLINE_JSON, 100, 50));
+        when(client.send(any(), argThat(c -> c != null && c.userMessage().contains("implemented-requirement entries")), any()))
+                .thenReturn(new AnthropicResult(unparseable, 50, 30));
+
+        SspWizard wizard = new SspWizard(client, stream, knowledge, normalizer,
+                new SspPromptBuilder(), new SspChunkingStrategy(),
+                profileLoader, extractor, users);
+
+        WizardContext ctx = WizardContext.text(UUID.randomUUID(), 1L, 7L,
+                "sk-ant-xxx", "claude-opus-4-7", "Source", null);
+
+        WizardOutcome outcome = wizard.run(ctx);
+        // Outcome is still success — bad chunks are not fatal.
+        assertThat(outcome.success()).isTrue();
+
+        ArgumentCaptor<SessionEvent> ev = ArgumentCaptor.forClass(SessionEvent.class);
+        verify(stream, atLeastOnce()).publish(eq(ctx.sessionId()), ev.capture());
+        assertThat(hasProgressContaining(ev.getAllValues(), "unparseable JSON")).isTrue();
+
+        JsonNode doc = extractCompletedDocument(ev.getAllValues());
+        JsonNode reqs = doc.path("system-security-plan")
+                .path("control-implementation")
+                .path("implemented-requirements");
+        // No requirements landed since the chunk was skipped.
+        assertThat(reqs.size()).isEqualTo(0);
+    }
 }
