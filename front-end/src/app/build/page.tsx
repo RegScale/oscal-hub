@@ -81,6 +81,7 @@ export default function BuildPage() {
   const [editingDoc, setEditingDoc] = useState<OscalDocumentResponse | null>(null);
   const [aiDraftCatalog, setAiDraftCatalog] = useState<{ catalog: unknown } | null>(null);
   const [aiDraftComponent, setAiDraftComponent] = useState<unknown | null>(null);
+  const [aiDraftSsp, setAiDraftSsp] = useState<unknown | null>(null);
 
   // One-shot: read ?aiDraft=<sessionId>&section=catalogs from URL, hydrate from
   // sessionStorage. Uses a ref guard to survive React Strict Mode's double-mount
@@ -119,6 +120,22 @@ export default function BuildPage() {
           setSection('components');
           setMode('create');
           setEditingComponent(null);
+          sessionStorage.removeItem(`aiDraft:${aiDraft}`);
+          window.history.replaceState({}, '', '/build');
+          aiDraftHydrated.current = true;
+        } catch {
+          // ignore malformed draft
+        }
+      }
+    } else if (aiDraft && sec === 'ssp') {
+      const raw = sessionStorage.getItem(`aiDraft:${aiDraft}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          setAiDraftSsp(parsed);
+          setSection('ssp');
+          setMode('create');
+          setEditingDoc(null);
           sessionStorage.removeItem(`aiDraft:${aiDraft}`);
           window.history.replaceState({}, '', '/build');
           aiDraftHydrated.current = true;
@@ -169,6 +186,7 @@ export default function BuildPage() {
     setEditingDoc(null);
     setAiDraftCatalog(null);
     setAiDraftComponent(null);
+    setAiDraftSsp(null);
     setReloadKey((k) => k + 1);
   };
 
@@ -395,11 +413,13 @@ export default function BuildPage() {
                   <OscalDocumentWizard
                     modelType={cfg.slug}
                     editingDocument={editingDoc}
+                    initialDocument={key === 'ssp' ? aiDraftSsp : undefined}
                     onSaveComplete={onSaveComplete}
                     userOrganizationId={orgId}
                     onCancel={() => {
                       setMode('list');
                       setEditingDoc(null);
+                      if (key === 'ssp') setAiDraftSsp(null);
                     }}
                   />
                 )}
