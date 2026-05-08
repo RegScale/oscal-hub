@@ -45,6 +45,7 @@ export interface StartSessionRequest {
   wizardKind: WizardKind;
   mode: SessionMode;
   input?: string;
+  profileHref?: string | null;
 }
 
 export interface StartSessionResponse {
@@ -141,16 +142,16 @@ export const aiClient = {
     organizationId: number,
     wizardKind: WizardKind,
     file: File,
-    prompt?: string,
-    mode: SessionMode = 'STREAMING',
+    options?: { prompt?: string; mode?: SessionMode; profileHref?: string | null },
   ): Promise<StartSessionResponse> {
     const fd = new FormData();
     fd.append('file', file);
     const url = new URL(`${API_BASE_URL}/ai/sessions/upload`);
     url.searchParams.set('organizationId', String(organizationId));
     url.searchParams.set('wizardKind', wizardKind);
-    url.searchParams.set('mode', mode);
-    if (prompt) url.searchParams.set('prompt', prompt);
+    url.searchParams.set('mode', options?.mode ?? 'STREAMING');
+    if (options?.prompt) url.searchParams.set('prompt', options.prompt);
+    if (options?.profileHref) url.searchParams.set('profileHref', options.profileHref);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers: Record<string, string> = {};
