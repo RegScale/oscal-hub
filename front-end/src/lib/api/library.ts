@@ -179,3 +179,49 @@ export const libraryPublishApi = {
     );
   },
 };
+
+/**
+ * Lightweight summary used by pickers (e.g. SSP wizard profile picker).
+ *
+ * Backend `LibraryController.getItemsByType` returns a paged response shaped
+ * like `LibraryItemResponse`, but consumers of this helper only need a small
+ * subset of fields. We declare a narrower summary type here to keep the
+ * picker UI decoupled from the full library item schema.
+ */
+export interface LibraryItemSummary {
+  itemId: string;
+  title: string;
+  description?: string;
+  version?: string;
+  oscalType: string;
+  visibility: string;
+  updatedAt: string;
+}
+
+export interface LibraryListResponse {
+  content: LibraryItemSummary[];
+  totalElements: number;
+}
+
+export const libraryListApi = {
+  /**
+   * List library items of a given OSCAL type (e.g. `profile`, `catalog`).
+   *
+   * Calls `GET /api/library/type/{oscalType}` and returns the paged
+   * `content` array. Defaults sort to most-recently-updated.
+   */
+  async listByOscalType(
+    oscalType: string,
+    page = 0,
+    size = 50,
+  ): Promise<LibraryItemSummary[]> {
+    const url = `${API_BASE_URL}/library/type/${encodeURIComponent(
+      oscalType,
+    )}?page=${page}&size=${size}&sortBy=updatedAt&sortDir=desc`;
+    const json = await fetchJson<LibraryListResponse>(url, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return json.content ?? [];
+  },
+};
