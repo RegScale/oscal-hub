@@ -59,7 +59,8 @@ public class AiSessionController {
         User user = users.findByUsername(username).orElseThrow();
         requireOrgMembership(user, req.getOrganizationId());
         UUID id = orchestrator.start(req.getOrganizationId(), user.getId(),
-                req.getWizardKind(), req.getMode(), req.getInput());
+                req.getWizardKind(), req.getMode(), req.getInput(),
+                null, null, req.getProfileHref());
         return ResponseEntity.ok(new StartSessionResponse(id));
     }
 
@@ -71,12 +72,13 @@ public class AiSessionController {
             @RequestParam WizardKind wizardKind,
             @RequestParam(required = false, defaultValue = "STREAMING") AiSessionMode mode,
             @RequestParam(required = false) String prompt,
+            @RequestParam(required = false) String profileHref,
             @RequestPart MultipartFile file) throws IOException {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = users.findByUsername(username).orElseThrow();
         requireOrgMembership(user, organizationId);
         UUID id = orchestrator.start(organizationId, user.getId(), wizardKind, mode,
-                prompt, file.getBytes(), file.getOriginalFilename());
+                prompt, file.getBytes(), file.getOriginalFilename(), profileHref);
         return ResponseEntity.ok(new StartSessionResponse(id));
     }
 

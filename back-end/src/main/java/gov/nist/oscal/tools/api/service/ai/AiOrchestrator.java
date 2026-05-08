@@ -29,11 +29,16 @@ public class AiOrchestrator {
     }
 
     public UUID start(Long organizationId, Long userId, WizardKind kind, AiSessionMode mode, String input) {
-        return start(organizationId, userId, kind, mode, input, null, null);
+        return start(organizationId, userId, kind, mode, input, null, null, null);
     }
 
     public UUID start(Long organizationId, Long userId, WizardKind kind, AiSessionMode mode,
                       String input, byte[] inputBytes, String inputFilename) {
+        return start(organizationId, userId, kind, mode, input, inputBytes, inputFilename, null);
+    }
+
+    public UUID start(Long organizationId, Long userId, WizardKind kind, AiSessionMode mode,
+                      String input, byte[] inputBytes, String inputFilename, String profileHref) {
         UUID id = UUID.randomUUID();
         String apiKey = settings.requireApiKey(organizationId);
         String model = settings.getDefaultModel(organizationId);
@@ -51,8 +56,8 @@ public class AiOrchestrator {
 
         Wizard wizard = router.get(kind);
         WizardContext ctx = inputBytes != null
-                ? WizardContext.file(id, organizationId, userId, apiKey, model, inputBytes, inputFilename)
-                : WizardContext.text(id, organizationId, userId, apiKey, model, input);
+                ? WizardContext.file(id, organizationId, userId, apiKey, model, inputBytes, inputFilename, profileHref)
+                : WizardContext.text(id, organizationId, userId, apiKey, model, input, profileHref);
         asyncRunner.run(wizard, ctx);
         return id;
     }

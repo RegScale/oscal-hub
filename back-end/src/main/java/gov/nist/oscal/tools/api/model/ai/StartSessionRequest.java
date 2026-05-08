@@ -9,6 +9,7 @@ public class StartSessionRequest {
     @NotNull private WizardKind wizardKind;
     @NotNull private AiSessionMode mode = AiSessionMode.STREAMING;
     private String input;
+    private String profileHref;
 
     public Long getOrganizationId() { return organizationId; }
     public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
@@ -18,4 +19,6 @@ public class StartSessionRequest {
     public void setMode(AiSessionMode mode) { this.mode = mode; }
     public String getInput() { return input; }
     public void setInput(String input) { this.input = input; }
+    public String getProfileHref() { return profileHref; }
+    public void setProfileHref(String profileHref) { this.profileHref = profileHref; }
 }
