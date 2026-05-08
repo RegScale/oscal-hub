@@ -106,6 +106,14 @@ public class KnowledgeLoader {
             return sb.toString();
         }
 
+        if (kind == WizardKind.SSP) {
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-basics"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-ssp"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/metaschema/skills/metaschema-basics"));
+            sb.append("\nFocus: produce SSP per-control implementation narratives grounded in the system description.\n");
+            return sb.toString();
+        }
+
         // Other kinds keep load-all behavior until their own wizard plans land.
         String oscalSkills = loadAllMarkdown(pluginRoot.resolve("plugins/oscal/skills"));
         if (!oscalSkills.isEmpty()) {
