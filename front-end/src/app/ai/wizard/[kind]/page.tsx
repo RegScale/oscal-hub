@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { HelpButton } from '@/components/HelpButton';
 import { CatalogWizardForm } from '@/components/ai/CatalogWizardForm';
 import { ComponentDefWizardForm } from '@/components/ai/ComponentDefWizardForm';
+import { SspWizardForm } from '@/components/ai/SspWizardForm';
 import { ChevronLeft, Check, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 
 const WIZARD_TITLES: Record<WizardKind, string> = {
@@ -62,6 +63,18 @@ export default function WizardRunPage() {
     }
   }, [wizardKind, session.isComplete, session.finalDocument, sessionId, router]);
 
+  useEffect(() => {
+    if (
+      wizardKind === 'SSP' &&
+      session.isComplete &&
+      session.finalDocument != null &&
+      sessionId
+    ) {
+      sessionStorage.setItem(`aiDraft:${sessionId}`, JSON.stringify(session.finalDocument));
+      router.push(`/build?section=ssp&aiDraft=${sessionId}`);
+    }
+  }, [wizardKind, session.isComplete, session.finalDocument, sessionId, router]);
+
   const start = async () => {
     if (!orgId) return;
     try {
@@ -103,6 +116,10 @@ export default function WizardRunPage() {
 
       {!sessionId && wizardKind === 'COMPONENT_DEF' && orgId != null && (
         <ComponentDefWizardForm organizationId={orgId} onSessionStarted={setSessionId} />
+      )}
+
+      {!sessionId && wizardKind === 'SSP' && orgId != null && (
+        <SspWizardForm organizationId={orgId} onSessionStarted={setSessionId} />
       )}
 
       {!sessionId && wizardKind === 'SMOKE' && (
@@ -176,7 +193,7 @@ export default function WizardRunPage() {
               </div>
             )}
 
-            {session.isComplete && !session.error && session.finalDocument != null && wizardKind !== 'CATALOG' && wizardKind !== 'COMPONENT_DEF' && (
+            {session.isComplete && !session.error && session.finalDocument != null && wizardKind !== 'CATALOG' && wizardKind !== 'COMPONENT_DEF' && wizardKind !== 'SSP' && (
               <details className="rounded-md border bg-muted/30 p-3 text-sm">
                 <summary className="cursor-pointer font-medium">Final output</summary>
                 <pre className="mt-2 text-xs overflow-auto max-h-80">
