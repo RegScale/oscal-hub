@@ -32,6 +32,7 @@ import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import { LazyMonacoEditor } from '@/components/lazy/LazyMonacoEditor';
 import { AiConfidencePanel } from '@/components/build/oscal/AiConfidencePanel';
 import { ControlImplementationEditor } from '@/components/build/oscal/ControlImplementationEditor';
+import { PoamItemsEditor } from '@/components/build/oscal/PoamItemsEditor';
 import {
   emptyMetadata,
   emptyOscalDocument,
@@ -533,6 +534,38 @@ export function OscalDocumentWizard({
                 <>
                   <AiConfidencePanel body={doc.body} />
                   <ControlImplementationEditor
+                    body={doc.body}
+                    onChange={(next) => {
+                      setDoc((prev) => ({ ...prev, body: next }));
+                      setBodyText(JSON.stringify(next, null, 2));
+                    }}
+                  />
+                  <details className="rounded-md border bg-muted/10">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
+                      Advanced — edit raw JSON body
+                    </summary>
+                    <div className="border-t overflow-hidden">
+                      <LazyMonacoEditor
+                        height="500px"
+                        defaultLanguage="json"
+                        theme="vs-dark"
+                        value={bodyText}
+                        onChange={(v) => setBodyText(v ?? '')}
+                        options={{
+                          minimap: { enabled: false },
+                          formatOnPaste: true,
+                          formatOnType: true,
+                          tabSize: 2,
+                          wordWrap: 'on',
+                          scrollBeyondLastLine: false,
+                        }}
+                      />
+                    </div>
+                  </details>
+                </>
+              ) : modelType === 'plan-of-action-and-milestones' ? (
+                <>
+                  <PoamItemsEditor
                     body={doc.body}
                     onChange={(next) => {
                       setDoc((prev) => ({ ...prev, body: next }));

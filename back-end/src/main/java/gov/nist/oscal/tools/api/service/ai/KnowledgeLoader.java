@@ -114,6 +114,14 @@ public class KnowledgeLoader {
             return sb.toString();
         }
 
+        if (kind == WizardKind.POAM) {
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-basics"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/oscal/skills/oscal-poam"));
+            appendSkillsFrom(sb, pluginRoot.resolve("plugins/metaschema/skills/metaschema-basics"));
+            sb.append("\nFocus: produce OSCAL POA&M items with severity, status, due dates, and remediation narratives drawn from the source document.\n");
+            return sb.toString();
+        }
+
         // Other kinds keep load-all behavior until their own wizard plans land.
         String oscalSkills = loadAllMarkdown(pluginRoot.resolve("plugins/oscal/skills"));
         if (!oscalSkills.isEmpty()) {

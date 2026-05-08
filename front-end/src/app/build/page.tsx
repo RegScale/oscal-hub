@@ -82,6 +82,7 @@ export default function BuildPage() {
   const [aiDraftCatalog, setAiDraftCatalog] = useState<{ catalog: unknown } | null>(null);
   const [aiDraftComponent, setAiDraftComponent] = useState<unknown | null>(null);
   const [aiDraftSsp, setAiDraftSsp] = useState<unknown | null>(null);
+  const [aiDraftPoam, setAiDraftPoam] = useState<unknown | null>(null);
 
   // One-shot: read ?aiDraft=<sessionId>&section=catalogs from URL, hydrate from
   // sessionStorage. Uses a ref guard to survive React Strict Mode's double-mount
@@ -143,6 +144,22 @@ export default function BuildPage() {
           // ignore malformed draft
         }
       }
+    } else if (aiDraft && sec === 'poam') {
+      const raw = sessionStorage.getItem(`aiDraft:${aiDraft}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          setAiDraftPoam(parsed);
+          setSection('poam');
+          setMode('create');
+          setEditingDoc(null);
+          sessionStorage.removeItem(`aiDraft:${aiDraft}`);
+          window.history.replaceState({}, '', '/build');
+          aiDraftHydrated.current = true;
+        } catch {
+          // ignore malformed draft
+        }
+      }
     }
   }, []);
 
@@ -187,6 +204,7 @@ export default function BuildPage() {
     setAiDraftCatalog(null);
     setAiDraftComponent(null);
     setAiDraftSsp(null);
+    setAiDraftPoam(null);
     setReloadKey((k) => k + 1);
   };
 
@@ -413,13 +431,16 @@ export default function BuildPage() {
                   <OscalDocumentWizard
                     modelType={cfg.slug}
                     editingDocument={editingDoc}
-                    initialDocument={key === 'ssp' ? aiDraftSsp : undefined}
+                    initialDocument={
+                      key === 'ssp' ? aiDraftSsp : key === 'poam' ? aiDraftPoam : undefined
+                    }
                     onSaveComplete={onSaveComplete}
                     userOrganizationId={orgId}
                     onCancel={() => {
                       setMode('list');
                       setEditingDoc(null);
                       if (key === 'ssp') setAiDraftSsp(null);
+                      if (key === 'poam') setAiDraftPoam(null);
                     }}
                   />
                 )}
