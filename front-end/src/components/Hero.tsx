@@ -8,9 +8,8 @@ import {
   Zap, Users, RefreshCw, Shield, AlertCircle, Clock, FileX, Mail, CheckCircle2, XCircle,
   Building2, Briefcase, Code, UserCheck, HelpCircle, ChevronLeft, ChevronRight,
   Sparkles, Wand2, FileSearch, KeyRound, Brain, Workflow, Upload, GitBranch, ClipboardCheck, Plug,
-  Hammer, FileText, Folders, GitMerge,
+  Hammer, FileText, Folders, GitMerge, Share2, Recycle, ArrowRight,
 } from 'lucide-react';
-import { SystemHealth } from '@/components/SystemHealth';
 import { useRef } from 'react';
 
 const FEATURES = [
@@ -150,6 +149,74 @@ export function Hero() {
           <p className="text-lg font-semibold text-foreground">
             OSCAL takes months of manual work to minutes of automation.
           </p>
+        </div>
+      </div>
+
+      {/* Lifecycle Section — the OSCAL story in four stages */}
+      <div className="mb-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3">OSCAL for the Full Lifecycle</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Build, validate, share, reuse — every stage of the compliance authoring loop, in one platform.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4 relative">
+          {[
+            {
+              n: '01',
+              icon: Hammer,
+              title: 'Build',
+              description: 'Author catalogs, profiles, components, SSPs, AP/AR/POA&M with visual builders — or let AI draft them from PDFs, STIGs, and CIS benchmarks you already have.',
+              accent: 'text-blue-500',
+              bg: 'bg-blue-500/10',
+            },
+            {
+              n: '02',
+              icon: FileCheck,
+              title: 'Validate',
+              description: 'Check every artifact against schema, NIST constraints, and your org’s custom rules in one click. Catch problems before the assessor does.',
+              accent: 'text-purple-500',
+              bg: 'bg-purple-500/10',
+            },
+            {
+              n: '03',
+              icon: Share2,
+              title: 'Share',
+              description: 'Publish to your org library, the public community library, or hand assessors a machine-readable OSCAL package — not a 200-page Word doc.',
+              accent: 'text-cyan-500',
+              bg: 'bg-cyan-500/10',
+            },
+            {
+              n: '04',
+              icon: Recycle,
+              title: 'Reuse',
+              description: 'Fork shared catalogs, profiles, and components into your next system. Inherit what’s done, customize what’s different, never start from scratch.',
+              accent: 'text-green-500',
+              bg: 'bg-green-500/10',
+            },
+          ].map(({ n, icon: Icon, title, description, accent, bg }, idx, arr) => (
+            <div key={title} className="relative">
+              <Card className="h-full hover:shadow-md transition-shadow border-primary/20">
+                <CardHeader className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={`p-2.5 rounded-lg ${bg}`}>
+                      <Icon className={`h-6 w-6 ${accent}`} />
+                    </div>
+                    <span className="text-3xl font-bold text-muted-foreground/30 tabular-nums">{n}</span>
+                  </div>
+                  <CardTitle className="text-xl">{title}</CardTitle>
+                  <CardDescription className="text-sm leading-relaxed">{description}</CardDescription>
+                </CardHeader>
+              </Card>
+              {/* Connector arrow on lg between cards */}
+              {idx < arr.length - 1 && (
+                <div aria-hidden="true" className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 items-center justify-center w-6 h-6 rounded-full bg-background border border-border z-10">
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -497,65 +564,62 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Why OSCAL & System Health Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-16">
-        {/* Benefits Section */}
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center text-2xl">
-              <Zap className="h-6 w-6 mr-2 text-primary" />
-              Why Use OSCAL?
-            </CardTitle>
-          </CardHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <p className="text-muted-foreground text-sm mb-4">
-              OSCAL transforms security compliance from manual documentation to machine-readable automation,
-              enabling faster and more reliable compliance processes.
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-start">
-                <Shield className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-foreground block mb-1">Standardized Compliance</span>
-                  <p className="text-sm text-muted-foreground">
-                    Consistent format across all security frameworks and controls, eliminating inconsistencies
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <RefreshCw className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-foreground block mb-1">Automation Ready</span>
-                  <p className="text-sm text-muted-foreground">
-                    Machine-readable format enables automated validation, reporting, and continuous compliance
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <Users className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-foreground block mb-1">Team Collaboration</span>
-                  <p className="text-sm text-muted-foreground">
-                    Share and reuse compliance data across teams and organizations with ease
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <Zap className="h-5 w-5 mr-3 text-primary mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-foreground block mb-1">Faster ATO Process</span>
-                  <p className="text-sm text-muted-foreground">
-                    Reduce time to Authority to Operate with streamlined, automated documentation
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </Card>
-
-        {/* System Health Section */}
-        <div className="flex flex-col">
-          <SystemHealth />
+      {/* Why OSCAL Section */}
+      <div className="mb-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-2">
+            <Zap className="h-7 w-7 text-primary" />
+            Why Use OSCAL?
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            OSCAL transforms security compliance from manual documentation into machine-readable automation — faster, more reliable, and reusable across teams.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="border-primary/20 hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Standardized Compliance</CardTitle>
+              <CardDescription>
+                One consistent format across every framework and control — no more reconciling Word, Excel, and PDF artifacts.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="border-primary/20 hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3">
+                <RefreshCw className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Automation Ready</CardTitle>
+              <CardDescription>
+                Machine-readable means CI/CD-validatable. Wire OSCAL into your pipelines for continuous compliance.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="border-primary/20 hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Team Collaboration</CardTitle>
+              <CardDescription>
+                Share and reuse compliance content across teams and organizations without copy-paste drift.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="border-primary/20 hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3">
+                <Zap className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Faster ATO</CardTitle>
+              <CardDescription>
+                Cut review cycles from weeks to days with validated, structured packages assessors can actually parse.
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </div>
 
