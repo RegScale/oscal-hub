@@ -135,6 +135,67 @@ class TicketServiceTest {
         verify(tickets).findByReporter(alice, p);
     }
 
+    @Test
+    void addComment_byUser_emailsAdmin() {
+        User alice = userWithUsername("alice");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.OPEN);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        TicketComment c = svc.addComment(1L, alice, /*isAdmin*/ false, "More info", List.of());
+
+        assertThat(c.getBody()).isEqualTo("More info");
+        verify(email).sendTicketCommentAdded(eq(t), eq(c), eq("support@example.com"));
+        verify(email, never()).sendTicketReopened(any(), any());
+    }
+
+    @Test
+    void addComment_byAdmin_emailsReporter() {
+        User alice = userWithUsername("alice");
+        User adminBob = new User(); adminBob.setId(2L); adminBob.setUsername("bob"); adminBob.setEmail("b@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.IN_PROGRESS);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.addComment(1L, adminBob, true, "working on it", List.of());
+
+        verify(email).sendTicketCommentAdded(eq(t), any(), eq(alice.getEmail()));
+    }
+
+    @Test
+    void addComment_byReporterOnResolved_reopens() {
+        User alice = userWithUsername("alice");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.RESOLVED);
+        t.setResolvedAt(java.time.LocalDateTime.now().minusDays(1));
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.addComment(1L, alice, false, "still broken", List.of());
+
+        assertThat(t.getStatus()).isEqualTo(TicketStatus.OPEN);
+        assertThat(t.getResolvedAt()).isNull();
+        verify(email).sendTicketReopened(eq(t), any());
+        verify(email, never()).sendTicketCommentAdded(any(), any(), any(String.class));
+    }
+
+    @Test
+    void addComment_byReporterOnTerminalState_doesNotReopen() {
+        User alice = userWithUsername("alice");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.CLOSED);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.addComment(1L, alice, false, "any updates?", List.of());
+
+        assertThat(t.getStatus()).isEqualTo(TicketStatus.CLOSED);
+        verify(email, never()).sendTicketReopened(any(), any());
+        verify(email).sendTicketCommentAdded(any(), any(), any(String.class));
+    }
+
     private MultipartFile mockFile() {
         return new MockMultipartFile("f", "x.png", "image/png", new byte[1]);
     }

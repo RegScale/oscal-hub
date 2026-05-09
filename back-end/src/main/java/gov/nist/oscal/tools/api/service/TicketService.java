@@ -90,4 +90,60 @@ public class TicketService {
             User reporter, org.springframework.data.domain.Pageable pageable) {
         return tickets.findByReporter(reporter, pageable);
     }
+
+    @Transactional
+    public TicketComment addComment(Long ticketId, User caller, boolean isAdmin,
+                                    String body, List<MultipartFile> files) {
+        if (files != null && files.size() > TicketAttachmentStorageService.MAX_FILES_PER_REQUEST) {
+            throw new IllegalArgumentException(
+                "Max " + TicketAttachmentStorageService.MAX_FILES_PER_REQUEST + " files per request");
+        }
+        Ticket t = getTicket(ticketId, caller, isAdmin);
+
+        boolean reporterReopening = !isAdmin
+            && caller.getId().equals(t.getReporter().getId())
+            && t.getStatus().canReopen();
+
+        TicketStatus oldStatus = t.getStatus();
+        if (reporterReopening) {
+            t.setStatus(TicketStatus.OPEN);
+            t.setResolvedAt(null);
+        }
+        t.setUpdatedAt(java.time.LocalDateTime.now());
+        tickets.save(t);
+
+        TicketComment c = comments.save(new TicketComment(t, caller, body));
+
+        if (reporterReopening) {
+            comments.save(TicketComment.statusChange(t, caller, oldStatus, TicketStatus.OPEN));
+        }
+
+        if (files != null) {
+            for (MultipartFile f : files) {
+                try {
+                    var up = storage.upload(t.getId(), f);
+                    TicketAttachment a = new TicketAttachment();
+                    a.setTicket(t); a.setComment(c); a.setUploader(caller);
+                    a.setFilename(up.originalFilename());
+                    a.setContentType(up.contentType());
+                    a.setSizeBytes(up.sizeBytes());
+                    a.setStoragePath(up.storagePath());
+                    attachments.save(a);
+                } catch (IOException e) {
+                    throw new RuntimeException("Attachment upload failed", e);
+                }
+            }
+        }
+
+        try {
+            if (reporterReopening) {
+                email.sendTicketReopened(t, c);
+            } else {
+                String recipientEmail = isAdmin ? t.getReporter().getEmail() : supportEmail;
+                email.sendTicketCommentAdded(t, c, recipientEmail);
+            }
+        } catch (Exception ignored) {}
+
+        return c;
+    }
 }
