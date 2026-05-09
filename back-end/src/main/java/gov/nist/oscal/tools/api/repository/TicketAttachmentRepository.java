@@ -12,4 +12,5 @@ public interface TicketAttachmentRepository extends JpaRepository<TicketAttachme
     List<TicketAttachment> findByTicket(Ticket ticket);
     List<TicketAttachment> findByComment(TicketComment comment);
     List<TicketAttachment> findByTicketAndCommentIsNull(Ticket ticket);
+    List<TicketAttachment> findByCommentIn(java.util.Collection<TicketComment> comments);
 }

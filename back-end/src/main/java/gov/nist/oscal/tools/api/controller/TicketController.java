@@ -83,10 +83,15 @@ public class TicketController {
         List<AttachmentResponse> origAtts = attachments
             .findByTicketAndCommentIsNull(t).stream()
             .map(AttachmentResponse::from).toList();
-        List<CommentResponse> threadedComments = comments
-            .findByTicketOrderByCreatedAtAsc(t).stream()
-            .map(c -> CommentResponse.from(c, attachments.findByComment(c).stream()
-                .map(AttachmentResponse::from).toList()))
+        List<TicketComment> commentList = comments.findByTicketOrderByCreatedAtAsc(t);
+        java.util.Map<Long, java.util.List<AttachmentResponse>> attachmentsByCommentId = commentList.isEmpty()
+            ? java.util.Map.of()
+            : attachments.findByCommentIn(commentList).stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                    a -> a.getComment().getId(),
+                    java.util.stream.Collectors.mapping(AttachmentResponse::from, java.util.stream.Collectors.toList())));
+        List<CommentResponse> threadedComments = commentList.stream()
+            .map(c -> CommentResponse.from(c, attachmentsByCommentId.getOrDefault(c.getId(), java.util.List.of())))
             .toList();
         return TicketDetailResponse.from(t, origAtts, threadedComments);
     }
