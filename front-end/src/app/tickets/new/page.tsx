@@ -37,9 +37,9 @@ export default function NewTicketPage() {
     e.preventDefault();
     setSubmitting(true); setError(null);
     try {
-      const metadata = type === 'BUG'
+      const metadata: Record<string, unknown> = type === 'BUG'
         ? { ...bug, ...captureEnv() }
-        : feature;
+        : { ...feature };
       const created = await createTicket({ type, title, description, priority, metadata, files });
       router.push(`/tickets/${created.id}`);
     } catch (err) {
