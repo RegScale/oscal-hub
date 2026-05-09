@@ -63,14 +63,14 @@ resource "google_cloud_run_v2_job" "dimsync" {
           value = var.project_id
         }
         dynamic "env" {
-          for_each = var.db_username != "" ? [1] : []
+          for_each = var.db_username != "" ? toset(["1"]) : toset([])
           content {
             name  = "DB_USERNAME"
             value = var.db_username
           }
         }
         dynamic "env" {
-          for_each = var.db_password != "" ? [1] : []
+          for_each = var.db_password != "" ? toset(["1"]) : toset([])
           content {
             name  = "DB_PASSWORD"
             value = var.db_password

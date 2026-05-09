@@ -16,7 +16,7 @@ resource "google_cloud_run_v2_service" "service" {
 
     # VPC Access (for Cloud SQL private connections)
     dynamic "vpc_access" {
-      for_each = var.vpc_connector_id != null && var.vpc_connector_id != "" ? [1] : []
+      for_each = var.vpc_connector_id != null && var.vpc_connector_id != "" ? toset(["1"]) : toset([])
       content {
         connector = var.vpc_connector_id
         egress    = "PRIVATE_RANGES_ONLY"
@@ -48,7 +48,7 @@ resource "google_cloud_run_v2_service" "service" {
 
       # DB_URL environment variable (special handling)
       dynamic "env" {
-        for_each = var.db_url != "" ? [1] : []
+        for_each = var.db_url != "" ? toset(["1"]) : toset([])
         content {
           name  = "DB_URL"
           value = var.db_url
@@ -56,7 +56,7 @@ resource "google_cloud_run_v2_service" "service" {
       }
 
       dynamic "env" {
-        for_each = var.db_ddl_auto != "" ? [1] : []
+        for_each = var.db_ddl_auto != "" ? toset(["1"]) : toset([])
         content {
           name  = "DB_DDL_AUTO"
           value = var.db_ddl_auto
@@ -65,7 +65,7 @@ resource "google_cloud_run_v2_service" "service" {
 
       # CORS_ALLOWED_ORIGINS (set to frontend URL)
       dynamic "env" {
-        for_each = var.cors_allowed_origins != "" ? [1] : []
+        for_each = var.cors_allowed_origins != "" ? toset(["1"]) : toset([])
         content {
           name  = "CORS_ALLOWED_ORIGINS"
           value = var.cors_allowed_origins
@@ -112,7 +112,7 @@ resource "google_cloud_run_v2_service" "service" {
 
       # Cloud SQL Unix-socket mount, kept in sync with the volumes block below.
       dynamic "volume_mounts" {
-        for_each = length(var.cloud_sql_connections) > 0 ? [1] : []
+        for_each = length(var.cloud_sql_connections) > 0 ? toset(["1"]) : toset([])
         content {
           name       = "cloudsql"
           mount_path = "/cloudsql"
@@ -121,7 +121,7 @@ resource "google_cloud_run_v2_service" "service" {
     }
 
     dynamic "volumes" {
-      for_each = length(var.cloud_sql_connections) > 0 ? [1] : []
+      for_each = length(var.cloud_sql_connections) > 0 ? toset(["1"]) : toset([])
       content {
         name = "cloudsql"
         cloud_sql_instance {
