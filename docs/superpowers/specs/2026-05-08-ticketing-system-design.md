@@ -39,7 +39,7 @@ A standard CRUD feature mirroring the existing Profiles pattern (`Profile.java` 
 
 - **Backend:** Three new tables (`tickets`, `ticket_comments`, `ticket_attachments`), JPA entities, repositories, a `TicketService`, a `TicketController` (`/api/tickets`) and `AdminTicketController` (`/api/admin/tickets`), five new email templates added to `EmailService` / `SendGridEmailService`, a `@Scheduled` auto-close job, and Flyway migration `V1.10__ticketing.sql`.
 - **Frontend:** Four new pages under `/tickets` and `/admin/tickets`, an extension to `UserAvatarMenu.tsx`, and analytics charts on the admin page. Mirrors the search/filter/pagination patterns already used in `/admin/users`.
-- **Storage:** Attachments live in the existing GCS bucket under a `tickets/{ticketId}/` prefix.
+- **Storage:** Attachments live in the existing GCS bucket under a `tickets/{ticketId}/` prefix, accessed through a new domain-specific `TicketAttachmentStorageService` (mirrors the per-domain pattern of `LibraryStorageService` / `ArtifactStorageService`).
 - **Auth:** Reuses the existing JWT + `globalRole` system. Reporter-only and `SUPER_ADMIN`-only endpoints are guarded with `@PreAuthorize` (already enabled via `@EnableMethodSecurity`).
 
 ## Data model
@@ -49,16 +49,16 @@ A standard CRUD feature mirroring the existing Profiles pattern (`Profile.java` 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `BIGSERIAL` PK | Displayed as `TKT-{id}` in the UI. |
-| `reporter_id` | `UUID` FK → `users` | Who opened it. |
+| `reporter_id` | `BIGINT` FK → `users` | Who opened it. |
 | `type` | `VARCHAR(16) NOT NULL` | `BUG` or `FEATURE`. |
 | `title` | `VARCHAR(200) NOT NULL` | |
 | `description` | `TEXT NOT NULL` | |
 | `priority` | `VARCHAR(16) NOT NULL DEFAULT 'MEDIUM'` | `LOW` / `MEDIUM` / `HIGH` / `CRITICAL`. |
 | `status` | `VARCHAR(16) NOT NULL DEFAULT 'OPEN'` | `OPEN` / `IN_PROGRESS` / `RESOLVED` / `CLOSED` / `WONT_FIX` / `DUPLICATE`. |
 | `metadata` | `JSONB NOT NULL DEFAULT '{}'::jsonb` | Type-specific fields; see shape below. |
-| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | |
-| `updated_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | Bumped by service layer on any change (status, comment, attachment). |
-| `resolved_at` | `TIMESTAMPTZ NULL` | Set when status moves to `RESOLVED` / `CLOSED` / `WONT_FIX` / `DUPLICATE`; cleared on reopen. |
+| `created_at` | `TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT now()` | |
+| `updated_at` | `TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT now()` | Bumped by service layer on any change (status, comment, attachment). |
+| `resolved_at` | `TIMESTAMP(6) WITHOUT TIME ZONE NULL` | Set when status moves to `RESOLVED` / `CLOSED` / `WONT_FIX` / `DUPLICATE`; cleared on reopen. |
 
 **Indexes:**
 - `(reporter_id, status)` — for the user's "my tickets" list.
@@ -101,7 +101,7 @@ For `type = FEATURE`:
 | `is_status_change` | `BOOLEAN NOT NULL DEFAULT false` | System-generated comments showing status transitions. |
 | `old_status` | `VARCHAR(16) NULL` | Populated when `is_status_change = true`. |
 | `new_status` | `VARCHAR(16) NULL` | Populated when `is_status_change = true`. |
-| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | |
+| `created_at` | `TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT now()` | |
 
 **Index:** `(ticket_id, created_at)`.
 
@@ -117,7 +117,7 @@ For `type = FEATURE`:
 | `content_type` | `VARCHAR(100) NOT NULL` | |
 | `size_bytes` | `BIGINT NOT NULL` | |
 | `storage_path` | `VARCHAR(512) NOT NULL` | GCS object path, e.g. `tickets/123/4567-screenshot.png`. |
-| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | |
+| `created_at` | `TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT now()` | |
 
 **Limits enforced at the controller layer:**
 - 10 MB per file.
