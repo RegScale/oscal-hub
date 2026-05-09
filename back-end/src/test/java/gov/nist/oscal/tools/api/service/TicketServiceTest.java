@@ -91,6 +91,50 @@ class TicketServiceTest {
         verifyNoInteractions(tickets);
     }
 
+    @Test
+    void getTicket_returnsForReporter() {
+        User alice = userWithUsername("alice");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(7L);
+        when(tickets.findById(7L)).thenReturn(java.util.Optional.of(t));
+
+        Ticket got = svc.getTicket(7L, alice, /*isAdmin*/ false);
+        assertThat(got.getId()).isEqualTo(7L);
+    }
+
+    @Test
+    void getTicket_returnsForAdminEvenIfNotReporter() {
+        User alice = userWithUsername("alice");
+        User adminBob = new User(); adminBob.setId(2L); adminBob.setUsername("bob"); adminBob.setEmail("b@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(7L);
+        when(tickets.findById(7L)).thenReturn(java.util.Optional.of(t));
+
+        assertThat(svc.getTicket(7L, adminBob, true).getId()).isEqualTo(7L);
+    }
+
+    @Test
+    void getTicket_throwsForOtherUserNotAdmin() {
+        User alice = userWithUsername("alice");
+        User mallory = new User(); mallory.setId(3L); mallory.setUsername("mallory"); mallory.setEmail("m@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(7L);
+        when(tickets.findById(7L)).thenReturn(java.util.Optional.of(t));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+            org.springframework.security.access.AccessDeniedException.class,
+            () -> svc.getTicket(7L, mallory, false));
+    }
+
+    @Test
+    void listMyTickets_filtersToReporter() {
+        User alice = userWithUsername("alice");
+        org.springframework.data.domain.Pageable p = org.springframework.data.domain.PageRequest.of(0, 25);
+        when(tickets.findByReporter(alice, p)).thenReturn(org.springframework.data.domain.Page.empty());
+        svc.listMyTickets(alice, p);
+        verify(tickets).findByReporter(alice, p);
+    }
+
     private MultipartFile mockFile() {
         return new MockMultipartFile("f", "x.png", "image/png", new byte[1]);
     }

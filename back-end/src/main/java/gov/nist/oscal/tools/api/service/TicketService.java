@@ -74,4 +74,20 @@ public class TicketService {
         try { email.sendTicketCreatedToReporter(saved); } catch (Exception ignored) {}
         return saved;
     }
+
+    @Transactional(readOnly = true)
+    public Ticket getTicket(Long id, User caller, boolean isAdmin) {
+        Ticket t = tickets.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Ticket " + id));
+        if (!isAdmin && !t.getReporter().getId().equals(caller.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Not your ticket");
+        }
+        return t;
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Ticket> listMyTickets(
+            User reporter, org.springframework.data.domain.Pageable pageable) {
+        return tickets.findByReporter(reporter, pageable);
+    }
 }
