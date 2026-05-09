@@ -38,7 +38,7 @@ class SendGridEmailServiceTest {
 
         service = new SendGridEmailService(
             "fake-key", "noreply@oscalhub.local", "OSCAL Hub",
-            "http://localhost:3000", renderer, audit);
+            "http://localhost:3000", "admin@oscalhub.local", renderer, audit);
         service.setClientForTesting(sendGrid);
     }
 

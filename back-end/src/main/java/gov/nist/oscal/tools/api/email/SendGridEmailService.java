@@ -10,6 +10,10 @@ import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Personalization;
 import gov.nist.oscal.tools.api.entity.Invitation;
 import gov.nist.oscal.tools.api.entity.Organization;
+import gov.nist.oscal.tools.api.entity.Ticket;
+import gov.nist.oscal.tools.api.entity.TicketComment;
+import gov.nist.oscal.tools.api.entity.TicketStatus;
+import gov.nist.oscal.tools.api.entity.TicketType;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import java.util.HashMap;
@@ -25,16 +29,19 @@ public class SendGridEmailService implements EmailService {
     private final String fromEmail;
     private final String fromName;
     private final String baseUrl;
+    private final String supportEmail;
     private final TemplateRenderer renderer;
     private final EmailAuditLogger audit;
     private SendGrid client;
 
     public SendGridEmailService(String apiKey, String fromEmail, String fromName,
-                                 String baseUrl, TemplateRenderer renderer, EmailAuditLogger audit) {
+                                 String baseUrl, String supportEmail,
+                                 TemplateRenderer renderer, EmailAuditLogger audit) {
         this.client = new SendGrid(apiKey);
         this.fromEmail = fromEmail;
         this.fromName = fromName;
         this.baseUrl = baseUrl;
+        this.supportEmail = supportEmail;
         this.renderer = renderer;
         this.audit = audit;
     }
@@ -112,6 +119,69 @@ public class SendGridEmailService implements EmailService {
         vars.put("loginUrl", baseUrl + "/login");
         send("password-reset", user.getEmail(),
              "Your OSCAL Hub password was reset", vars);
+    }
+
+    @Override
+    public void sendTicketCreatedToAdmin(Ticket t) {
+        Map<String, String> vars = ticketVars(t);
+        send("ticket-created-admin", supportEmail,
+            "[OSCAL Hub] New " + humanType(t.getType()) + ": TKT-" + t.getId() + " — " + t.getTitle(),
+            vars);
+    }
+
+    @Override
+    public void sendTicketCreatedToReporter(Ticket t) {
+        Map<String, String> vars = ticketVars(t);
+        send("ticket-created-reporter", t.getReporter().getEmail(),
+            "[OSCAL Hub] We received your " + humanType(t.getType()) + " — TKT-" + t.getId(),
+            vars);
+    }
+
+    @Override
+    public void sendTicketCommentAdded(Ticket t, TicketComment c, String recipientEmail) {
+        Map<String, String> vars = ticketVars(t);
+        vars.put("authorName", c.getAuthor().getUsername());
+        vars.put("commentBody", nullSafe(c.getBody()));
+        send("ticket-comment-added", recipientEmail,
+            "[OSCAL Hub] New comment on TKT-" + t.getId(),
+            vars);
+    }
+
+    @Override
+    public void sendTicketStatusChanged(Ticket t, TicketStatus oldStatus, TicketStatus newStatus, String adminNote) {
+        Map<String, String> vars = ticketVars(t);
+        vars.put("oldStatus", oldStatus.name());
+        vars.put("newStatus", newStatus.name());
+        vars.put("adminNote", nullSafe(adminNote));
+        send("ticket-status-changed", t.getReporter().getEmail(),
+            "[OSCAL Hub] TKT-" + t.getId() + " is now " + newStatus.name(),
+            vars);
+    }
+
+    @Override
+    public void sendTicketReopened(Ticket t, TicketComment reopenComment) {
+        Map<String, String> vars = ticketVars(t);
+        vars.put("reopenBody", nullSafe(reopenComment.getBody()));
+        send("ticket-reopened", supportEmail,
+            "[OSCAL Hub] Reopened: TKT-" + t.getId() + " — " + t.getTitle(),
+            vars);
+    }
+
+    private Map<String, String> ticketVars(Ticket t) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("ticketId", "TKT-" + t.getId());
+        vars.put("title", t.getTitle());
+        vars.put("type", humanType(t.getType()));
+        vars.put("priority", t.getPriority().name());
+        vars.put("status", t.getStatus().name());
+        vars.put("description", nullSafe(t.getDescription()));
+        vars.put("reporterName", t.getReporter().getUsername());
+        vars.put("ticketUrl", baseUrl + "/tickets/" + t.getId());
+        return vars;
+    }
+
+    private String humanType(TicketType type) {
+        return type == TicketType.BUG ? "Bug Report" : "Feature Request";
     }
 
     private void send(String template, String to, String subject, Map<String, String> vars) {

@@ -1,0 +1,11 @@
+${authorName} added a comment on ${ticketId} — ${title}:
+
+---
+${commentBody}
+---
+
+Status: ${status}  |  Priority: ${priority}
+
+View ticket: ${ticketUrl}
+
+— OSCAL Hub

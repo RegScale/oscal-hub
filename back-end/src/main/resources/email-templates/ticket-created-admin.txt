@@ -1,0 +1,12 @@
+A new ${type} was reported on OSCAL Hub.
+
+  ${ticketId} — ${title}
+  Reporter: ${reporterName}
+  Priority: ${priority}
+
+Description:
+${description}
+
+View ticket: ${ticketUrl}
+
+— OSCAL Hub

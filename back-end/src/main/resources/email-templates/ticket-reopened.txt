@@ -1,0 +1,12 @@
+A ticket has been reopened on OSCAL Hub.
+
+  ${ticketId} — ${title}
+  Reporter: ${reporterName}
+  Priority: ${priority}
+
+Reason for reopening:
+${reopenBody}
+
+View ticket: ${ticketUrl}
+
+— OSCAL Hub

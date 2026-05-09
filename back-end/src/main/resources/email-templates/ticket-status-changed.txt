@@ -1,0 +1,11 @@
+Your ticket status has changed.
+
+  ${ticketId} — ${title}
+  Previous status: ${oldStatus}
+  Current status:  ${newStatus}
+
+${adminNote}
+
+View ticket: ${ticketUrl}
+
+— OSCAL Hub
