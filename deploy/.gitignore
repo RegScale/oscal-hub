@@ -1,15 +1,19 @@
-# Terraform files
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-*.tfvars
-!*.tfvars.example
+# Local secrets (never commit these)
+.env
+*.env
+!*.env.example
 
-# Sensitive files
+# Helm packaging artifacts
+*.tgz
+charts/
+Chart.lock
+
+# TLS material
 *.pem
 *.key
+*.crt
 secrets/
+nginx/ssl/
 
 # OS files
 .DS_Store

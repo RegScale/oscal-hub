@@ -34,4 +34,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT CAST(u.createdAt AS date), COUNT(u) FROM User u WHERE u.createdAt >= :since GROUP BY CAST(u.createdAt AS date) ORDER BY CAST(u.createdAt AS date)")
     List<Object[]> countByCreatedAtGroupByDate(@Param("since") LocalDateTime since);
+
+    /**
+     * New users grouped by year/month (e.g. "2026-05") for the last N months.
+     * Returns rows of [yearMonthString, count]. Postgres-specific: TO_CHAR.
+     */
+    @Query(value = "SELECT TO_CHAR(u.created_at, 'YYYY-MM') AS ym, COUNT(*) FROM users u WHERE u.created_at >= :since GROUP BY ym ORDER BY ym", nativeQuery = true)
+    List<Object[]> countNewUsersByMonth(@Param("since") LocalDateTime since);
+
+    /** Total count of users whose last_login is null OR older than the cutoff. */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.lastLogin IS NULL OR u.lastLogin < :cutoff")
+    long countStaleUsers(@Param("cutoff") LocalDateTime cutoff);
 }

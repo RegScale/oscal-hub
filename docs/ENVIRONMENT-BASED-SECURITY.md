@@ -414,12 +414,13 @@ H2_CONSOLE_ENABLED=false
 SWAGGER_ENABLED=false
 EOF
 
-# 2. Deploy with production compose file
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# 2. Deploy via the self-hosted compose stack
+cd deploy/compose
+docker compose up -d
 
 # 3. Verify deployment
-docker logs oscal-ux-prod | grep "PRODUCTION ENVIRONMENT"
-docker logs oscal-ux-prod | grep "Production security configuration validated"
+docker compose logs oscal-hub | grep "PRODUCTION ENVIRONMENT"
+docker compose logs oscal-hub | grep "Production security configuration validated"
 
 # 4. Test security
 curl -I https://oscal-tools.example.com/api/health | grep "Strict-Transport-Security"

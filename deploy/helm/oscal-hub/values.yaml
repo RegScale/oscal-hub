@@ -1,0 +1,216 @@
+# Default values for oscal-hub.
+# A minimal install needs you to set:
+#   ingress.host                  - the public hostname users will hit
+#   secrets.jwtSecret             - JWT signing secret (or use existingSecret)
+#   secrets.dbPassword            - Postgres password (only when postgresql.enabled=true)
+# Everything else has sensible defaults.
+
+image:
+  repository: oscal-hub
+  tag: ""                         # defaults to .Chart.appVersion
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Number of pods. Set to 1 unless your storage backend is shared (S3/GCS/Azure)
+# — multiple replicas with default local-filesystem storage will diverge.
+replicaCount: 1
+
+# Pod-level metadata
+podAnnotations: {}
+podLabels: {}
+
+# ---- Service account ----------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}             # e.g. eks.amazonaws.com/role-arn, iam.gke.io/gcp-service-account
+
+# ---- Pod security -------------------------------------------------------------
+podSecurityContext:
+  fsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # app writes to /app/logs and /home/oscaluser/.oscal-hub
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  capabilities:
+    drop: [ALL]
+
+# ---- Service ------------------------------------------------------------------
+service:
+  type: ClusterIP
+  ports:
+    frontend: 3000      # Next.js UI
+    backend: 8080       # Spring Boot API
+
+# ---- Ingress ------------------------------------------------------------------
+# The chart routes /api/* to the backend port and everything else to the
+# frontend port via a single hostname.
+ingress:
+  enabled: true
+  className: ""                   # e.g. nginx, traefik
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-body-size: 10m
+  host: oscal.example.com
+  tls:
+    enabled: true
+    secretName: oscal-hub-tls     # cert-manager will populate this if annotated above
+
+# ---- Resources ----------------------------------------------------------------
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+# ---- Autoscaling --------------------------------------------------------------
+# Only enable when using shared object storage (S3/GCS/Azure). With local-fs
+# storage, additional replicas will not see each other's uploads.
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+# ---- Disruption budget --------------------------------------------------------
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# ---- Health probes ------------------------------------------------------------
+probes:
+  startup:
+    httpGet:
+      path: /api/health
+      port: backend
+    failureThreshold: 30          # 30 * 10s = 5 min for first-boot migrations
+    periodSeconds: 10
+  liveness:
+    httpGet:
+      path: /api/health
+      port: backend
+    periodSeconds: 30
+    failureThreshold: 3
+  readiness:
+    httpGet:
+      path: /api/health
+      port: backend
+    periodSeconds: 10
+    failureThreshold: 3
+
+# ---- Persistence --------------------------------------------------------------
+# When STORAGE_PROVIDER=azure and no Azure connection string is set (the
+# default for on-prem Helm installs), the app stores files on local
+# filesystem at /home/oscaluser/.oscal-hub/files. This PVC backs that path.
+# Switch to object storage (s3/gcs/azure) for multi-replica deployments.
+persistence:
+  enabled: true
+  storageClass: ""            # "" = cluster default; "-" = no provisioner
+  size: 20Gi
+  accessMode: ReadWriteOnce
+  annotations: {}
+
+# ---- Application config -------------------------------------------------------
+config:
+  publicOrigin: ""            # https://oscal.example.com - defaults to https://{ingress.host}
+  jwtExpirationMs: 3600000
+
+  securityRequireHttps: true
+  securityHeadersEnabled: true
+  rateLimitEnabled: true
+  accountLockoutEnabled: true
+  auditLoggingEnabled: true
+
+  swaggerEnabled: false
+  h2ConsoleEnabled: false
+
+  logLevelRoot: WARN
+  logLevelOscal: INFO
+
+  javaOpts: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
+
+  # Storage provider: azure | s3 | gcs.
+  # 'azure' with no connection string falls back to local filesystem (PVC above).
+  storageProvider: azure
+
+# ---- Secrets ------------------------------------------------------------------
+# Set values inline (chart will create the secret) OR point at an existing
+# secret you manage via SealedSecrets / external-secrets / sops / etc.
+secrets:
+  existingSecret: ""              # if set, the chart won't create a secret
+  jwtSecret: ""                   # required if existingSecret is empty
+  dbPassword: ""                  # only required with postgresql.enabled=true
+  # Cloud-storage credentials (when storageProvider != azure-with-fallback)
+  azureStorageConnectionString: ""
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+
+# ---- Object storage (when not using local PVC) -------------------------------
+objectStorage:
+  azure:
+    containerName: oscal-files
+  s3:
+    region: ""
+    bucket: ""
+  gcs:
+    bucket: ""
+
+# ---- Bundled PostgreSQL (Bitnami subchart) -----------------------------------
+# Convenient for development / small installs. For production, disable this
+# and point externalDatabase.* at a managed Postgres instance.
+#
+# IMPORTANT: subcharts cannot read the parent's .Values, so the Postgres
+# password must be supplied here as well as in `secrets.dbPassword`. Either:
+#   (a) set both `secrets.dbPassword` AND `postgresql.auth.password` to the
+#       same value; or
+#   (b) create one Secret out of band containing key `db-password`, and set
+#       both `secrets.existingSecret` AND `postgresql.auth.existingSecret`
+#       to its name (with `postgresql.auth.secretKeys.userPasswordKey:
+#       db-password`).
+postgresql:
+  enabled: true
+  auth:
+    database: oscal
+    username: oscal
+    password: ""                  # set to same value as secrets.dbPassword
+    existingSecret: ""            # OR: reference a pre-created secret (see above)
+    secretKeys:
+      userPasswordKey: db-password
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests: { cpu: 250m, memory: 256Mi }
+      limits:   { cpu: 1,    memory: 1Gi }
+
+# ---- External database (when postgresql.enabled=false) -----------------------
+externalDatabase:
+  host: ""
+  port: 5432
+  database: oscal
+  username: oscal
+  # password is taken from secrets.dbPassword or secrets.existingSecret
+
+# ---- Scheduling ---------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# ---- Network policy -----------------------------------------------------------
+networkPolicy:
+  enabled: false
+  # Restricts ingress to the namespace's ingress controller.
+  ingressNamespaceSelector: {}

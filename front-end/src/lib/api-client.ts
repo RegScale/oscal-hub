@@ -5000,6 +5000,24 @@ class ApiClient {
     }
   }
 
+  async getUserAnalytics(): Promise<{
+    newUsersByMonth: Array<{ month: string; count: number }>;
+    loginsByMonth: Array<{ month: string; count: number }>;
+    topActiveOrganizations: Array<{ id: number; name: string; eventCount: number }>;
+    staleUsers: { totalUsers: number; staleUsers: number; percentage: number; windowDays: number };
+  }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/analytics`,
+      { method: 'GET', headers: this.getAuthHeaders() },
+      10000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to load user analytics');
+    }
+    return await response.json();
+  }
+
   async archiveUser(userId: number): Promise<{ message: string; username: string; enabled: boolean }> {
     const response = await this.fetchWithTimeout(
       `${API_BASE_URL}/admin/users/${userId}/archive`,

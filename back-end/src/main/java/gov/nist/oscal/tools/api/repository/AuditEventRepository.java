@@ -557,6 +557,44 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.eventType = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since")
     long countLoginsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
 
+    /**
+     * Successful logins grouped by year/month (e.g. "2026-05") for the last N months.
+     * Returns rows of [yearMonthString, count]. Postgres-specific: TO_CHAR.
+     */
+    @Query(value = "SELECT TO_CHAR(a.timestamp, 'YYYY-MM') AS ym, COUNT(*) FROM audit_events a WHERE a.event_type = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since GROUP BY ym ORDER BY ym", nativeQuery = true)
+    List<Object[]> countLoginsByMonth(@Param("since") LocalDateTime since);
+
+    /**
+     * Distinct active users by username over a window (any event counts).
+     * Returns [username, eventCount] sorted desc.
+     */
+    @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IS NOT NULL AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
+    List<Object[]> countEventsByUsernameSinceDesc(@Param("since") LocalDateTime since);
+
+    /**
+     * Top organizations by audit-event volume since the cutoff. Native SQL —
+     * the JPQL cross-join form was generating slow plans on Postgres dev data,
+     * so this version uses an explicit join through the user/membership tables
+     * and a derived per-username count to avoid duplicate-counting events for
+     * users in multiple orgs.
+     */
+    @Query(value =
+        "SELECT m.organization_id, o.name, SUM(uc.cnt) AS total " +
+        "FROM ( " +
+        "  SELECT username, COUNT(*) AS cnt " +
+        "  FROM audit_events " +
+        "  WHERE username IS NOT NULL AND timestamp >= :since " +
+        "  GROUP BY username " +
+        ") uc " +
+        "JOIN users u ON u.username = uc.username " +
+        "JOIN organization_memberships m ON m.user_id = u.id " +
+        "JOIN organizations o ON o.id = m.organization_id " +
+        "GROUP BY m.organization_id, o.name " +
+        "ORDER BY total DESC " +
+        "LIMIT 5",
+        nativeQuery = true)
+    List<Object[]> topOrganizationsByEventCount(@Param("since") LocalDateTime since);
+
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since")
     long countOperationsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
 

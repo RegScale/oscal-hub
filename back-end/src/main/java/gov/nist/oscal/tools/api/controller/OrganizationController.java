@@ -12,6 +12,7 @@ import gov.nist.oscal.tools.api.model.OrganizationRequest;
 import gov.nist.oscal.tools.api.model.OrganizationResponse;
 import gov.nist.oscal.tools.api.model.OrganizationSummaryResponse;
 import gov.nist.oscal.tools.api.model.UpdateMemberRoleRequest;
+import gov.nist.oscal.tools.api.repository.AuditEventRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
@@ -24,6 +25,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,7 +37,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,6 +56,8 @@ import java.util.stream.Collectors;
 @Tag(name = "Organization Management", description = "Super Admin APIs for managing organizations")
 @Hidden
 public class OrganizationController {
+
+    private static final Logger logger = LoggerFactory.getLogger(OrganizationController.class);
 
     @Autowired
     private OrganizationService organizationService;
@@ -66,6 +76,9 @@ public class OrganizationController {
 
     @Autowired
     private OrganizationMembershipRepository organizationMembershipRepository;
+
+    @Autowired
+    private AuditEventRepository auditEventRepository;
 
     @Autowired
     private UserManagementService userManagementService;
@@ -192,6 +205,85 @@ public class OrganizationController {
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    @Operation(summary = "User analytics", description = "Aggregated user signups/logins/activity for the admin dashboard. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/users/analytics")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getUserAnalytics() {
+        long t0 = System.currentTimeMillis();
+        logger.info("getUserAnalytics: starting");
+        final int monthsBack = 12;
+        final int staleDays = 90;
+
+        // ---- Build calendar of last 12 months (oldest → newest, inclusive of current month) ----
+        YearMonth currentMonth = YearMonth.now();
+        List<String> monthKeys = new ArrayList<>(monthsBack);
+        for (int i = monthsBack - 1; i >= 0; i--) {
+            monthKeys.add(currentMonth.minusMonths(i).toString()); // YYYY-MM
+        }
+        LocalDateTime since12mo = currentMonth.minusMonths(monthsBack - 1).atDay(1).atStartOfDay();
+
+        // ---- New users by month ----
+        logger.info("getUserAnalytics: querying countNewUsersByMonth ({} ms)", System.currentTimeMillis() - t0);
+        Map<String, Long> newUsersBucket = new LinkedHashMap<>();
+        monthKeys.forEach(k -> newUsersBucket.put(k, 0L));
+        for (Object[] row : userRepository.countNewUsersByMonth(since12mo)) {
+            String ym = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            newUsersBucket.put(ym, count);
+        }
+
+        // ---- Logins by month ----
+        logger.info("getUserAnalytics: querying countLoginsByMonth ({} ms)", System.currentTimeMillis() - t0);
+        Map<String, Long> loginsBucket = new LinkedHashMap<>();
+        monthKeys.forEach(k -> loginsBucket.put(k, 0L));
+        for (Object[] row : auditEventRepository.countLoginsByMonth(since12mo)) {
+            String ym = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            loginsBucket.put(ym, count);
+        }
+
+        // ---- Most active organizations (last 90 days, single native aggregation) ----
+        logger.info("getUserAnalytics: querying topOrganizationsByEventCount ({} ms)", System.currentTimeMillis() - t0);
+        LocalDateTime since90d = LocalDate.now().minusDays(staleDays).atStartOfDay();
+        List<Map<String, Object>> topOrgs = auditEventRepository
+                .topOrganizationsByEventCount(since90d)
+                .stream()
+                .limit(5)
+                .map(row -> {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("id", row[0]);
+                    r.put("name", row[1]);
+                    r.put("eventCount", ((Number) row[2]).longValue());
+                    return r;
+                })
+                .collect(Collectors.toList());
+
+        // ---- % stale users (no login in last 90 days) ----
+        logger.info("getUserAnalytics: querying stale-user counts ({} ms)", System.currentTimeMillis() - t0);
+        long totalUsers = userRepository.count();
+        long staleUsers = userRepository.countStaleUsers(since90d);
+        double stalePct = totalUsers == 0 ? 0.0 : Math.round((staleUsers * 1000.0 / totalUsers)) / 10.0;
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("newUsersByMonth", newUsersBucket.entrySet().stream()
+                .map(e -> Map.of("month", e.getKey(), "count", e.getValue()))
+                .collect(Collectors.toList()));
+        response.put("loginsByMonth", loginsBucket.entrySet().stream()
+                .map(e -> Map.of("month", e.getKey(), "count", e.getValue()))
+                .collect(Collectors.toList()));
+        response.put("topActiveOrganizations", topOrgs);
+        Map<String, Object> staleSummary = new LinkedHashMap<>();
+        staleSummary.put("totalUsers", totalUsers);
+        staleSummary.put("staleUsers", staleUsers);
+        staleSummary.put("percentage", stalePct);
+        staleSummary.put("windowDays", staleDays);
+        response.put("staleUsers", staleSummary);
+
+        logger.info("getUserAnalytics: done in {} ms", System.currentTimeMillis() - t0);
+        return ResponseEntity.ok(response);
     }
 
     private Long currentAdminId() {

@@ -1,8 +1,18 @@
 # OSCAL Tools - Production Deployment Checklist
 
-**Version**: 1.0.0
-**Date**: 2025-10-26
-**Purpose**: Comprehensive checklist for deploying OSCAL Tools to production environments
+**Purpose**: Production go-live checklist for self-hosted deployments.
+
+> Operational commands in this checklist predate the consolidated deploy
+> structure. The supported on-prem options are now:
+>
+> - **Docker Compose** — [`deploy/compose/`](../deploy/compose/) (replaces
+>   the old `docker-compose.prod.yml` in the repo root)
+> - **Helm** — [`deploy/helm/oscal-hub/`](../deploy/helm/oscal-hub/)
+>
+> When this document references `docker-compose.prod.yml`, run the
+> equivalent against `deploy/compose/docker-compose.yml` instead. Nginx
+> configuration referenced as `/etc/nginx/...` lives under
+> `deploy/compose/nginx/`.
 
 ---
 

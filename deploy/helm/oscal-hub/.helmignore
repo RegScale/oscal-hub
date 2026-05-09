@@ -1,0 +1,12 @@
+.DS_Store
+.git/
+.gitignore
+.idea/
+.vscode/
+*.tmproj
+*.bak
+*.swp
+*~
+# Helm packaging artefacts
+*.tgz
+.helmignore

@@ -56,7 +56,7 @@ CLI mode does **not** include:
 - ❌ Real-time collaboration features
 - ❌ Authorization template management (web-only feature)
 
-For web interface and REST API, see [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md) or [AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md).
+For web interface and REST API, see [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md) or [SELF-HOSTED-DEPLOYMENT-GUIDE.md](SELF-HOSTED-DEPLOYMENT-GUIDE.md).
 
 ---
 
@@ -1382,7 +1382,7 @@ See [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md) for details.
 - Cloud storage (Blob)
 - Enterprise security
 
-See [AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md) for details.
+See [SELF-HOSTED-DEPLOYMENT-GUIDE.md](SELF-HOSTED-DEPLOYMENT-GUIDE.md) for details.
 
 ---
 
@@ -1463,7 +1463,7 @@ After successful CLI installation:
 - **User Guide**: [USER_GUIDE.md](../USER_GUIDE.md)
 - **Installer Guide**: [installer/README.md](../installer/README.md)
 - **Local Web Guide**: [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md)
-- **Azure Guide**: [AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md)
+- **Azure Guide**: [SELF-HOSTED-DEPLOYMENT-GUIDE.md](SELF-HOSTED-DEPLOYMENT-GUIDE.md)
 - **Main README**: [README.md](../README.md)
 
 ### Getting Help
@@ -1505,7 +1505,7 @@ Before considering your CLI deployment complete:
 
 For web interface deployment, see: **[LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md)**
 
-For production cloud deployment, see: **[AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md)**
+For production cloud deployment, see: **[SELF-HOSTED-DEPLOYMENT-GUIDE.md](SELF-HOSTED-DEPLOYMENT-GUIDE.md)**
 
 ---
 

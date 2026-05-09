@@ -2,8 +2,12 @@ package gov.nist.oscal.tools.api.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +23,7 @@ import java.util.Map;
  * thrown as ResponseStatusException are still handled by their own annotations.
  */
 @ControllerAdvice
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class GlobalErrorAdvice {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalErrorAdvice.class);
@@ -34,6 +39,37 @@ public class GlobalErrorAdvice {
                 .body(Map.of(
                         "error", "Bad Request",
                         "message", e.getMessage() == null ? "Invalid argument" : e.getMessage()
+                ));
+    }
+
+    /**
+     * Spring Security's AccessDeniedException (and AuthorizationDeniedException, which
+     * extends it) signals a denied authorization decision — including those raised by
+     * @PreAuthorize. Without this explicit handler the catch-all RuntimeException
+     * handler below would convert it to 500, masking authorization failures as server
+     * errors and breaking front-end retry/redirect logic that watches for 403.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("403 Forbidden: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "error", "Forbidden",
+                        "message", e.getMessage() == null ? "Access denied" : e.getMessage()
+                ));
+    }
+
+    /**
+     * Authentication failure thrown after the security filter chain (e.g. by application
+     * code) — return 401 instead of letting the catch-all turn it into 500.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthentication(AuthenticationException e) {
+        log.warn("401 Unauthorized: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of(
+                        "error", "Unauthorized",
+                        "message", e.getMessage() == null ? "Authentication required" : e.getMessage()
                 ));
     }
 

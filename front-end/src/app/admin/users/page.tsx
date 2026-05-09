@@ -3,8 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-type AdminUsersTab = 'users-by-org' | 'all-users' | 'archived' | 'pending-requests';
-const VALID_TABS: AdminUsersTab[] = ['users-by-org', 'all-users', 'archived', 'pending-requests'];
+type AdminUsersTab = 'users-by-org' | 'all-users' | 'archived' | 'pending-requests' | 'analytics';
+const VALID_TABS: AdminUsersTab[] = ['users-by-org', 'all-users', 'archived', 'pending-requests', 'analytics'];
+
+interface UserAnalytics {
+  newUsersByMonth: Array<{ month: string; count: number }>;
+  loginsByMonth: Array<{ month: string; count: number }>;
+  topActiveOrganizations: Array<{ id: number; name: string; eventCount: number }>;
+  staleUsers: { totalUsers: number; staleUsers: number; percentage: number; windowDays: number };
+}
 
 function tabFromParam(value: string | null): AdminUsersTab {
   return (VALID_TABS as string[]).includes(value ?? '') ? (value as AdminUsersTab) : 'users-by-org';
@@ -84,6 +91,33 @@ export default function AdminUsersPage() {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetResultPassword, setResetResultPassword] = useState<string | null>(null);
   const [resetCopied, setResetCopied] = useState(false);
+
+  // Analytics tab data — fetched only when the tab is opened.
+  const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+    // Note: only depending on `activeTab`. Including `analyticsLoading` here
+    // creates a self-cancelling effect — setAnalyticsLoading(true) re-runs
+    // the effect, the cleanup flips `cancelled`, and the fetch result is
+    // dropped, stranding the UI in the loading state forever.
+    let cancelled = false;
+    (async () => {
+      try {
+        setAnalyticsLoading(true);
+        setAnalyticsError(null);
+        const data = await apiClient.getUserAnalytics();
+        if (!cancelled) setAnalytics(data);
+      } catch (err) {
+        if (!cancelled) setAnalyticsError(err instanceof Error ? err.message : 'Failed to load analytics');
+      } finally {
+        if (!cancelled) setAnalyticsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -463,6 +497,16 @@ export default function AdminUsersPage() {
                   {pendingRequests.length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'analytics'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              Analytics
             </button>
           </nav>
         </div>
@@ -888,6 +932,128 @@ export default function AdminUsersPage() {
             </div>
           </>
         )}
+
+        {activeTab === 'analytics' && (() => {
+          const formatMonthLabel = (ym: string) => {
+            // ym is "YYYY-MM"
+            const [year, month] = ym.split('-');
+            const d = new Date(Number(year), Number(month) - 1, 1);
+            return d.toLocaleString(undefined, { month: 'short', year: '2-digit' });
+          };
+          const renderBars = (data: Array<{ month: string; count: number }>, accent: string) => {
+            const max = Math.max(1, ...data.map((d) => d.count));
+            return (
+              <div className="flex items-end gap-1.5 h-32">
+                {data.map((d) => {
+                  const pct = (d.count / max) * 100;
+                  return (
+                    <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div
+                        className={`w-full ${accent} rounded-t transition-all`}
+                        style={{ height: `${Math.max(pct, 2)}%`, minHeight: d.count > 0 ? '4px' : '2px' }}
+                        title={`${formatMonthLabel(d.month)}: ${d.count}`}
+                      />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {formatMonthLabel(d.month)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          };
+          return (
+            <div>
+              {analyticsLoading && (
+                <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">Loading analytics…</div>
+              )}
+              {analyticsError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-800 dark:text-red-200">
+                  {analyticsError}
+                </div>
+              )}
+              {analytics && !analyticsLoading && (
+                <>
+                  {/* KPI strip */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Total users</div>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics.staleUsers.totalUsers.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">New this month</div>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {analytics.newUsersByMonth.length > 0 ? analytics.newUsersByMonth[analytics.newUsersByMonth.length - 1].count.toLocaleString() : 0}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Logins this month</div>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {analytics.loginsByMonth.length > 0 ? analytics.loginsByMonth[analytics.loginsByMonth.length - 1].count.toLocaleString() : 0}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Stale ({analytics.staleUsers.windowDays}-day)</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-3xl font-bold ${analytics.staleUsers.percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+                          {analytics.staleUsers.percentage}%
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {analytics.staleUsers.staleUsers.toLocaleString()} / {analytics.staleUsers.totalUsers.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Charts row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">New users by month</h3>
+                      {renderBars(analytics.newUsersByMonth, 'bg-blue-500/80 dark:bg-blue-500/70 group-hover:bg-blue-600 dark:group-hover:bg-blue-400')}
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Successful logins by month</h3>
+                      {renderBars(analytics.loginsByMonth, 'bg-purple-500/80 dark:bg-purple-500/70 group-hover:bg-purple-600 dark:group-hover:bg-purple-400')}
+                    </div>
+                  </div>
+
+                  {/* Top orgs */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5 mb-6">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Most active organizations</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">By total events from all members in the last {analytics.staleUsers.windowDays} days.</p>
+                    {analytics.topActiveOrganizations.length === 0 ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">No activity recorded yet.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const max = Math.max(1, ...analytics.topActiveOrganizations.map((o) => o.eventCount));
+                          return analytics.topActiveOrganizations.map((org) => {
+                            const pct = (org.eventCount / max) * 100;
+                            return (
+                              <button
+                                key={org.id}
+                                onClick={() => router.push(`/admin/organizations/${org.id}`)}
+                                className="w-full text-left group"
+                              >
+                                <div className="flex items-center justify-between text-sm mb-1">
+                                  <span className="font-medium text-gray-900 dark:text-white group-hover:underline">{org.name}</span>
+                                  <span className="text-gray-500 dark:text-gray-400 tabular-nums">{org.eventCount.toLocaleString()}</span>
+                                </div>
+                                <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500/70 dark:bg-blue-500/60" style={{ width: `${pct}%` }} />
+                                </div>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Reset Password Modal */}
         {resetTarget && (

@@ -284,7 +284,8 @@ class PublicCatalogControllerTest {
         // that increments downloadCount and persists. We assert here that the
         // controller invokes the service exactly once per HTTP call (so the
         // counter side-effect is wired) and surfaces the bytes.
-        when(libraryService.getPublicLatestContent(pub.getItemId()))
+        // Controller uses the 2-arg overload (itemId, caller); stub that one.
+        when(libraryService.getPublicLatestContent(eq(pub.getItemId()), any()))
                 .thenReturn(Optional.of(new LibraryService.VersionDownload(
                         "public-catalog-test-content", "test.json", "JSON")));
 
@@ -298,7 +299,7 @@ class PublicCatalogControllerTest {
                .andExpect(status().isOk())
                .andExpect(content().bytes("public-catalog-test-content".getBytes()));
 
-        verify(libraryService, times(1)).getPublicLatestContent(pub.getItemId());
+        verify(libraryService, times(1)).getPublicLatestContent(eq(pub.getItemId()), any());
     }
 
     @Test

@@ -46,7 +46,7 @@ TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
 TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
 ```
 
-**Nginx** (configured in `nginx/conf.d/oscal-tools.conf`):
+**Nginx** (configured in `deploy/compose/nginx/conf.d/oscal.conf`):
 ```
 ECDHE-ECDSA-AES128-GCM-SHA256
 ECDHE-RSA-AES128-GCM-SHA256
@@ -268,19 +268,19 @@ sudo certbot --nginx \
 
 ```bash
 # Copy main config
-sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
+sudo cp deploy/compose/nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy site config
-sudo cp nginx/conf.d/oscal-tools.conf /etc/nginx/conf.d/
+sudo cp deploy/compose/nginx/conf.d/oscal.conf /etc/nginx/conf.d/
 
 # Update domain name in config
 sudo sed -i 's/oscal-tools.example.com/your-actual-domain.com/g' \
-  /etc/nginx/conf.d/oscal-tools.conf
+  /etc/nginx/conf.d/oscal.conf
 ```
 
 **4. Update SSL Certificate Paths**
 
-Edit `/etc/nginx/conf.d/oscal-tools.conf`:
+Edit `/etc/nginx/conf.d/oscal.conf`:
 
 ```nginx
 # SSL/TLS Configuration
@@ -329,13 +329,13 @@ SPRING_PROFILES_ACTIVE=prod ./dev.sh
 
 ### Production Configuration Files
 
-**File**: `nginx/nginx.conf`
+**File**: `deploy/compose/nginx/nginx.conf`
 - Worker processes: auto
 - Rate limiting zones: api_limit (10 req/s), auth_limit (5 req/min)
 - Gzip compression enabled
 - Logging configuration
 
-**File**: `nginx/conf.d/oscal-tools.conf`
+**File**: `deploy/compose/nginx/conf.d/oscal.conf`
 - HTTP to HTTPS redirect
 - TLS 1.2/1.3 only
 - Strong cipher suites

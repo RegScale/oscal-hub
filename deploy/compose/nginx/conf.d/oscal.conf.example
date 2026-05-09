@@ -69,7 +69,7 @@ server {
         limit_req zone=api_limit burst=20 nodelay;
 
         # Proxy to Spring Boot backend
-        proxy_pass http://oscal-ux:8080;
+        proxy_pass http://oscal-hub:8080;
         proxy_http_version 1.1;
 
         # Proxy headers
@@ -95,7 +95,7 @@ server {
     location ~ ^/api/auth/(login|register) {
         limit_req zone=auth_limit burst=3 nodelay;
 
-        proxy_pass http://oscal-ux:8080;
+        proxy_pass http://oscal-hub:8080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -106,7 +106,7 @@ server {
     # Frontend (Next.js)
     location / {
         # Proxy to Next.js frontend
-        proxy_pass http://oscal-ux:3000;
+        proxy_pass http://oscal-hub:3000;
         proxy_http_version 1.1;
 
         # WebSocket support for Next.js HMR (development)
@@ -123,7 +123,7 @@ server {
 
     # Static assets (Next.js)
     location /_next/static/ {
-        proxy_pass http://oscal-ux:3000;
+        proxy_pass http://oscal-hub:3000;
         proxy_cache_valid 200 60m;
         proxy_cache_bypass $http_pragma $http_authorization;
         add_header Cache-Control "public, immutable";
@@ -131,7 +131,7 @@ server {
 
     # Health check endpoint (no rate limiting)
     location /api/health {
-        proxy_pass http://oscal-ux:8080;
+        proxy_pass http://oscal-hub:8080;
         access_log off;
     }
 

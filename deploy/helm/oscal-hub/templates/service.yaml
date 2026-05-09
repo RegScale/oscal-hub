@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "oscal-hub.fullname" . }}
+  labels:
+    {{- include "oscal-hub.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "oscal-hub.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: frontend
+      port: {{ .Values.service.ports.frontend }}
+      targetPort: frontend
+      protocol: TCP
+    - name: backend
+      port: {{ .Values.service.ports.backend }}
+      targetPort: backend
+      protocol: TCP

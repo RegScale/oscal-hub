@@ -434,6 +434,18 @@ The repository includes simplified installation scripts for end users in the `in
 
 ## CI/CD and Deployment
 
+OSCAL Hub has three deploy targets:
+
+| Target | Path | Audience |
+|---|---|---|
+| GCP Cloud Run | `terraform/gcp/` + `.github/workflows/gcp-deploy.yml` | maintainer's hosted environment |
+| Helm chart | `deploy/helm/oscal-hub/` | customers running Kubernetes |
+| Docker Compose | `deploy/compose/` | customers running a single VM |
+
+Customer-facing self-hosting docs live under `deploy/` and
+`docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md`. The remainder of this section is
+about the maintainer's GCP pipeline.
+
 GitHub Actions on GCP. Two workflows drive the pipeline:
 
 | Workflow | Trigger | Purpose |
