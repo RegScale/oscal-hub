@@ -107,21 +107,29 @@ class GlobalErrorAdviceTest {
     }
 
     @Test
-    void unhandledRuntimeException_mapsTo500_withMessage() {
+    void unhandledRuntimeException_mapsTo500_withGenericMessage_neverLeaksOriginal() {
+        // Security: the catch-all must NOT echo the original exception text — it can
+        // contain SQL fragments, JDBC connection strings, internal hostnames, or PII.
+        // The full exception is logged server-side; the client gets a generic 500.
+        String leaky = "connection refused at jdbc:postgresql://internal-host:5432/proddb";
         ResponseEntity<Map<String, Object>> r =
-                advice.handleRuntimeException(new RuntimeException("kaboom"));
+                advice.handleRuntimeException(new RuntimeException(leaky));
 
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(r.getBody()).containsEntry("error", "Internal Server Error");
-        assertThat(r.getBody()).containsEntry("message", "kaboom");
+        assertThat(r.getBody()).containsEntry("message", "An internal error occurred. Please try again later.");
+        assertThat(r.getBody().get("message").toString()).doesNotContain("jdbc:", "internal-host", "proddb");
     }
 
     @Test
-    void unhandledRuntimeException_withNullMessage_fallsBackToClassName() {
+    void unhandledRuntimeException_withNullMessage_returnsGenericMessage() {
+        // Even with no original message, the response shape stays the same — never
+        // exposing the exception class name to the client.
         ResponseEntity<Map<String, Object>> r =
                 advice.handleRuntimeException(new IllegalStateException());
 
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(r.getBody()).containsEntry("message", "IllegalStateException");
+        assertThat(r.getBody()).containsEntry("message", "An internal error occurred. Please try again later.");
+        assertThat(r.getBody().get("message").toString()).doesNotContain("IllegalStateException");
     }
 }
