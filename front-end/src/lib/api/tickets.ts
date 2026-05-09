@@ -69,3 +69,28 @@ export async function changeStatus(
 export function attachmentDownloadUrl(attachmentId: number): string {
   return `${BASE}/attachments/${attachmentId}`;
 }
+
+export interface AdminListParams {
+  page?: number; size?: number;
+  q?: string;
+  status?: TicketStatus[];
+  type?: TicketType;
+  priority?: TicketPriority[];
+  from?: string; to?: string;
+}
+
+export async function listAdminTickets(p: AdminListParams = {})
+  : Promise<{ content: TicketSummaryResponse[]; totalElements: number; totalPages: number }> {
+  const qs = new URLSearchParams();
+  qs.set('page', String(p.page ?? 0));
+  qs.set('size', String(p.size ?? 25));
+  if (p.q) qs.set('q', p.q);
+  if (p.type) qs.set('type', p.type);
+  (p.status ?? []).forEach(s => qs.append('status', s));
+  (p.priority ?? []).forEach(pr => qs.append('priority', pr));
+  if (p.from) qs.set('from', p.from);
+  if (p.to) qs.set('to', p.to);
+  const res = await fetch(`${ADMIN_BASE}?${qs}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`Admin list failed: ${res.status}`);
+  return res.json();
+}
