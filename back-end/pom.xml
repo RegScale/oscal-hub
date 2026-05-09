@@ -50,7 +50,6 @@
         <bucket4j.version>8.10.1</bucket4j.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <org-json.version>20251224</org-json.version>
         <postgres-socket-factory.version>1.28.3</postgres-socket-factory.version>
         <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
         <tika.version>3.3.0</tika.version>
@@ -261,13 +260,6 @@
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
-        <!-- org.json - Override transitive dependency to fix CVE-2023-5072 -->
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>${org-json.version}</version>
-        </dependency>
-
         <!-- XML Support -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -278,13 +270,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-        </dependency>
-
-        <!-- Lombok for reducing boilerplate -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- Spring Security -->
@@ -471,14 +456,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
