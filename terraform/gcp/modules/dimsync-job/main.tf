@@ -70,7 +70,11 @@ resource "google_cloud_run_v2_job" "dimsync" {
           }
         }
         dynamic "env" {
-          for_each = var.db_password != "" ? toset(["1"]) : toset([])
+          # nonsensitive() unwraps the boolean for_each predicate so Terraform
+          # will iterate (sensitive values cannot be used as for_each args).
+          # The actual password is still emitted from var.db_password and remains
+          # sensitive in plan output.
+          for_each = nonsensitive(var.db_password) != "" ? toset(["1"]) : toset([])
           content {
             name  = "DB_PASSWORD"
             value = var.db_password

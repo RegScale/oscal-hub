@@ -69,7 +69,7 @@ public class AuthController {
             // Structured response specifically for org-name collisions so the frontend can
             // render a field-level error. Other exceptions from the service
             // (UsernameAlreadyExistsException, IllegalArgumentException,
-            // DataIntegrityViolationException) are mapped by GlobalExceptionHandler. The
+            // DataIntegrityViolationException) are mapped by GlobalErrorAdvice. The
             // previous "catch (RuntimeException) → e.getMessage()" clause was removed
             // because it leaked raw Hibernate/JDBC details to clients.
             Map<String, String> error = new HashMap<>();
@@ -304,7 +304,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(error);
         }
 
-        // Exceptions from the service are mapped by GlobalExceptionHandler.
+        // Exceptions from the service are mapped by GlobalErrorAdvice.
         String username = authentication.getName();
         User user = authService.updateProfile(username, updates);
 

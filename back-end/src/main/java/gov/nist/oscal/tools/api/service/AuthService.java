@@ -100,7 +100,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validate password complexity. IllegalArgumentException propagates to GlobalExceptionHandler.
+        // Validate password complexity. IllegalArgumentException propagates to GlobalErrorAdvice.
         passwordValidationService.validatePassword(request.getPassword(), request.getUsername());
 
         // Check if username already exists
@@ -314,7 +314,7 @@ public class AuthService {
         // Update password if provided
         if (updates.containsKey("password") && updates.get("password") != null && !updates.get("password").isEmpty()) {
             String newPassword = updates.get("password");
-            // IllegalArgumentException from validation propagates to GlobalExceptionHandler.
+            // IllegalArgumentException from validation propagates to GlobalErrorAdvice.
             passwordValidationService.validatePassword(newPassword, username);
             user.setPassword(passwordEncoder.encode(newPassword));
             user.setPasswordChangedAt(LocalDateTime.now());

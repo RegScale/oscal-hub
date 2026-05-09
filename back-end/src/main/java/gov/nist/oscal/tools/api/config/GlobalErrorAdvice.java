@@ -1,9 +1,11 @@
 package gov.nist.oscal.tools.api.config;
 
+import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -27,6 +29,36 @@ import java.util.Map;
 public class GlobalErrorAdvice {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalErrorAdvice.class);
+
+    /**
+     * Duplicate username on /api/auth/register → 409 Conflict. The flat
+     * {@code {"error": "<msg>"}} shape matches the contract the frontend
+     * api-client uses for registration failures (api-client.ts reads
+     * {@code error.error}).
+     */
+    @ExceptionHandler(UsernameAlreadyExistsException.class)
+    public ResponseEntity<Map<String, Object>> handleUsernameAlreadyExists(UsernameAlreadyExistsException e) {
+        log.warn("409 Conflict: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "error", e.getMessage() == null ? "Username already exists" : e.getMessage()
+                ));
+    }
+
+    /**
+     * Database constraint violation that escapes service-layer pre-checks
+     * (e.g., a race between a uniqueness check and the insert). Returns a
+     * generic 409 — the original Hibernate/JDBC message MUST NOT leak to the
+     * client because it exposes SQL, table names, and constraint identifiers.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.warn("409 Conflict — database integrity violation", e);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "error", "The requested operation conflicts with existing data."
+                ));
+    }
 
     /**
      * IllegalArgumentException → 400 with the message in the body.
@@ -75,7 +107,9 @@ public class GlobalErrorAdvice {
 
     /**
      * Catch-all for anything else that isn't already handled. Logs the full
-     * stack trace and returns the message in the response body.
+     * stack trace server-side and returns a generic message — the original
+     * exception text MUST NOT be returned because it can leak SQL fragments,
+     * connection strings, internal hostnames, and PII.
      *
      * NB: ResponseStatusException is re-thrown unchanged so Spring's default
      * mapping (which respects the carried status) takes effect.
@@ -89,8 +123,6 @@ public class GlobalErrorAdvice {
         if (e instanceof ResponseStatusException) {
             throw e;
         }
-        // Let @ResponseStatus-annotated exceptions pass through to Spring's
-        // ResponseStatusExceptionResolver which reads the annotation value.
         if (e.getClass().isAnnotationPresent(org.springframework.web.bind.annotation.ResponseStatus.class)) {
             throw e;
         }
@@ -98,7 +130,7 @@ public class GlobalErrorAdvice {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
                         "error", "Internal Server Error",
-                        "message", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()
+                        "message", "An internal error occurred. Please try again later."
                 ));
     }
 }
