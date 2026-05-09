@@ -9,6 +9,7 @@ import { TicketStatusBadge } from '@/components/tickets/TicketStatusBadge';
 import { TicketTypeBadge } from '@/components/tickets/TicketTypeBadge';
 import { TicketPriorityBadge } from '@/components/tickets/TicketPriorityBadge';
 import { useAuth } from '@/contexts/AuthContext';
+import { StatusChangeControl } from '@/components/tickets/StatusChangeControl';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,6 +72,10 @@ export default function TicketDetailPage() {
           </ul>
         )}
       </section>
+
+      {user?.globalRole === 'SUPER_ADMIN' && (
+        <StatusChangeControl ticketId={t.id} current={t.status} onChange={reload} />
+      )}
 
       <section className="space-y-3">
         {t.comments.map(c => c.statusChange ? (
