@@ -8,6 +8,7 @@ import gov.nist.oscal.tools.api.entity.OrganizationMembership.OrganizationRole;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.exception.OrganizationNameInUseException;
+import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
 import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
@@ -99,17 +100,18 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validate password complexity using new PasswordValidationService
-        try {
-            passwordValidationService.validatePassword(request.getPassword(), request.getUsername());
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        // Validate password complexity. IllegalArgumentException propagates to GlobalExceptionHandler.
+        passwordValidationService.validatePassword(request.getPassword(), request.getUsername());
 
         // Check if username already exists
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new UsernameAlreadyExistsException("Username already exists");
         }
+
+        // Email is intentionally NOT checked for uniqueness — the project supports
+        // multiple users sharing an email (see migrations V1.11/V1.21). A user may
+        // legitimately have parallel accounts in different organizations or have
+        // submitted an access request before registering.
 
         // Create new user
         User user = new User();
@@ -302,7 +304,8 @@ public class AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Update email if provided
+        // Update email if provided. Email is not unique across users (see register()
+        // for rationale), so no collision check is required.
         if (updates.containsKey("email") && updates.get("email") != null && !updates.get("email").isEmpty()) {
             String newEmail = updates.get("email");
             user.setEmail(newEmail);
@@ -311,12 +314,8 @@ public class AuthService {
         // Update password if provided
         if (updates.containsKey("password") && updates.get("password") != null && !updates.get("password").isEmpty()) {
             String newPassword = updates.get("password");
-            // Validate password complexity using new PasswordValidationService
-            try {
-                passwordValidationService.validatePassword(newPassword, username);
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException(e.getMessage());
-            }
+            // IllegalArgumentException from validation propagates to GlobalExceptionHandler.
+            passwordValidationService.validatePassword(newPassword, username);
             user.setPassword(passwordEncoder.encode(newPassword));
             user.setPasswordChangedAt(LocalDateTime.now());
             logger.info("Password changed for user: {}", username);

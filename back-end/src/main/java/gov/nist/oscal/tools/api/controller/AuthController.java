@@ -66,15 +66,17 @@ public class AuthController {
             AuthResponse response = authService.register(request);
             return ResponseEntity.ok(response);
         } catch (OrganizationNameInUseException e) {
+            // Structured response specifically for org-name collisions so the frontend can
+            // render a field-level error. Other exceptions from the service
+            // (UsernameAlreadyExistsException, IllegalArgumentException,
+            // DataIntegrityViolationException) are mapped by GlobalExceptionHandler. The
+            // previous "catch (RuntimeException) → e.getMessage()" clause was removed
+            // because it leaked raw Hibernate/JDBC details to clients.
             Map<String, String> error = new HashMap<>();
             error.put("error", "ORGANIZATION_NAME_IN_USE");
             error.put("field", "organizationName");
             error.put("message", "That organization name is already taken. Try another.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
         }
     }
 
@@ -302,30 +304,25 @@ public class AuthController {
             return ResponseEntity.status(401).body(error);
         }
 
-        try {
-            String username = authentication.getName();
-            User user = authService.updateProfile(username, updates);
+        // Exceptions from the service are mapped by GlobalExceptionHandler.
+        String username = authentication.getName();
+        User user = authService.updateProfile(username, updates);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Profile updated successfully");
-            response.put("username", user.getUsername());
-            response.put("email", user.getEmail());
-            response.put("firstName", user.getFirstName());
-            response.put("lastName", user.getLastName());
-            response.put("street", user.getStreet());
-            response.put("city", user.getCity());
-            response.put("state", user.getState());
-            response.put("zip", user.getZip());
-            response.put("title", user.getTitle());
-            response.put("organization", user.getOrganization());
-            response.put("phoneNumber", user.getPhoneNumber());
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Profile updated successfully");
+        response.put("username", user.getUsername());
+        response.put("email", user.getEmail());
+        response.put("firstName", user.getFirstName());
+        response.put("lastName", user.getLastName());
+        response.put("street", user.getStreet());
+        response.put("city", user.getCity());
+        response.put("state", user.getState());
+        response.put("zip", user.getZip());
+        response.put("title", user.getTitle());
+        response.put("organization", user.getOrganization());
+        response.put("phoneNumber", user.getPhoneNumber());
 
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
+        return ResponseEntity.ok(response);
     }
 
     @Operation(

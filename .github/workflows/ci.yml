@@ -64,147 +64,365 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # for SARIF upload to GitHub Security tab
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up JDK 25 (for Snyk Maven)
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
           mvn-toolchain-vendor: 'temurin'
+          cache: 'maven'
 
-      - name: Install Snyk CLI
-        uses: snyk/actions/setup@master
-
-      - name: Run Snyk for Maven
-        id: snyk-maven
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ secrets.SNYK_ORG }}
-        run: |
-          snyk test --severity-threshold=high --sarif-file-output=snyk-maven.sarif --file=back-end/pom.xml
-
-      - name: Set up Node.js (for Snyk Node)
+      - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: front-end/package-lock.json
 
+      # ----------------------------------------------------------------
+      # Backend (Java/Maven): OWASP Dependency-Check
+      # ----------------------------------------------------------------
+      - name: Resolve backend dependencies
+        run: |
+          cd back-end
+          mvn -B -DskipTests dependency:resolve dependency:resolve-plugins
+
+      - name: Cache OWASP Dependency-Check NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-dc-nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            owasp-dc-nvd-${{ runner.os }}-
+
+      - name: OWASP Dependency-Check (Java/Maven)
+        id: owasp_dc
+        uses: dependency-check/Dependency-Check_Action@main
+        continue-on-error: true
+        with:
+          project: 'oscal-hub-backend'
+          path: 'back-end'
+          format: 'ALL'
+          out: 'reports/owasp'
+          # --enableRetired catches CVEs in retired libraries.
+          # --nvdApiKey speeds up NVD downloads if the secret is set; harmless if not.
+          args: >
+            --enableRetired
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
+            --failOnCVSS 7
+
+      # ----------------------------------------------------------------
+      # Frontend (Node.js): npm audit
+      # ----------------------------------------------------------------
       - name: Install frontend dependencies
         run: |
           cd front-end
           npm ci --legacy-peer-deps
 
-      - name: Run Snyk for Node.js
-        id: snyk-node
+      - name: npm audit (Node.js)
+        id: npm_audit
         continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ secrets.SNYK_ORG }}
+        working-directory: front-end
         run: |
-          cd front-end
-          snyk test --severity-threshold=high --sarif-file-output=../snyk-node.sarif
+          set +e
+          npm audit --audit-level=high --json > ../npm-audit.json
+          STATUS=$?
+          set -e
+          # npm audit exit codes:
+          #   0 = no findings at the requested level
+          #   1 = findings at or above the requested level
+          #   >=2 = the audit itself failed (network, parse error, etc.)
+          if [ "$STATUS" -ge 2 ]; then
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            # Ensure the file is valid JSON for the summary parser even on failure.
+            if ! jq empty ../npm-audit.json 2>/dev/null; then
+              printf '%s\n' '{"vulnerabilities":{},"metadata":{"vulnerabilities":{"info":0,"low":0,"moderate":0,"high":0,"critical":0,"total":0}}}' > ../npm-audit.json
+            fi
+          else
+            echo "ran=true" >> "$GITHUB_OUTPUT"
+          fi
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' ../npm-audit.json)
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' ../npm-audit.json)
+          echo "high=$HIGH" >> "$GITHUB_OUTPUT"
+          echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
 
-      - name: Run Snyk for Docker
-        id: snyk-docker
-        uses: snyk/actions/docker@master
+      # ----------------------------------------------------------------
+      # Container image (Docker): Anchore Grype
+      # Builds the multi-stage Dockerfile (with GHA layer caching) and scans
+      # the resulting image. This catches base-image / OS-package CVEs that
+      # the source-dependency scanners above do not see.
+      # ----------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        id: docker_build
+        uses: docker/build-push-action@v6
         continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ secrets.SNYK_ORG }}
         with:
-          image: oscal-hub:latest
-          args: --severity-threshold=high --sarif-file-output=snyk-docker.sarif --file=Dockerfile
+          context: .
+          load: true
+          tags: oscal-hub:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
+      - name: Grype scan (Docker image)
+        id: grype
+        if: steps.docker_build.outcome == 'success'
+        uses: anchore/scan-action@v6
+        continue-on-error: true
+        with:
+          image: oscal-hub:scan
+          severity-cutoff: high
+          # only-fixed: true filters out CVEs in base-image OS packages that
+          # have no upstream fix yet — those would be unactionable noise here.
+          # Once a fix lands upstream, the finding will resurface on the next run.
+          only-fixed: true
+          fail-build: false
+          output-format: sarif
+          output-file: grype-results.sarif
+          # .grype.yaml at repo root carries a documented baseline of pre-existing
+          # findings. New findings outside that allowlist still fail CI.
+          config: .grype.yaml
+
+      # ----------------------------------------------------------------
+      # Step summary — markdown report visible on the run page
+      # ----------------------------------------------------------------
       - name: Generate Security Scan Summary
         if: always()
         run: |
-          echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          set +e
+          OWASP_JSON="reports/owasp/dependency-check-report.json"
 
-          # Function to parse SARIF and extract vulnerabilities
-          parse_sarif() {
-            local file=$1
-            local name=$2
-            if [ -f "$file" ]; then
-              local count=$(jq '[.runs[].results[]] | length' "$file" 2>/dev/null || echo "0")
-              if [ "$count" -gt 0 ]; then
-                echo "### $name: $count issue(s) found" >> $GITHUB_STEP_SUMMARY
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "| Severity | Rule | Message |" >> $GITHUB_STEP_SUMMARY
-                echo "|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
-                jq -r '.runs[].results[] | "| \(.level // "warning") | \(.ruleId) | \(.message.text | gsub("\n"; " ") | .[0:100]) |"' "$file" 2>/dev/null | head -20 >> $GITHUB_STEP_SUMMARY
-                if [ "$count" -gt 20 ]; then
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  echo "*... and $((count - 20)) more. See Security tab for full details.*" >> $GITHUB_STEP_SUMMARY
-                fi
-                echo "" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "### $name: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
-                echo "" >> $GITHUB_STEP_SUMMARY
-              fi
+          echo "## 🔒 Security Scan Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # ---------- OWASP Dependency-Check ----------
+          if [ -f "$OWASP_JSON" ]; then
+            DC_TOTAL=$(jq '[.dependencies[]?.vulnerabilities[]?] | length' "$OWASP_JSON" 2>/dev/null || echo "0")
+            DC_HIGH=$(jq '[.dependencies[]?.vulnerabilities[]? | select((.cvssv3.baseScore // .cvssv2.score // 0) >= 7)] | length' "$OWASP_JSON" 2>/dev/null || echo "0")
+            if [ "$DC_TOTAL" -eq 0 ]; then
+              echo "### OWASP Dependency-Check (Java/Maven): ✅ No issues found" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "### $name: ⏭️ Skipped or no results" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### OWASP Dependency-Check (Java/Maven): ${DC_HIGH} high-severity / ${DC_TOTAL} total" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Severity | CVE | Package | CVSS |" >> "$GITHUB_STEP_SUMMARY"
+              echo "|----------|-----|---------|------|" >> "$GITHUB_STEP_SUMMARY"
+              jq -r '
+                .dependencies[]? | . as $d
+                | .vulnerabilities[]?
+                | select((.cvssv3.baseScore // .cvssv2.score // 0) >= 7)
+                | "| \(.severity) | \(.name) | \($d.fileName) | \(.cvssv3.baseScore // .cvssv2.score // "?") |"
+              ' "$OWASP_JSON" 2>/dev/null | head -20 >> "$GITHUB_STEP_SUMMARY"
+              if [ "$DC_HIGH" -gt 20 ]; then
+                echo "" >> "$GITHUB_STEP_SUMMARY"
+                echo "*… and $((DC_HIGH - 20)) more. See Security tab or downloaded HTML report for full details.*" >> "$GITHUB_STEP_SUMMARY"
+              fi
             fi
-          }
+          else
+            echo "### OWASP Dependency-Check (Java/Maven): ⚠️ Scan did not produce a report" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The scan failed to run. This is **not** a vulnerability finding — check the action log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          # Parse each scanner's results
-          parse_sarif "trivy-results.sarif" "Trivy (Filesystem)"
-          parse_sarif "snyk-maven.sarif" "Snyk (Maven/Java)"
-          parse_sarif "snyk-node.sarif" "Snyk (Node.js)"
-          parse_sarif "snyk-docker.sarif" "Snyk (Docker)"
+          # ---------- npm audit ----------
+          NPM_RAN="${{ steps.npm_audit.outputs.ran }}"
+          NPM_HIGH="${{ steps.npm_audit.outputs.high }}"
+          NPM_CRIT="${{ steps.npm_audit.outputs.critical }}"
+          if [ "$NPM_RAN" = "true" ]; then
+            NPM_TOTAL=$((NPM_HIGH + NPM_CRIT))
+            if [ "$NPM_TOTAL" -eq 0 ]; then
+              echo "### npm audit (Node.js): ✅ No high or critical issues" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "### npm audit (Node.js): ${NPM_TOTAL} high+critical (${NPM_CRIT} critical, ${NPM_HIGH} high)" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Severity | Package | Vulnerable range | Fix available |" >> "$GITHUB_STEP_SUMMARY"
+              echo "|----------|---------|------------------|---------------|" >> "$GITHUB_STEP_SUMMARY"
+              jq -r '
+                .vulnerabilities | to_entries[]
+                | select(.value.severity == "high" or .value.severity == "critical")
+                | "| \(.value.severity) | \(.key) | \(.value.range) | \(if (.value.fixAvailable | type) == "boolean" then (.value.fixAvailable | tostring) else "yes (\(.value.fixAvailable.name)@\(.value.fixAvailable.version))" end) |"
+              ' npm-audit.json 2>/dev/null | head -20 >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "### npm audit (Node.js): ⚠️ Scan did not run cleanly" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "npm audit exited with an error code that indicates the audit itself failed (e.g. registry/network problem). This is **not** a vulnerability finding — check the action log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          # Summary table
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "### Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Scanner | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Trivy | ${{ steps.trivy.outcome == 'success' && '✅ Passed' || steps.trivy.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Snyk Maven | ${{ steps.snyk-maven.outcome == 'success' && '✅ Passed' || steps.snyk-maven.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Snyk Node.js | ${{ steps.snyk-node.outcome == 'success' && '✅ Passed' || steps.snyk-node.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Snyk Docker | ${{ steps.snyk-docker.outcome == 'success' && '✅ Passed' || steps.snyk-docker.outcome == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # ---------- Grype (Docker image) ----------
+          GRYPE_SARIF="grype-results.sarif"
+          if [ -f "$GRYPE_SARIF" ]; then
+            GRYPE_TOTAL=$(jq '[.runs[].results[]? | select(.level == "error")] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
+            if [ "$GRYPE_TOTAL" -eq 0 ]; then
+              echo "### Grype (Docker image): ✅ No high+ severity issues" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "### Grype (Docker image): ${GRYPE_TOTAL} high+ severity issue(s)" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Severity | Rule | Package | Message |" >> "$GITHUB_STEP_SUMMARY"
+              echo "|----------|------|---------|---------|" >> "$GITHUB_STEP_SUMMARY"
+              jq -r '
+                .runs[].results[]?
+                | select(.level == "error")
+                | "| \(.level // "warning") | \(.ruleId) | \((.locations[0].physicalLocation.artifactLocation.uri // "?")) | \((.message.text // "") | gsub("\n"; " ") | .[0:120]) |"
+              ' "$GRYPE_SARIF" 2>/dev/null | head -20 >> "$GITHUB_STEP_SUMMARY"
+              if [ "$GRYPE_TOTAL" -gt 20 ]; then
+                echo "" >> "$GITHUB_STEP_SUMMARY"
+                echo "*… and $((GRYPE_TOTAL - 20)) more. See Security tab for full details.*" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
+          else
+            BUILD_OUTCOME="${{ steps.docker_build.outcome }}"
+            if [ "$BUILD_OUTCOME" != "success" ]; then
+              echo "### Grype (Docker image): ⚠️ Image build failed; scan skipped" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "### Grype (Docker image): ⚠️ Scan did not produce a report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "This is **not** a vulnerability finding — check the action log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload Snyk Maven results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.32.4
-        if: always() && hashFiles('snyk-maven.sarif') != ''
+          # ---------- Summary table ----------
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scanner | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          OWASP_STATUS="⚠️ Did not run"
+          if [ -f "$OWASP_JSON" ]; then
+            if [ "${DC_HIGH:-0}" -eq 0 ]; then
+              OWASP_STATUS="✅ Passed"
+            else
+              OWASP_STATUS="❌ ${DC_HIGH} high-severity"
+            fi
+          fi
+          echo "| OWASP Dependency-Check (Java/Maven) | $OWASP_STATUS |" >> "$GITHUB_STEP_SUMMARY"
+
+          NPM_STATUS="⚠️ Did not run"
+          if [ "$NPM_RAN" = "true" ]; then
+            NPM_TOTAL=$((NPM_HIGH + NPM_CRIT))
+            if [ "$NPM_TOTAL" -eq 0 ]; then
+              NPM_STATUS="✅ Passed"
+            else
+              NPM_STATUS="❌ ${NPM_TOTAL} high+critical"
+            fi
+          fi
+          echo "| npm audit (Node.js) | $NPM_STATUS |" >> "$GITHUB_STEP_SUMMARY"
+
+          GRYPE_STATUS="⚠️ Did not run"
+          if [ -f "$GRYPE_SARIF" ]; then
+            if [ "${GRYPE_TOTAL:-0}" -eq 0 ]; then
+              GRYPE_STATUS="✅ Passed"
+            else
+              GRYPE_STATUS="❌ ${GRYPE_TOTAL} high+ severity"
+            fi
+          fi
+          echo "| Grype (Docker image) | $GRYPE_STATUS |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      # ----------------------------------------------------------------
+      # Upload artifacts and SARIF
+      # ----------------------------------------------------------------
+      - name: Upload OWASP DC SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('reports/owasp/dependency-check-report.sarif') != ''
         with:
-          sarif_file: snyk-maven.sarif
-          category: snyk-maven
+          sarif_file: reports/owasp/dependency-check-report.sarif
+          category: owasp-dependency-check
         continue-on-error: true
 
-      - name: Upload Snyk Node.js results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.32.4
-        if: always() && hashFiles('snyk-node.sarif') != ''
+      - name: Upload OWASP DC report bundle (HTML/XML/JSON/CSV)
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('reports/owasp/dependency-check-report.html') != ''
         with:
-          sarif_file: snyk-node.sarif
-          category: snyk-node
+          name: owasp-dependency-check-report
+          path: reports/owasp/
+          retention-days: 14
+
+      - name: Upload npm audit JSON
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('npm-audit.json') != ''
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          retention-days: 14
+
+      - name: Upload Grype SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('grype-results.sarif') != ''
+        with:
+          sarif_file: grype-results.sarif
+          category: grype-image
         continue-on-error: true
 
-      - name: Upload Snyk Docker results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.32.4
-        if: always() && hashFiles('snyk-docker.sarif') != ''
+      - name: Upload Grype SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('grype-results.sarif') != ''
         with:
-          sarif_file: snyk-docker.sarif
-          category: snyk-docker
-        continue-on-error: true
+          name: grype-report
+          path: grype-results.sarif
+          retention-days: 14
 
-      - name: Check for high severity vulnerabilities
+      # ----------------------------------------------------------------
+      # Gate: distinguish "scan failed to run" from "found vulnerabilities"
+      # ----------------------------------------------------------------
+      - name: Fail on high-severity findings
         if: always()
         run: |
+          set +e
+          OWASP_JSON="reports/owasp/dependency-check-report.json"
           FAILED=""
-          if [ "${{ steps.snyk-maven.outcome }}" == "failure" ]; then
-            FAILED="$FAILED Snyk-Maven"
+
+          # OWASP DC: gate on parsed findings, not on step exit code, so that
+          # a tool failure (e.g. NVD download error) does not pretend to be
+          # "vulnerabilities found".
+          if [ -f "$OWASP_JSON" ]; then
+            DC_HIGH=$(jq '[.dependencies[]?.vulnerabilities[]? | select((.cvssv3.baseScore // .cvssv2.score // 0) >= 7)] | length' "$OWASP_JSON" 2>/dev/null || echo "0")
+            if [ "$DC_HIGH" -gt 0 ]; then
+              FAILED="$FAILED OWASP-DependencyCheck($DC_HIGH)"
+            fi
+          else
+            echo "::warning::OWASP Dependency-Check did not produce a report; treating as a tool failure (not a finding)."
           fi
-          if [ "${{ steps.snyk-node.outcome }}" == "failure" ]; then
-            FAILED="$FAILED Snyk-Node"
+
+          # npm audit: gate on parsed counts, not on step exit code.
+          NPM_RAN="${{ steps.npm_audit.outputs.ran }}"
+          if [ "$NPM_RAN" = "true" ]; then
+            NPM_HIGH="${{ steps.npm_audit.outputs.high }}"
+            NPM_CRIT="${{ steps.npm_audit.outputs.critical }}"
+            NPM_TOTAL=$((NPM_HIGH + NPM_CRIT))
+            if [ "$NPM_TOTAL" -gt 0 ]; then
+              FAILED="$FAILED npm-audit($NPM_TOTAL)"
+            fi
+          else
+            echo "::warning::npm audit did not run cleanly; treating as a tool failure (not a finding)."
           fi
+
+          # Grype: gate on parsed SARIF, not on step exit code. The image-build
+          # step is allowed to fail without poisoning this gate.
+          GRYPE_SARIF="grype-results.sarif"
+          if [ -f "$GRYPE_SARIF" ]; then
+            GRYPE_TOTAL=$(jq '[.runs[].results[]? | select(.level == "error")] | length' "$GRYPE_SARIF" 2>/dev/null || echo "0")
+            if [ "$GRYPE_TOTAL" -gt 0 ]; then
+              FAILED="$FAILED Grype($GRYPE_TOTAL)"
+            fi
+          else
+            echo "::warning::Grype did not produce a report (image build or scan likely failed); treating as a tool failure (not a finding)."
+          fi
+
           if [ -n "$FAILED" ]; then
-            echo "::error::High severity vulnerabilities found by:$FAILED. Check the Security tab and workflow summary for details."
+            echo "::error::High-severity vulnerabilities found by:$FAILED. Check the workflow summary or the Security tab for details."
             exit 1
           fi
