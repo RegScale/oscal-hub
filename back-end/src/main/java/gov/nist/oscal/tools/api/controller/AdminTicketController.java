@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.dto.TicketAnalyticsResponse;
 import gov.nist.oscal.tools.api.dto.TicketSummaryResponse;
 import gov.nist.oscal.tools.api.dto.UpdateStatusRequest;
 import gov.nist.oscal.tools.api.entity.Ticket;
@@ -24,7 +25,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/tickets")
@@ -62,6 +65,34 @@ public class AdminTicketController {
         return tickets.findAll(
             TicketSpecifications.matches(q, status, type, priority, from, to), pr)
             .map(TicketSummaryResponse::from);
+    }
+
+    @GetMapping("/analytics")
+    public TicketAnalyticsResponse analytics() {
+        Map<TicketStatus, Long> statusCounts = new EnumMap<>(TicketStatus.class);
+        for (TicketStatus s : TicketStatus.values()) statusCounts.put(s, 0L);
+        for (Object[] row : tickets.countByStatus()) {
+            statusCounts.put(TicketStatus.valueOf((String) row[0]), ((Number) row[1]).longValue());
+        }
+        Map<TicketType, Long> typeSplit = new EnumMap<>(TicketType.class);
+        for (TicketType t : TicketType.values()) typeSplit.put(t, 0L);
+        for (Object[] row : tickets.countByType()) {
+            typeSplit.put(TicketType.valueOf((String) row[0]), ((Number) row[1]).longValue());
+        }
+        java.util.List<TicketAnalyticsResponse.WeekBucket> opened = tickets.openedPerWeek().stream()
+            .map(r -> new TicketAnalyticsResponse.WeekBucket(
+                ((java.sql.Date) r[0]).toLocalDate(), ((Number) r[1]).longValue())).toList();
+        java.util.List<TicketAnalyticsResponse.WeekBucket> resolved = tickets.resolvedPerWeek().stream()
+            .map(r -> new TicketAnalyticsResponse.WeekBucket(
+                ((java.sql.Date) r[0]).toLocalDate(), ((Number) r[1]).longValue())).toList();
+        java.util.List<TicketAnalyticsResponse.StaleTicket> stale = tickets.staleTickets().stream()
+            .map(t -> new TicketAnalyticsResponse.StaleTicket(
+                t.getId(), t.getType(), t.getTitle(), t.getPriority(),
+                t.getCreatedAt(),
+                java.time.Duration.between(t.getCreatedAt(), java.time.LocalDateTime.now()).toDays()))
+            .toList();
+
+        return new TicketAnalyticsResponse(statusCounts, typeSplit, opened, resolved, stale);
     }
 
     @PatchMapping("/{id}/status")
