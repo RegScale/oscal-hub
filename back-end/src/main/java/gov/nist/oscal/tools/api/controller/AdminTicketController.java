@@ -35,6 +35,9 @@ import java.util.Map;
 @Tag(name = "Admin Tickets", description = "Super-admin-only ticket APIs")
 public class AdminTicketController {
 
+    private static final java.util.Set<String> ALLOWED_SORT_FIELDS =
+        java.util.Set.of("updatedAt", "createdAt", "priority", "status", "id");
+
     private final TicketService service;
     private final UserRepository users;
     private final TicketRepository tickets;
@@ -57,10 +60,11 @@ public class AdminTicketController {
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(defaultValue = "updatedAt,desc") String sort) {
 
-        String[] sp = sort.split(",");
+        String[] sp = sort.split(",", 2);
+        String sortField = ALLOWED_SORT_FIELDS.contains(sp[0]) ? sp[0] : "updatedAt";
         Sort.Direction dir = sp.length > 1 && sp[1].equalsIgnoreCase("asc")
             ? Sort.Direction.ASC : Sort.Direction.DESC;
-        PageRequest pr = PageRequest.of(page, Math.min(size, 100), dir, sp[0]);
+        PageRequest pr = PageRequest.of(page, Math.min(size, 100), dir, sortField);
 
         return tickets.findAll(
             TicketSpecifications.matches(q, status, type, priority, from, to), pr)
