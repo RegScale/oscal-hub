@@ -70,6 +70,23 @@ export function attachmentDownloadUrl(attachmentId: number): string {
   return `${BASE}/attachments/${attachmentId}`;
 }
 
+export interface TicketAnalytics {
+  statusCounts: Record<TicketStatus, number>;
+  typeSplit: Record<TicketType, number>;
+  openedPerWeek: { week: string; count: number }[];
+  resolvedPerWeek: { week: string; count: number }[];
+  staleTickets: {
+    id: number; type: TicketType; title: string;
+    priority: TicketPriority; createdAt: string; ageDays: number;
+  }[];
+}
+
+export async function getTicketAnalytics(): Promise<TicketAnalytics> {
+  const res = await fetch(`${ADMIN_BASE}/analytics`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`Analytics failed: ${res.status}`);
+  return res.json();
+}
+
 export interface AdminListParams {
   page?: number; size?: number;
   q?: string;

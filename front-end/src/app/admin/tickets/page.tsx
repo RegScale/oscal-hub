@@ -8,6 +8,7 @@ import type { TicketSummaryResponse, TicketStatus, TicketType, TicketPriority } 
 import { TicketStatusBadge } from '@/components/tickets/TicketStatusBadge';
 import { TicketTypeBadge } from '@/components/tickets/TicketTypeBadge';
 import { TicketPriorityBadge } from '@/components/tickets/TicketPriorityBadge';
+import { AnalyticsPanel } from '@/components/tickets/AnalyticsPanel';
 
 const ALL_STATUSES: TicketStatus[] = ['OPEN','IN_PROGRESS','RESOLVED','CLOSED','WONT_FIX','DUPLICATE'];
 const ALL_PRIORITIES: TicketPriority[] = ['LOW','MEDIUM','HIGH','CRITICAL'];
@@ -47,6 +48,8 @@ export default function AdminTicketsPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="text-2xl font-semibold mb-6">Admin Tickets</h1>
+
+      <AnalyticsPanel />
 
       <div className="mb-4 flex flex-wrap gap-3 items-center">
         <input
