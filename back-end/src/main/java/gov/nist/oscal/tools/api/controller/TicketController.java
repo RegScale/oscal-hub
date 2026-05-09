@@ -68,9 +68,22 @@ public class TicketController {
     public Page<TicketSummaryResponse> mine(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) java.util.List<TicketStatus> status,
+            @RequestParam(required = false) TicketType type,
+            @RequestParam(required = false)
+                @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+                java.time.LocalDateTime from,
+            @RequestParam(required = false)
+                @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+                java.time.LocalDateTime to,
             Principal principal) {
         User reporter = users.findByUsername(principal.getName()).orElseThrow();
-        return service.listMyTickets(reporter, PageRequest.of(page, Math.min(size, 100)))
+        return service.listMyTickets(
+                reporter, q, status, type, from, to,
+                PageRequest.of(page, Math.min(size, 100)))
             .map(TicketSummaryResponse::from);
     }
 

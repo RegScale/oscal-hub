@@ -87,8 +87,17 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<Ticket> listMyTickets(
-            User reporter, org.springframework.data.domain.Pageable pageable) {
-        return tickets.findByReporter(reporter, pageable);
+            User reporter,
+            String q,
+            java.util.List<TicketStatus> statuses,
+            TicketType type,
+            java.time.LocalDateTime from,
+            java.time.LocalDateTime to,
+            org.springframework.data.domain.Pageable pageable) {
+        return tickets.findAll(
+            gov.nist.oscal.tools.api.repository.TicketSpecifications
+                .matchesForReporter(reporter, q, statuses, type, from, to),
+            pageable);
     }
 
     @Transactional

@@ -75,7 +75,7 @@ class TicketControllerTest {
         when(users.findByUsername(eq("alice"))).thenReturn(Optional.of(alice));
 
         Ticket t = makeTicket(10L, alice);
-        when(service.listMyTickets(eq(alice), any(Pageable.class)))
+        when(service.listMyTickets(eq(alice), any(), any(), any(), any(), any(), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(t)));
 
         mockMvc.perform(get("/api/tickets/mine"))

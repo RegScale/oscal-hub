@@ -130,9 +130,10 @@ class TicketServiceTest {
     void listMyTickets_filtersToReporter() {
         User alice = userWithUsername("alice");
         org.springframework.data.domain.Pageable p = org.springframework.data.domain.PageRequest.of(0, 25);
-        when(tickets.findByReporter(alice, p)).thenReturn(org.springframework.data.domain.Page.empty());
-        svc.listMyTickets(alice, p);
-        verify(tickets).findByReporter(alice, p);
+        when(tickets.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(p)))
+            .thenReturn(org.springframework.data.domain.Page.empty());
+        svc.listMyTickets(alice, null, null, null, null, null, p);
+        verify(tickets).findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(p));
     }
 
     @Test

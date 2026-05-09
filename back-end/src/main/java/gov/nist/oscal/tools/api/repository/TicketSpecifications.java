@@ -11,6 +11,17 @@ import java.util.List;
 public final class TicketSpecifications {
     private TicketSpecifications() {}
 
+    public static Specification<Ticket> byReporter(User reporter) {
+        return (root, query, cb) -> cb.equal(root.get("reporter"), reporter);
+    }
+
+    public static Specification<Ticket> matchesForReporter(
+            User reporter, String q, List<TicketStatus> statuses, TicketType type,
+            LocalDateTime from, LocalDateTime to) {
+        return byReporter(reporter)
+            .and(matches(q, statuses, type, null, from, to));
+    }
+
     public static Specification<Ticket> matches(
             String q, List<TicketStatus> statuses, TicketType type,
             List<TicketPriority> priorities, LocalDateTime from, LocalDateTime to) {
