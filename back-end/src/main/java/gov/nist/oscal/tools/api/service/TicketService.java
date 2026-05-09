@@ -146,4 +146,29 @@ public class TicketService {
 
         return c;
     }
+
+    @Transactional
+    public Ticket changeStatus(Long ticketId, User adminCaller, TicketStatus newStatus, String adminNote) {
+        Ticket t = tickets.findById(ticketId)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Ticket " + ticketId));
+        TicketStatus oldStatus = t.getStatus();
+        if (oldStatus == newStatus) return t;
+
+        t.setStatus(newStatus);
+        if (newStatus == TicketStatus.RESOLVED || newStatus.isTerminal()) {
+            t.setResolvedAt(java.time.LocalDateTime.now());
+        } else {
+            t.setResolvedAt(null);
+        }
+        t.setUpdatedAt(java.time.LocalDateTime.now());
+        tickets.save(t);
+
+        comments.save(TicketComment.statusChange(t, adminCaller, oldStatus, newStatus));
+        if (adminNote != null && !adminNote.isBlank()) {
+            comments.save(new TicketComment(t, adminCaller, adminNote));
+        }
+
+        try { email.sendTicketStatusChanged(t, oldStatus, newStatus, adminNote); } catch (Exception ignored) {}
+        return t;
+    }
 }

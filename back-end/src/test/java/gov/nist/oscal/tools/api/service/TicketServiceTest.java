@@ -196,6 +196,57 @@ class TicketServiceTest {
         verify(email).sendTicketCommentAdded(any(), any(), any(String.class));
     }
 
+    @Test
+    void changeStatus_writesSystemCommentAndEmailsReporter() {
+        User alice = userWithUsername("alice");
+        User adminBob = new User(); adminBob.setId(2L); adminBob.setUsername("bob"); adminBob.setEmail("b@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.OPEN);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.changeStatus(1L, adminBob, TicketStatus.IN_PROGRESS, null);
+
+        assertThat(t.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
+        ArgumentCaptor<TicketComment> cap = ArgumentCaptor.forClass(TicketComment.class);
+        verify(comments).save(cap.capture());
+        assertThat(cap.getValue().isStatusChange()).isTrue();
+        assertThat(cap.getValue().getOldStatus()).isEqualTo(TicketStatus.OPEN);
+        assertThat(cap.getValue().getNewStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
+        verify(email).sendTicketStatusChanged(t, TicketStatus.OPEN, TicketStatus.IN_PROGRESS, null);
+    }
+
+    @Test
+    void changeStatus_terminal_setsResolvedAt() {
+        User alice = userWithUsername("alice");
+        User adminBob = new User(); adminBob.setId(2L); adminBob.setUsername("bob"); adminBob.setEmail("b@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.IN_PROGRESS);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+        when(comments.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        svc.changeStatus(1L, adminBob, TicketStatus.RESOLVED, "Fixed in v2.1.4");
+
+        assertThat(t.getStatus()).isEqualTo(TicketStatus.RESOLVED);
+        assertThat(t.getResolvedAt()).isNotNull();
+        verify(comments, times(2)).save(any());
+        verify(email).sendTicketStatusChanged(t, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, "Fixed in v2.1.4");
+    }
+
+    @Test
+    void changeStatus_noopWhenSameStatus() {
+        User alice = userWithUsername("alice");
+        User adminBob = new User(); adminBob.setId(2L); adminBob.setUsername("bob"); adminBob.setEmail("b@e.com");
+        Ticket t = new Ticket(alice, TicketType.BUG, "x", "y");
+        t.setId(1L); t.setStatus(TicketStatus.OPEN);
+        when(tickets.findById(1L)).thenReturn(java.util.Optional.of(t));
+
+        svc.changeStatus(1L, adminBob, TicketStatus.OPEN, null);
+
+        verify(comments, never()).save(any());
+        verify(email, never()).sendTicketStatusChanged(any(), any(), any(), any());
+    }
+
     private MultipartFile mockFile() {
         return new MockMultipartFile("f", "x.png", "image/png", new byte[1]);
     }
