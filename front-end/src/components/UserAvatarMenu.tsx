@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Cog, LogOut, Settings, UserCog } from 'lucide-react';
+import { Bug, Cog, Inbox, LogOut, Settings, UserCog } from 'lucide-react';
 import type { User } from '@/types/auth';
 
 function getInitials(user: User): string {
@@ -61,6 +61,22 @@ export function UserAvatarMenu() {
           >
             <UserCog className="h-4 w-4" />
             Manage Profile
+          </Link>
+          <Link
+            href="/tickets/new"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <Bug className="h-4 w-4" />
+            Open Ticket
+          </Link>
+          <Link
+            href="/tickets"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <Inbox className="h-4 w-4" />
+            My Tickets
           </Link>
           {!isSuperAdmin && isOrgAdmin && (
             <Link
