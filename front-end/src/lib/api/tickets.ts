@@ -28,10 +28,26 @@ export async function createTicket(form: {
   return res.json();
 }
 
-export async function listMyTickets(
-  page = 0, size = 25,
-): Promise<{ content: TicketSummaryResponse[]; totalElements: number }> {
-  const res = await fetch(`${BASE}/mine?page=${page}&size=${size}`, { headers: authHeaders() });
+export interface MyListParams {
+  page?: number; size?: number;
+  q?: string;
+  status?: TicketStatus[];
+  type?: TicketType;
+  from?: string;  // ISO datetime
+  to?: string;    // ISO datetime
+}
+
+export async function listMyTickets(p: MyListParams = {})
+  : Promise<{ content: TicketSummaryResponse[]; totalElements: number; totalPages: number }> {
+  const qs = new URLSearchParams();
+  qs.set('page', String(p.page ?? 0));
+  qs.set('size', String(p.size ?? 25));
+  if (p.q) qs.set('q', p.q);
+  if (p.type) qs.set('type', p.type);
+  (p.status ?? []).forEach(s => qs.append('status', s));
+  if (p.from) qs.set('from', p.from);
+  if (p.to) qs.set('to', p.to);
+  const res = await fetch(`${BASE}/mine?${qs}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`List failed: ${res.status}`);
   return res.json();
 }
