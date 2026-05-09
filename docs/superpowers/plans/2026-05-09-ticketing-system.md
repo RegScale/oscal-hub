@@ -156,7 +156,7 @@ public enum TicketStatus {
         return TERMINAL.contains(this);
     }
 
-    public boolean isResolvedNotClosed() {
+    public boolean canReopen() {
         return this == RESOLVED;
     }
 }
@@ -198,10 +198,10 @@ class TicketStatusTest {
     }
 
     @Test
-    void resolvedNotClosed() {
-        assertTrue(TicketStatus.RESOLVED.isResolvedNotClosed());
-        assertFalse(TicketStatus.CLOSED.isResolvedNotClosed());
-        assertFalse(TicketStatus.OPEN.isResolvedNotClosed());
+    void canReopen() {
+        assertTrue(TicketStatus.RESOLVED.canReopen());
+        assertFalse(TicketStatus.CLOSED.canReopen());
+        assertFalse(TicketStatus.OPEN.canReopen());
     }
 }
 ```
@@ -1468,7 +1468,7 @@ public TicketComment addComment(Long ticketId, User caller, boolean isAdmin,
 
     boolean reporterReopening = !isAdmin
         && caller.getId().equals(t.getReporter().getId())
-        && t.getStatus().isResolvedNotClosed();
+        && t.getStatus().canReopen();
 
     TicketStatus oldStatus = t.getStatus();
     if (reporterReopening) {
