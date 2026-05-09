@@ -4,6 +4,7 @@ import gov.nist.oscal.tools.api.entity.*;
 import gov.nist.oscal.tools.api.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +39,11 @@ class TicketAutoCloseJobTest {
 
         assertThat(t.getStatus()).isEqualTo(TicketStatus.CLOSED);
         verify(tickets).save(t);
-        verify(comments).save(any(TicketComment.class));
+        ArgumentCaptor<TicketComment> cap = ArgumentCaptor.forClass(TicketComment.class);
+        verify(comments).save(cap.capture());
+        assertThat(cap.getValue().getBody()).contains("Auto-closed after 7 days");
+        assertThat(cap.getValue().isStatusChange()).isTrue();
+        assertThat(cap.getValue().getOldStatus()).isEqualTo(TicketStatus.RESOLVED);
+        assertThat(cap.getValue().getNewStatus()).isEqualTo(TicketStatus.CLOSED);
     }
 }

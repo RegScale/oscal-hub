@@ -34,7 +34,11 @@ public class TicketAutoCloseJob {
             t.setUpdatedAt(LocalDateTime.now());
             tickets.save(t);
             // Author of system comment is the ticket reporter (avoids schema change for null author).
-            comments.save(TicketComment.statusChange(t, t.getReporter(), old, TicketStatus.CLOSED));
+            TicketComment c = new TicketComment(t, t.getReporter(), "Auto-closed after 7 days in Resolved.");
+            c.setStatusChange(true);
+            c.setOldStatus(old);
+            c.setNewStatus(TicketStatus.CLOSED);
+            comments.save(c);
         }
         if (!stale.isEmpty()) log.info("Auto-closed {} resolved tickets", stale.size());
     }
