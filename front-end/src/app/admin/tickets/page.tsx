@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { listAdminTickets } from '@/lib/api/tickets';
@@ -14,6 +14,17 @@ const ALL_STATUSES: TicketStatus[] = ['OPEN','IN_PROGRESS','RESOLVED','CLOSED','
 const ALL_PRIORITIES: TicketPriority[] = ['LOW','MEDIUM','HIGH','CRITICAL'];
 
 export default function AdminTicketsPage() {
+  // Suspense boundary required by Next 16 for pages that read query params
+  // via useSearchParams() — the inner component bails out of static
+  // pre-rendering, so wrap it explicitly to avoid a build-time error.
+  return (
+    <Suspense fallback={null}>
+      <AdminTicketsPageInner />
+    </Suspense>
+  );
+}
+
+function AdminTicketsPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { user } = useAuth();

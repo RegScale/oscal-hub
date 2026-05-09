@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type AdminUsersTab = 'users-by-org' | 'all-users' | 'archived' | 'pending-requests' | 'analytics';
@@ -60,6 +60,16 @@ interface AllUser {
 }
 
 export default function AdminUsersPage() {
+  // Suspense boundary required by Next 16 for pages that read query params
+  // via useSearchParams().
+  return (
+    <Suspense fallback={null}>
+      <AdminUsersPageInner />
+    </Suspense>
+  );
+}
+
+function AdminUsersPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab: AdminUsersTab = tabFromParam(searchParams.get('tab'));

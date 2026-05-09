@@ -54,7 +54,11 @@
     "react-markdown": "^10.1.0",
     "react-window": "^1.8.11",
     "recharts": "^3.8.1",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
+    "remark-mdx-frontmatter": "^5.2.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "yaml": "^2.8.4"

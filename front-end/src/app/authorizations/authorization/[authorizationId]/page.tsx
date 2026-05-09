@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,16 @@ import { ContinuousMonitoringTab } from './_tabs/conmon-tab';
 import { DocumentsTab } from './_tabs/documents-tab';
 
 export default function AuthorizationDetailPage() {
+  // Suspense boundary required by Next 16 for pages that read query params
+  // via useSearchParams().
+  return (
+    <Suspense fallback={null}>
+      <AuthorizationDetailPageInner />
+    </Suspense>
+  );
+}
+
+function AuthorizationDetailPageInner() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();

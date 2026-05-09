@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -89,6 +89,16 @@ const CATEGORIES = [
 ];
 
 export default function CustomRulesPage() {
+  // Suspense boundary required by Next 16 for pages that read query params
+  // via useSearchParams().
+  return (
+    <Suspense fallback={null}>
+      <CustomRulesPageInner />
+    </Suspense>
+  );
+}
+
+function CustomRulesPageInner() {
   const [customRules, setCustomRules] = useState<CustomRuleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

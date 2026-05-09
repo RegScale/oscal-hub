@@ -407,7 +407,7 @@ function AnalyticsTab() {
                     nameKey="oscalType"
                     cx="50%" cy="50%"
                     outerRadius={90}
-                    label={(e) => `${e.oscalType}: ${e.itemCount}`}
+                    label={(e: any) => `${e.oscalType}: ${e.itemCount}`}
                   >
                     {data.byType.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
