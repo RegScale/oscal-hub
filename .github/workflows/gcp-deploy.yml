@@ -90,6 +90,9 @@ jobs:
             -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
             -var="region=${{ vars.GCP_REGION }}" \
             -var="image_tag=${{ github.event.pull_request.head.sha }}" \
+            -var="otel_enabled=${{ vars.OTEL_ENABLED || 'false' }}" \
+            -var="otel_collector_image=${{ vars.OTEL_COLLECTOR_IMAGE }}" \
+            -var="alert_email=${{ vars.ALERT_EMAIL }}" \
             -out=tfplan 2>&1 | tee plan.txt
         continue-on-error: true
 
@@ -241,7 +244,10 @@ jobs:
           terraform apply -auto-approve -input=false -lock-timeout=10m \
             -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
             -var="region=${{ vars.GCP_REGION }}" \
-            -var="image_tag=${{ needs.build-and-push.outputs.image_tag }}"
+            -var="image_tag=${{ needs.build-and-push.outputs.image_tag }}" \
+            -var="otel_enabled=${{ vars.OTEL_ENABLED || 'false' }}" \
+            -var="otel_collector_image=${{ vars.OTEL_COLLECTOR_IMAGE }}" \
+            -var="alert_email=${{ vars.ALERT_EMAIL }}"
 
       - name: Capture outputs
         id: outputs

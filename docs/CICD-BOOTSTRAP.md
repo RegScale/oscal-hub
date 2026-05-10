@@ -103,7 +103,13 @@ for ROLE in \
   roles/iam.serviceAccountUser \
   roles/serviceusage.serviceUsageAdmin \
   roles/compute.networkAdmin \
-  roles/vpcaccess.admin
+  roles/vpcaccess.admin \
+  roles/monitoring.editor \
+  roles/monitoring.dashboardEditor \
+  roles/logging.configWriter \
+  roles/bigquery.admin \
+  roles/pubsub.admin \
+  roles/resourcemanager.projectIamAdmin
 do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${DEPLOY_SA}" \
@@ -115,6 +121,14 @@ done
 > If you don't use VPC connectors or Secret Manager today (the current
 > `main.tf` has them commented out), drop those two roles. Add them back if
 > you uncomment those modules.
+
+The last six roles cover resource types added by the OTel/analytics work
+(`alerts.tf`, `dashboards.tf`, `events-sink.tf`, `modules/analytics-bigquery`,
+`modules/analytics-pubsub`, `modules/otel-collector`, `modules/dimsync-job`).
+Without them, `terraform refresh` fails with `403 Permission denied` on
+`monitoring.alertPolicies.get`, `monitoring.dashboards.get`,
+`logging.sinks.get`, `bigquery.datasets.get`, `pubsub.topics.get`, and
+`resourcemanager.projects.getIamPolicy`.
 
 ## Step 4 — Create the Workload Identity Pool + Provider
 
@@ -161,6 +175,15 @@ Variables (non-sensitive, visible in logs):
 | `GCP_WIF_PROVIDER` | output from Step 4 |
 | `GCP_DEPLOY_SA` | `$DEPLOY_SA` |
 | `TF_STATE_BUCKET` | `$STATE_BUCKET` |
+| `OTEL_ENABLED` | `true` to attach the OTel Java agent to the API service; otherwise unset |
+| `OTEL_COLLECTOR_IMAGE` | Fully-qualified image of the OTel collector (empty disables the module) |
+| `ALERT_EMAIL` | Email for Cloud Monitoring notifications; empty disables the email channel |
+
+The last three are optional and forwarded to Terraform via `-var=` from the
+deploy workflow. They mirror values that previously lived only in the
+gitignored `terraform/gcp/terraform.tfvars` — committing them as variables
+keeps the workflow stateless and lets CI deploy without needing a tfvars
+file in the runner.
 
 Set them via `gh`:
 
@@ -170,6 +193,11 @@ gh variable set GCP_REGION --body "$REGION" --repo "$GH_REPO"
 gh variable set GCP_WIF_PROVIDER --body "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider" --repo "$GH_REPO"
 gh variable set GCP_DEPLOY_SA --body "$DEPLOY_SA" --repo "$GH_REPO"
 gh variable set TF_STATE_BUCKET --body "$STATE_BUCKET" --repo "$GH_REPO"
+
+# Optional — set if you've enabled OTel / analytics / alert emails:
+gh variable set OTEL_ENABLED         --body "true" --repo "$GH_REPO"
+gh variable set OTEL_COLLECTOR_IMAGE --body "us-central1-docker.pkg.dev/oscal-hub/oscal-tools/otel-collector:<tag>" --repo "$GH_REPO"
+gh variable set ALERT_EMAIL          --body "you@example.com" --repo "$GH_REPO"
 ```
 
 No secrets are required for the deploy itself — WIF replaces `GCP_SA_KEY`.
