@@ -40,15 +40,21 @@ variable "memory_limit" {
 }
 
 variable "min_instances" {
-  description = "Minimum number of instances"
+  description = "Minimum warm instances. Set ≥1 to avoid cold-start latency."
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "max_instances" {
-  description = "Maximum number of instances"
+  description = "Maximum instances Cloud Run can scale to."
   type        = number
-  default     = 10
+  default     = 3
+}
+
+variable "concurrency" {
+  description = "Max concurrent requests per instance before autoscaling. 80 is the v2 default."
+  type        = number
+  default     = 80
 }
 
 variable "environment_variables" {

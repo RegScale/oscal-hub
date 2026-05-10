@@ -13,7 +13,7 @@ resource "google_sql_database_instance" "postgres" {
 
   settings {
     tier              = var.db_tier
-    availability_type = var.db_tier == "db-f1-micro" ? "ZONAL" : "REGIONAL"
+    availability_type = var.availability_type
     disk_type         = "PD_SSD"
     disk_size         = var.disk_size_gb
     disk_autoresize   = true
@@ -57,7 +57,10 @@ resource "google_sql_database_instance" "postgres" {
 
     database_flags {
       name  = "shared_buffers"
-      value = "50000" # ~400MB in 8kB pages (within db-f1-micro limits: 13107-78643)
+      # 8 KB pages. Default 115000 ≈ 900 MB, tuned for db-custom-1-3840.
+      # Bump proportionally if you upgrade the tier; never set above ~25% of
+      # instance RAM or the OS/connection backends start hitting OOM.
+      value = var.shared_buffers_8kb_pages
     }
 
     # Insights configuration for monitoring

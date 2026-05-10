@@ -33,8 +33,8 @@ resource "google_cloud_run_v2_job" "dimsync" {
   template {
     template {
       service_account = google_service_account.dimsync.email
-      max_retries     = 1
-      timeout         = "600s"
+      max_retries     = var.max_retries
+      timeout         = "${var.timeout_seconds}s"
 
       containers {
         image = var.image
@@ -83,8 +83,8 @@ resource "google_cloud_run_v2_job" "dimsync" {
 
         resources {
           limits = {
-            cpu    = "1"
-            memory = "512Mi"
+            cpu    = var.cpu
+            memory = var.memory
           }
         }
 

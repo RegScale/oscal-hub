@@ -21,3 +21,27 @@ variable "cloud_sql_connection" {
   type        = string
   description = "Cloud SQL instance connection name (project:region:instance) for VPC-less attach."
 }
+
+variable "cpu" {
+  type        = string
+  default     = "2000m"
+  description = "CPU allocation per job execution. Defaults to match the main app since it's the same JVM image."
+}
+
+variable "memory" {
+  type        = string
+  default     = "4Gi"
+  description = "Memory allocation per job execution. Defaults to match the main app — same JVM + Hibernate + OTel agent footprint."
+}
+
+variable "timeout_seconds" {
+  type        = number
+  default     = 600
+  description = "Per-execution timeout."
+}
+
+variable "max_retries" {
+  type        = number
+  default     = 1
+  description = "Cloud Run Job retry count on failure."
+}

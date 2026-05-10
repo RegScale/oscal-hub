@@ -41,7 +41,19 @@ variable "db_password" {
 variable "db_tier" {
   description = "Database instance tier"
   type        = string
-  default     = "db-f1-micro"
+  default     = "db-custom-1-3840"
+}
+
+variable "availability_type" {
+  description = "Cloud SQL availability type — REGIONAL doubles cost (full standby replica)."
+  type        = string
+  default     = "ZONAL"
+}
+
+variable "shared_buffers_8kb_pages" {
+  description = "Postgres shared_buffers in 8 KB pages. ~25% of instance RAM is the rule of thumb."
+  type        = string
+  default     = "115000"
 }
 
 variable "disk_size_gb" {

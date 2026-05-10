@@ -160,6 +160,9 @@ module "database" {
   db_password    = random_password.db_password.result
   db_tier        = var.db_tier
 
+  availability_type            = var.db_availability_type
+  shared_buffers_8kb_pages     = var.db_shared_buffers_8kb_pages
+
   depends_on = [
     google_project_service.apis
   ]
@@ -237,6 +240,7 @@ module "oscal_app" {
   min_instances = var.app_min_instances
   cpu_limit     = var.app_cpu
   memory_limit  = var.app_memory
+  concurrency   = var.app_concurrency
 
 
   # Health check on backend API health endpoint
@@ -264,6 +268,11 @@ module "otel_collector" {
   environment         = var.environment
   image               = var.otel_collector_image
   api_service_account = module.oscal_app.service_account_email
+
+  cpu           = var.otel_collector_cpu
+  memory        = var.otel_collector_memory
+  min_instances = var.otel_collector_min_instances
+  max_instances = var.otel_collector_max_instances
 
   events_topic_name = length(module.analytics_pubsub) > 0 ? module.analytics_pubsub[0].topic_name : ""
 
