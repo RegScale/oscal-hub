@@ -1,0 +1,123 @@
+---
+title: Requirements
+description: Browser, system, and environment requirements for using OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Requirements
+
+Before you start working with OSCAL Hub, confirm that your browser and environment meet the requirements below. Most users on a cloud-hosted instance only need a modern browser. Self-hosters have additional prerequisites for running the application stack.
+
+---
+
+## For users (cloud-hosted)
+
+If someone has already set up OSCAL Hub for you — on GCP, AWS, Azure, or any cloud — you only need:
+
+- **A modern browser.** OSCAL Hub is tested on:
+  - Chrome 120 or later
+  - Firefox 120 or later
+  - Safari 17 or later
+  - Edge 120 or later
+- **A minimum screen resolution of 1024 × 768.** Narrower viewports are supported but the sidebar layout will collapse into a mobile drawer. Wider is better for the visual builders and the visualizer.
+- **A stable internet connection.** All file processing happens on the server. Large files (up to 10 MB by default) must fully upload before processing begins; a slow or intermittent connection will cause timeouts on big uploads.
+- **Browser cookies and local storage enabled.** OSCAL Hub stores your JWT authentication token and sidebar expansion state in `localStorage`. Blocking storage entirely will prevent sign-in from working. Private/Incognito browsing is supported but your session ends when you close the window.
+
+<Callout type="info">
+OSCAL Hub does not require any browser extensions, plugins, or installed certificates. Everything runs in plain HTTPS in a standard browser tab.
+</Callout>
+
+---
+
+## For self-hosters
+
+If you are running OSCAL Hub on your own infrastructure (local machine, VM, or private cloud), you need the following software installed before starting:
+
+### Runtime dependencies
+
+| Dependency | Minimum version | Notes |
+|---|---|---|
+| Java (JDK) | 11 | Java 17 or 21 LTS recommended. [SDKMAN](https://sdkman.io/) is the easiest way to install on macOS and Linux. |
+| Maven | 3.9 | Used to build the Spring Boot backend. |
+| Node.js | 24 | Used to build and run the Next.js frontend. |
+| PostgreSQL | 14 | Production database. Version 15 or 16 recommended. |
+| Docker | 20.10 | Optional but strongly recommended. The `./dev.sh` script uses Docker only for PostgreSQL — the backend and frontend run directly on your machine. The full `docker-compose.yml` stack runs everything in containers. |
+
+<Callout type="info">
+**Fastest path on macOS / Linux:** install [SDKMAN](https://sdkman.io/) for Java + Maven, [nvm](https://github.com/nvm-sh/nvm) for Node.js, and [Docker Desktop](https://www.docker.com/products/docker-desktop/) for PostgreSQL. You can be up and running in under 15 minutes.
+</Callout>
+
+### System resources
+
+| Resource | Minimum | Recommended |
+|---|---|---|
+| RAM | 4 GB | 8 GB |
+| Free disk space | 10 GB | 20 GB |
+| CPU cores | 2 | 4 |
+
+### Verify your environment
+
+Run these commands to check that the required tools are available before attempting to start the stack:
+
+```bash
+# Java
+java -version
+# Expected: openjdk version "11.x.x" or later
+
+# Maven
+mvn -version
+# Expected: Apache Maven 3.9.x or later
+
+# Node.js
+node -version
+# Expected: v24.x.x or later
+
+# Docker
+docker --version
+# Expected: Docker version 20.10.0 or later
+
+# PostgreSQL client (optional, for manual schema inspection)
+psql --version
+# Expected: psql (PostgreSQL) 14.x or later
+```
+
+For full setup instructions, see the [Local Deployment guide](/guide/reference/deployment/local).
+
+---
+
+## Supported OSCAL formats
+
+OSCAL Hub reads and writes three serialization formats:
+
+| Format | File extensions | Notes |
+|---|---|---|
+| XML | `.xml` | The canonical OSCAL format; all NIST-published examples use XML. |
+| JSON | `.json` | Widely used for API-driven workflows and tooling integrations. |
+| YAML | `.yaml`, `.yml` | Human-friendly; preferred for hand-editing and version control. |
+
+Format is **auto-detected from the file extension** when you upload. If a file has an unexpected or missing extension, use the **"Format"** dropdown on the upload form to specify the format explicitly.
+
+All three formats are semantically equivalent — converting between them preserves every field, value, and relationship in the document.
+
+---
+
+## File-size limits
+
+The default upload limit is **10 MB per file**. This covers the vast majority of real-world OSCAL documents, including large SSPs with hundreds of control implementations.
+
+<Callout type="warn">
+Self-hosters can raise or lower the limit via the `spring.servlet.multipart.max-file-size` and `spring.servlet.multipart.max-request-size` settings in `application.properties`. Cloud-hosted deployments use the 10 MB default unless your organization's administrator has changed it.
+</Callout>
+
+If you regularly work with files larger than 10 MB, use the [Batch](/guide/tools/batch) endpoint, which is designed for high-throughput bulk processing and can handle larger payloads when configured appropriately.
+
+---
+
+## Browser cookies and local storage
+
+OSCAL Hub relies on two browser storage mechanisms:
+
+- **`localStorage`** — Stores your JWT authentication token (under the key `token`) and your user profile (under `user`). If `localStorage` is blocked, you cannot sign in.
+- **Session state** — The sidebar's open/closed state is kept in React component state (in-memory only). It resets on page reload, which is expected behavior.
+
+If you are troubleshooting a sign-in issue, open your browser's developer tools and check **Application → Local Storage** to confirm that `token` and `user` keys are present after logging in. If they are missing, check that your browser is not blocking storage for the OSCAL Hub domain.

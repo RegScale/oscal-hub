@@ -130,9 +130,9 @@ docker info
 The project uses multiple Docker Compose files:
 
 - **`docker-compose-postgres.yml`** - Standalone PostgreSQL + pgAdmin (used by dev.sh)
-- **`docker-compose.yml`** - Full stack in containers (postgres + oscal-ux + pgadmin)
-- **`docker-compose.prod.yml`** - Production configuration
-- **`docker-compose-monitoring.yml`** - Monitoring tools
+- **`docker-compose.yml`** - Full stack in containers (postgres + oscal-ux + pgadmin), for local dev
+- **`deploy/compose/docker-compose.yml`** - Production self-hosted deployment (app + Postgres + Nginx)
+- **`docker-compose-monitoring.yml`** - Monitoring tools (Prometheus + Grafana)
 
 ## Environment Variables
 

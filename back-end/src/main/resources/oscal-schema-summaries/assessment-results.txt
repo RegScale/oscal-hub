@@ -1,0 +1,49 @@
+OSCAL Assessment Results — Metaschema short-name "oscal-ar", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: assessment-results
+Required children of assessment-results:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+  - import-ap (assembly with @href)
+  - results (list — at least one)
+Optional:
+  - local-definitions (assembly)
+  - back-matter
+
+Key Metapath addresses (relative to assessment-results/):
+  - metadata/title, metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - import-ap@href (URI reference, required)
+  - local-definitions/objectives-and-methods/local-objective@control-id
+  - local-definitions/activities/activity@uuid
+  - results/result@uuid (UUID, unique within results)
+  - results/result/title (required)
+  - results/result/description (required)
+  - results/result/start (required, dateTime)
+  - results/result/end (dateTime)
+  - results/result/local-definitions/assessment-tasks/task@uuid
+  - results/result/reviewed-controls/control-selections/control-selection/include-controls/with-id
+  - results/result/attestations/parts/part@name
+  - results/result/assessment-log/entry@uuid
+  - results/result/assessment-log/entry/start (dateTime)
+  - results/result/observations/observation@uuid
+  - results/result/observations/observation/methods/method
+  - results/result/observations/observation/types/type
+  - results/result/observations/observation/collected (dateTime)
+  - results/result/risks/risk@uuid
+  - results/result/risks/risk/title
+  - results/result/risks/risk/status
+  - results/result/findings/finding@uuid
+  - results/result/findings/finding/target@type (statement-id, objective-id)
+  - results/result/findings/finding/target@target-id
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <has-cardinality target="results/result" min-occurs="1"/>
+  <expect target="results/result" test="end empty() or end >= start">
+    <message>[custom: r1] result end time must be at or after start time</message>
+  </expect>
+  <allowed-values target="results/result/findings/finding/target/@type">
+    <enum value="statement-id"/><enum value="objective-id"/>
+  </allowed-values>
+  <is-unique target="results/result" id="results-unique"><key-field target="@uuid"/></is-unique>
+  <matches target="import-ap/@href" regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>

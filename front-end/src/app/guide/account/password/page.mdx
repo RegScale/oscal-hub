@@ -1,0 +1,79 @@
+---
+title: Change Password
+description: How to change your OSCAL Hub password and what happens to existing sessions afterward.
+lastUpdated: 2026-05-04
+---
+
+# Change Password
+
+You can change your OSCAL Hub password at any time from the dedicated Change Password form at `/change-password`. The form requires your current password, ensuring that only someone who already has access to your account can update the credential.
+
+---
+
+## How to change your password
+
+<Steps>
+<Step title="Open the user menu">
+Click your **username or avatar** in the top-right corner of any page.
+</Step>
+<Step title="Navigate to Change Password">
+Either click **Change Password** from the user menu, or go directly to `/change-password` in your browser.
+</Step>
+<Step title="Enter your current password">
+Type your existing password in the **Current Password** field. This verifies your identity before allowing the change.
+</Step>
+<Step title="Enter your new password">
+Type the new password in the **New Password** field. See the [complexity rules](#complexity-rules) below for what is required.
+</Step>
+<Step title="Confirm your new password">
+Re-enter the same new password in the **Confirm New Password** field.
+</Step>
+<Step title="Click Update Password">
+Click **Update Password** (or **Save**). A success message confirms the change.
+</Step>
+</Steps>
+
+---
+
+## Complexity rules
+
+OSCAL Hub enforces the following minimum requirements for all passwords:
+
+- At least **8 characters** in length.
+- The new password must **differ from your previous password** — you cannot reuse your current password.
+- Depending on your organization's security policy, additional requirements may apply: mixed case letters, at least one digit, and at least one special character (such as `!`, `@`, `#`, or `$`).
+
+If you submit a password that does not meet the requirements, an inline error message describes exactly which rule was not satisfied.
+
+---
+
+## What happens to existing sessions
+
+Changing your password **invalidates all other active sessions**. Any device or browser where you were previously signed in will receive a `403 Forbidden` response on the next protected API request, and the user will be redirected to the login page.
+
+The session on the **device that performed the password change** remains active — you do not need to sign in again immediately after updating.
+
+<Callout type="info">
+OSCAL Hub issues JWT tokens with a 24-hour lifetime. Even without an explicit sign-out, other sessions will expire within 24 hours. Changing your password clears them immediately rather than waiting for natural expiration.
+</Callout>
+
+---
+
+## Locked out of your account?
+
+If you have forgotten your current password and cannot complete the form:
+
+1. **Use Forgot Password** on the login page (`/login`). Enter your registered email address to receive a reset link.
+2. If the email does not arrive within a few minutes, check your spam folder or contact your organization administrator.
+
+<Callout type="warn">
+If you no longer have access to the email address on file — for example, you left a previous employer — you will not receive a reset email. Contact your **Org Admin**, who can trigger a password reset for your account from the admin dashboard. If there is no Org Admin available, contact a **Super Admin**.
+</Callout>
+
+---
+
+## Related
+
+- [Profile](/guide/account/profile)
+- [MFA Setup](/guide/account/mfa-setup)
+- [Sign in & MFA](/guide/getting-started/sign-in-and-mfa)

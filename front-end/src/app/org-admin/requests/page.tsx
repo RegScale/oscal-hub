@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface AccessRequest {
   id: number;
@@ -167,7 +168,10 @@ export default function OrgAdminRequestsPage() {
           Back to Dashboard
         </button>
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Access Requests</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Access Requests</h1>
+          <HelpButton slug="org-admin-requests" />
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mb-8">Review and manage access requests for your organization</p>
 
         {/* Alerts */}

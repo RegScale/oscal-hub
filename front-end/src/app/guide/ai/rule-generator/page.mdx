@@ -1,0 +1,179 @@
+---
+title: AI Validation Rule Generator
+description: Describe a validation rule in plain English and let the AI generate, test, and save it as an enforceable OSCAL constraint.
+lastUpdated: 2026-05-05
+---
+
+# AI Validation Rule Generator
+
+The AI Validation Rule Generator turns a plain-English description of a validation rule into a real, enforceable Metaschema constraint. Instead of hand-writing Metapath expressions and constraint XML, you describe what the rule should check, and the wizard:
+
+1. Asks clarifying questions if the description is ambiguous.
+2. Generates the formal constraint XML.
+3. Generates synthetic test cases to verify the rule does what you described.
+4. Auto-iterates if the rule misfires on its own tests.
+5. Saves the rule so it actually fires when documents are validated.
+
+Rules saved through the wizard are functionally identical to hand-authored custom rules: they apply to validation jobs in your account, surface violations in results, and can be edited or disabled later from the [Custom Rules Management page](/rules/custom).
+
+---
+
+## When to use it
+
+Use the wizard when you want to:
+
+- Enforce an organisation-specific requirement that the built-in rules don't cover (e.g. *"every implemented requirement must reference a control id"*).
+- Add a guardrail you've explained verbally to your team but never codified.
+- Encode a finding from a recent audit as an automated check.
+- Try out validation ideas without learning Metapath syntax up front.
+
+You don't need it when a built-in rule already covers the case, or when you want a rule that requires logic the OSCAL Metaschema doesn't model (e.g. cross-document references between separate documents in your library — that's not a Metaschema constraint).
+
+---
+
+## Before you start
+
+- An **Org Admin must have enabled AI** for your organisation. See [AI Wizards → Feature gating](/guide/ai/overview#feature-gating).
+- You should have a **clear sentence or two** describing what the rule should check. The wizard does best with one rule per session — don't try to pack multiple unrelated checks into a single description.
+- Rules are scoped to **a single OSCAL model** (Catalog, Profile, SSP, etc.). Pick the model your rule applies to before you start.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the wizard">
+    From the [Custom Rules Management](/rules/custom) page, click **Generate with AI** in the toolbar. The wizard opens at `/rules/custom/ai-generate`.
+  </Step>
+
+  <Step title="Pick the OSCAL model">
+    Select the model your rule applies to (Catalog, Profile, System Security Plan, Component Definition, Assessment Plan, Assessment Results, or POA&M). The wizard tailors the AI's context to that model — its required fields, common Metapath addresses, and typical constraint patterns. Click **Start**.
+  </Step>
+
+  <Step title="Describe the rule in plain English">
+    In the chat panel, describe what the rule should enforce. Examples that work well:
+
+    - *"Every control in a catalog must have a non-empty title."*
+    - *"All implemented requirements in an SSP must reference a control id."*
+    - *"Profile imports must reference an existing catalog UUID."*
+    - *"Every component must declare both a description and a type."*
+
+    Click **Send** (or `Cmd/Ctrl+Enter`).
+  </Step>
+
+  <Step title="Answer clarifying questions if asked">
+    If the description is ambiguous, the AI may reply with one short clarifying question (e.g. *"Should this apply to all controls or only top-level controls outside groups?"*). Answer it like a normal chat reply and click Send again. The AI will keep clarifying until it has enough to generate.
+  </Step>
+
+  <Step title="Review the generated rule">
+    Once the AI is satisfied, the right pane shows:
+
+    - **Rule preview** — name, description, severity, and the Metaschema constraint XML.
+    - **Test matrix** — 4 to 6 synthetic test cases the AI generated to verify the rule. Each row shows whether the case was expected to pass or fail and whether the rule actually flagged it.
+
+    The wizard auto-iterates up to 3 times if any rows are red, asking the AI to refine the rule. You only see iterations beyond that limit.
+  </Step>
+
+  <Step title="Adjust if needed">
+    Three options at this point:
+
+    - **Accept it.** Type a unique **Rule id** (e.g. `org-ssp-001`) and click **Save rule**.
+    - **Hand-tweak the constraint.** Edit the Metapath in the preview pane and click **Re-test edited constraint**. The matrix re-runs against your edit; you can keep iterating.
+    - **Refine the description.** Send another chat turn explaining what's off, and the AI will revise.
+  </Step>
+
+  <Step title="Save and verify">
+    On save, you're returned to the [Custom Rules Management](/rules/custom) page. Your new rule appears with the **AI** badge and is **enabled by default** — meaning the next document you validate will be checked against it. Toggle the switch to disable, or click the rule to edit, just like any other custom rule.
+  </Step>
+</Steps>
+
+---
+
+## Reading the test matrix
+
+The test matrix is the AI's own attempt to verify the rule. Each row is a tiny synthetic OSCAL fragment with a label:
+
+| Column | Meaning |
+|---|---|
+| **#** | Test index (1-6) |
+| **Case** | What the fragment represents (e.g. *"Valid: control with title and description"*) |
+| **Expected** | What the AI thinks should happen — `pass` (rule allows it) or `fail` (rule flags it) |
+| **Actual** | What the rule actually did when run against the fragment |
+| **Status** | ✅ if Expected matches Actual; ❌ if it doesn't |
+
+A green row tells you the rule behaved as the AI designed it for that case. A red row means the rule is too permissive (let through a fragment it should have flagged) or too strict (flagged a fragment that should have been fine).
+
+<Callout type="info">
+**Red rows don't block save.** Synthetic tests are advisory — rules are inherently about flagging things, and the AI's auto-generated test bench doesn't have to be perfect for the rule itself to be useful. The wizard only blocks save when the constraint XML doesn't compile against the OSCAL Metaschema spec at all (a rule that can't be enforced).
+
+If you see a yellow "test matrix isn't clean" banner, review the matrix and decide: save anyway, refine the description, or hand-tweak the Metapath.
+</Callout>
+
+---
+
+## What the AI generates
+
+Behind the scenes, the wizard produces a **Metaschema external constraint** — the same format the OSCAL native validators understand. A typical generated rule looks like:
+
+```xml
+<assembly target="metadata">
+  <expect id="metadata-must-have-title"
+          level="ERROR"
+          test="title and string-length(title) > 0">
+    <message>[custom: org-md-001] catalog metadata must have a non-empty title</message>
+  </expect>
+</assembly>
+```
+
+You don't need to read this to use the wizard, but if you want to learn:
+
+- **target** — the path the rule applies to, relative to the document root (Metapath syntax).
+- **level** — `ERROR`, `WARNING`, or `INFORMATIONAL` — surfaces in validation results with that severity.
+- **test** — the Metapath boolean expression that must be true for the document to pass. If false, the rule fires.
+- **message** — what the user sees when the rule fires. The `[custom: <rule-id>]` prefix is added so you can tell custom violations apart from built-in ones.
+
+Saved rules appear in the read-only [Validation Rules](/rules) browse view and are enforced by the validation engine alongside the built-in NIST rules. Violations show the same way: in the validator's results panel, in operation history, and in any downstream API response.
+
+---
+
+## Limits and caveats
+
+- **One rule per session.** Each session generates exactly one rule. Start a new session to author another.
+- **Sessions are transient.** If the backend restarts (deploy, dev hot-reload), in-progress sessions are forgotten. The wizard recovers automatically: your last message is replayed on a fresh session and you'll see a small banner explaining why prior turns are gone. Saved rules are unaffected.
+- **Rules are scoped to your account.** Custom rules — including AI-generated ones — only fire on documents *you* validate. Sharing rules across users in the same org is on the roadmap; for now each user maintains their own ruleset.
+- **Cost.** Each session calls Anthropic Claude on your org's API key — typically 5k–25k tokens depending on how much clarification was needed. Org Admins can monitor usage in [Org Admin → AI Analytics](/org-admin/ai-analytics).
+- **Metaschema only.** The wizard generates Metaschema constraints — that's the OSCAL-native rule format and covers cardinality, allowed-values, pattern matching, cross-field assertions within a document, and uniqueness. It does *not* cover cross-document logic (e.g. "this SSP's controls must match the imported profile's selection") — those would need a different mechanism.
+
+---
+
+## Tips
+
+- **Be specific about what should be flagged.** "Make sure the catalog is well-formed" is too vague — the AI will ask clarifying questions. "Every control must have at least one parameter" is concrete and generates a clean rule on the first turn.
+- **Pick the smallest model that fits.** Catalog rules apply to catalogs only; SSP rules apply to SSPs only. Don't try to write a rule that targets multiple models in one session — author them separately.
+- **Don't fight the AI's first draft.** If the matrix has one or two red rows but the rule looks correct in your judgment, save it. You can always edit the rule later from the management page.
+- **Use Severity = Warning for advisory rules.** If a rule encodes a *should*, not a *must*, mark it Warning so it surfaces without blocking validation.
+
+---
+
+## Troubleshooting
+
+**The wizard says "AI features are disabled."**
+The Org Admin hasn't configured an Anthropic API key for your org. See [AI Wizards → Feature gating](/guide/ai/overview#feature-gating).
+
+**The session expired in the middle of a conversation.**
+The backend restarted. The wizard auto-recovers and replays your last message; you'll see a banner. The earlier turns of the conversation are gone — re-state any context that mattered.
+
+**The matrix never goes fully green.**
+After 3 auto-revisions the wizard returns whatever it has. If the rule logic looks correct to you despite the red rows (the AI-generated test cases may simply not match what you intended), save it. If the rule itself is wrong, refine the description and try again.
+
+**Save is disabled with a red "Couldn't generate a valid rule" banner.**
+The constraint XML didn't compile against the Metaschema spec after retries — usually means your description requires a Metapath feature the spec doesn't support, or the AI got stuck on syntax. Try clarifying the description with simpler language, or fall back to the [manual rule editor](/rules/custom).
+
+---
+
+## Related
+
+- [Custom Rules Management](/rules/custom) — view, edit, delete, enable, or disable any custom rule (AI-generated or hand-authored)
+- [Validation Rules Reference](/guide/reference/rules) — the catalogue of built-in rules and how validation works generally
+- [AI Wizards Overview](/guide/ai/overview) — feature gating, cost, and privacy notes shared across all AI wizards
+- [Validate Tool](/guide/tools/validate) — where saved rules actually fire

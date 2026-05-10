@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, Mail, Clock } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface InvitationRow {
   id: number;
@@ -144,7 +145,10 @@ export default function InvitationsPage() {
           Back to Dashboard
         </button>
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Invitations</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Invitations</h1>
+          <HelpButton slug="org-admin-invitations" />
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mb-8">
           Invite teammates to your organization and manage pending invitations
         </p>

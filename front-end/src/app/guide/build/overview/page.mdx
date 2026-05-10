@@ -1,0 +1,71 @@
+---
+title: Build Hub
+description: Create OSCAL documents visually without writing XML, JSON, or YAML by hand.
+lastUpdated: 2026-05-04
+---
+
+# Build Hub
+
+The Build Hub at `/build` is your visual workspace for creating every OSCAL document type. Instead of writing XML, JSON, or YAML by hand, you step through guided wizards that keep you in bounds and validate your work as you go.
+
+---
+
+## What it does
+
+- **Eight tabs in one place.** The hub displays eight tabs: Catalogs, Profiles, Components, SSP, AP, AR, POA&M, and Library. Each tab shows a list of documents you have already created of that type.
+- **Create-new wizard.** Clicking **Create new** inside any tab launches a multi-step wizard tailored to that OSCAL model. The wizard guides you through Metadata, model-specific content steps, and a Review & Save step.
+- **Edit existing documents.** Documents listed in each tab have an **Edit** button that reopens the wizard pre-populated with the saved content.
+- **Built-in Schema Validation.** The final step of every wizard includes a **Schema Validation** panel. It runs the same checks as the standalone Validate tool and shows errors and warnings inline before you commit the save.
+- **Save to Library.** After saving a document you can click **Save to Library** to publish it to your personal or organization library with a chosen visibility level (Private, Organization, or Public).
+- **AI-assisted drafting.** An "Generate with AI" banner at the top of the hub links to the AI wizard, which can draft a catalog, component definition, or SSP from a PDF, URL, or text description and then open it in the appropriate builder pre-populated.
+- **Reusable Element Library.** The Library tab provides a palette of reusable roles, parties, links, and resources that can be referenced across all your OSCAL documents.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to the Build Hub">
+    From the dashboard, click the **Build** card or go to `/build` directly. You must be signed in — the hub requires authentication.
+  </Step>
+  <Step title="Pick the tab for the OSCAL type you want">
+    Click one of the eight tabs: **Catalogs**, **Profiles**, **Components**, **SSP**, **AP**, **AR**, **POA&M**, or **Library**. The tab opens to a list of your saved documents of that type.
+  </Step>
+  <Step title="Click 'Create new'">
+    Click the **Create new** button in the list view. The wizard opens at Step 1: Metadata.
+  </Step>
+  <Step title="Step through the wizard">
+    Use the **Next** and **Back** buttons to move between steps. The step indicator at the top shows your progress. Required fields are marked — the wizard will not let you proceed if required fields are empty.
+  </Step>
+  <Step title="Validate and save">
+    On the **Review & Save** step, open the **Schema Validation** panel and confirm there are no errors. Then click **Save as Draft** to keep editing later, or **Save as Final** to mark it complete. After saving you can click **Save to Library** to publish it.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Validate before saving as Final.** A green checkmark in the Schema Validation panel means the document will pass the standalone Validate tool. Saving as Draft leaves validation optional; saving as Final is a good trigger to do a full check.
+- **Large catalogs and SSPs are supported** but may take a few extra seconds to load in the wizard. The editors are paginated for groups/controls to keep performance reasonable.
+- **Use the Library tab for templates.** Save a well-structured catalog or component definition to your library at Organization or Public visibility so teammates can start from it instead of a blank form.
+- **AI drafts land in the wizard.** If you use Generate with AI, the draft is automatically inserted into the appropriate wizard tab. Review and edit it just like any other document — the AI output is a starting point, not a final answer.
+- **Visibility is set at publish time.** You choose Private, Organization, or Public when you click Save to Library, not during the wizard itself. You can re-publish the same document at a different visibility level later.
+
+<Callout type="info">
+The Build Hub requires authentication. If you land on a "Please log in" message, sign in first and then navigate back to `/build`.
+</Callout>
+
+---
+
+## Related
+
+- [Build a Catalog](/guide/build/catalog)
+- [Build a Profile](/guide/build/profile)
+- [Build a Component Definition](/guide/build/component)
+- [Build a System Security Plan (SSP)](/guide/build/ssp)
+- [Build an Assessment Plan](/guide/build/assessment-plan)
+- [Build Assessment Results](/guide/build/assessment-results)
+- [Build a POA&M](/guide/build/poam)
+- [Save to Library](/guide/library/save-to-library)
+- [Library Visibility](/guide/library/visibility)

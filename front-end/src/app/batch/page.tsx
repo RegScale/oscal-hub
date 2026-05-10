@@ -13,6 +13,7 @@ import { ModelTypeSelector } from '@/components/model-type-selector';
 import { FormatSelector } from '@/components/format-selector';
 import { apiClient } from '@/lib/api-client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type {
   OscalModelType,
@@ -150,7 +151,10 @@ export default function BatchOperationsPage() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Batch Operations</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold">Batch Operations</h1>
+            <HelpButton slug="batch" />
+          </div>
           <p className="text-muted-foreground">
             Process multiple OSCAL files at once (up to 10 files)
           </p>

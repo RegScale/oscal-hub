@@ -1,0 +1,118 @@
+---
+title: Platform Security
+description: Configure IP allowlists, OAuth/OIDC identity providers, session timeout, and password requirements for the entire platform.
+lastUpdated: 2026-05-04
+---
+
+# Platform Security
+
+The Platform Security page at `/admin/security` controls the access-control and authentication infrastructure for the entire OSCAL Hub platform. Changes here affect every user on every organization — not just a single org.
+
+From this page you can manage IP allowlisting, add or remove OAuth/OIDC identity providers, set the global session idle timeout, and enforce password character-class requirements.
+
+<Callout type="warn">
+Changes on this page take effect **platform-wide and immediately**. An incorrect IP allowlist entry can lock out all users, including Super Admins. An OAuth/OIDC misconfiguration can break sign-in for users relying on that provider. Always test configuration changes in a non-production environment before applying them to production.
+</Callout>
+
+---
+
+## IP allowlist
+
+The IP allowlist restricts which IP addresses or CIDR ranges are permitted to reach the platform. By default, `SUPER_ADMIN` access is enforced through the allowlist; you can extend enforcement to all authenticated users.
+
+### Add a CIDR range to the allowlist
+
+<Steps>
+<Step title="Navigate to Platform Security">
+Go to `/admin/security` or click the Security tile on the Super Admin Dashboard.
+</Step>
+<Step title="Open the IP Allowlist section">
+Scroll to the **IP Allowlist** card, or click the Allowlist tab in the sidebar.
+</Step>
+<Step title="Click Add Entry">
+Click **Add Entry**. A text input appears.
+</Step>
+<Step title="Enter the CIDR or IP address">
+Type the CIDR block (e.g., `203.0.113.0/24`) or individual IP (e.g., `198.51.100.42`) you want to allow. IPv4 and IPv6 are both supported.
+</Step>
+<Step title="Optionally add a label">
+Enter a descriptive label (e.g., `Corporate VPN`, `Office NAT`) so you can identify the entry later.
+</Step>
+<Step title="Save">
+Click **Save**. The allowlist update is applied immediately. Confirm you can still access the platform before ending your session.
+</Step>
+</Steps>
+
+---
+
+## OAuth/OIDC identity providers
+
+Adding an OAuth/OIDC provider lets users sign in with their existing identity (e.g., Google Workspace, Microsoft Entra ID, Okta) rather than a local username and password.
+
+### Add a new provider
+
+<Steps>
+<Step title="Open the Providers section">
+Scroll to the **Identity Providers** card on `/admin/security`.
+</Step>
+<Step title="Click Add Provider">
+Click **Add Provider**. A configuration form appears.
+</Step>
+<Step title="Fill in provider details">
+Enter the following fields:
+- **Issuer URL** — The OIDC discovery endpoint base URL (e.g., `https://accounts.google.com`).
+- **Client ID** — The OAuth client ID registered with the provider.
+- **Client Secret** — The corresponding client secret (stored encrypted at rest).
+- **Scopes** — Comma-separated list of scopes (typically `openid email profile`).
+</Step>
+<Step title="Set display name">
+Enter a display name shown on the login page (e.g., `Sign in with Google`).
+</Step>
+<Step title="Save">
+Click **Save**. Users will see the new sign-in option on the `/login` page immediately. Test with a dedicated test account before communicating the change to users.
+</Step>
+</Steps>
+
+---
+
+## Session timeout
+
+The session idle timeout determines how long an authenticated user's session stays valid without activity.
+
+- **Default**: 60 minutes of idle time.
+- **Location**: Session Timeout field in the **Sessions** card on `/admin/security`.
+- **Effect**: After the configured idle period, the frontend clears the token and redirects the user to `/login`. Active interactions reset the idle timer.
+
+To change the timeout, update the value in minutes and click **Save**.
+
+---
+
+## Password requirements
+
+The password requirements section enforces character-class rules on all local-account passwords.
+
+| Setting | Description | Default |
+|---|---|---|
+| **Minimum length** | Minimum number of characters | 10 |
+| **Maximum length** | Maximum number of characters | 128 |
+| **Uppercase required** | At least one uppercase letter | Yes |
+| **Number required** | At least one digit | Yes |
+| **Special character required** | At least one non-alphanumeric character | Yes |
+
+Changes to password requirements apply on the **next** password set or reset — they do not invalidate existing passwords. To force users to update their passwords, use the password rotation policy on the [Security Policy](/guide/admin/security-policy) page.
+
+---
+
+## Tips and limits
+
+- **Keep a backup access path.** Before enabling a strict IP allowlist, ensure at least one Super Admin has an IP that is explicitly allowed. Locking out all Super Admins requires direct database access to recover.
+- **OAuth/OIDC providers are additive.** Adding a provider does not disable local-password login unless you explicitly disable it on the Security Policy page. Users can choose either method.
+- **Session timeout affects security vs. usability.** Shorter timeouts reduce risk from unattended sessions; longer timeouts reduce login friction for active users. 30–60 minutes is typical for security-sensitive platforms.
+
+---
+
+## Related
+
+- [Security Policy](/guide/admin/security-policy)
+- [Platform Users](/guide/admin/users)
+- [Super Admin Overview](/guide/admin/overview)

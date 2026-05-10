@@ -19,12 +19,13 @@ public class EmailConfig {
         @Value("${email.sendgrid.from-email}") String fromEmail,
         @Value("${email.sendgrid.from-name}") String fromName,
         @Value("${app.base-url}") String baseUrl,
+        @Value("${app.support.email}") String supportEmail,
         TemplateRenderer renderer,
         EmailAuditLogger audit
     ) {
         if (!enabled || apiKey == null || apiKey.isBlank()) {
             return new NoOpEmailService();
         }
-        return new SendGridEmailService(apiKey, fromEmail, fromName, baseUrl, renderer, audit);
+        return new SendGridEmailService(apiKey, fromEmail, fromName, baseUrl, supportEmail, renderer, audit);
     }
 }

@@ -1,0 +1,162 @@
+name: oscal-hub
+
+# OSCAL Hub - On-prem / customer-cloud Docker Compose deployment.
+#
+# Quickstart:
+#   1. cp .env.example .env  &&  edit .env (set DB_PASSWORD, JWT_SECRET, PUBLIC_HOST)
+#   2. (optional, for HTTPS) drop fullchain.pem / privkey.pem into nginx/ssl/
+#      and edit nginx/conf.d/oscal.conf (copied from oscal.conf.example)
+#   3. docker compose up -d
+#
+# To run without the bundled Nginx (e.g. behind your own ingress / load balancer):
+#   docker compose up -d --scale nginx=0 postgres oscal-hub
+#
+# To use a pre-built image instead of building from source, set OSCAL_HUB_IMAGE
+# in .env and remove the `build:` block on the oscal-hub service below.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oscal-postgres
+    restart: unless-stopped
+    networks: [oscal]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: ${DB_NAME:-oscal}
+      POSTGRES_USER: ${DB_USERNAME:-oscal}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - set in .env}
+      POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-oscal} -d ${DB_NAME:-oscal}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.25', memory: 256M }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  oscal-hub:
+    # Build from source by default. Comment this `build:` block and set
+    # `image: ${OSCAL_HUB_IMAGE}` in .env to pull a pre-built image instead.
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: ${OSCAL_HUB_IMAGE:-oscal-hub:local}
+    container_name: oscal-hub
+    restart: unless-stopped
+    networks: [oscal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    expose:
+      - "3000"   # frontend (Next.js)
+      - "8080"   # backend (Spring Boot) - reachable via nginx
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-oscal}
+      DB_DRIVER: org.postgresql.Driver
+      DB_USERNAME: ${DB_USERNAME:-oscal}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+
+      # Required secrets (no defaults, no fallbacks)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -base64 64}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+
+      # Public origin (the URL users hit in their browser). Used for CORS.
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required - e.g. https://oscal.example.com}
+
+      # Storage: defaults to local filesystem inside the container.
+      # Set STORAGE_PROVIDER=s3 / gcs / azure to use cloud object storage instead.
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-azure}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-oscal-files}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_S3_BUCKET_BUILD: ${AWS_S3_BUCKET_BUILD:-}
+
+      # Hardening (production defaults)
+      SECURITY_HEADERS_ENABLED: "true"
+      SECURITY_REQUIRE_HTTPS: ${SECURITY_REQUIRE_HTTPS:-true}
+      RATE_LIMIT_ENABLED: "true"
+      ACCOUNT_LOCKOUT_ENABLED: "true"
+      AUDIT_LOGGING_ENABLED: "true"
+      H2_CONSOLE_ENABLED: "false"
+      SWAGGER_ENABLED: "false"
+
+      # Java / runtime tuning
+      JAVA_OPTS: ${JAVA_OPTS:--XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC}
+      LOG_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-WARN}
+      LOG_LEVEL_OSCAL: ${LOG_LEVEL_OSCAL:-INFO}
+
+      # Frontend
+      NODE_ENV: production
+      PORT: "3000"
+    volumes:
+      - oscal_data:/app/data
+      - oscal_logs:/app/logs
+      - oscal_files:/home/oscaluser/.oscal-hub/files
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 4G }
+        reservations: { cpus: '0.5', memory: 1G }
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: oscal-nginx
+    restart: unless-stopped
+    networks: [oscal]
+    depends_on:
+      oscal-hub:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  postgres_data:
+  oscal_data:
+  oscal_logs:
+  oscal_files:
+
+networks:
+  oscal:
+    driver: bridge

@@ -1,0 +1,114 @@
+---
+title: AI SSP Wizard
+description: Turn an architecture doc, system description, or existing draft SSP into an OSCAL System Security Plan with structured per-control narratives.
+lastUpdated: 2026-05-08
+---
+
+# AI SSP Wizard
+
+The AI SSP Wizard reads a source document about a system — an architecture write-up, a security questionnaire, an existing draft SSP from another tool — and drafts a structured OSCAL System Security Plan with metadata, system characteristics, components, users, and a per-control implementation narrative for every control in your chosen baseline. Instead of writing 100+ control narratives by hand or copying from a Word template, you supply the source and let AI produce the first pass.
+
+---
+
+## What it does
+
+The wizard runs a multi-pass pipeline:
+
+1. **Ingestion** — The source file is parsed via Apache Tika (PDF, Word, HTML, ODT, RTF, Markdown, plain text) or your pasted content is taken directly.
+2. **Outline pass** — A single LLM call extracts system metadata (title, version, publisher), system characteristics (system name, description, sensitivity level, information types, authorization boundary), components, users, and a fallback list of control IDs the source mentions.
+3. **Profile resolution (optional)** — If you picked a baseline profile, the platform resolves it to its control list (e.g. ~325 controls for FedRAMP Moderate) and overrides the outline's fallback list. If resolution fails or the profile uses `include-all` (which requires full catalog resolution, not yet supported), the wizard falls back to the outline's controls and shows a warning in the progress stream.
+4. **Per-chunk narrative passes** — The control list is split into chunks (10 per chunk for ≤50 controls, 20 per chunk for FedRAMP-class baselines). Each chunk gets its own LLM call that emits an `implemented-requirement` for every control with a description grounded in the source plus an `ai-confidence` prop scored `high`, `medium`, or `low`.
+5. **Java assemble pass** — Metadata, system-characteristics, system-implementation, and control-implementation are assembled deterministically. Every UUID the model emitted is overwritten with a freshly-generated v4 — the model's UUIDs are not trusted because it occasionally produces malformed values that fail OSCAL schema validation.
+6. **Handoff** — The draft is passed to the [SSP editor](/guide/build/ssp) with a structured per-control review surface.
+
+Per-pass progress streams to the UI, including the current chunk number ("Drafting implementation narratives (4 of 17)…") so you can follow long FedRAMP-scale runs.
+
+---
+
+## Supported source formats
+
+| Format | Notes |
+|--------|-------|
+| PDF | Native attachment to the model — best fidelity for figures and structured layouts |
+| Word (`.docx`) | Headings and structure used to infer system architecture |
+| HTML | Page text extracted; nav and boilerplate stripped |
+| ODT, RTF | Open Document and Rich Text |
+| Markdown, plain text | Paste directly or upload a `.md` / `.txt` file |
+
+XCCDF, SCAP, and similar STIG-style formats are not accepted — those are for the [Component-Definition Wizard](/guide/ai/component-wizard) instead.
+
+---
+
+## Profile picker
+
+The wizard offers three options for choosing a baseline:
+
+- **Pick a profile from your library** — dropdown of profiles already saved to your org library (e.g. FedRAMP Moderate, NIST 800-171). This is the recommended path because the resulting SSP will have one `implemented-requirement` per control in the chosen baseline.
+- **Paste a profile URL** — for profiles hosted externally; the wizard fetches and resolves the JSON.
+- **Skip** — let AI infer the control list from whatever the source document mentions. Useful when you don't yet have a baseline picked, or when the source is itself a draft SSP that already covers a specific set of controls.
+
+The chosen `profileHref` becomes the SSP's `import-profile.href`. If you skipped, the field is left empty and you can fill it in the editor before final save (final save no longer requires it — `import-profile` is treated as optional in OSCAL Hub).
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the AI Wizard hub">
+    Navigate to `/ai/wizard` and click the **Draft SSP from Source** card, then click **Start →**.
+  </Step>
+  <Step title="Pick a profile (or skip)">
+    Choose one: pick a profile from your org library, paste a profile URL, or click **Skip — let AI infer controls from the source document**.
+  </Step>
+  <Step title="Upload your source or paste text">
+    Drag-and-drop a PDF, Word, or HTML file, or switch to the **Paste text** tab and paste your content.
+  </Step>
+  <Step title="Run the wizard">
+    Click **Run AI Wizard**. Watch the progress stream. A FedRAMP Moderate run takes several minutes and many chunks; the wizard retries automatically on transient API errors.
+  </Step>
+  <Step title="Review the structured per-control editor">
+    When generation completes, you land on Step 3 (Body) of the SSP editor with a structured per-control card list. Each card shows the control ID, an AI-confidence chip (high / medium / low), and a truncated narrative preview. Use the filter input or the **Low confidence only** toggle to find narratives that need the most attention. Click a card to expand and edit the description, severity-of-confidence, or delete the requirement entirely.
+  </Step>
+  <Step title="Edit metadata, components, users">
+    Step back to Step 1 (Metadata) and Step 4 (Back-matter) to tighten any AI-extracted values. The system-characteristics block can be edited via the **Advanced — edit raw JSON body** panel on Step 3 if the structured editor doesn't cover everything you need.
+  </Step>
+  <Step title="Validate and save">
+    On Step 5 (Review & Save), run schema and constraint validation, then click **Save Final** when ready. **Save to Library** publishes it for your org.
+  </Step>
+</Steps>
+
+---
+
+## AI confidence scoring
+
+Each `implemented-requirement` carries an `ai-confidence` prop with one of three values:
+
+- **high** — the source document directly addresses this control with implementation specifics.
+- **medium** — the source document addresses the topic generally but doesn't fully describe the implementation.
+- **low** — the source document has no direct evidence; the description is a stock TBD-style placeholder. **These are the controls you must edit before submitting the SSP to an assessor.**
+
+The editor shows aggregate counts at the top of Step 3 ("X high / Y medium / Z low / N controls drafted by AI") and offers a **Review low confidence** drawer that lists every low-confidence requirement so you can tackle them in order.
+
+---
+
+## Tips and limits
+
+- **A profile makes the output dramatically better.** With a profile, the wizard produces one narrative per control in the baseline — which is what an assessor expects. Without a profile, you only get narratives for controls the source document happened to mention.
+- **Resolution requires explicit `with-ids`.** The platform resolves profiles by extracting `imports[].include-controls[].with-ids` from the profile JSON. Profiles using `include-all` aren't yet supported and fall back to outline-derived controls.
+- **One bad chunk doesn't kill the run.** If the LLM emits unparseable JSON for a particular chunk, the wizard logs a warning, skips that chunk, and continues. You'll see a progress message naming the chunk and how many controls were skipped — fill in those narratives in the editor afterwards.
+- **UUIDs are regenerated automatically.** The wizard does not trust any UUID the model produces — every one is overwritten with a fresh v4 in the assemble pass. This prevents the occasional malformed value (e.g. embedded space) from failing schema validation.
+- **import-profile is optional.** Both draft and final save accept an SSP without `import-profile.href` set. Add it later if you skipped the profile picker.
+- **AI features must be enabled.** If the wizard card is greyed out, ask your Org Admin to enable AI at `/org-admin/ai-settings`.
+
+<Callout type="warn">
+The AI is producing a first pass. Always review every implementation narrative before submitting an SSP to an authorizing official or assessor. Pay particular attention to low-confidence entries and to control families where your security posture is most critical (AC, AU, IA, SC, SI).
+</Callout>
+
+---
+
+## Related
+
+- [AI Wizards Overview](/guide/ai/overview) — feature gating, cost, and privacy
+- [AI POA&M Wizard](/guide/ai/poam-wizard) — turn a POA&M spreadsheet or pen-test report into OSCAL
+- [AI Catalog Wizard](/guide/ai/catalog-wizard) — generate a control catalog from a prose document
+- [SSP Builder](/guide/build/ssp) — manual SSP builder reference

@@ -1,0 +1,76 @@
+---
+title: Build a POA&M
+description: Use the POA&M wizard to document open risks and corrective action milestones for a system.
+lastUpdated: 2026-05-04
+---
+
+# Build a POA&M
+
+A Plan of Action and Milestones (POA&M) tracks the open risks and corrective actions identified during a security assessment or ongoing monitoring. Each POA&M item records a specific weakness or finding, its severity, the planned remediation steps, and target completion milestones. The POA&M imports the SSP so it can be associated with the system being tracked. See [OSCAL Model Types](/guide/reference/model-types) for the full lifecycle context.
+
+---
+
+## What it does
+
+The POA&M wizard walks you through five steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, parties (system owner, authorizing official) |
+| 2. Import | Reference to the SSP the POA&M is associated with |
+| 3. Body | POA&M items (findings, risks, milestones, deadlines) |
+| 4. Back-matter | Supporting resources and references |
+| 5. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the POA&M wizard">
+    Go to `/build` and click the **POA&M** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the POA&M **Title** (required) and **Version** (required). Add parties such as the system owner (responsible for remediation) and the authorizing official (AO) who receives the POA&M. Add a `created` date and assign roles.
+  </Step>
+  <Step title="Set the Import reference">
+    The Import step records which SSP this POA&M is associated with. Enter the **href** pointing to the saved SSP. This links each POA&M item back to the system and its control baseline so context is always available.
+  </Step>
+  <Step title="Edit the Body">
+    The Body step opens a Monaco JSON editor pre-populated with the OSCAL plan-of-action-and-milestones skeleton. The core section is `poam-items`, where each item records:
+    - **Title** — a short name for the weakness or finding
+    - **Description** — a detailed description of the risk or deficiency
+    - **Deadline** — the date by which remediation must be complete
+    - **Milestones** — intermediate checkpoints with individual completion dates and descriptions of the planned work
+    - **Risk** — optional reference to an identified risk (can cross-reference Assessment Results findings)
+
+    Add one item per open finding. Close items by updating their status as remediation is completed.
+  </Step>
+  <Step title="Add Back-matter and save">
+    Attach supporting documentation such as remediation plans or vendor tickets on the Back-matter step. On the Review & Save step, run Schema Validation, then click **Save as Draft** or **Save as Final**. After saving, click **Save to Library** to archive or share.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Create the POA&M after Assessment Results.** Open findings in an [Assessment Results](/guide/build/assessment-results) document feed directly into POA&M items. Build the AR first so you have specific finding UUIDs to reference.
+- **Update regularly, not just at assessment time.** A POA&M is a living document. Update milestone statuses and close items as remediation work is completed rather than waiting for the next assessment cycle.
+- **One POA&M per system.** Best practice is to maintain a single POA&M per system and version it over time, adding and closing items as the risk posture changes.
+- **Deadlines are tracked externally.** OSCAL Hub stores the milestone data but does not currently send deadline reminders. Track upcoming milestones in your project management system and update the POA&M when milestones are reached.
+
+<Callout type="warn">
+POA&Ms contain sensitive risk information. Set the visibility to **Private** or **Organization** when saving to the library unless your organization policy requires broader sharing.
+</Callout>
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build Assessment Results](/guide/build/assessment-results)
+- [Build a System Security Plan (SSP)](/guide/build/ssp)
+- [Save to Library](/guide/library/save-to-library)
+- [Library Visibility](/guide/library/visibility)
+- [OSCAL Model Types](/guide/reference/model-types)

@@ -5,6 +5,7 @@ import gov.nist.oscal.tools.api.model.security.GapAnalysis;
 import gov.nist.oscal.tools.api.model.security.Soc2Control;
 import gov.nist.oscal.tools.api.service.SecurityComplianceService;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -30,6 +31,7 @@ import java.util.List;
 @RequestMapping("/api/admin/security")
 @Tag(name = "Security Compliance", description = "SOC 2 security compliance endpoints")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
+@Hidden
 public class SecurityComplianceController {
 
     private final SecurityComplianceService securityComplianceService;

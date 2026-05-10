@@ -1,0 +1,87 @@
+---
+title: AI Settings
+description: Enable AI features for your org, configure the Anthropic API key, and manage usage quotas.
+lastUpdated: 2026-05-04
+---
+
+# AI Settings
+
+The AI Settings page at `/org-admin/ai-settings` controls whether AI-powered features are available to members of your organization. By default, AI features are disabled for every org. You must explicitly enable them and supply an Anthropic API key before anyone in your org can use tools like the Catalog Wizard or Component Wizard.
+
+---
+
+## What it does
+
+| Setting | Description |
+|---|---|
+| **AI Enabled toggle** | Master switch — turns AI features on or off for your entire org |
+| **Anthropic API key** | The key used to authenticate requests to Anthropic's Claude API on behalf of your org |
+| **Default model** | Which Claude model variant to use (e.g., claude-opus-4-7, claude-sonnet, claude-haiku) |
+| **Usage quota** | Per-month or per-user spending cap to limit unexpected costs |
+
+---
+
+## Enable AI for your org
+
+<Steps>
+<Step title="Open AI Settings">
+Navigate to `/org-admin/ai-settings`.
+</Step>
+<Step title="Toggle AI Enabled">
+Flip the **AI Enabled** toggle to the on position. This makes the AI feature entry points visible to org members, but no actual AI calls can be made until a valid API key is saved.
+</Step>
+<Step title="Enter your Anthropic API key">
+Paste your Anthropic API key into the **API Key** field. Generate one at [console.anthropic.com](https://console.anthropic.com). The key is encrypted at rest and never returned in plain text after saving.
+</Step>
+<Step title="Select a default model">
+Choose the Claude model your org will use by default. If in doubt, leave the preset selection — it reflects the recommended balance of capability and cost.
+</Step>
+<Step title="Acknowledge and Save">
+Check the acknowledgment checkbox confirming you understand that API usage is billed to the key's Anthropic account, then click **Save**. A success notification confirms the key fingerprint was stored.
+</Step>
+</Steps>
+
+---
+
+## Set a usage quota
+
+After saving an API key, you can configure spending limits to protect against runaway usage:
+
+- **Monthly org quota** — Total estimated USD spend allowed per calendar month across all users.
+- **Per-user quota** — Maximum estimated USD spend per individual user per month.
+
+When a quota is reached, AI features are temporarily suspended for that scope until the next billing period begins or an Org Admin raises the limit.
+
+---
+
+## Disable AI for your org
+
+To turn off AI features without deleting the stored key, toggle **AI Enabled** to off and save. The key is preserved and re-enabling is instant.
+
+To fully remove the key, use the **Disable AI** button. This clears the stored key and disables all AI features. You will need to re-enter the API key to re-enable.
+
+---
+
+<Callout type="warn">
+The Anthropic API key stored here grants access to your Anthropic billing account. Do not share it outside your team. Rotate the key periodically and immediately if you suspect it has been compromised. All costs incurred by org members are billed to the account that issued the key.
+</Callout>
+
+<Callout type="info">
+Updating or replacing the API key takes effect immediately for all new AI requests. Any request already in progress at the time of the key change will complete using the previous key. There is no interruption to the user experience.
+</Callout>
+
+---
+
+## Tips and limits
+
+- **Org Admins only.** Only users with the `ORG_ADMIN` or `SUPER_ADMIN` role can view or change these settings.
+- **The key is write-only once saved.** For security, the full API key is never displayed after the initial save. You can replace it at any time, but you cannot retrieve the current value.
+- **Model selection.** Lighter models (Haiku) are faster and cheaper; heavier models (Opus) produce higher-quality output. Use [AI Analytics](/guide/org-admin/ai-analytics) to evaluate whether the current model choice fits your cost/quality needs.
+
+---
+
+## Related
+
+- [AI Analytics](/guide/org-admin/ai-analytics)
+- [AI Wizards](/guide/ai/overview)
+- [Org Admin Overview](/guide/org-admin/overview)

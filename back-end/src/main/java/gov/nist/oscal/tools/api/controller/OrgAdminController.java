@@ -351,7 +351,7 @@ public class OrgAdminController {
 
     @Operation(
         summary = "Reset user password",
-        description = "Reset a user's password and generate a temporary password. Returns temp password (should be emailed in production). ORG_ADMIN role required."
+        description = "Reset a user's password. A single-use temporary password is generated and emailed to the user; it is never returned in the API response. ORG_ADMIN role required."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Password reset successfully"),
@@ -370,8 +370,7 @@ public class OrgAdminController {
             Map<String, String> result = userManagementService.resetPassword(userId, organizationId, adminId);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("message", "Password reset successfully. User must change password on next login.");
-            response.put("tempPassword", result.get("tempPassword"));
+            response.put("message", "Password reset. A temporary password has been emailed to the user; they must change it on next login.");
             response.put("username", result.get("username"));
             response.put("email", result.get("email"));
 

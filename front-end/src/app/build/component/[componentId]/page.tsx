@@ -9,13 +9,14 @@ import { ArrowLeft, Hammer, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { ComponentDefinitionResponse } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { ComponentBuilderWizard } from '@/components/build/ComponentBuilderWizard';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function ComponentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const orgId = user?.organizationId ?? null;
 
   const componentId = params.componentId as string;
 
@@ -77,7 +78,6 @@ export default function ComponentDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -101,7 +101,6 @@ export default function ComponentDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -121,7 +120,10 @@ export default function ComponentDetailPage() {
           <div className="flex items-center">
             <Hammer className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">Edit Component: {component.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">Edit Component: {component.title}</h1>
+                <HelpButton slug="build-component" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Update your OSCAL component definition
               </p>
@@ -132,10 +134,10 @@ export default function ComponentDetailPage() {
         <ComponentBuilderWizard
           editingComponent={component}
           onSaveComplete={handleSaveComplete}
+          userOrganizationId={orgId}
         />
       </div>
 
-      <Footer />
     </div>
   );
 }

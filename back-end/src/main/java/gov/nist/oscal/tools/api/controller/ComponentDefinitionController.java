@@ -1,9 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.ComponentDefinition;
+import gov.nist.oscal.tools.api.entity.LibraryItem;
+import gov.nist.oscal.tools.api.entity.SourceType;
 import gov.nist.oscal.tools.api.model.ComponentDefinitionRequest;
 import gov.nist.oscal.tools.api.model.ComponentDefinitionResponse;
+import gov.nist.oscal.tools.api.model.LibraryItemResponse;
+import gov.nist.oscal.tools.api.model.library.SaveToLibraryRequest;
 import gov.nist.oscal.tools.api.service.ComponentDefinitionService;
+import gov.nist.oscal.tools.api.service.library.LibraryIngestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,10 +30,13 @@ import java.util.stream.Collectors;
 public class ComponentDefinitionController {
 
     private final ComponentDefinitionService componentService;
+    private final LibraryIngestService libraryIngestService;
 
     @Autowired
-    public ComponentDefinitionController(ComponentDefinitionService componentService) {
+    public ComponentDefinitionController(ComponentDefinitionService componentService,
+                                         LibraryIngestService libraryIngestService) {
         this.componentService = componentService;
+        this.libraryIngestService = libraryIngestService;
     }
 
     @Operation(
@@ -283,6 +291,41 @@ public class ComponentDefinitionController {
             return ResponseEntity.ok(Map.of("exists", exists));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @Operation(
+        summary = "Save this component definition to the user's library",
+        description = "Idempotent on (creator, source). First call creates a library item linked to the "
+                + "component definition; subsequent calls append a new version to the existing item."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Component definition saved to library"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "403", description = "Not your component definition"),
+        @ApiResponse(responseCode = "404", description = "Component definition not found")
+    })
+    @PostMapping("/{componentId}/save-to-library")
+    public ResponseEntity<?> saveToLibrary(
+            @PathVariable Long componentId,
+            @Valid @RequestBody SaveToLibraryRequest req,
+            Principal principal) {
+        try {
+            LibraryItem saved = libraryIngestService.saveToLibrary(
+                    SourceType.COMPONENT_DEFINITION,
+                    componentId,
+                    req.getTitle(),
+                    req.getDescription(),
+                    req.getTags(),
+                    req.getVisibility(),
+                    req.getOrganizationId(),
+                    principal.getName());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(LibraryItemResponse.fromEntity(saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 }

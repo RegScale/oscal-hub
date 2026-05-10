@@ -1,0 +1,77 @@
+---
+title: Application Logs
+description: Browse and search authentication events, OSCAL operations, and error logs across the entire platform.
+lastUpdated: 2026-05-04
+---
+
+# Application Logs
+
+The Application Logs page at `/admin/logs` aggregates log output from the running backend — authentication events, OSCAL operations, and application errors — into a single searchable interface. You do not need terminal access to the server; the log stream is piped through the API and presented in the UI.
+
+---
+
+## What it shows
+
+Each log entry contains the following fields:
+
+| Field | Description |
+|---|---|
+| **Timestamp** | ISO-8601 date/time of the event |
+| **Level** | `ERROR`, `WARN`, or `INFO` |
+| **Message** | Human-readable summary of the event |
+| **User** | Username or service account associated with the event (if applicable) |
+| **Organization** | Org context at the time of the event |
+| **Request ID** | Correlation ID for tracing a request across multiple log lines |
+
+Entries are displayed in reverse-chronological order (newest first).
+
+---
+
+## Finding relevant log entries
+
+<Steps>
+<Step title="Navigate to Application Logs">
+Go to `/admin/logs` or click the Logs tile on the Super Admin Dashboard.
+</Step>
+<Step title="Search by free text">
+Type in the search bar at the top of the page. The search matches against the message, username, and request ID fields. Results update as you type.
+</Step>
+<Step title="Filter by log level">
+Use the **Level** dropdown to show only `ERROR`, `WARN`, or `INFO` entries. During an incident, start with `ERROR` to surface actionable problems first.
+</Step>
+<Step title="Click a row to see full context">
+Click any log entry to expand a detail panel showing all structured fields, the full stack trace (for errors), and any additional metadata attached to the event.
+</Step>
+<Step title="Note the Request ID">
+If you need to trace a user-reported problem, ask the user for the timestamp and use the Request ID field in the expanded view to find all related log lines from the same HTTP request.
+</Step>
+</Steps>
+
+---
+
+## Log categories
+
+The platform writes logs from three primary categories:
+
+**Auth events** (`auth`): Login attempts (success and failure), token generation, logout, password resets, MFA challenges. These are the first place to look when investigating account lockouts or suspicious access patterns.
+
+**Operations** (`operations`): Validation, conversion, profile resolution, and catalog browsing activity. Includes the OSCAL document type, file size, and operation duration.
+
+**Errors** (`error`): Unhandled exceptions, database errors, storage failures, and other server-side faults. Always paired with a stack trace in the detail panel.
+
+---
+
+## Tips and limits
+
+- **Filter to ERROR for incidents.** Production traffic generates a large volume of INFO entries. Pinning the level filter to `ERROR` dramatically reduces noise when triaging an outage.
+- **Log retention depends on your deployment.** The default Cloud Run / managed deployment retains 30 days of logs. On-premise or custom deployments depend on the configured appender and disk allocation. Older entries are not available in the UI once rotated out.
+- **Sensitive data is redacted.** Passwords, JWT tokens, and API keys are never written to logs. If you see them, it indicates a misconfiguration — file a security report immediately.
+- **High-volume operations log at INFO.** Repeated validation runs from an automated pipeline will produce many INFO entries. If log volume is a concern, adjust the log level in `application.properties` (`logging.level.gov.nist.oscal=WARN`).
+
+---
+
+## Related
+
+- [System Health](/guide/admin/health)
+- [Platform Analytics](/guide/admin/analytics)
+- [Super Admin Overview](/guide/admin/overview)

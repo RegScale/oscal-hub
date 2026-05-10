@@ -1,0 +1,93 @@
+---
+title: Save to Library
+description: How to publish any Build wizard output to the library — and how versioning works when you save the same document again.
+lastUpdated: 2026-05-04
+---
+
+# Save to Library
+
+Every Build wizard — Catalog, Profile, Component Definition, SSP, Assessment Plan, Assessment Results, and POA&M — has a **Save to Library** button. Clicking it opens a modal that collects the metadata needed to create a shareable library entry from the document you just built or edited.
+
+The first time you save a document to the library, a new card is created. Every subsequent save of the **same source document** appends a new version to that same card rather than creating a duplicate. This makes it easy to keep library items current without cluttering the library with near-identical entries.
+
+---
+
+## What the modal lets you set
+
+When the Save to Library modal opens, it exposes these fields:
+
+| Field | Required | Notes |
+|---|---|---|
+| Title | Yes | Pre-filled with the document's title from the builder |
+| Description | No | A short human-readable summary of the document |
+| Tags | No | Free-form labels; press **Enter** after each tag to add it |
+| Visibility | Yes | Private, Organization, or Public (see below) |
+
+**Visibility options in the modal:**
+
+- **Private — only me.** Only you can see this item in the library. This is the default.
+- **Organization — my team.** All members of your organization can see the item. This option is disabled if your account is not associated with an organization.
+- **Public — visible at /catalog.** The item is indexed in the Public Catalog and visible to unauthenticated visitors. See [Library Visibility](/guide/library/visibility) before choosing this option.
+
+---
+
+## Walkthrough
+
+<Steps>
+  <Step title="Open a document in a builder">
+    Navigate to `/build`, select the tab for the OSCAL type you want, and either create a new document or click **Edit** on an existing one. Complete your edits and save the document within the wizard.
+  </Step>
+  <Step title="Click 'Save to Library'">
+    After the wizard saves the document, the **Save to Library** button becomes active. Click it. The Save to Library modal opens.
+  </Step>
+  <Step title="Fill in the modal">
+    Enter or update the **Title**. Optionally add a **Description** and any **Tags** (press Enter after each tag to add it to the list). Use the **Visibility** radio buttons to choose who can see the item.
+  </Step>
+  <Step title="Click 'Save to Library' inside the modal">
+    The modal submits. If this is the first save of this document, a new library card is created and you will see it in the Browse tab at `/library`. If the document has been saved to the library before, a new version is appended to the existing card.
+  </Step>
+  <Step title="Verify the item in the library">
+    Navigate to `/library` and find your item in the Browse tab. The visibility badge on the card confirms the scope you selected. Click the card to see the full detail page, including version history.
+  </Step>
+</Steps>
+
+---
+
+## First-save vs. append semantics
+
+The platform uses a combination of `createdBy`, `sourceType`, and `sourceId` as a uniqueness key for library items. This means:
+
+- **First save:** A new library item is created with version 1.
+- **Subsequent saves of the same source document:** A new version is appended to the same library item. The card's "updated" timestamp advances and the version number increments. The previous version remains accessible in the version history on the detail page.
+
+This design means you never have to worry about creating duplicates by saving a document again after editing it. The library always shows the latest version on the card while preserving the full history.
+
+---
+
+## Save to Library vs. Save in the builder
+
+These are two separate actions:
+
+| Action | What it does |
+|---|---|
+| **Save** (inside the wizard) | Persists the in-progress document to your account so you can come back and edit it later. Not visible to anyone else. |
+| **Save to Library** | Publishes the document (or a new version of it) to the library with the metadata and visibility you choose. Makes it visible to others according to the selected scope. |
+
+You can save a document in the builder many times during development without ever publishing it to the library. When it is ready to share, use Save to Library.
+
+---
+
+## Tips
+
+- **Tags make items findable.** Use consistent, descriptive tags like `FedRAMP-High`, `NIST-800-53r5`, `template`, or `example` so your item surfaces in searches.
+- **You can change visibility later.** If you save as Private first and want to share later, you can promote the item to Organization or Public from the library card without re-saving from the builder.
+- **Version notes are not a separate field today.** To describe what changed between versions, update the Description field in the modal before saving.
+- **Saving from the builder is the recommended path for new content.** Direct upload (via the Upload tab at `/library`) is better suited for files from external tools that are not connected to a builder session.
+
+---
+
+## Related
+
+- [Build Hub](/guide/build/overview)
+- [Library Overview](/guide/library/overview)
+- [Library Visibility](/guide/library/visibility)

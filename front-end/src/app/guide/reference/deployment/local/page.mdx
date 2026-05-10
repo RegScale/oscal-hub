@@ -1,0 +1,349 @@
+---
+title: Local Deployment Guide
+description: Deploy OSCAL Hub on your local machine or VM for testing and development.
+lastUpdated: 2026-05-04
+---
+
+# Local Deployment Guide
+
+Deploy OSCAL Hub on your local machine or VM for testing and development.
+
+**Version:** 1.0.0 · **Updated:** October 26, 2025
+
+---
+
+## Overview
+
+This guide shows you how to run the full OSCAL Hub stack locally on your laptop or a VM. Perfect for testing, development, training, offline use, and demos.
+
+### What Gets Installed
+
+- **Frontend** — Next.js web application (port 3010 in dev, 3000 in production Docker)
+- **Backend API** — Spring Boot REST API (port 8090 in dev, 8080 in production Docker)
+- **PostgreSQL Database** — Production-grade database (port 5432)
+- **pgAdmin** — Database management UI (port 5050)
+
+All running in Docker containers for easy setup and isolation.
+
+<Callout type="info">
+Dev mode (`./dev.sh`) uses port **8090** for the backend and **3010** for the frontend so OSCAL Hub can run alongside other tools that occupy ports 8080 and 3000. Production Docker Compose still uses 8080 / 3000. Override locally with the `SERVER_PORT=` and `FRONTEND_PORT=` environment variables.
+</Callout>
+
+---
+
+## Quick Start (5 Minutes)
+
+### Option 1: Automated Script (Easiest)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/RegScale/oscal-hub.git
+cd oscal-cli
+
+# 2. Run the development startup script (from project root)
+./dev.sh
+
+# 3. Open your browser
+open http://localhost:3010
+```
+
+The script will:
+
+- Check prerequisites
+- Start PostgreSQL via Docker
+- Start the backend (Spring Boot)
+- Start the frontend (Next.js dev server)
+
+**Total time:** 5–10 minutes (longer on first run)
+
+### Option 2: Manual Docker Compose
+
+```bash
+# 1. Clone and build
+git clone https://github.com/RegScale/oscal-hub.git
+cd oscal-cli
+
+# 2. Build backend
+cd back-end
+mvn clean package -DskipTests
+cd ..
+
+# 3. Build frontend
+cd front-end
+npm ci
+npm run build
+cd ..
+
+# 4. Start with Docker Compose
+docker-compose up -d
+
+# 5. Open browser
+open http://localhost:3000
+```
+
+<Callout type="info">
+The Docker Compose stack uses the production ports (3000 / 8080). Use `./dev.sh` for development to get ports 3010 / 8090.
+</Callout>
+
+### Option 3: Development Mode (No Docker for app)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/RegScale/oscal-hub.git
+cd oscal-cli
+
+# 2. Start PostgreSQL (Docker only for database)
+docker-compose -f docker-compose-postgres.yml up -d
+
+# 3. Start backend (in one terminal)
+cd back-end
+mvn spring-boot:run -Dspring.profiles.active=dev
+
+# 4. Start frontend (in another terminal)
+cd front-end
+npm install
+npm run dev
+
+# Access:
+# - Frontend: http://localhost:3010
+# - Backend API: http://localhost:8090
+```
+
+---
+
+## Prerequisites
+
+### Required Software
+
+#### 1. Docker Desktop (version 20.10+)
+
+- **macOS:** [Download Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+- **Windows:** [Download Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+- **Linux:** [Download Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/)
+
+#### 2. Git
+
+- **macOS:** Already installed or via Homebrew: `brew install git`
+- **Windows:** [Download Git for Windows](https://git-scm.com/download/win)
+- **Linux:** `sudo apt-get install git` (Ubuntu/Debian)
+
+### System Requirements
+
+| Requirement | Minimum | Recommended |
+|---|---|---|
+| RAM | 4 GB | 8 GB |
+| Disk Space | 10 GB free | 20 GB free |
+| CPU | 2 cores | 4 cores |
+| OS | macOS 11+, Windows 10+, Ubuntu 20.04+ | Latest versions |
+
+### Verify Prerequisites
+
+```bash
+# Check Docker
+docker --version
+# Expected: Docker version 20.10.0 or higher
+
+# Check Docker Compose
+docker-compose --version
+# Expected: Docker Compose version 2.x or higher
+
+# Check if Docker is running
+docker info
+# Should show Docker engine information
+```
+
+---
+
+## Using the Application
+
+### First-Time Setup
+
+<Steps>
+<Step title="Open your browser">
+Navigate to [http://localhost:3010](http://localhost:3010) (dev mode) or [http://localhost:3000](http://localhost:3000) (Docker Compose).
+</Step>
+<Step title="Register an account">
+Click **Register** or **Sign Up**.
+</Step>
+<Step title="Fill in your details">
+Password must be at least 10 characters with uppercase, lowercase, digit, and special character.
+</Step>
+<Step title="Log in">
+Sign in with your new credentials.
+</Step>
+<Step title="Start validating">
+Upload and validate OSCAL documents.
+</Step>
+</Steps>
+
+### Access Points (Dev Mode)
+
+| Service | URL |
+|---|---|
+| Frontend | [http://localhost:3010](http://localhost:3010) |
+| Backend API | [http://localhost:8090/api](http://localhost:8090/api) |
+| Swagger UI | [http://localhost:8090/swagger-ui.html](http://localhost:8090/swagger-ui.html) |
+| pgAdmin | [http://localhost:5050](http://localhost:5050) (email: admin@oscal.local, password: admin) |
+
+---
+
+## Management Commands
+
+### Using the dev.sh Script
+
+```bash
+# Start all services (PostgreSQL via Docker, backend, frontend)
+./dev.sh
+
+# Stop all servers
+./stop.sh
+```
+
+### Using Docker Compose (Full Stack)
+
+```bash
+# View running containers
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f oscal-ux
+docker-compose logs -f postgres
+
+# Stop application
+docker-compose stop
+
+# Start application
+docker-compose start
+
+# Restart specific service
+docker-compose restart oscal-ux
+
+# Stop and remove containers
+docker-compose down
+
+# Stop and remove containers + volumes (deletes data!)
+docker-compose down -v
+```
+
+---
+
+## Troubleshooting
+
+### Docker is not running
+
+**Symptom:** Script fails with "Docker daemon is not running"
+
+**Solution:**
+
+1. Start Docker Desktop application
+2. Wait for Docker to fully start (icon in system tray)
+3. Verify with: `docker info`
+4. Run the script again: `./dev.sh`
+
+### Port already in use
+
+**Symptom:** Error: Port 3010 or 8090 is already in use
+
+```bash
+# Find what's using port 3010
+lsof -i :3010
+# Kill the process
+kill -9 <PID>
+
+# Or for port 8090
+lsof -i :8090
+kill -9 <PID>
+```
+
+### Container keeps restarting
+
+**Symptom:** `docker-compose ps` shows "Restarting" status
+
+```bash
+# View logs to see error
+docker-compose logs oscal-ux
+
+# Common causes:
+# 1. Database not ready - wait 30 seconds and check again
+# 2. Environment variable missing - check docker-compose.yml
+# 3. Port conflict - see "Port already in use" above
+
+# Try restart
+docker-compose restart
+```
+
+### Frontend shows "Cannot connect to API"
+
+**Symptom:** Frontend loads but shows connection error
+
+```bash
+# 1. Check if backend is running
+curl http://localhost:8090/api/health
+
+# 2. If not responding, check logs
+docker-compose logs oscal-ux
+
+# 3. Common fixes:
+# - Wait longer (backend takes 30-60 seconds to start)
+# - Check if port 8090 is accessible
+# - Restart: docker-compose restart oscal-ux
+```
+
+---
+
+## Advanced Configuration
+
+### Custom Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# Database
+DB_NAME=oscal_dev
+DB_USER=oscal_user
+DB_PASSWORD=oscal_dev_password
+
+# Application
+JWT_SECRET=dev-secret-key-at-least-32-characters-long
+CORS_ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3001
+
+# Features
+SPRING_PROFILES_ACTIVE=dev
+SWAGGER_ENABLED=true
+RATE_LIMIT_ENABLED=false
+```
+
+### Comparison: Local vs Azure Deployment
+
+| Feature | Local Deployment | Azure Deployment |
+|---|---|---|
+| Setup Time | 5–10 minutes | 30–60 minutes (one-time) |
+| Cost | Free | ~$100/month |
+| Internet Required | Only for initial download | Always |
+| Scalability | Single machine | Auto-scaling |
+| Backup | Manual | Automated (7 days) |
+| SSL/HTTPS | Optional (self-signed) | Automatic |
+| Best For | Testing, Development, Demos | Production, Teams |
+
+---
+
+## Next Steps
+
+After successful local deployment:
+
+- Read the [User Guide](/guide)
+- Try validating OSCAL documents via the web interface
+- Explore the API at [http://localhost:8090/swagger-ui.html](http://localhost:8090/swagger-ui.html)
+- Learn about [Azure deployment](/guide/reference/deployment/azure) for production
+
+---
+
+## Additional Resources
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [API Automation Guide](/guide/reference/api-automation)
+- [NIST OSCAL Documentation](https://pages.nist.gov/OSCAL/)

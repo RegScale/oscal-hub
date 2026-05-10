@@ -16,17 +16,27 @@ interface Organization {
 
 export function OrganizationSwitcher() {
   const router = useRouter();
-  const { updateUser } = useAuth();
-  const [currentOrg, setCurrentOrg] = useState<string | null>(null);
-  const [currentOrgId, setCurrentOrgId] = useState<number | null>(null);
+  const { user, updateUser } = useAuth();
+  // Derive the current org directly from AuthContext.user. This auto-updates
+  // whenever updateUser() runs (e.g., after select-organization or
+  // switch-organization), so the dropdown label always reflects the active
+  // org without needing a manual refresh or remount.
+  const currentOrg = user?.organizationName ?? null;
+  const currentOrgId = user?.organizationId ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  // Look up the active org's logo from the loaded list. Falls back to the
+  // gradient initial avatar when no logoUrl is set or while the list is still
+  // loading on first render.
+  const currentOrgRecord = currentOrgId
+    ? organizations.find((o) => o.organizationId === currentOrgId) ?? null
+    : null;
+  const currentLogoUrl = currentOrgRecord?.logoUrl ?? null;
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadCurrentOrganization();
     loadOrganizations();
   }, []);
 
@@ -43,19 +53,6 @@ export function OrganizationSwitcher() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
-
-  const loadCurrentOrganization = () => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try {
-        const userData = JSON.parse(user);
-        setCurrentOrg(userData.organizationName || userData.organization);
-        setCurrentOrgId(userData.organizationId);
-      } catch (error) {
-        console.error('Failed to parse user data:', error);
-      }
-    }
-  };
 
   const loadOrganizations = async () => {
     try {
@@ -80,11 +77,9 @@ export function OrganizationSwitcher() {
       setIsOpen(false);
       const result = await apiClient.switchOrganization(orgId);
 
-      // Update local state
-      setCurrentOrg(result.organizationName);
-      setCurrentOrgId(result.organizationId);
-
-      // Sync the AuthContext with the new user data from localStorage
+      // Sync the AuthContext with the new user data from localStorage; the
+      // switcher's currentOrg / currentOrgId are derived from useAuth().user
+      // and will re-render automatically.
       updateUser();
 
       // Check if password change is required
@@ -109,11 +104,7 @@ export function OrganizationSwitcher() {
       setIsOpen(false);
       const result = await apiClient.selectOrganization(orgId);
 
-      // Update local state
-      setCurrentOrg(result.organizationName);
-      setCurrentOrgId(result.organizationId);
-
-      // Sync the AuthContext with the new user data from localStorage
+      // Sync AuthContext with the new user data; currentOrg derives from it.
       updateUser();
 
       // Check if password change is required
@@ -149,13 +140,23 @@ export function OrganizationSwitcher() {
         }`}
       >
         <div className="flex items-center space-x-2">
-          <svg className={`h-4 w-4 ${!currentOrg ? 'text-yellow-600 dark:text-yellow-400' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            {!currentOrg ? (
+          {!currentOrg ? (
+            <svg className="h-4 w-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            )}
-          </svg>
+            </svg>
+          ) : currentLogoUrl ? (
+            <img
+              src={currentLogoUrl}
+              alt={currentOrg}
+              className="h-5 w-5 object-contain rounded"
+            />
+          ) : (
+            <div className="h-5 w-5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center">
+              <span className="text-white text-xs font-bold">
+                {currentOrg.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
           <span className={`font-medium truncate max-w-[150px] ${!currentOrg ? 'text-yellow-700 dark:text-yellow-300' : ''}`}>
             {currentOrg || 'Select Organization'}
           </span>

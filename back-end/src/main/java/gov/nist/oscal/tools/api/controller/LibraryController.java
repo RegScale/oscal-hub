@@ -2,7 +2,9 @@ package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.LibraryItem;
 import gov.nist.oscal.tools.api.entity.LibraryVersion;
+import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.model.library.VisibilityChangeRequest;
 import gov.nist.oscal.tools.api.service.LibraryCommentService;
 import gov.nist.oscal.tools.api.service.LibraryRatingService;
 import gov.nist.oscal.tools.api.service.LibraryService;
@@ -183,6 +185,44 @@ public class LibraryController {
     }
 
     @Operation(
+        summary = "Change library item visibility",
+        description = "Change a library item's visibility (PRIVATE/ORGANIZATION/PUBLIC). "
+                + "Only the creator or a SUPER_ADMIN may change visibility. "
+                + "Non-creator regular users see 404 (existence is hidden). "
+                + "ORGANIZATION visibility requires organizationId; non-admins can only "
+                + "share to their own organization."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Visibility changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request (e.g. missing organizationId)"),
+        @ApiResponse(responseCode = "403", description = "Forbidden — caller cannot share to that organization"),
+        @ApiResponse(responseCode = "404", description = "Library item not found or caller may not change it")
+    })
+    @PatchMapping("/{itemId}/visibility")
+    public ResponseEntity<?> changeVisibility(
+            @PathVariable String itemId,
+            @Valid @RequestBody VisibilityChangeRequest request,
+            Principal principal) {
+        try {
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            if (caller == null) {
+                // Authenticated security layer should prevent this; if we got here
+                // without a resolvable user, treat as not-found to hide existence.
+                return ResponseEntity.notFound().build();
+            }
+            LibraryItem item = libraryService.changeVisibility(itemId, request, caller);
+            LibraryItemResponse response = LibraryItemResponse.fromEntity(item);
+            return ResponseEntity.ok(enhanceWithRatingAndComments(response));
+        } catch (IllegalArgumentException ve) {
+            return ResponseEntity.badRequest().body(Map.of("error", ve.getMessage()));
+        } catch (SecurityException fe) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (RuntimeException nf) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Operation(
         summary = "Add new version to library item",
         description = "Upload a new version of an existing library item"
     )
@@ -215,16 +255,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get library item by ID",
-        description = "Retrieve a specific library item with metadata"
+        description = "Retrieve a specific library item with metadata. Returns 404 if the item doesn't exist OR the caller cannot read it (private/org-scoped item without permission), to avoid leaking existence."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library item found"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}")
-    public ResponseEntity<LibraryItemResponse> getLibraryItem(@PathVariable String itemId) {
+    public ResponseEntity<LibraryItemResponse> getLibraryItem(@PathVariable String itemId, Principal principal) {
         try {
-            LibraryItem item = libraryService.getLibraryItem(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            LibraryItem item = libraryService.getLibraryItem(itemId, caller);
             LibraryItemResponse response = LibraryItemResponse.fromEntity(item);
             return ResponseEntity.ok(enhanceWithRatingAndComments(response));
         } catch (Exception e) {
@@ -234,16 +275,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get library item file content",
-        description = "Download the current version file content of a library item"
+        description = "Download the current version file content of a library item. Visibility-enforced: returns 404 if not readable."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File content retrieved"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}/content")
-    public ResponseEntity<Map<String, String>> getLibraryItemContent(@PathVariable String itemId) {
+    public ResponseEntity<Map<String, String>> getLibraryItemContent(@PathVariable String itemId, Principal principal) {
         try {
-            String content = libraryService.getCurrentVersionContent(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            String content = libraryService.getCurrentVersionContent(itemId, caller);
             try {
                 telemetryService.emit(EventNames.LIBRARY_ITEM_DOWNLOADED, Map.of(
                         "item_id", itemId,
@@ -260,16 +302,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get version history",
-        description = "Retrieve all versions of a library item"
+        description = "Retrieve all versions of a library item. Visibility-enforced: returns 404 if the item is not readable."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Version history retrieved"),
-        @ApiResponse(responseCode = "404", description = "Library item not found")
+        @ApiResponse(responseCode = "404", description = "Library item not found or not readable")
     })
     @GetMapping("/{itemId}/versions")
-    public ResponseEntity<List<LibraryVersionResponse>> getVersionHistory(@PathVariable String itemId) {
+    public ResponseEntity<List<LibraryVersionResponse>> getVersionHistory(@PathVariable String itemId, Principal principal) {
         try {
-            List<LibraryVersion> versions = libraryService.getVersionHistory(itemId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryVersion> versions = libraryService.getVersionHistory(itemId, caller);
             List<LibraryVersionResponse> responses = versions.stream()
                     .map(LibraryVersionResponse::fromEntity)
                     .collect(Collectors.toList());
@@ -281,16 +324,17 @@ public class LibraryController {
 
     @Operation(
         summary = "Get specific version content",
-        description = "Download the file content of a specific version"
+        description = "Download the file content of a specific version. Visibility-enforced via the parent library item."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Version content retrieved"),
-        @ApiResponse(responseCode = "404", description = "Version not found")
+        @ApiResponse(responseCode = "404", description = "Version not found or parent item not readable")
     })
     @GetMapping("/versions/{versionId}/content")
-    public ResponseEntity<Map<String, String>> getVersionContent(@PathVariable String versionId) {
+    public ResponseEntity<Map<String, String>> getVersionContent(@PathVariable String versionId, Principal principal) {
         try {
-            String content = libraryService.getVersionContent(versionId);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            String content = libraryService.getVersionContent(versionId, caller);
             return ResponseEntity.ok(Map.of("content", content));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
@@ -330,7 +374,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Search library (paginated)",
-        description = "Search library items by keyword, OSCAL type, or tag with pagination"
+        description = "Search library items by keyword, OSCAL type, or tag with pagination. Results are filtered by visibility: anonymous users see only PUBLIC items; authenticated users also see their own items and their organization's ORGANIZATION items."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Search completed successfully")
@@ -343,7 +387,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -352,7 +397,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.searchLibraryPaged(q, oscalType, tag, pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.searchLibraryVisibleToPaged(q, oscalType, tag, caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -364,7 +410,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Get all library items (paginated)",
-        description = "Retrieve all items in the library with pagination"
+        description = "Retrieve all items visible to the caller, with pagination. Results are filtered by visibility: anonymous users see only PUBLIC items; authenticated users also see their own items and their organization's ORGANIZATION items."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
@@ -374,7 +420,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -383,7 +430,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.getAllLibraryItemsPaged(pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.getAllLibraryItemsVisibleToPaged(caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -396,7 +444,7 @@ public class LibraryController {
 
     @Operation(
         summary = "Get items by OSCAL type (paginated)",
-        description = "Retrieve library items of a specific OSCAL type with pagination"
+        description = "Retrieve library items of a specific OSCAL type with pagination. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Library items retrieved successfully")
@@ -407,7 +455,8 @@ public class LibraryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            Principal principal) {
         try {
             size = Math.min(size, 100);
 
@@ -416,7 +465,8 @@ public class LibraryController {
                     : Sort.by(sortBy).descending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<LibraryItem> itemPage = libraryService.getLibraryItemsByOscalTypePaged(oscalType, pageable);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            Page<LibraryItem> itemPage = libraryService.getLibraryItemsByOscalTypeVisibleToPaged(oscalType, caller, pageable);
             PageResponse<LibraryItemResponse> response = PageResponse.of(itemPage, LibraryItemResponse::fromEntity);
             response.setContent(enhanceListWithRatingAndComments(response.getContent()));
 
@@ -428,16 +478,18 @@ public class LibraryController {
 
     @Operation(
         summary = "Get most popular items",
-        description = "Retrieve the most downloaded library items"
+        description = "Retrieve the most downloaded library items. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Popular items retrieved successfully")
     })
     @GetMapping("/popular")
     public ResponseEntity<List<LibraryItemResponse>> getMostPopular(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<LibraryItem> items = libraryService.getMostPopular(limit);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryItem> items = libraryService.getMostPopularVisibleTo(caller, limit);
             List<LibraryItemResponse> responses = items.stream()
                     .map(LibraryItemResponse::fromEntity)
                     .collect(Collectors.toList());
@@ -450,16 +502,18 @@ public class LibraryController {
 
     @Operation(
         summary = "Get recently updated items",
-        description = "Retrieve recently updated library items"
+        description = "Retrieve recently updated library items. Visibility-filtered (see /api/library)."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Recently updated items retrieved successfully")
     })
     @GetMapping("/recent")
     public ResponseEntity<List<LibraryItemResponse>> getRecentlyUpdated(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<LibraryItem> items = libraryService.getRecentlyUpdated(limit);
+            User caller = libraryService.resolveCaller(principal != null ? principal.getName() : null);
+            List<LibraryItem> items = libraryService.getRecentlyUpdatedVisibleTo(caller, limit);
             List<LibraryItemResponse> responses = items.stream()
                     .map(LibraryItemResponse::fromEntity)
                     .collect(Collectors.toList());

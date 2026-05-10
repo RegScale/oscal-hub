@@ -92,12 +92,6 @@ public class DetailedHealthResponse {
         @Schema(description = "Application version", example = "1.0.0")
         private String version;
 
-        @Schema(description = "Active Spring profile", example = "dev")
-        private String profile;
-
-        @Schema(description = "Application uptime", example = "PT2H30M15S")
-        private String uptime;
-
         @Schema(description = "Application start time", example = "2024-01-15T08:00:00Z")
         private String startTime;
 
@@ -118,22 +112,6 @@ public class DetailedHealthResponse {
 
         public void setVersion(String version) {
             this.version = version;
-        }
-
-        public String getProfile() {
-            return profile;
-        }
-
-        public void setProfile(String profile) {
-            this.profile = profile;
-        }
-
-        public String getUptime() {
-            return uptime;
-        }
-
-        public void setUptime(String uptime) {
-            this.uptime = uptime;
         }
 
         public String getStartTime() {
@@ -263,17 +241,8 @@ public class DetailedHealthResponse {
         @Schema(description = "Java version", example = "17.0.2")
         private String javaVersion;
 
-        @Schema(description = "Java vendor", example = "Eclipse Adoptium")
-        private String javaVendor;
-
-        @Schema(description = "Operating system name", example = "Linux")
+        @Schema(description = "Operating system family", example = "Linux")
         private String osName;
-
-        @Schema(description = "Operating system version", example = "5.15.0")
-        private String osVersion;
-
-        @Schema(description = "Operating system architecture", example = "amd64")
-        private String osArch;
 
         @Schema(description = "System timezone", example = "America/New_York")
         private String timezone;
@@ -289,36 +258,12 @@ public class DetailedHealthResponse {
             this.javaVersion = javaVersion;
         }
 
-        public String getJavaVendor() {
-            return javaVendor;
-        }
-
-        public void setJavaVendor(String javaVendor) {
-            this.javaVendor = javaVendor;
-        }
-
         public String getOsName() {
             return osName;
         }
 
         public void setOsName(String osName) {
             this.osName = osName;
-        }
-
-        public String getOsVersion() {
-            return osVersion;
-        }
-
-        public void setOsVersion(String osVersion) {
-            this.osVersion = osVersion;
-        }
-
-        public String getOsArch() {
-            return osArch;
-        }
-
-        public void setOsArch(String osArch) {
-            this.osArch = osArch;
         }
 
         public String getTimezone() {

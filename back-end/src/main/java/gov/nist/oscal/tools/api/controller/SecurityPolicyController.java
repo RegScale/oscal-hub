@@ -7,6 +7,7 @@ import gov.nist.oscal.tools.api.service.AuditLogCleanupService;
 import gov.nist.oscal.tools.api.service.AuditLogService;
 import gov.nist.oscal.tools.api.service.SecurityPolicyService;
 import gov.nist.oscal.tools.api.model.AuditEventType;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/security-policy")
 @Tag(name = "Security Policy", description = "Security policy management (Super Admin only)")
+@Hidden
 public class SecurityPolicyController {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityPolicyController.class);

@@ -98,9 +98,10 @@ public class AuthorizationTemplateController {
         @ApiResponse(responseCode = "404", description = "Template not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<AuthorizationTemplateResponse> getTemplate(@PathVariable Long id) {
+    public ResponseEntity<AuthorizationTemplateResponse> getTemplate(@PathVariable Long id,
+                                                                     Principal principal) {
         try {
-            AuthorizationTemplate template = templateService.getTemplate(id);
+            AuthorizationTemplate template = templateService.getTemplateForUser(id, principal.getName());
             Set<String> variables = templateService.extractVariables(template.getContent());
             return ResponseEntity.ok(new AuthorizationTemplateResponse(template, variables));
         } catch (Exception e) {
@@ -116,9 +117,9 @@ public class AuthorizationTemplateController {
         @ApiResponse(responseCode = "200", description = "Templates retrieved successfully")
     })
     @GetMapping
-    public ResponseEntity<List<AuthorizationTemplateResponse>> getAllTemplates() {
+    public ResponseEntity<List<AuthorizationTemplateResponse>> getAllTemplates(Principal principal) {
         try {
-            List<AuthorizationTemplate> templates = templateService.getAllTemplates();
+            List<AuthorizationTemplate> templates = templateService.getAllTemplatesForUser(principal.getName());
             List<AuthorizationTemplateResponse> responses = templates.stream()
                     .map(template -> {
                         Set<String> variables = templateService.extractVariables(template.getContent());
@@ -140,9 +141,10 @@ public class AuthorizationTemplateController {
     })
     @GetMapping("/recent")
     public ResponseEntity<List<AuthorizationTemplateResponse>> getRecentlyUpdated(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<AuthorizationTemplate> templates = templateService.getRecentlyUpdated(limit);
+            List<AuthorizationTemplate> templates = templateService.getRecentlyUpdatedForUser(principal.getName(), limit);
             List<AuthorizationTemplateResponse> responses = templates.stream()
                     .map(template -> {
                         Set<String> variables = templateService.extractVariables(template.getContent());
@@ -164,9 +166,10 @@ public class AuthorizationTemplateController {
     })
     @GetMapping("/search")
     public ResponseEntity<List<AuthorizationTemplateResponse>> searchTemplates(
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            Principal principal) {
         try {
-            List<AuthorizationTemplate> templates = templateService.searchTemplates(q);
+            List<AuthorizationTemplate> templates = templateService.searchTemplatesForUser(principal.getName(), q);
             List<AuthorizationTemplateResponse> responses = templates.stream()
                     .map(template -> {
                         Set<String> variables = templateService.extractVariables(template.getContent());
@@ -188,9 +191,11 @@ public class AuthorizationTemplateController {
         @ApiResponse(responseCode = "404", description = "Template not found")
     })
     @GetMapping("/{id}/variables")
-    public ResponseEntity<Map<String, Set<String>>> getTemplateVariables(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Set<String>>> getTemplateVariables(@PathVariable Long id,
+                                                                         Principal principal) {
         try {
-            Set<String> variables = templateService.extractVariablesFromTemplate(id);
+            AuthorizationTemplate template = templateService.getTemplateForUser(id, principal.getName());
+            Set<String> variables = templateService.extractVariables(template.getContent());
             return ResponseEntity.ok(Map.of("variables", variables));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();

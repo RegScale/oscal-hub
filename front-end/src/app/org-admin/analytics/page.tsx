@@ -8,6 +8,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface OrgAnalytics {
   activeUsersLast7Days: number;
@@ -123,7 +124,10 @@ export default function OrgAdminAnalyticsPage() {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back to Dashboard
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usage Analytics</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usage Analytics</h1>
+              <HelpButton slug="org-admin-analytics" />
+            </div>
             <p className="text-gray-600 dark:text-gray-400">Organization usage metrics for the last 30 days</p>
           </div>
           <button

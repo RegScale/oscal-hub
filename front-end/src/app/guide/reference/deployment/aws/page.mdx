@@ -1,0 +1,406 @@
+---
+title: AWS Deployment Guide
+description: Deploy OSCAL Hub to AWS using Elastic Beanstalk, S3, and RDS for a production-ready, auto-scaling environment.
+lastUpdated: 2026-05-04
+---
+
+# AWS Deployment Guide
+
+Deploy OSCAL Hub to AWS using Elastic Beanstalk, S3, and RDS for a production-ready, auto-scaling environment.
+
+**Version:** 1.0.0 · **Updated:** October 26, 2025
+
+---
+
+## Overview
+
+This guide provides a comprehensive deployment strategy for running OSCAL Hub on **Amazon Web Services (AWS)**. The deployment uses traditional, battle-tested AWS services for reliability and cost-effectiveness.
+
+### Key Features
+
+- **Auto-Scaling with Elastic Beanstalk** — Automatically scale from 2–6 instances based on load
+- **S3 Storage** — Reliable, scalable file storage
+- **Multi-AZ RDS PostgreSQL** — High availability database with automated backups
+- **CloudWatch Monitoring** — Comprehensive logs, metrics, and alarms
+- **No Code Rewrite Required** — Keeps your existing Java Spring Boot application
+
+<Callout type="info">
+**Why AWS?** Most widely adopted cloud platform with extensive documentation, community support, cost-effectiveness for steady-state workloads, and excellent integration with CI/CD tools.
+</Callout>
+
+---
+
+## Architecture Overview
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                      AWS Cloud Infrastructure                   │
+├────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  User Traffic → CloudFront CDN → S3 (Frontend)                  │
+│                        ↓                                         │
+│               Application Load Balancer                         │
+│                        ↓                                         │
+│           ┌────────────────────────────┐                       │
+│           │  Elastic Beanstalk         │                       │
+│           │  Java 21 (Corretto)        │                       │
+│           │  Auto Scaling Group        │                       │
+│           │  • Min: 2 instances        │                       │
+│           │  • Max: 6 instances        │                       │
+│           │  • Instance: t3.medium     │                       │
+│           └────────┬───────────────────┘                       │
+│                    │                                            │
+│         ┌──────────┼──────────┐                               │
+│         ↓                     ↓                                │
+│    ┌─────────┐        ┌──────────────┐                       │
+│    │   RDS   │        │  Amazon S3   │                       │
+│    │ Multi-AZ│        │ File Storage │                       │
+│    │PostgreSQL│        │ • oscal-files│                       │
+│    │  15.x   │        │ • oscal-build│                       │
+│    └─────────┘        └──────────────┘                       │
+│                                                                 │
+│  Supporting Services:                                          │
+│  • AWS Secrets Manager (JWT, DB credentials)                  │
+│  • CloudWatch (Logs, Metrics, Alarms)                         │
+│  • Route 53 (DNS)                                             │
+│  • Certificate Manager (SSL/TLS)                              │
+│  • VPC (Networking, Security Groups)                          │
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## AWS Services Breakdown
+
+### Elastic Beanstalk
+
+Managed platform for Java applications with automatic capacity provisioning, load balancing, and auto-scaling.
+
+- Java 21 with Corretto
+- Rolling deployments
+- Health monitoring
+
+### RDS PostgreSQL
+
+Managed relational database with automated backups, encryption, and multi-AZ support.
+
+- PostgreSQL 15.x
+- Multi-AZ deployment
+- 30-day backups
+
+### Amazon S3
+
+Object storage for OSCAL files, component definitions, and frontend static assets.
+
+- 99.999999999% durability
+- Versioning enabled
+- Lifecycle policies
+
+### CloudWatch
+
+Monitoring, logging, and alerting for application health and performance metrics.
+
+- Log aggregation
+- Custom dashboards
+- Automated alarms
+
+### Secrets Manager
+
+Secure storage for JWT secrets, database credentials, and API keys.
+
+- Automatic rotation
+- Encryption at rest
+- Fine-grained access
+
+### CloudFront CDN
+
+Global content delivery network for frontend assets with edge caching.
+
+- HTTPS only
+- Custom SSL certificate
+- DDoS protection
+
+---
+
+## Prerequisites
+
+### Required Tools
+
+#### 1. AWS CLI (version 2.x)
+
+```bash
+# macOS
+brew install awscli
+
+# Windows
+msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
+
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify
+aws --version
+```
+
+#### 2. EB CLI (Elastic Beanstalk CLI)
+
+```bash
+# Install via pip
+pip install awsebcli
+
+# Verify
+eb --version
+```
+
+#### 3. Java 21 & Maven
+
+```bash
+# macOS
+brew install openjdk@21 maven
+
+# Verify
+java -version  # Should show 21.x
+mvn -version
+```
+
+### Required Accounts
+
+- **AWS Account** with permissions for Elastic Beanstalk, RDS, S3, CloudWatch, etc.
+- **IAM User** with programmatic access (access key + secret key)
+
+<Callout type="info">
+**AWS Free Tier:** New AWS accounts include 12 months of free tier benefits — 750 hours/month of t2.micro EC2, 750 hours/month of db.t2.micro RDS, 5 GB of S3 standard storage, and more. See [aws.amazon.com/free](https://aws.amazon.com/free).
+</Callout>
+
+---
+
+## Quick Start (5 Commands)
+
+```bash
+# 1. Configure AWS credentials
+aws configure
+# Enter your Access Key ID, Secret Access Key, and region (us-east-1)
+
+# 2. Clone repository (if not already)
+git clone https://github.com/RegScale/oscal-hub.git
+cd oscal-cli
+
+# 3. Deploy backend to Elastic Beanstalk
+./deploy-backend-aws.sh prod
+
+# 4. Deploy frontend to S3 + CloudFront
+./deploy-frontend-aws.sh prod
+
+# 5. Open your application!
+# Backend: https://oscal-api-prod.us-east-1.elasticbeanstalk.com
+# Frontend: https://your-cloudfront-domain.cloudfront.net
+```
+
+<Callout type="warn">
+The deployment scripts will prompt you for required information (database password, JWT secret, etc.). For a fully automated deployment with infrastructure-as-code, see the detailed documentation below.
+</Callout>
+
+---
+
+## Detailed Deployment Steps
+
+### Step 1 — Infrastructure Setup
+
+- Create VPC with public/private subnets
+- Set up NAT Gateway for private subnet internet access
+- Create security groups for ALB, EB instances, and RDS
+- Configure Route 53 for custom domain (optional)
+
+### Step 2 — Create S3 Buckets
+
+```bash
+aws s3 mb s3://oscal-tools-files-prod --region us-east-1
+aws s3 mb s3://oscal-tools-build-prod --region us-east-1
+aws s3 mb s3://oscal-tools-frontend-prod --region us-east-1
+```
+
+### Step 3 — Create RDS PostgreSQL Database
+
+```bash
+aws rds create-db-instance \
+  --db-instance-identifier oscal-db-prod \
+  --db-instance-class db.t3.small \
+  --engine postgres \
+  --engine-version 15.4 \
+  --master-username oscal_admin \
+  --master-user-password <SECURE_PASSWORD> \
+  --allocated-storage 100 \
+  --multi-az
+```
+
+### Step 4 — Store Secrets in Secrets Manager
+
+```bash
+# Generate and store JWT secret
+aws secretsmanager create-secret \
+  --name oscal-tools/prod/jwt-secret \
+  --secret-string "$(openssl rand -base64 32)"
+
+# Store database credentials
+aws secretsmanager create-secret \
+  --name oscal-tools/prod/db-credentials \
+  --secret-string '{"username":"oscal_admin","password":"..."}'
+```
+
+### Step 5 — Deploy Backend to Elastic Beanstalk
+
+```bash
+cd back-end
+mvn clean package -DskipTests
+eb init oscal-api --platform "Corretto 21" --region us-east-1
+eb create oscal-api-prod --instance-type t3.medium
+eb deploy
+```
+
+### Step 6 — Deploy Frontend to S3 + CloudFront
+
+```bash
+cd front-end
+npm ci
+npm run build
+aws s3 sync out/ s3://oscal-tools-frontend-prod/ --delete
+aws cloudfront create-invalidation --distribution-id E1234 --paths "/*"
+```
+
+---
+
+## Monitoring & Operations
+
+### CloudWatch Dashboards
+
+Monitor your application health and performance:
+
+- **Application Metrics:** Request count, latency (p50, p95, p99), error rate
+- **Instance Metrics:** CPU utilization, memory usage, disk I/O
+- **Database Metrics:** Connections, IOPS, CPU, free storage
+- **Load Balancer:** Target response time, healthy/unhealthy hosts
+
+### CloudWatch Alarms
+
+| Alarm | Trigger |
+|---|---|
+| High CPU | CPU > 80% for 5 minutes |
+| Database Connections | Connections > 80% of max |
+| HTTP 5xx Errors | > 10 errors in 5 minutes |
+| Health Check Failures | Health check fails 3 times |
+
+### Useful Commands
+
+```bash
+# View application logs
+eb logs oscal-api-prod --stream
+
+# Check environment status
+eb status oscal-api-prod
+
+# SSH to instance (debugging)
+eb ssh oscal-api-prod
+
+# Scale instances
+eb scale 4 oscal-api-prod
+
+# View CloudWatch logs
+aws logs tail /aws/elasticbeanstalk/oscal-api-prod/var/log/tomcat/catalina.out --follow
+```
+
+---
+
+## Cost Estimation
+
+Estimated monthly AWS costs for different deployment tiers:
+
+| Service | Development | Production |
+|---|---|---|
+| Elastic Beanstalk | 1 x t3.micro: $8 | 2–6 x t3.medium: $60–180 |
+| RDS PostgreSQL | db.t3.micro (single-AZ): $15 | db.t3.small (multi-AZ): $60 |
+| S3 Storage | 10 GB: $0.23 | 100 GB: $2.30 |
+| CloudFront | $0 (minimal traffic) | 1 TB transfer: $85 |
+| ALB | $0 (use EB default) | $25 |
+| NAT Gateway | $0 (public subnet) | $35 |
+| CloudWatch | $2 | $10 |
+| Secrets Manager | $1.20 | $1.20 |
+| **Total (monthly)** | **~$26–30** | **~$280–400** |
+
+<Callout type="info">
+**Cost Savings Tips:** Use Reserved Instances (1–3 year commitment) to save 40–60%. Enable S3 Intelligent-Tiering to save 20–30% on storage. Use Spot Instances for dev/test to save up to 70%. Set up auto-scaling schedules to scale down during off-hours.
+</Callout>
+
+---
+
+## Common Issues & Solutions
+
+### EB deployment fails with "502 Bad Gateway"
+
+**Cause:** Application not starting on port 5000 or health check failing
+
+```bash
+# Check logs
+eb logs oscal-api-prod --all
+
+# Verify SERVER_PORT environment variable
+eb printenv oscal-api-prod
+
+# SSH to instance and check if app is running
+eb ssh oscal-api-prod
+sudo netstat -tlnp | grep 5000
+```
+
+### Database connection timeout
+
+**Cause:** Security group not configured or wrong DB endpoint
+
+- Verify RDS security group allows inbound from EB security group on port 5432
+- Check database endpoint is correct in environment variables
+- Ensure EB instances and RDS are in the same VPC
+- Test connection: `psql -h DB_ENDPOINT -U oscal_admin -d postgres`
+
+### S3 access denied errors
+
+**Cause:** IAM role missing S3 permissions
+
+```bash
+# Attach S3 policy to EB instance role
+aws iam attach-role-policy \
+  --role-name aws-elasticbeanstalk-ec2-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+```
+
+---
+
+## Complete Technical Documentation
+
+For comprehensive step-by-step instructions, infrastructure scripts, and advanced configuration, see the [Full AWS Deployment Guide on GitHub](https://github.com/RegScale/oscal-hub/blob/main/docs/AWS-DEPLOYMENT-GUIDE.md).
+
+The complete guide includes:
+
+- Complete VPC and subnet setup scripts
+- Detailed Elastic Beanstalk configuration files
+- `S3StorageService.java` implementation code
+- Database migration procedures
+- Monitoring dashboard setup
+- CI/CD pipeline configuration
+- Security best practices
+
+### Deployment Scripts (in repository)
+
+- `deploy-backend-aws.sh`
+- `deploy-frontend-aws.sh`
+- `back-end/.ebextensions/`
+
+---
+
+## Additional Resources
+
+- [AWS Elastic Beanstalk Documentation](https://docs.aws.amazon.com/elasticbeanstalk/)
+- [Amazon RDS PostgreSQL Documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/)
+- [Amazon S3 User Guide](https://docs.aws.amazon.com/AmazonS3/latest/userguide/)
+- [Amazon CloudWatch Documentation](https://docs.aws.amazon.com/cloudwatch/)
+- [Local Deployment Guide](/guide/reference/deployment/local)
+- [Azure Deployment Guide](/guide/reference/deployment/azure)

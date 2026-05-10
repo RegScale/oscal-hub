@@ -1,0 +1,104 @@
+---
+title: Invitations
+description: Send email invitations to new or existing users to join your organization.
+lastUpdated: 2026-05-04
+---
+
+# Invitations
+
+The Invitations page at `/org-admin/invitations` lets you invite people to your organization by email. This is the cleanest onboarding path when you know exactly who you want to add — the recipient gets a direct link to accept the invite and, if they don't yet have a platform account, they can create one in the same flow.
+
+---
+
+## What it does
+
+| Capability | Description |
+|---|---|
+| **Send invitation** | Email a tokenized invitation link to any address |
+| **Choose role** | Grant the invitee Member or Org Admin access on acceptance |
+| **Track status** | See whether each invite is pending, accepted, expired, or revoked |
+| **Resend** | Re-email the invite and refresh the token's expiry |
+| **Revoke** | Invalidate the invite token immediately |
+
+---
+
+## Send an invitation
+
+<Steps>
+<Step title="Open the Invitations page">
+Navigate to `/org-admin/invitations`.
+</Step>
+<Step title="Click Send Invitation">
+Click the **Send Invitation** button (top-right of the page). An invitation form opens.
+</Step>
+<Step title="Enter the recipient's email">
+Type the email address of the person you want to invite. Any valid email address works — the recipient does not need to have a platform account yet.
+</Step>
+<Step title="Choose a role">
+Select either **Member** (standard access) or **Org Admin** (can manage users, settings, and analytics for this org).
+</Step>
+<Step title="Click Send">
+Click **Send**. The system sends an email containing an acceptance link in the form `/accept-invite?token=…`. The invitation appears in the list with a **Pending** status.
+</Step>
+</Steps>
+
+---
+
+## Track pending invitations
+
+The invitations list shows one row per invite with the following columns:
+
+| Column | Description |
+|---|---|
+| **Email** | Recipient address |
+| **Role** | Role the invitee will receive on acceptance |
+| **Created** | Date the invitation was sent |
+| **Expires** | Date the token becomes invalid (default: 7 days from creation) |
+| **Status** | Pending / Accepted / Expired / Revoked |
+
+---
+
+## Resend an invitation
+
+If the recipient didn't receive the original email, or the invite has expired, use the **Resend** row action:
+
+<Steps>
+<Step title="Find the invite in the list">
+Locate the pending or expired invitation by email address.
+</Step>
+<Step title="Click Resend">
+Open the row actions menu and select **Resend**. A new email is dispatched with a fresh token, and the expiry clock resets to 7 days from now.
+</Step>
+</Steps>
+
+---
+
+## Revoke an invitation
+
+<Steps>
+<Step title="Find the invite in the list">
+Locate the pending invitation you want to cancel.
+</Step>
+<Step title="Click Revoke">
+Open the row actions menu and select **Revoke**. The token is invalidated immediately. Any attempt to use the old link will show an error to the recipient.
+</Step>
+</Steps>
+
+Accepted invitations cannot be revoked — the user is already a member. To remove them, use the [Users](/guide/org-admin/users) page.
+
+---
+
+## Tips and limits
+
+- **Invites expire after 7 days** by default. Use **Resend** to extend a pending invite or re-invite someone whose token lapsed.
+- **One invite per org.** Each invitation is scoped to a single org. If the same person needs access to multiple orgs, send separate invitations from each org's admin panel.
+- **Already a platform user?** The acceptance link still works. The system detects the existing account and adds the invitee to your org directly, skipping the registration step.
+- **New to the platform?** The invitee is prompted to create a username and password during acceptance. They land in your org immediately after completing registration.
+
+---
+
+## Related
+
+- [Org Users](/guide/org-admin/users)
+- [Access Requests](/guide/org-admin/access-requests)
+- [Org Admin Overview](/guide/org-admin/overview)

@@ -1,0 +1,50 @@
+OSCAL System Security Plan — Metaschema short-name "oscal-ssp", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: system-security-plan
+Required children of system-security-plan:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+  - import-profile (assembly with @href)
+  - system-characteristics (assembly)
+  - system-implementation (assembly)
+  - control-implementation (assembly)
+Optional:
+  - back-matter
+
+Key Metapath addresses (relative to system-security-plan/):
+  - metadata/title, metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - import-profile@href (URI reference, required)
+  - system-characteristics/system-name (required)
+  - system-characteristics/system-ids/system-id
+  - system-characteristics/security-sensitivity-level
+  - system-characteristics/security-impact-level/security-objective-confidentiality
+  - system-characteristics/security-impact-level/security-objective-integrity
+  - system-characteristics/security-impact-level/security-objective-availability
+  - system-characteristics/status@state (operational, under-development, under-major-modification, disposition, other)
+  - system-characteristics/authorization-boundary/description
+  - system-implementation/users/user@uuid
+  - system-implementation/components/component@uuid
+  - system-implementation/components/component@type (this-system, system, interconnection, software, etc.)
+  - system-implementation/components/component/title
+  - system-implementation/components/component/status@state
+  - system-implementation/inventory-items/inventory-item@uuid
+  - control-implementation/description (required)
+  - control-implementation/implemented-requirements/implemented-requirement@uuid
+  - control-implementation/implemented-requirements/implemented-requirement@control-id
+  - control-implementation/implemented-requirements/implemented-requirement/by-components/by-component@component-uuid
+  - control-implementation/implemented-requirements/implemented-requirement/statements/statement@statement-id
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <has-cardinality target="control-implementation/implemented-requirements/implemented-requirement" min-occurs="1"/>
+  <is-unique target="control-implementation/implemented-requirements/implemented-requirement" id="ir-control-unique">
+    <key-field target="@control-id"/>
+  </is-unique>
+  <allowed-values target="system-characteristics/status/@state">
+    <enum value="operational"/><enum value="under-development"/><enum value="under-major-modification"/><enum value="disposition"/><enum value="other"/>
+  </allowed-values>
+  <expect target="control-implementation/implemented-requirements/implemented-requirement"
+          test="exists(by-components) or exists(statements/statement/by-components)">
+    <message>[custom: r1] every implemented-requirement must reference at least one component</message>
+  </expect>
+  <matches target="import-profile/@href" regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>

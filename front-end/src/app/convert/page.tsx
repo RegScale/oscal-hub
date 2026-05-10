@@ -16,6 +16,7 @@ import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import { downloadFile, generateConvertedFilename } from '@/lib/download';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type { OscalModelType, OscalFormat, ConversionResult, SavedFile } from '@/types/oscal';
 
@@ -162,7 +163,10 @@ export default function ConvertPage() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Convert OSCAL Document</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold">Convert OSCAL Document</h1>
+            <HelpButton slug="convert" />
+          </div>
           <p className="text-muted-foreground">
             Change format between XML, JSON, and YAML with live preview
           </p>

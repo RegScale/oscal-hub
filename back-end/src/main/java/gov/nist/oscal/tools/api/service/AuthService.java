@@ -86,13 +86,21 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    /**
+     * Optional: present only under the {@code dev} Spring profile (see
+     * {@link MfaDevBypass}). Null on staging / prod / gcp / default profiles
+     * because the bean is not created there.
+     */
+    @Autowired(required = false)
+    private MfaDevBypass mfaDevBypass;
+
     @Autowired
     @org.springframework.context.annotation.Lazy
     private OrganizationService organizationService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validate password complexity. IllegalArgumentException propagates to GlobalExceptionHandler.
+        // Validate password complexity. IllegalArgumentException propagates to GlobalErrorAdvice.
         passwordValidationService.validatePassword(request.getPassword(), request.getUsername());
 
         // Check if username already exists
@@ -196,6 +204,15 @@ public class AuthService {
             // Log audit event
             auditLogService.logAuthSuccess(username, user.getId());
 
+            // Dev-only bypass: skip MFA entirely when the dev-profile bean is present and enabled.
+            // This is impossible in non-dev profiles because MfaDevBypass is @Profile("dev") and
+            // the bean is not created elsewhere — mfaDevBypass is null on staging/prod/gcp.
+            if (mfaDevBypass != null && mfaDevBypass.isActive()) {
+                logger.warn("MFA bypassed for user {} (dev profile, security.mfa.dev-bypass.enabled=true)", username);
+                String token = jwtUtil.generateToken(userDetails);
+                return new AuthResponse(token, user);
+            }
+
             // Check MFA requirements (safely handle null values)
             boolean mfaGloballyRequired = false;
             try {
@@ -297,7 +314,7 @@ public class AuthService {
         // Update password if provided
         if (updates.containsKey("password") && updates.get("password") != null && !updates.get("password").isEmpty()) {
             String newPassword = updates.get("password");
-            // IllegalArgumentException from validation propagates to GlobalExceptionHandler.
+            // IllegalArgumentException from validation propagates to GlobalErrorAdvice.
             passwordValidationService.validatePassword(newPassword, username);
             user.setPassword(passwordEncoder.encode(newPassword));
             user.setPasswordChangedAt(LocalDateTime.now());
@@ -342,6 +359,15 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setLogo(logo);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateAvatar(String username, String avatar) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setAvatar(avatar);
         return userRepository.save(user);
     }
 

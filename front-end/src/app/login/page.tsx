@@ -78,11 +78,18 @@ function LoginPageContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <Link href="/" className="block mb-8">
+        <Link href="/" className="block mb-2">
           <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
             OSCAL Hub
           </h1>
         </Link>
+        <p className="text-center text-sm text-muted-foreground mb-8">
+          <Link href="/catalog" className="hover:underline">
+            Browse OSCAL Data Products
+          </Link>
+          <span className="mx-2">·</span>
+          No account needed
+        </p>
 
         <Card>
           <CardHeader>

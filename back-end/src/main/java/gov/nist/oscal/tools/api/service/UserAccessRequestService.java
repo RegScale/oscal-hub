@@ -184,7 +184,7 @@ public class UserAccessRequestService {
 
             // If user still not found, create new account
             if (user == null) {
-                user = createUserFromRequest(request);
+                user = createUserFromRequest(request, reviewer);
             } else {
                 logger.info("Linking access request {} to existing user {}",
                     request.getId(), user.getUsername());
@@ -264,13 +264,15 @@ public class UserAccessRequestService {
     }
 
     /**
-     * Create a new user account from an access request
-     * Generates a temporary password and sets mustChangePassword flag
+     * Create a new user account from an access request.
+     *
+     * <p>Generates a single-use temporary password, sets the {@code mustChangePassword}
+     * flag, and emails the password to the requester. The plaintext password never
+     * leaves this method via logs or return value.
      */
-    private User createUserFromRequest(UserAccessRequest request) {
+    private User createUserFromRequest(UserAccessRequest request, User approver) {
         logger.info("Creating new user from access request: {}", request.getId());
 
-        // Generate temporary password (12 characters with upper, lower, digit, special)
         String tempPassword = generateTemporaryPassword();
 
         User user = new User();
@@ -281,13 +283,14 @@ public class UserAccessRequestService {
         user.setMustChangePassword(true); // Force password change on first login
         user.setGlobalRole(User.GlobalRole.USER);
 
-        // TODO: Send email with temporary password (if email service is configured)
-        // For now, log it (in production, this should be emailed to the user)
-        logger.warn("TEMPORARY PASSWORD for user {}: {}", user.getUsername(), tempPassword);
-        logger.warn("User must change password on first login");
-
         user = userRepository.save(user);
         logger.info("Created new user: {} with ID: {}", user.getUsername(), user.getId());
+
+        try {
+            emailService.sendPasswordReset(user, tempPassword, approver);
+        } catch (Exception e) {
+            logger.warn("Failed to send password-reset email for new user {}: {}", user.getUsername(), e.getMessage());
+        }
 
         return user;
     }

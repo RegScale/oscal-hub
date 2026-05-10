@@ -1,0 +1,91 @@
+---
+title: Build a Component Definition
+description: Use the Component wizard to document a system component and its control implementations against a source catalog.
+lastUpdated: 2026-05-04
+---
+
+# Build a Component Definition
+
+A Component Definition describes a technology component — such as a cloud service, operating system, or application — along with its control implementations: how the component satisfies specific security controls from a catalog. Component definitions are the building blocks you assemble when creating a System Security Plan. See [OSCAL Model Types](/guide/reference/model-types) for how components fit into the broader OSCAL model hierarchy.
+
+---
+
+## What it does
+
+The Component wizard walks you through six steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, OSCAL version, description |
+| 2. Select Controls | Choose a source catalog and the controls to implement |
+| 3. Components/Capabilities | Define each component or capability |
+| 4. Assign Controls | Map controls to specific components |
+| 5. Implementation Details | Write implementation guidance for each control-component pair |
+| 6. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the Component wizard">
+    Go to `/build` and click the **Components** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the component definition **Title** (required), **Version** (pre-filled as `1.0.0`), and an optional **Description** summarizing what this component definition covers. The OSCAL version is pre-filled; leave it unless you need to target a specific OSCAL release.
+  </Step>
+  <Step title="Select a source catalog and controls">
+    On the Select Controls step, click **Choose Catalog** to open the catalog picker. Select the catalog your component will be evaluated against (for example, NIST SP 800-53 Rev 5). Then use the control selector to pick the specific controls this component implements. You can search by control ID or keyword.
+  </Step>
+  <Step title="Define Components or Capabilities">
+    On the Components/Capabilities step, click **Add Component** to define each distinct unit. For each component provide:
+    - **Type** — the component category (for example, `software`, `hardware`, `service`, `policy`)
+    - **Title** — a short name
+    - **Description** — what the component does
+
+    You can also add **Capabilities** — named groups of control implementations that span multiple components.
+  </Step>
+  <Step title="Assign Controls to Components">
+    The Assign Controls step maps the controls you selected in Step 2 to the components you defined in Step 3. Check the controls that each component addresses.
+  </Step>
+  <Step title="Write Implementation Details">
+    For each control-component pair created in the previous step, provide an **Implementation Description** explaining how the component satisfies that control. This text becomes the `description` field in the OSCAL `implemented-requirement`.
+  </Step>
+  <Step title="Validate and save">
+    On the Review & Save step, run Schema Validation to confirm validity. Preview the JSON if needed. Click **Save as Draft** or **Save as Final**, then optionally **Save to Library** to share the component definition.
+  </Step>
+</Steps>
+
+---
+
+## Component detail editor
+
+The Build Hub also provides a deep-link editor at `/build/component/[componentId]`. This URL is a direct editor for a single saved component definition. You can link to it from other tools, embed it in workflows, or bookmark it for frequently edited components.
+
+---
+
+## AI shortcut
+
+If you need to generate a component definition from a STIG, CIS Benchmark, or other source document, use the AI wizard instead of filling in controls manually. The AI can read a PDF or URL and pre-populate all six steps with its best-effort control mappings for your review.
+
+<Callout type="info">
+See [AI Component Wizard](/guide/ai/component-wizard) for step-by-step instructions on generating component definitions from STIG and CIS content.
+</Callout>
+
+---
+
+## Tips & limits
+
+- **Build components before SSPs.** SSPs reference component definitions. If you build your component definitions first and save them to the library, the SSP wizard can import them rather than requiring you to re-enter all the implementation details.
+- **One component per purpose.** Keep component definitions focused — one component definition per product or service makes them easier to reuse across multiple SSPs.
+- **Implementation descriptions are free text.** Write enough to explain to an assessor how the control is satisfied; you can include references to policies or configuration guides.
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build a System Security Plan (SSP)](/guide/build/ssp)
+- [AI Component Wizard](/guide/ai/component-wizard)
+- [Save to Library](/guide/library/save-to-library)
+- [OSCAL Model Types](/guide/reference/model-types)

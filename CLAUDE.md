@@ -141,8 +141,14 @@ cd front-end && npm test
 ```
 
 This will start:
-- **Back-end API**: http://localhost:8080/api
-- **Front-end UI**: http://localhost:3000
+- **Back-end API**: http://localhost:8090/api
+- **Front-end UI**: http://localhost:3010
+
+> **Why 8090 / 3010?** The dev defaults differ from production (8080 / 3000)
+> so OSCAL Hub can run alongside the trust-center app, which reserves
+> 80/443/4200/5433/6379/8000 and aggressively kills processes occupying
+> those ports. Production still uses 8080 / 3000. Override locally with
+> `SERVER_PORT=` and `FRONTEND_PORT=` env vars.
 
 ### Option 2: Run CLI Only
 
@@ -202,7 +208,7 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 1. **Refresh the browser** - Clear cache and reload (Cmd/Ctrl + Shift + R)
 2. **Log out and log back in** - Get a fresh JWT token
 3. **Check localStorage** - Verify token exists: `localStorage.getItem('token')`
-4. **Verify backend is running** - Check `http://localhost:8080/api/health`
+4. **Verify backend is running** - Check `http://localhost:8090/api/health`
 
 #### After Adding New Features
 
@@ -223,7 +229,7 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 
 # 3. In browser:
 #    - Hard refresh (Cmd/Ctrl + Shift + R)
-#    - Navigate to http://localhost:3000
+#    - Navigate to http://localhost:3010
 #    - Log in with your credentials
 #    - Try the new feature
 ```
@@ -234,16 +240,16 @@ The application uses **JWT (JSON Web Token)** authentication to secure all API e
 
 ```bash
 # Check if backend is responding
-curl http://localhost:8080/api/health
+curl http://localhost:8090/api/health
 
 # Test an authenticated endpoint (should return 403)
-curl -I http://localhost:8080/api/visualization/ssp
+curl -I http://localhost:8090/api/visualization/ssp
 
 # Test with authentication (replace TOKEN with actual JWT)
 curl -H "Authorization: Bearer TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"content":"...","format":"JSON"}' \
-     http://localhost:8080/api/visualization/ssp
+     http://localhost:8090/api/visualization/ssp
 ```
 
 #### Check Frontend Authentication State
@@ -269,7 +275,7 @@ console.log('Auth header:', token ? `Bearer ${token}` : 'No token');
 **Key settings**:
 - **JWT Secret**: Generated on server startup (stored in application properties)
 - **Token Expiration**: 24 hours (configurable in `application.properties`)
-- **CORS**: Allows `http://localhost:3000` and `http://localhost:3001`
+- **CORS** (dev): Allows `http://localhost:3010`, `http://localhost:3001`, `http://localhost:3000`
 - **Session Management**: Stateless (no server-side sessions)
 
 ### Health Check Endpoints
@@ -304,11 +310,11 @@ If you're getting 403 errors on a valid endpoint:
 2. **Verify endpoint exists**:
    ```bash
    # Should return 403, not 404
-   curl -I http://localhost:8080/api/your-new-endpoint
+   curl -I http://localhost:8090/api/your-new-endpoint
    ```
 
 3. **Test with Swagger UI**:
-   - Navigate to `http://localhost:8080/swagger-ui.html`
+   - Navigate to `http://localhost:8090/swagger-ui.html`
    - Click "Authorize" button
    - Enter token in format: `Bearer YOUR_TOKEN_HERE`
    - Try the endpoint
@@ -336,6 +342,64 @@ sleep 2
 # Restart servers
 ./dev.sh
 ```
+
+## Database Schema Management
+
+**Policy: Flyway is the schema authority. Hibernate validates only — it never modifies schema.**
+
+This was changed from the previous `ddl-auto=update` model in commit `80dd0e5` after a silent-drift incident: Hibernate failed to add a `NOT NULL` column to a populated table (no `DEFAULT` declared), kept running anyway, and a later query against the missing column crashed the request and surfaced as a misleading 401. Under the new policy that class of bug becomes a fail-fast boot error.
+
+### What this means for you
+
+**When you add or change a JPA entity field**, you MUST also add a corresponding migration file. Editing the entity alone will cause Hibernate to refuse to start (`SchemaManagementException: Schema-validation: missing column ...`).
+
+Workflow:
+1. Edit the `@Entity` class.
+2. Create a new migration file under `back-end/src/main/resources/db/migration/` named `V<n>__<short_description>.sql` where `<n>` is the next available version number (look at `ls db/migration/` for the highest existing one — for new work, increment from there).
+3. Inside the SQL, write idempotent DDL — use `ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS` — so the migration is safe to re-run.
+4. For `NOT NULL` columns added to existing tables, always include `DEFAULT` so PostgreSQL can backfill existing rows. Mirror this on the entity with `@org.hibernate.annotations.ColumnDefault("...")` so the schema validator sees a match.
+5. Restart the backend (`./stop.sh && ./dev.sh`). Flyway runs the migration, then Hibernate validates the resulting schema against the entity model.
+
+### Example migration
+
+```sql
+-- V1.24__add_widget_color.sql
+ALTER TABLE widgets
+    ADD COLUMN IF NOT EXISTS color VARCHAR(32) NOT NULL DEFAULT 'gray';
+```
+
+### Configuration locations
+
+- `application.properties` — base defaults (`spring.flyway.enabled=true`, `ddl-auto=validate`, `baseline-version=1.23`).
+- `application-dev.properties`, `application-prod.properties`, `application-gcp.properties` — all set `ddl-auto=validate`.
+- Migration files — `back-end/src/main/resources/db/migration/V*.sql`.
+
+### Fresh database bootstrap
+
+`V1.0__baseline.sql` contains the full current schema (generated via `pg_dump`). On an empty database Flyway runs it automatically — no manual steps. The historical migration files V1.5..V1.23 that built the schema incrementally during the `ddl-auto=update` era are preserved under `back-end/src/main/resources/db/historical/` for reference but are not loaded by Flyway.
+
+### Override knobs (escape hatches)
+
+```bash
+# Skip Flyway during local debugging:
+SPRING_FLYWAY_ENABLED=false ./dev.sh
+
+# Let Hibernate manage schema (legacy mode, do not use in prod):
+DB_DDL_AUTO=update ./dev.sh
+```
+
+These should rarely be needed.
+
+### Manual schema fixup (one-off, when you've already broken things)
+
+If validate fails because a previous Hibernate `ddl-auto=update` left the schema in a half-state, fix the DB directly with `psql` and write the corresponding migration in the same commit:
+
+```bash
+docker exec oscal-postgres-dev psql -U oscal_user -d oscal_dev -c \
+  "ALTER TABLE my_table ADD COLUMN IF NOT EXISTS my_col TEXT;"
+```
+
+Then add `V<n>__<desc>.sql` so the next person bringing up a fresh DB gets the same change automatically.
 
 ## Installation Scripts for End Users
 
@@ -369,6 +433,18 @@ The repository includes simplified installation scripts for end users in the `in
   - Usage troubleshooting and best practices
 
 ## CI/CD and Deployment
+
+OSCAL Hub has three deploy targets:
+
+| Target | Path | Audience |
+|---|---|---|
+| GCP Cloud Run | `terraform/gcp/` + `.github/workflows/gcp-deploy.yml` | maintainer's hosted environment |
+| Helm chart | `deploy/helm/oscal-hub/` | customers running Kubernetes |
+| Docker Compose | `deploy/compose/` | customers running a single VM |
+
+Customer-facing self-hosting docs live under `deploy/` and
+`docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md`. The remainder of this section is
+about the maintainer's GCP pipeline.
 
 GitHub Actions on GCP. Two workflows drive the pipeline:
 

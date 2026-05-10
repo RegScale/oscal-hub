@@ -18,8 +18,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { apiClient } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import type { ComponentDefinitionResponse } from '@/types/oscal';
 import { ImportComponentDialog } from './ImportComponentDialog';
+import { toast } from 'sonner';
 import {
   Plus,
   Search,
@@ -32,9 +34,8 @@ import {
   AlertCircle,
   Calendar,
   Blocks,
-  Shield,
-  ChevronRight,
   Upload,
+  BookPlus,
 } from 'lucide-react';
 
 interface ComponentListProps {
@@ -65,6 +66,9 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
 
   // Import dialog
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // Add-to-library state
+  const [addingToLibraryId, setAddingToLibraryId] = useState<number | null>(null);
 
   // Load components
   const loadComponents = async () => {
@@ -175,6 +179,24 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
     setDeleteDialogOpen(true);
   };
 
+  const handleAddToLibrary = async (component: ComponentDefinitionResponse) => {
+    setAddingToLibraryId(component.id);
+    try {
+      await libraryPublishApi.saveComponentToLibrary(component.id, {
+        title: component.title,
+        description: component.description ?? undefined,
+        visibility: 'PRIVATE',
+      });
+      toast.success(`${component.title} added to your Library`, {
+        description: 'Visibility is Private. Open Library to publish or share.',
+      });
+    } catch (e) {
+      toast.error(`Failed to add to Library: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setAddingToLibraryId(null);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!componentToDelete) return;
 
@@ -205,196 +227,152 @@ export function ComponentList({ onCreateNew, onEdit }: ComponentListProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with Search and Create */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 w-full sm:w-auto">
+    <div className="space-y-4">
+      {/* Header card — matches BuiltDocList so Catalog/Profile/SSP/AP/AR/POA&M
+          and Components all share one layout. */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Blocks className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle>My Component Definitions</CardTitle>
+                <CardDescription>
+                  {components.length} component definition{components.length === 1 ? '' : 's'} created
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" />
+                Import
+              </Button>
+              <Button onClick={onCreateNew}>
+                <Plus className="h-4 w-4 mr-1" />
+                New Component Definition
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search components..."
+              placeholder="Search component definitions…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full"
+              className="pl-9"
             />
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Import
-          </Button>
-          <Button onClick={onCreateNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New
-          </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Active Search Summary */}
-      {searchQuery && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>
-            Showing {filteredComponents.length} of {components.length} components
-          </span>
-          {searchQuery && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSearchQuery('')}
-            >
-              Clear Search
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Error State */}
       {error && (
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950">
-          <CardContent className="flex items-center gap-3 p-6">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <div className="flex-1">
-              <p className="font-medium text-red-900 dark:text-red-100">Error loading components</p>
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        <Card className="border-destructive">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm flex-1">{error}</span>
+              <Button variant="outline" size="sm" onClick={loadComponents}>
+                Retry
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={loadComponents}>
-              Retry
-            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && !error && filteredComponents.length === 0 && (
+      {isLoading ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Blocks className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              {searchQuery ? 'No components found' : 'No component definitions yet'}
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-md">
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Loading component definitions…</p>
+          </CardContent>
+        </Card>
+      ) : filteredComponents.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Blocks className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-4">
               {searchQuery
-                ? 'Try adjusting your search query'
-                : 'Create your first OSCAL component definition using the visual builder'}
+                ? 'No component definitions match your search.'
+                : "You haven't created any component definitions yet."}
             </p>
             {!searchQuery && (
               <Button onClick={onCreateNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Your First Component
+                <Plus className="h-4 w-4 mr-1" />
+                Create your first component definition
               </Button>
             )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Components List */}
-      {!isLoading && !error && filteredComponents.length > 0 && (
-        <div className="grid grid-cols-1 gap-4">
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredComponents.map((component) => (
-            <Card key={component.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <FileJson className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-xl">{component.title}</CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            v{component.version}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            OSCAL {component.oscalVersion}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    {component.description && (
-                      <CardDescription className="mt-2">
-                        {component.description}
-                      </CardDescription>
-                    )}
-                  </div>
+            <Card key={component.id} className="flex flex-col">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base line-clamp-2 break-words overflow-hidden" title={component.title}>
+                  {component.title}
+                </CardTitle>
+                <div className="flex items-center gap-1 mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    v{component.version || '—'}
+                  </Badge>
                 </div>
+                <CardDescription className="text-xs line-clamp-2">
+                  {component.description || <span className="italic">No description</span>}
+                </CardDescription>
               </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Stats */}
-                <div className="flex items-center gap-6 text-sm flex-wrap">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Blocks className="h-4 w-4" />
-                    <span>
-                      <span className="font-medium text-foreground">{component.componentCount || 0}</span>{' '}
-                      {component.componentCount === 1 ? 'Component' : 'Components'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Blocks className="h-4 w-4" />
-                    <span>
-                      <span className="font-medium text-foreground">{component.capabilityCount || 0}</span>{' '}
-                      {component.capabilityCount === 1 ? 'Capability' : 'Capabilities'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Shield className="h-4 w-4" />
-                    <span>
-                      <span className="font-medium text-foreground">{component.controlCount}</span>{' '}
-                      {component.controlCount === 1 ? 'Control' : 'Controls'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>Created {formatDate(component.createdAt)}</span>
-                  </div>
+              <CardContent className="flex-1 pb-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {component.componentCount || 0} components
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {component.capabilityCount || 0} capabilities
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {component.controlCount} controls
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    OSCAL {component.oscalVersion}
+                  </Badge>
                 </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewJson(component)}
-                  >
-                    <Eye className="mr-2 h-3 w-3" />
-                    View JSON
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownload(component)}
-                  >
-                    <Download className="mr-2 h-3 w-3" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(component)}
-                  >
-                    <Edit2 className="mr-2 h-3 w-3" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteClick(component)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="mr-2 h-3 w-3" />
-                    Delete
-                  </Button>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  <span>Created {formatDate(component.createdAt)}</span>
                 </div>
               </CardContent>
+              <div className="flex items-center justify-end gap-1 px-3 py-2 border-t bg-muted/20">
+                <Button size="sm" variant="ghost" onClick={() => handleViewJson(component)} title="View JSON">
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDownload(component)} title="Download">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleEdit(component)} title="Edit">
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAddToLibrary(component)}
+                  disabled={addingToLibraryId === component.id}
+                  title="Add to Library"
+                >
+                  {addingToLibraryId === component.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <BookPlus className="h-3.5 w-3.5" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDeleteClick(component)}
+                  title="Delete"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

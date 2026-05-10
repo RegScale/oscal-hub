@@ -1,0 +1,74 @@
+---
+title: AI Analytics
+description: Monitor AI usage, cost estimates, model distribution, and top use cases for your organization.
+lastUpdated: 2026-05-04
+---
+
+# AI Analytics
+
+The AI Analytics page at `/org-admin/ai-analytics` gives you visibility into how — and how much — your organization is using AI features. Use it to track spending trends, understand which tools drive the most AI activity, and identify heavy users.
+
+---
+
+## What it shows
+
+| Section | Description |
+|---|---|
+| **Operations over time** | Line or bar chart of AI requests per day/week/month |
+| **Cost estimate** | Cumulative estimated spend in USD for the selected period |
+| **Model breakdown** | Distribution of requests across Claude variants (Haiku / Sonnet / Opus) |
+| **Top use cases** | Which features generate the most AI activity (e.g., Catalog Wizard, Component Wizard) |
+| **Per-user breakdown** | Operations and cost attributed to each member |
+
+---
+
+## Review AI usage
+
+<Steps>
+<Step title="Open AI Analytics">
+Navigate to `/org-admin/ai-analytics`.
+</Step>
+<Step title="Choose a time range">
+Use the date-range picker at the top of the page to select the period you want to analyze (e.g., last 7 days, last 30 days, or a custom range).
+</Step>
+<Step title="Review the overview charts">
+The operations-over-time chart shows request volume. The cost estimate panel shows the running total for the period. Hover over chart data points for exact values.
+</Step>
+<Step title="Examine model distribution">
+The model breakdown panel shows which Claude variants were used and what proportion of requests — and cost — each represents.
+</Step>
+<Step title="Drill into use cases and users">
+Scroll to the **Top Use Cases** and **Per-User Breakdown** tables. Click a use case or user row (if drilldown is available) to filter the charts to that segment.
+</Step>
+</Steps>
+
+---
+
+## Use case reference
+
+These are the AI-powered features that appear in the use-case breakdown:
+
+| Use Case | Guide |
+|---|---|
+| Catalog Wizard | [Catalog from Source](/guide/ai/catalog-wizard) |
+| Component Wizard | [Component Definition from STIG / CIS](/guide/ai/component-wizard) |
+
+Additional wizards (Profile, SSP, POA&M) are planned. When they ship, they will appear automatically in the analytics breakdown.
+
+---
+
+## Tips and limits
+
+- **Cost estimates are approximations.** The displayed costs are calculated from Anthropic's published per-token pricing at the time the request was made. Actual charges come from Anthropic directly; small discrepancies between the estimate and your Anthropic invoice are normal.
+- **Data is near-real-time.** There may be a short lag (typically minutes) between an AI operation and its appearance in the analytics dashboard.
+- **No retroactive data.** AI usage is tracked only from the date AI was first enabled for your org. Historical activity before enabling cannot be reconstructed.
+- **Use analytics to right-size your model.** If the per-user or use-case cost is higher than expected, consider switching to a lighter model on the [AI Settings](/guide/org-admin/ai-settings) page.
+
+---
+
+## Related
+
+- [AI Settings](/guide/org-admin/ai-settings)
+- [AI Wizards](/guide/ai/overview)
+- [Org Analytics](/guide/org-admin/analytics)
+- [Org Admin Overview](/guide/org-admin/overview)

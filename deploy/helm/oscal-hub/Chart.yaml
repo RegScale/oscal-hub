@@ -1,0 +1,26 @@
+apiVersion: v2
+name: oscal-hub
+description: OSCAL Hub - validate, convert, and resolve OSCAL documents (catalogs, profiles, SSPs, POA&Ms) with a Spring Boot API and Next.js UI.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/oscal-tools/oscal-cli
+sources:
+  - https://github.com/oscal-tools/oscal-cli
+maintainers:
+  - name: OSCAL Hub Maintainers
+keywords:
+  - oscal
+  - compliance
+  - nist
+  - fedramp
+
+# PostgreSQL is bundled by default (Bitnami subchart) and can be disabled to
+# point at an externally managed database via `postgresql.enabled=false` and
+# `externalDatabase.*`.
+dependencies:
+  - name: postgresql
+    version: "15.5.38"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled

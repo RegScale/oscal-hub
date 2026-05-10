@@ -18,6 +18,7 @@ import { ProfileVisualization } from '@/components/ProfileVisualization';
 import { SarVisualization } from '@/components/SarVisualization';
 import { analyzeCatalog, type CatalogAnalysis } from '@/lib/oscal-parser';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type { OscalFormat, SavedFile, LibraryItem, SspVisualizationData, ProfileVisualizationData, SarVisualizationData } from '@/types/oscal';
 import { apiClient } from '@/lib/api-client';
@@ -435,6 +436,7 @@ function VisualizePageContent() {
             <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
               <BarChart3 className="h-10 w-10 text-primary" />
               Visualize OSCAL Document
+              <HelpButton slug="visualize" />
             </h1>
             <p className="text-muted-foreground">
               Explore and understand your OSCAL documents through interactive visualizations

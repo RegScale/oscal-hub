@@ -1,0 +1,71 @@
+---
+title: Validate Documents
+description: Check any OSCAL document against the official schema and constraint rules before submitting it for review or downstream processing.
+lastUpdated: 2026-05-04
+---
+
+# Validate Documents
+
+The Validate tool checks an OSCAL document against the official NIST schema and constraint rules, returning a detailed list of every error and warning found. Use it before submitting documents for review, before processing them downstream, or any time you want confidence that a file conforms to the standard.
+
+---
+
+## What it does
+
+- **Full schema and constraint coverage.** Validation runs in two passes: first against the OSCAL XML/JSON/YAML schema (structure and data types), then against the OSCAL constraint rules (cross-field relationships, cardinality, allowed values). Both sets of findings are reported together.
+- **All 7 model types supported.** Catalog, Profile, Component Definition, System Security Plan (SSP), Assessment Plan (AP), Assessment Results (AR), and Plan of Action and Milestones (POA&M) are all supported. Pick the type from the dropdown or let the tool detect it.
+- **Line-numbered findings with click-to-jump.** Every error and warning includes the line number where the problem occurs. Clicking an error in the results panel scrolls the document preview to that exact line so you can see the context immediately.
+- **Real-time format detection.** Upload an `.xml`, `.json`, or `.yaml` file and the tool fills in the format field automatically. You can override it if needed (for example, a file that uses a non-standard extension).
+- **Summary badge.** The top of the results panel shows a quick-glance count of errors and warnings so you can immediately tell whether the document passed or needs work.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to Validate">
+    From the dashboard, click the **Validate** card in the Core Tools section. You can also reach it from the left navigation under **Tools → Validate**.
+  </Step>
+  <Step title="Upload your file">
+    Drag your OSCAL file onto the upload zone, or click **Browse files** to open the file picker. OSCAL Hub accepts `.xml`, `.json`, and `.yaml` files up to 10 MB. The format field is filled in automatically from the file extension.
+  </Step>
+  <Step title="Select the model type">
+    Open the **Model type** dropdown and choose the OSCAL type that matches your document: Catalog, Profile, Component Definition, System Security Plan, Assessment Plan, Assessment Results, or Plan of Action & Milestones. If you are unsure, try the type that matches the root element of your document (for example, `catalog` → Catalog).
+  </Step>
+  <Step title="Click 'Validate Document'">
+    Press the **Validate Document** button. OSCAL Hub sends the file to the backend, which runs the schema check and constraint evaluation. For most files this takes under two seconds; very large catalogs may take up to ten seconds.
+  </Step>
+  <Step title="Review the findings">
+    The results panel lists every error and warning in order of line number. Each row shows:
+    - **Severity** — error (blocks conformance) or warning (worth reviewing).
+    - **Line number** — the location in the source file.
+    - **Message** — a plain-English description of what is wrong.
+    - **Click to jump** — clicking a row highlights that line in the document preview on the right.
+
+    The summary bar at the top of the results panel shows total error count and total warning count. A green checkmark means the document is fully valid with no errors.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **10 MB upload limit.** Files larger than 10 MB must be split or processed via the [API](/guide/reference/api-automation).
+- **Format override.** If your file uses a non-standard extension, open the **Format** dropdown and pick **XML**, **JSON**, or **YAML** explicitly. This is equivalent to the `--as` flag in the CLI.
+- **Validate before converting.** Format conversion does not validate the source document. If you convert a malformed file, the output may also be malformed. Always validate first.
+- **Constraint rules explorer.** To see the full list of constraint rules that Validate checks against, visit the [Rules Explorer](/guide/reference/rules).
+- **Batch validation.** To validate many files at once, use the [Batch](/guide/tools/batch) tool instead of uploading files one by one.
+
+<Callout type="info">
+Validate is a protected endpoint — you must be signed in to use it. If you see a "403 Forbidden" error, log out and log back in to refresh your session token, then try again.
+</Callout>
+
+---
+
+## Related
+
+- [Convert Document Formats](/guide/tools/convert)
+- [Batch Processing](/guide/tools/batch)
+- [Rules Explorer](/guide/reference/rules)
+- [API Automation](/guide/reference/api-automation)
+- [OSCAL Model Types](/guide/reference/model-types)

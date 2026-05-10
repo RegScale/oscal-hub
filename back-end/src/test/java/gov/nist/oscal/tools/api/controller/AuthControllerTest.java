@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.config.RateLimitConfig;
 import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.User;
-import gov.nist.oscal.tools.api.exception.GlobalExceptionHandler;
+import gov.nist.oscal.tools.api.config.GlobalErrorAdvice;
 import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@Import(GlobalExceptionHandler.class)
+@Import(GlobalErrorAdvice.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 

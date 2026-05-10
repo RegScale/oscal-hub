@@ -1,0 +1,12 @@
+Hi ${reporterName},
+
+Thanks for reporting this. We received your ${type}:
+
+  ${ticketId} — ${title}
+  Priority: ${priority}
+  Status: ${status}
+
+We'll be in touch as we look into it. You can track progress here:
+${ticketUrl}
+
+— OSCAL Hub

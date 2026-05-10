@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, Users, BarChart3, FileText, Activity, CheckCircle2, XCircle, Loader2, ShieldCheck, KeyRound, SlidersHorizontal } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { HealthStatus } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -59,9 +60,12 @@ export default function AdminDashboardPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Super Admin Dashboard
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Super Admin Dashboard
+            </h1>
+            <HelpButton slug="admin" />
+          </div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage organizations and users across the platform
           </p>

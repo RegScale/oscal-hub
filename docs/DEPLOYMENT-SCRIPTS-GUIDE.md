@@ -428,7 +428,7 @@ docker-compose -f docker-compose-monitoring.yml restart
 For production deployment (not local):
 
 ### Azure Deployment
-See `docs/AZURE-DEPLOYMENT-GUIDE.md`
+See `docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md`
 
 **Note**: Azure uses **Application Insights** for monitoring, not Prometheus/Grafana.
 

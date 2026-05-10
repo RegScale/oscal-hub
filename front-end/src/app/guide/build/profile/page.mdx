@@ -1,0 +1,84 @@
+---
+title: Build a Profile
+description: Use the Profile wizard to select and tailor controls from one or more catalogs into a reusable baseline.
+lastUpdated: 2026-05-04
+---
+
+# Build a Profile
+
+A Profile selects and tailors controls from one or more source catalogs to create a reusable control baseline — for example, a FISMA Moderate baseline drawn from NIST SP 800-53. Profiles are not standalone sets of requirements; they reference controls in catalogs and describe how those controls should be customized for a specific context. See [OSCAL Model Types](/guide/reference/model-types) for how profiles relate to catalogs and SSPs.
+
+---
+
+## What it does
+
+The Profile wizard walks you through six steps:
+
+| Step | Content |
+|------|---------|
+| 1. Metadata | Title, version, parties |
+| 2. Imports | Source catalogs or profiles to draw controls from |
+| 3. Modify | Set parameter values and alter controls |
+| 4. Merge | How resolved controls are combined when the profile is resolved |
+| 5. Back-matter | Resources and supporting references |
+| 6. Review & Save | Schema validation, JSON preview, and save |
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the Profile wizard">
+    Go to `/build` and click the **Profiles** tab. Click **Create new** to open the wizard at Step 1: Metadata.
+  </Step>
+  <Step title="Fill in Metadata">
+    Enter the profile **Title** (required), **Version** (required), and **Last Modified** date. Add parties and roles as needed. The UUID is generated automatically.
+  </Step>
+  <Step title="Add Imports">
+    The Imports step is where you specify the source catalog(s) or profile(s) this profile draws from. For each import, provide:
+    - **href** — a URL or relative path to the source catalog or profile (for example, `https://raw.githubusercontent.com/.../NIST_SP-800-53_rev5_catalog.json`)
+    - **Include controls** — choose to include all controls, include specific controls by ID, or exclude specific controls by ID
+
+    You can add multiple imports to mix controls from different sources.
+  </Step>
+  <Step title="Set Modify rules">
+    The Modify step lets you customize the imported controls:
+    - **Set Parameters** — override parameter values defined in the source catalog (for example, set a specific password-length value)
+    - **Alters** — add, remove, or modify parts of individual controls (for example, add supplemental guidance or remove an enhancement)
+  </Step>
+  <Step title="Configure Merge behavior">
+    The Merge step controls how controls from multiple imports are combined when the profile is resolved into a catalog. Options include combining all controls into a flat list or preserving the source structure.
+  </Step>
+  <Step title="Add Back-matter and save">
+    Attach any supporting resources on the Back-matter step. On the final Review & Save step, run Schema Validation to confirm the profile is well-formed, preview the JSON, and click **Save as Draft** or **Save as Final**. After saving, click **Save to Library** to publish it.
+  </Step>
+</Steps>
+
+---
+
+## Resolution tip
+
+A profile by itself is not a complete set of controls — it is a set of instructions for producing one. To get a resolved catalog (the full, tailored set of controls with all parameters substituted), run the **Resolve** tool on your saved profile.
+
+<Callout type="info">
+After building a profile, navigate to [Resolve a Profile](/guide/tools/resolve) to generate the resolved catalog output. The resolved catalog is what you reference when building an SSP.
+</Callout>
+
+---
+
+## Tips & limits
+
+- **Import by URL.** The most common import `href` values are NIST's published OSCAL catalog URLs on GitHub. Check the [OSCAL content repository](https://github.com/usnistgov/oscal-content) for canonical URLs.
+- **Include/exclude by ID.** To create a tailored baseline (for example, FISMA Low), use include-by-id to list only the controls required for that impact level rather than including all controls.
+- **Validation errors on imports.** If the `href` points to a resource that is not reachable at validation time, the schema validator may not flag it — but the Resolve tool will fail. Make sure import URLs are accessible before resolving.
+- **Profiles can import other profiles.** You can chain profiles — for example, an agency-wide baseline profile that imports a NIST-sourced profile and adds extra controls.
+
+---
+
+## Related
+
+- [Build Hub Overview](/guide/build/overview)
+- [Build a Catalog](/guide/build/catalog)
+- [Resolve a Profile](/guide/tools/resolve)
+- [Save to Library](/guide/library/save-to-library)
+- [OSCAL Model Types](/guide/reference/model-types)

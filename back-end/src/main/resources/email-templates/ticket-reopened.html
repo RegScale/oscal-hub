@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+  <div style="border-bottom: 2px solid #4a90e2; padding-bottom: 12px; margin-bottom: 24px;">
+    <h1 style="margin: 0; font-size: 20px; color: #4a90e2;">OSCAL Hub</h1>
+  </div>
+  <h2>Ticket Reopened</h2>
+  <p>A previously closed ticket has been reopened and requires your attention.</p>
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+    <tr><td style="padding: 6px 0; color: #555; width: 110px;">Ticket</td><td style="padding: 6px 0; font-weight: 600;">${ticketId}</td></tr>
+    <tr><td style="padding: 6px 0; color: #555;">Title</td><td style="padding: 6px 0;">${title}</td></tr>
+    <tr><td style="padding: 6px 0; color: #555;">Type</td><td style="padding: 6px 0;">${type}</td></tr>
+    <tr><td style="padding: 6px 0; color: #555;">Priority</td><td style="padding: 6px 0;">${priority}</td></tr>
+    <tr><td style="padding: 6px 0; color: #555;">Reporter</td><td style="padding: 6px 0;">${reporterName}</td></tr>
+  </table>
+  <p style="color: #555; font-size: 14px;"><strong>Reason for reopening:</strong></p>
+  <div style="background: #fff8e1; border-left: 4px solid #f9a825; padding: 12px 16px; margin: 8px 0 16px; border-radius: 0 4px 4px 0;">
+    <p style="margin: 0; white-space: pre-wrap;">${reopenBody}</p>
+  </div>
+  <p>
+    <a href="${ticketUrl}" style="display: inline-block; background: #4a90e2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View Ticket</a>
+  </p>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0 12px;">
+  <p style="font-size: 12px; color: #888;">You received this email because you are an OSCAL Hub administrator.</p>
+</body>
+</html>

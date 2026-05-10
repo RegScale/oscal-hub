@@ -1,0 +1,91 @@
+---
+title: Org Admin Overview
+description: What an Org Admin can do and how to navigate the org administration dashboard.
+lastUpdated: 2026-05-04
+---
+
+# Org Admin Overview
+
+The Org Admin section gives designated organization administrators full control over their org's membership, access, AI configuration, and activity analytics. Every action you take here affects the **currently-selected org** — if you manage multiple orgs, confirm the active org in the top nav before making changes.
+
+---
+
+## Role gate
+
+The Org Admin section is visible only to users who hold the **`ORG_ADMIN`** role in the currently-selected organization. Global Super Admins can also access these pages for any org.
+
+You receive the `ORG_ADMIN` role when:
+- A Super Admin assigns it to you during user creation or via the Users page.
+- An existing Org Admin in your org promotes you on the [Users](/guide/org-admin/users) page.
+
+If you believe you should be an Org Admin but the navigation item is missing, ask a Super Admin or your current Org Admin to check your role assignment.
+
+---
+
+## Dashboard summary
+
+Navigating to `/org-admin` loads a summary dashboard with four stat cards:
+
+| Card | What it shows |
+|---|---|
+| **Total Members** | Active user accounts in your org |
+| **Pending Requests** | Access requests awaiting your review |
+| **Logins This Month** | Distinct user logins in the current calendar month |
+| **Operations This Month** | API/tool operations performed by org members this month |
+
+Below the cards, quick links take you directly to each administrative sub-section.
+
+<Callout type="info">
+All actions in the Org Admin section apply to the **currently-selected org**. Use the org switcher in the top navigation bar to change context before managing a different organization.
+</Callout>
+
+---
+
+## What you can do
+
+| Section | App route | Guide page |
+|---|---|---|
+| Manage users (add, lock, reset, remove) | `/org-admin/users` | [Org Users](/guide/org-admin/users) |
+| Send and track email invitations | `/org-admin/invitations` | [Invitations](/guide/org-admin/invitations) |
+| Approve or deny access requests | `/org-admin/requests` | [Access Requests](/guide/org-admin/access-requests) |
+| Enable AI and set the API key | `/org-admin/ai-settings` | [AI Settings](/guide/org-admin/ai-settings) |
+| Track AI usage and cost | `/org-admin/ai-analytics` | [AI Analytics](/guide/org-admin/ai-analytics) |
+| View org-wide activity analytics | `/org-admin/analytics` | [Org Analytics](/guide/org-admin/analytics) |
+
+---
+
+## How to reach the dashboard
+
+<Steps>
+<Step title="Log in with an Org Admin account">
+Sign in at `/login`. Your account must hold the `ORG_ADMIN` role (or `SUPER_ADMIN`) in at least one organization.
+</Step>
+<Step title="Confirm the active org">
+Check the org name displayed in the top navigation bar. If you manage multiple orgs, use the org switcher to select the correct one before proceeding.
+</Step>
+<Step title="Open Org Admin">
+Click **Org Admin** in the navigation bar, or navigate directly to `/org-admin`. The dashboard loads with the current org's summary cards.
+</Step>
+<Step title="Choose a sub-section">
+Click any quick-link card or use the sidebar to jump to Users, Invitations, Requests, AI Settings, AI Analytics, or Analytics.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Org-scoped actions only.** An Org Admin cannot manage users or settings in orgs they are not assigned to.
+- **Super Admins see all orgs.** If you are a Super Admin, use the org switcher or the Super Admin panel to act on behalf of any org.
+- **Dashboard data refreshes on page load.** Summary counts are not live-streamed; reload the page to get updated numbers.
+
+---
+
+## Related
+
+- [Org Users](/guide/org-admin/users)
+- [Invitations](/guide/org-admin/invitations)
+- [Access Requests](/guide/org-admin/access-requests)
+- [AI Settings](/guide/org-admin/ai-settings)
+- [AI Analytics](/guide/org-admin/ai-analytics)
+- [Org Analytics](/guide/org-admin/analytics)

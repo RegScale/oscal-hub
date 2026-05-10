@@ -231,6 +231,9 @@ export interface CustomRuleResponse {
   createdDate: string; // ISO 8601 date string
   updatedDate: string; // ISO 8601 date string
   createdBy?: string;
+  aiGenerated?: boolean;
+  generationPrompt?: string;
+  generationModel?: string;
 }
 
 // Library Types
@@ -258,6 +261,13 @@ export interface LibraryItem {
   downloadCount: number;
   viewCount: number;
   versionCount: number;
+
+  // Visibility (Phase 1 publish): "PRIVATE" | "ORGANIZATION" | "PUBLIC"
+  // Optional because legacy items pre-dating the visibility migration may not
+  // round-trip the field, and certain endpoints in the frontend may not
+  // populate it.
+  visibility?: 'PRIVATE' | 'ORGANIZATION' | 'PUBLIC';
+  organizationId?: number;
 
   // Rating and comment fields
   averageRating?: number;
@@ -606,6 +616,7 @@ export interface AuthorizationTemplateRequest {
 
 export interface AuthorizationTemplateResponse {
   id: number;
+  organizationId: number;
   name: string;
   content: string;
   createdBy: string;
@@ -613,6 +624,29 @@ export interface AuthorizationTemplateResponse {
   lastUpdatedBy: string;
   lastUpdatedAt: string; // ISO 8601 date string
   variables: string[]; // Extracted variables from content
+}
+
+// Authorization ACL / Grant Types
+export type AuthorizationRole = 'OWNER' | 'EDITOR' | 'CONTRIBUTOR' | 'VIEWER';
+
+export interface AuthorizationGrantResponse {
+  id: number;
+  userId: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: AuthorizationRole;
+  grantedByUsername?: string;
+  grantedAt: string;
+}
+
+export interface OrgMemberResponse {
+  userId: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 // Authorization Types
@@ -633,6 +667,7 @@ export interface AuthorizationRequest {
 
 export interface AuthorizationResponse {
   id: number;
+  organizationId: number;
   name: string;
   sspItemId: string;
   sarItemId?: string; // Optional SAR item ID
@@ -666,6 +701,10 @@ export interface AuthorizationResponse {
   certificateVerified?: boolean;
   certificateVerificationDate?: string; // ISO 8601 date string
   certificateVerificationNotes?: string;
+
+  // ACL / sharing fields
+  effectiveRole?: AuthorizationRole;
+  shareWithOrgDefaultRole?: AuthorizationRole | null;
 }
 
 // Condition of Approval Types
@@ -1022,6 +1061,146 @@ export interface ArtifactAnalytics {
     title: string;
     downloadCount: number;
   }>;
+}
+
+// Authorization Document Types
+export type DocumentType =
+  | 'VULNERABILITY_SCAN'
+  | 'PENETRATION_TEST'
+  | 'ASSET_INVENTORY'
+  | 'SSP'
+  | 'SAR'
+  | 'CONFIGURATION_BASELINE'
+  | 'CONTINGENCY_PLAN'
+  | 'INCIDENT_RESPONSE_PLAN'
+  | 'AUDIT_REPORT'
+  | 'AUTHORIZATION_LETTER'
+  | 'CHANGE_NOTICE_TICKET'
+  | 'RISK_ASSESSMENT'
+  | 'BUSINESS_CONTINUITY_PLAN'
+  | 'DISASTER_RECOVERY_PLAN'
+  | 'BUSINESS_IMPACT_ASSESSMENT'
+  | 'OTHER';
+
+export interface AuthorizationDocumentResponse {
+  id: number;
+  authorizationId: number;
+  originalFilename: string;
+  fileSize: number;
+  contentType: string;
+  documentType: DocumentType;
+  description?: string | null;
+  tags?: string | null;
+  version?: string | null;
+  effectiveDate?: string | null;
+  expiresAt?: string | null;
+  uploadedByUsername?: string | null;
+  uploadedAt: string;
+}
+
+export interface PackageCompletenessItem {
+  documentType: DocumentType;
+  presentCount: number;
+  satisfied: boolean;
+}
+
+export interface PackageCompletenessResponse {
+  coreDocuments: PackageCompletenessItem[];
+}
+
+export interface UpdateDocumentMetadataRequest {
+  documentType?: DocumentType;
+  description?: string | null;
+  tags?: string | null;
+  version?: string | null;
+  effectiveDate?: string | null;
+  expiresAt?: string | null;
+}
+
+// Continuous Monitoring (ConMon) Types
+export type ConMonItemStatus = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+export type ConMonSourceFormat = 'OSCAL_JSON' | 'OSCAL_XML' | 'OSCAL_YAML' | 'FEDRAMP_XLSX';
+
+export interface ConMonReconciliationCounts {
+  newCount: number;
+  closedCount: number;
+  reopenedCount: number;
+  stillOpenCount: number;
+  removedCount: number;
+  changedCount: number;
+  previousSnapshotId?: number | null;
+}
+
+export interface ConMonSnapshotSummary {
+  id: number;
+  authorizationId: number;
+  uploadedAt: string;
+  uploadedByUsername?: string | null;
+  sourceFormat: ConMonSourceFormat;
+  originalFilename: string;
+  oscalUuid?: string | null;
+  oscalVersion?: string | null;
+  metadataTitle?: string | null;
+  metadataLastModified?: string | null;
+  openCount: number;
+  closedCount: number;
+  unknownCount: number;
+  notes?: string | null;
+  reconciliation?: ConMonReconciliationCounts | null;
+}
+
+export interface ConMonPoamItem {
+  id: number;
+  externalId: string;
+  title: string;
+  description?: string | null;
+  status: ConMonItemStatus;
+  rawStatus?: string | null;
+  severity?: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' | null;
+  weaknessSource?: string | null;
+  scheduledCompletionDate?: string | null;
+  actualCompletionDate?: string | null;
+  pointOfContact?: string | null;
+  riskRating?: string | null;
+}
+
+export interface ConMonChangedItem {
+  current: ConMonPoamItem;
+  previous: ConMonPoamItem;
+  fieldsChanged: string[];
+}
+
+export interface ConMonReconciliationDetail {
+  snapshotId: number;
+  previousSnapshotId: number;
+  newCount: number;
+  closedCount: number;
+  reopenedCount: number;
+  stillOpenCount: number;
+  removedCount: number;
+  changedCount: number;
+  newItems: ConMonPoamItem[];
+  newlyClosedItems: ConMonPoamItem[];
+  reopenedItems: ConMonPoamItem[];
+  removedItems: ConMonPoamItem[];
+  changedItems: ConMonChangedItem[];
+}
+
+export interface ConMonSlaStats {
+  openTotal: number;
+  withinSla: number;
+  overdue: number;
+  withoutDeadline: number;
+  slaPercent: number | null;
+}
+
+export interface ConMonAnalytics {
+  openCountSeries: Array<{ date: string; open: number; closed: number; unknown: number }>;
+  currentSeverityBreakdown: Array<{ label: string; count: number }>;
+  currentStatusBreakdown: Array<{ label: string; count: number }>;
+  agingBuckets: Array<{ bucket: string; count: number }>;
+  meanTimeToCloseDays?: number | null;
+  slaStats: ConMonSlaStats;
 }
 
 // Artifact Comment (reuses LibraryComment structure)

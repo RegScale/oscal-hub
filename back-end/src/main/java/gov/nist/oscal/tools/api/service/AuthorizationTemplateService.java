@@ -1,7 +1,9 @@
 package gov.nist.oscal.tools.api.service;
 
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.AuthorizationTemplateNotFoundException;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import org.slf4j.Logger;
@@ -36,6 +38,9 @@ public class AuthorizationTemplateService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AuthorizationOrgContext orgContext;
+
     /**
      * Create a new authorization template
      */
@@ -47,6 +52,8 @@ public class AuthorizationTemplateService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
         AuthorizationTemplate template = new AuthorizationTemplate(name, content, user);
+        Organization userOrg = resolveUserOrg(username);
+        template.setOrganization(userOrg);
         return templateRepository.save(template);
     }
 
@@ -57,8 +64,10 @@ public class AuthorizationTemplateService {
     public AuthorizationTemplate updateTemplate(Long id, String name, String content, String username) {
         logger.info("Updating authorization template: {} by user: {}", id, username);
 
-        AuthorizationTemplate template = templateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Template not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        AuthorizationTemplate template = templateRepository
+                .findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationTemplateNotFoundException(id));
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -123,8 +132,10 @@ public class AuthorizationTemplateService {
     public void deleteTemplate(Long id, String username) {
         logger.info("Deleting authorization template: {} by user: {}", id, username);
 
-        AuthorizationTemplate template = templateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Template not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        AuthorizationTemplate template = templateRepository
+                .findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationTemplateNotFoundException(id));
 
         // Check if user is the creator (you may want to add admin role check)
         if (!template.getCreatedBy().getUsername().equals(username)) {
@@ -156,5 +167,43 @@ public class AuthorizationTemplateService {
     public Set<String> extractVariablesFromTemplate(Long id) {
         AuthorizationTemplate template = getTemplate(id);
         return extractVariables(template.getContent());
+    }
+
+    // --- Org-scoped read methods ---
+
+    @Transactional(readOnly = true)
+    public List<AuthorizationTemplate> getAllTemplatesForUser(String username) {
+        Organization org = resolveUserOrg(username);
+        return templateRepository.findByOrganization(org);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthorizationTemplate getTemplateForUser(Long id, String username) {
+        Organization org = resolveUserOrg(username);
+        return templateRepository.findByIdAndOrganization(id, org)
+                .orElseThrow(() -> new AuthorizationTemplateNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthorizationTemplate> getRecentlyUpdatedForUser(String username, int limit) {
+        Organization org = resolveUserOrg(username);
+        return templateRepository.findByOrganizationOrderByLastUpdatedAtDesc(org)
+                .stream().limit(limit).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthorizationTemplate> searchTemplatesForUser(String username, String searchTerm) {
+        Organization org = resolveUserOrg(username);
+        if (searchTerm == null || searchTerm.isBlank()) {
+            return templateRepository.findByOrganization(org);
+        }
+        return templateRepository.searchByNameAndOrganization(searchTerm, org);
+    }
+
+    private Organization resolveUserOrg(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User '" + username + "' not found."));
+        return orgContext.requirePrimaryOrganization(user);
     }
 }

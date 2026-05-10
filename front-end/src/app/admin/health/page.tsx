@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { DetailedHealthResponse, ComponentHealth, HealthStatus } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function HealthDashboardPage() {
   const router = useRouter();
@@ -120,11 +121,6 @@ export default function HealthDashboardPage() {
     }
   };
 
-  const formatUptime = (uptime: string) => {
-    // Uptime comes as "2d 5h 30m 15s" format
-    return uptime;
-  };
-
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -162,6 +158,7 @@ export default function HealthDashboardPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
                 <Activity className="w-8 h-8 mr-3 text-cyan-600" />
                 System Health Dashboard
+                <HelpButton slug="admin-health" />
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 Monitor system components, resources, and service availability
@@ -262,7 +259,7 @@ export default function HealthDashboardPage() {
                 <Info className="w-5 h-5 mr-2 text-cyan-600" />
                 Application Information
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
                   <p className="font-medium text-gray-900 dark:text-white">{health.application.name}</p>
@@ -270,14 +267,6 @@ export default function HealthDashboardPage() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Version</p>
                   <p className="font-medium text-gray-900 dark:text-white">{health.application.version}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Profile</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{health.application.profile}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Uptime</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{formatUptime(health.application.uptime)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Started</p>
@@ -408,14 +397,8 @@ export default function HealthDashboardPage() {
                     <span className="font-medium text-gray-900 dark:text-white">{health.environment.javaVersion}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Java Vendor</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{health.environment.javaVendor}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">OS</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {health.environment.osName} {health.environment.osVersion} ({health.environment.osArch})
-                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">{health.environment.osName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Timezone</span>

@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.OperationHistory;
+import gov.nist.oscal.tools.api.model.OperationHistoryDto;
 import gov.nist.oscal.tools.api.service.HistoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/history")
@@ -35,11 +37,11 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Operations retrieved successfully")
     })
     @GetMapping
-    public ResponseEntity<Page<OperationHistory>> getAllOperations(
+    public ResponseEntity<Page<OperationHistoryDto>> getAllOperations(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<OperationHistory> operations = historyService.getAllOperations(page, size);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.map(OperationHistoryDto::from));
     }
 
     @Operation(
@@ -50,9 +52,9 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Recent operations retrieved successfully")
     })
     @GetMapping("/recent")
-    public ResponseEntity<List<OperationHistory>> getRecentOperations() {
+    public ResponseEntity<List<OperationHistoryDto>> getRecentOperations() {
         List<OperationHistory> operations = historyService.getRecentOperations();
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.stream().map(OperationHistoryDto::from).collect(Collectors.toList()));
     }
 
     @Operation(
@@ -64,8 +66,9 @@ public class HistoryController {
         @ApiResponse(responseCode = "404", description = "Operation not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<OperationHistory> getOperationById(@PathVariable Long id) {
+    public ResponseEntity<OperationHistoryDto> getOperationById(@PathVariable Long id) {
         return historyService.getOperationById(id)
+                .map(OperationHistoryDto::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -78,12 +81,12 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Operations retrieved successfully")
     })
     @GetMapping("/type/{operationType}")
-    public ResponseEntity<Page<OperationHistory>> getOperationsByType(
+    public ResponseEntity<Page<OperationHistoryDto>> getOperationsByType(
             @PathVariable String operationType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<OperationHistory> operations = historyService.getOperationsByType(operationType, page, size);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.map(OperationHistoryDto::from));
     }
 
     @Operation(
@@ -94,12 +97,12 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Operations retrieved successfully")
     })
     @GetMapping("/status/{success}")
-    public ResponseEntity<Page<OperationHistory>> getOperationsByStatus(
+    public ResponseEntity<Page<OperationHistoryDto>> getOperationsByStatus(
             @PathVariable Boolean success,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<OperationHistory> operations = historyService.getOperationsByStatus(success, page, size);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.map(OperationHistoryDto::from));
     }
 
     @Operation(
@@ -110,12 +113,12 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Search completed successfully")
     })
     @GetMapping("/search")
-    public ResponseEntity<Page<OperationHistory>> searchByFileName(
+    public ResponseEntity<Page<OperationHistoryDto>> searchByFileName(
             @RequestParam String filename,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<OperationHistory> operations = historyService.searchByFileName(filename, page, size);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.map(OperationHistoryDto::from));
     }
 
     @Operation(
@@ -126,13 +129,13 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Operations retrieved successfully")
     })
     @GetMapping("/daterange")
-    public ResponseEntity<Page<OperationHistory>> getOperationsByDateRange(
+    public ResponseEntity<Page<OperationHistoryDto>> getOperationsByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<OperationHistory> operations = historyService.getOperationsByDateRange(startDate, endDate, page, size);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.map(OperationHistoryDto::from));
     }
 
     @Operation(
@@ -143,9 +146,9 @@ public class HistoryController {
         @ApiResponse(responseCode = "200", description = "Batch operations retrieved successfully")
     })
     @GetMapping("/batch/{batchOperationId}")
-    public ResponseEntity<List<OperationHistory>> getBatchOperations(@PathVariable String batchOperationId) {
+    public ResponseEntity<List<OperationHistoryDto>> getBatchOperations(@PathVariable String batchOperationId) {
         List<OperationHistory> operations = historyService.getBatchOperations(batchOperationId);
-        return ResponseEntity.ok(operations);
+        return ResponseEntity.ok(operations.stream().map(OperationHistoryDto::from).collect(Collectors.toList()));
     }
 
     @Operation(

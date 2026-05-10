@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.InsufficientAuthorizationRoleException;
 import gov.nist.oscal.tools.api.model.ConditionOfApprovalRequest;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
@@ -36,15 +38,27 @@ class AuthorizationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuthorizationOrgContext orgContext;
+
+    @Mock
+    private AuthorizationAccessGuard accessGuard;
+
     @InjectMocks
     private AuthorizationService authorizationService;
 
     private User mockUser;
     private AuthorizationTemplate mockTemplate;
     private Authorization mockAuthorization;
+    private Organization mockOrg;
 
     @BeforeEach
     void setUp() {
+        // Create mock organization
+        mockOrg = new Organization();
+        mockOrg.setId(1L);
+        mockOrg.setName("Test Org");
+
         // Create mock user
         mockUser = new User();
         mockUser.setId(1L);
@@ -85,7 +99,8 @@ class AuthorizationServiceTest {
         variableValues.put("date", "2024-01-01");
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
         when(authorizationRepository.save(any(Authorization.class))).thenAnswer(invocation -> {
             Authorization auth = invocation.getArgument(0);
             auth.setId(1L);
@@ -112,7 +127,7 @@ class AuthorizationServiceTest {
         assertTrue(result.getCompletedContent().contains("![Logo](https://example.com/logo.png)"));
 
         verify(userRepository, times(1)).findByUsername("testuser");
-        verify(templateRepository, times(1)).findById(1L);
+        verify(templateRepository, times(1)).findByIdAndOrganization(1L, mockOrg);
         verify(authorizationRepository, atLeastOnce()).save(any(Authorization.class));
     }
 
@@ -130,7 +145,8 @@ class AuthorizationServiceTest {
         List<ConditionOfApprovalRequest> conditionRequests = Arrays.asList(conditionRequest);
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
         when(authorizationRepository.save(any(Authorization.class))).thenAnswer(invocation -> {
             Authorization auth = invocation.getArgument(0);
             auth.setId(1L);
@@ -160,7 +176,8 @@ class AuthorizationServiceTest {
         String editedContent = "Custom authorization for {{ system_name }}";
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
-        when(templateRepository.findById(1L)).thenReturn(Optional.of(mockTemplate));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockTemplate));
         when(authorizationRepository.save(any(Authorization.class))).thenAnswer(invocation -> {
             Authorization auth = invocation.getArgument(0);
             auth.setId(1L);
@@ -206,10 +223,11 @@ class AuthorizationServiceTest {
     void testCreateAuthorization_templateNotFound_throwsException() {
         // Arrange
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
-        when(templateRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(templateRepository.findByIdAndOrganization(999L, mockOrg)).thenReturn(Optional.empty());
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             authorizationService.createAuthorization(
                     "Test", "ssp-123", null, 999L,
                     new HashMap<>(), "testuser",
@@ -218,7 +236,6 @@ class AuthorizationServiceTest {
             );
         });
 
-        assertEquals("Template not found: 999", exception.getMessage());
         verify(authorizationRepository, never()).save(any(Authorization.class));
     }
 
@@ -228,7 +245,9 @@ class AuthorizationServiceTest {
         Map<String, String> variableValues = new HashMap<>();
         variableValues.put("system_name", "Updated System");
 
-        when(authorizationRepository.findById(1L)).thenReturn(Optional.of(mockAuthorization));
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(authorizationRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockAuthorization));
         when(authorizationRepository.save(any(Authorization.class))).thenReturn(mockAuthorization);
 
         // Act
@@ -241,17 +260,19 @@ class AuthorizationServiceTest {
 
         // Assert
         assertNotNull(result);
-        verify(authorizationRepository, times(1)).findById(1L);
+        verify(authorizationRepository, times(1)).findByIdAndOrganization(1L, mockOrg);
         verify(authorizationRepository, times(1)).save(any(Authorization.class));
     }
 
     @Test
     void testUpdateAuthorization_notFound_throwsException() {
         // Arrange
-        when(authorizationRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(authorizationRepository.findByIdAndOrganization(999L, mockOrg)).thenReturn(Optional.empty());
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             authorizationService.updateAuthorization(
                     999L, "Updated", new HashMap<>(), "testuser",
                     null, null, null, null, null,
@@ -259,7 +280,6 @@ class AuthorizationServiceTest {
             );
         });
 
-        assertEquals("Authorization not found: 999", exception.getMessage());
         verify(authorizationRepository, never()).save(any(Authorization.class));
     }
 
@@ -416,41 +436,51 @@ class AuthorizationServiceTest {
     @Test
     void testDeleteAuthorization_success_deletesAuthorization() {
         // Arrange
-        when(authorizationRepository.findById(1L)).thenReturn(Optional.of(mockAuthorization));
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(authorizationRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockAuthorization));
 
         // Act
         authorizationService.deleteAuthorization(1L, "testuser");
 
         // Assert
-        verify(authorizationRepository, times(1)).findById(1L);
+        verify(authorizationRepository, times(1)).findByIdAndOrganization(1L, mockOrg);
         verify(authorizationRepository, times(1)).delete(mockAuthorization);
     }
 
     @Test
     void testDeleteAuthorization_notCreator_throwsException() {
         // Arrange
-        when(authorizationRepository.findById(1L)).thenReturn(Optional.of(mockAuthorization));
+        User otherUser = new User();
+        otherUser.setId(99L);
+        otherUser.setUsername("otheruser");
+        when(userRepository.findByUsername("otheruser")).thenReturn(Optional.of(otherUser));
+        when(orgContext.requirePrimaryOrganization(otherUser)).thenReturn(mockOrg);
+        when(authorizationRepository.findByIdAndOrganization(1L, mockOrg)).thenReturn(Optional.of(mockAuthorization));
+        doThrow(new InsufficientAuthorizationRoleException("none", "OWNER"))
+                .when(accessGuard).requireDelete(any(Authorization.class), any(User.class));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             authorizationService.deleteAuthorization(1L, "otheruser");
         });
 
-        assertEquals("Only the creator can delete this authorization", exception.getMessage());
+        assertEquals("Insufficient role: have none, need OWNER.", exception.getMessage());
         verify(authorizationRepository, never()).delete(any(Authorization.class));
     }
 
     @Test
     void testDeleteAuthorization_notFound_throwsException() {
         // Arrange
-        when(authorizationRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        when(orgContext.requirePrimaryOrganization(mockUser)).thenReturn(mockOrg);
+        when(authorizationRepository.findByIdAndOrganization(999L, mockOrg)).thenReturn(Optional.empty());
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             authorizationService.deleteAuthorization(999L, "testuser");
         });
 
-        assertEquals("Authorization not found: 999", exception.getMessage());
         verify(authorizationRepository, never()).delete(any(Authorization.class));
     }
 

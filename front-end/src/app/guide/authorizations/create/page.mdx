@@ -1,0 +1,125 @@
+---
+title: Create an Authorization
+description: Walk through the four-step wizard to generate an authorization document from an SSP, a template, and a set of variable values.
+lastUpdated: 2026-05-04
+---
+
+# Create an Authorization
+
+The Create Authorization wizard is a four-step guided flow that assembles a finished authorization document from three inputs: a System Security Plan from your Library, an authorization template, and the variable values that personalize the template for that specific system. A live preview updates throughout steps 3 and 4 so you can read the final text before committing.
+
+---
+
+## What it does
+
+- **Guided four-step flow.** Each step focuses on a single decision: which system, which template, what are the values, and what to name the result. You cannot advance until the current step is complete.
+- **SSP-linked.** Every authorization document is bound to a specific SSP from your Library, creating a traceable link between the authorization and the system it covers.
+- **Template-driven.** The authorization body comes from a reusable template you created on the Templates tab. All the boilerplate is already written; you only fill in the variable values.
+- **Live preview.** As you type variable values in step 3, the rendered document updates on the right in real time. You see the exact final text before you ever click Create.
+- **Authorization library.** Once created, the authorization appears in the Authorizations tab at `/authorizations`. You can open, review, and update it at any time.
+
+---
+
+## The four-step wizard
+
+<Steps>
+  <Step title="Select SSP">
+    The first step asks you to choose a **System Security Plan** from your Library. This SSP becomes the "subject system" for the authorization — the link between this document and the system it authorizes.
+
+    - The SSP picker shows all SSP-type documents in your Library. Use the search box to filter by name if you have many.
+    - Only SSPs you have access to (Private, Organization, or Public visibility matching your role) are shown.
+    - Select the SSP and click **Next**. The SSP name is displayed in the header of subsequent steps so you can confirm you picked the right one.
+
+    <Callout type="warn">
+    Choose your SSP carefully at this step. If you switch SSPs later (by clicking **Back** and changing the selection), any variable values you have already filled in step 3 will be cleared, because a different SSP may correspond to a completely different system and context.
+    </Callout>
+  </Step>
+  <Step title="Choose Template">
+    Step 2 asks you to pick an **authorization template**. All templates from your Templates tab are listed here.
+
+    - Click a template to select it. A preview of the template body appears on the right side of the wizard, with `{{ variable }}` placeholders highlighted in amber.
+    - Below the preview you will see the complete list of variables the template requires. Review this list before proceeding — it tells you exactly what information you need to have on hand before step 3.
+    - Click **Next** once you have selected a template.
+  </Step>
+  <Step title="Fill Variables">
+    Step 3 shows a form with one field per variable detected in the chosen template. Fill in each field with the appropriate value for this specific authorization.
+
+    - **All variables are required.** You cannot advance to step 4 until every field has a value. Unfilled fields are highlighted in red when you attempt to proceed.
+    - **Live preview.** As you type in any field, the rendered document on the right updates immediately. This lets you catch problems — misspelled names, incorrect dates, awkward sentence flow — before the document is created.
+    - **Variable labels match your template.** If your template uses descriptive variable names like `{{ Federal Agency/Office }}` or `{{ Low, Moderate, or High }}`, those exact labels appear as field labels in the form, making it self-documenting.
+    - Click **Next** when all fields are filled.
+  </Step>
+  <Step title="Review & Name">
+    The final step shows the **fully rendered authorization document** — the template with every variable replaced by the value you entered. Read through the entire document carefully to confirm it is correct.
+
+    When you are satisfied:
+
+    1. Enter a **name** for this authorization in the **Authorization Name** field. Use a name that clearly identifies the system, the type of authorization, and the time period — for example: `FedRAMP ATO — Acme Cloud Platform — 2026 Q2`, or `Internal Authorization — HR Portal — Annual Renewal 2026`.
+    2. Click **Create Authorization**.
+
+    OSCAL Hub saves the document and redirects you to the Authorizations tab, where the new authorization appears at the top of the list.
+  </Step>
+</Steps>
+
+---
+
+## Where your authorizations live
+
+After creation, every authorization is accessible from the **Authorizations tab** at `/authorizations`. Each card in the list shows:
+
+- **Authorization name** — the name you gave it in step 4.
+- **Linked SSP** — the system security plan it was created from.
+- **Template** — the template used to generate the body.
+- **Creation date** — when the authorization was created.
+- **Status** — any associated conditions (mandatory or recommended).
+
+Click a card to open the authorization detail view at `/authorizations/authorization/[id]`.
+
+---
+
+## Editing an authorization
+
+Open an authorization from the Authorizations tab. In the detail view you can:
+
+- **Edit metadata** — change the name, authorization date, expiration date, system owner, security manager, and authorizing official.
+- **Manage conditions** — add, edit, or remove mandatory and recommended conditions. Each condition can have a due date for tracking remediation timelines.
+- **View the rendered document** — the rendered body is always visible in the preview panel.
+
+Changes to the variable values that generated the document body are not available in the edit view — the body was rendered at creation time. To regenerate the body with different variable values, run the wizard again and create a new authorization document.
+
+---
+
+## Tips & limits
+
+- **Link the right SSP up front.** The SSP selection in step 1 is the most consequential choice in the wizard. Make sure the SSP you select matches the system being authorized. Going back to change it clears your step-3 variable values.
+- **Have your values ready before step 3.** The live preview is helpful for catching errors, but filling in 15 variables is faster when you have all the information (authorizing official name, dates, impact level, conditions, etc.) prepared before you open the wizard.
+- **Descriptive authorization names matter.** You may accumulate many authorization documents over time. Names like `ATO 2026` are hard to distinguish; names like `FedRAMP ATO — Acme Cloud — 2026 Q2` are immediately recognizable.
+- **Duplicate an authorization.** There is no built-in "clone" button for authorizations. To create a renewal or similar document, run the wizard again with the same template and SSP, and update the variable values (dates, conditions, etc.) for the new period.
+- **Conditions are optional at creation time.** You can add mandatory and recommended conditions after the authorization is created, from the detail view.
+
+<Callout type="info">
+Authorizations are a protected feature — you must be signed in to create or view them. If you see a "403 Forbidden" error, log out and log back in to refresh your session token.
+</Callout>
+
+---
+
+## Example: creating a FedRAMP ATO
+
+Here is a complete walkthrough of the wizard for a FedRAMP ATO scenario:
+
+1. **Step 1 — Select SSP**: Search for "Acme Cloud Platform" in the SSP picker. Select the SSP titled `Acme Cloud Platform SSP v3.1`.
+2. **Step 2 — Choose Template**: Select the `FedRAMP ATO Letter` template. Confirm the variable list includes `{{ system_name }}`, `{{ cloud_service_provider }}`, `{{ federal_agency }}`, `{{ authorizing_official }}`, `{{ authorization_date }}`, `{{ expiration_date }}`, and others.
+3. **Step 3 — Fill Variables**: Fill in each field. Watch the preview update as you type. Confirm the rendered prose reads correctly — especially the sentences that incorporate the impact level and scope notes.
+4. **Step 4 — Review & Name**: Read the full rendered letter. Set the name to `FedRAMP ATO — Acme Cloud Platform — 2026 Q2`. Click **Create Authorization**.
+
+The authorization now appears on the Authorizations tab, linked to the Acme Cloud Platform SSP, ready for download or external review.
+
+---
+
+## Related
+
+- [Authorization Templates](/guide/authorizations/templates)
+- [Authorizations Overview](/guide/authorizations/overview)
+- [Library Overview](/guide/library/overview)
+- [Build Overview — SSP](/guide/build/overview)
+- [Sign In & MFA](/guide/getting-started/sign-in-and-mfa)

@@ -1,0 +1,46 @@
+OSCAL Component Definition — Metaschema short-name "oscal-component-definition", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: component-definition
+Required children of component-definition:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+Optional:
+  - import-component-definitions (list of @href references)
+  - components (list of component assemblies)
+  - capabilities (list of capability assemblies)
+  - back-matter
+
+Key Metapath addresses (relative to component-definition/):
+  - metadata/title, metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - import-component-definitions/import-component-definition@href
+  - components/component@uuid (UUID, unique within definition)
+  - components/component@type (this-system, system, interconnection, software, hardware, service, policy, physical, process-procedure, plan, guidance, standard, validation)
+  - components/component/title (required)
+  - components/component/description (required)
+  - components/component/purpose
+  - components/component/protocols/protocol@uuid
+  - components/component/control-implementations/control-implementation@uuid
+  - components/component/control-implementations/control-implementation@source (URI ref to a profile/catalog)
+  - components/component/control-implementations/control-implementation/implemented-requirements/implemented-requirement@uuid
+  - components/component/control-implementations/control-implementation/implemented-requirements/implemented-requirement@control-id
+  - capabilities/capability@uuid
+  - capabilities/capability/name
+  - capabilities/capability/description
+  - capabilities/capability/incorporates-components/incorporates-component@component-uuid
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <is-unique target="components/component" id="components-unique">
+    <key-field target="@uuid"/>
+  </is-unique>
+  <allowed-values target="components/component/@type" allow-other="yes">
+    <enum value="this-system"/><enum value="system"/><enum value="interconnection"/>
+    <enum value="software"/><enum value="hardware"/><enum value="service"/>
+    <enum value="policy"/><enum value="physical"/><enum value="process-procedure"/>
+    <enum value="plan"/><enum value="guidance"/><enum value="standard"/><enum value="validation"/>
+  </allowed-values>
+  <expect target="components/component" test="title and description">
+    <message>[custom: r1] every component must have a title and description</message>
+  </expect>
+  <matches target="components/component/control-implementations/control-implementation/@source"
+           regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>

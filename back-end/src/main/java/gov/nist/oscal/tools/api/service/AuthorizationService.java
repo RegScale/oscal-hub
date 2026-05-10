@@ -3,7 +3,9 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
 import gov.nist.oscal.tools.api.entity.ConditionOfApproval;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
+import gov.nist.oscal.tools.api.exception.AuthorizationNotFoundException;
 import gov.nist.oscal.tools.api.model.ConditionOfApprovalRequest;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
 import gov.nist.oscal.tools.api.repository.AuthorizationTemplateRepository;
@@ -40,6 +42,12 @@ public class AuthorizationService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AuthorizationOrgContext orgContext;
+
+    @Autowired
+    private AuthorizationAccessGuard accessGuard;
+
     /**
      * Create a new authorization
      */
@@ -55,11 +63,13 @@ public class AuthorizationService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        AuthorizationTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new RuntimeException("Template not found: " + templateId));
+        Organization userOrg = orgContext.requirePrimaryOrganization(user);
+        AuthorizationTemplate template = templateRepository.findByIdAndOrganization(templateId, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(templateId));
 
         // Create authorization
         Authorization authorization = new Authorization(name, sspItemId, template, user);
+        authorization.setOrganization(userOrg);
         authorization.setSarItemId(sarItemId);
         authorization.setVariableValues(variableValues);
 
@@ -115,8 +125,13 @@ public class AuthorizationService {
                                             List<ConditionOfApprovalRequest> conditionRequests) {
         logger.info("Updating authorization: {} by user: {}", id, username);
 
-        Authorization authorization = authorizationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(id));
+
+        accessGuard.requireWriteDetails(authorization,
+                userRepository.findByUsername(username)
+                        .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found.")));
 
         // Update name
         if (name != null) {
@@ -235,13 +250,13 @@ public class AuthorizationService {
     public void deleteAuthorization(Long id, String username) {
         logger.info("Deleting authorization: {} by user: {}", id, username);
 
-        Authorization authorization = authorizationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Authorization not found: " + id));
+        Organization userOrg = resolveUserOrg(username);
+        Authorization authorization = authorizationRepository.findByIdAndOrganization(id, userOrg)
+                .orElseThrow(() -> new AuthorizationNotFoundException(id));
 
-        // Check if user is the creator (you may want to add admin role check)
-        if (!authorization.getAuthorizedBy().getUsername().equals(username)) {
-            throw new RuntimeException("Only the creator can delete this authorization");
-        }
+        accessGuard.requireDelete(authorization,
+                userRepository.findByUsername(username)
+                        .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found.")));
 
         authorizationRepository.delete(authorization);
         logger.info("Deleted authorization: {}", id);
@@ -253,6 +268,124 @@ public class AuthorizationService {
     @Transactional
     public Authorization save(Authorization authorization) {
         return authorizationRepository.save(authorization);
+    }
+
+    // ==================== Org-scoped methods (multi-tenant isolation) ====================
+
+    /**
+     * Get all authorizations scoped to the current user's primary organization.
+     * SUPER_ADMINs bypass org scoping and see all authorizations (still filtered by access guard).
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> getAllAuthorizationsForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+        // TODO(perf): SUPER_ADMIN cross-org list does findAll; consider pagination when counts grow large.
+        return candidateAuthorizationsFor(user).stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
+    }
+
+    /**
+     * Get a single authorization by ID, scoped to the current user's primary organization.
+     * SUPER_ADMINs bypass org scoping.
+     * Returns 404 if the authorization does not exist OR the caller has no effective role on it
+     * (private-by-default: existence within the org is not leaked).
+     */
+    @Transactional(readOnly = true)
+    public Authorization getAuthorizationForUser(Long id, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+
+        Authorization authorization;
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) {
+            // SUPER_ADMIN bypasses org scoping
+            authorization = authorizationRepository.findById(id)
+                    .orElseThrow(() -> new AuthorizationNotFoundException(id));
+        } else {
+            Organization org = orgContext.requirePrimaryOrganization(user);
+            authorization = authorizationRepository.findByIdAndOrganization(id, org)
+                    .orElseThrow(() -> new AuthorizationNotFoundException(id));
+        }
+
+        // Bug 1 fix: enforce access guard — return 404 if user has no role on this authorization.
+        // This upholds private-by-default: an org member with no grant sees 404, not 403,
+        // so authorization existence is not leaked.
+        if (accessGuard.effectiveRole(authorization, user) == null) {
+            throw new AuthorizationNotFoundException(id);
+        }
+        return authorization;
+    }
+
+    /**
+     * Search authorizations scoped to the current user's primary organization.
+     * SUPER_ADMINs bypass org scoping and search across all authorizations.
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> searchAuthorizationsForUser(String username, String searchTerm) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+
+        List<Authorization> raw;
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) {
+            // SUPER_ADMIN searches across all orgs
+            raw = (searchTerm == null || searchTerm.isBlank())
+                    ? authorizationRepository.findAll()
+                    : authorizationRepository.searchByNameOrSspItemId(searchTerm);
+        } else {
+            Organization org = orgContext.requirePrimaryOrganization(user);
+            raw = (searchTerm == null || searchTerm.isBlank())
+                    ? authorizationRepository.findByOrganization(org)
+                    : authorizationRepository.searchByNameOrSspItemIdAndOrganization(searchTerm, org);
+        }
+        return raw.stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
+    }
+
+    /**
+     * Get authorizations for a specific SSP, scoped to the current user's primary organization.
+     * SUPER_ADMINs bypass org scoping.
+     */
+    @Transactional(readOnly = true)
+    public List<Authorization> getAuthorizationsBySspForUser(String sspItemId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User '" + username + "' not found."));
+
+        List<Authorization> candidates;
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) {
+            // SUPER_ADMIN sees all orgs
+            candidates = authorizationRepository.findBySspItemId(sspItemId);
+        } else {
+            Organization org = orgContext.requirePrimaryOrganization(user);
+            candidates = authorizationRepository.findBySspItemIdAndOrganization(sspItemId, org);
+        }
+        return candidates.stream()
+                .filter(a -> accessGuard.effectiveRole(a, user) != null)
+                .toList();
+    }
+
+    /**
+     * Returns candidate authorizations for the given user.
+     * SUPER_ADMINs get all authorizations (cross-org); normal users get their primary org's authorizations.
+     */
+    private List<Authorization> candidateAuthorizationsFor(User user) {
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) {
+            // TODO(perf): SUPER_ADMIN cross-org list does findAll; consider pagination.
+            return authorizationRepository.findAll();
+        }
+        Organization org = orgContext.requirePrimaryOrganization(user);
+        return authorizationRepository.findByOrganization(org);
+    }
+
+    /**
+     * Resolve the primary organization for a username
+     */
+    private Organization resolveUserOrg(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User '" + username + "' not found."));
+        return orgContext.requirePrimaryOrganization(user);
     }
 
     /**

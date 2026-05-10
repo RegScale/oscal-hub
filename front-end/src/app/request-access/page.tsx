@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { ArrowLeft, Building2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from '@/components/HelpButton';
 
 interface Organization {
   organizationId: number;
@@ -195,9 +196,12 @@ export default function RequestAccessPage() {
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Request Organization Access
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+              Request Organization Access
+            </h1>
+            <HelpButton slug="request-access" />
+          </div>
           <p className="text-lg text-gray-600 dark:text-gray-400">
             Select an organization and submit your access request
           </p>

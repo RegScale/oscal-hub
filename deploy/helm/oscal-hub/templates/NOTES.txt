@@ -1,0 +1,35 @@
+OSCAL Hub has been installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.ingress.enabled }}
+
+  Public URL:  {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}
+
+  Make sure DNS for {{ .Values.ingress.host }} resolves to your ingress controller's
+  external address. Once it does, the UI is at the URL above and the API at /api.
+{{- else }}
+
+  Ingress is disabled. Reach the service from inside the cluster via:
+
+      Frontend:  {{ include "oscal-hub.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.ports.frontend }}
+      Backend:   {{ include "oscal-hub.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.ports.backend }}
+
+  Or port-forward for local access:
+
+      kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "oscal-hub.fullname" . }} 8080:{{ .Values.service.ports.frontend }}
+      open http://localhost:8080
+{{- end }}
+
+  Watch first-boot progress (Flyway migrations run on the first start, ~2-3 min):
+
+      kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "oscal-hub.fullname" . }}
+      kubectl -n {{ .Release.Namespace }} logs -f deploy/{{ include "oscal-hub.fullname" . }}
+
+  The default super-admin credentials are printed to the backend log on first
+  start. Capture them now and rotate immediately.
+
+{{- if and .Values.postgresql.enabled (le (int .Values.replicaCount) 1) }}
+
+  Heads up: replicaCount=1 with the bundled local-filesystem storage. To run
+  multiple replicas, switch to shared object storage (S3 / GCS / Azure) by
+  setting `config.storageProvider` and the matching credentials.
+{{- end }}

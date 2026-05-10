@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
+    @JsonIgnore
     @Column(nullable = false, length = 255)
     private String password; // BCrypt hashed password
 
@@ -68,6 +70,9 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String logo; // Base64-encoded logo image (data URL format: data:image/png;base64,...)
 
+    @Column(columnDefinition = "TEXT")
+    private String avatar; // Base64-encoded user avatar — separate from logo (which is the company mark used in authorization templates)
+
     // Account security fields
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
@@ -97,6 +102,7 @@ public class User {
     @ColumnDefault("false")
     private Boolean mfaEnabled = false;
 
+    @JsonIgnore
     @Column(name = "mfa_secret", length = 512)
     private String mfaSecret; // Encrypted TOTP secret
 
@@ -268,6 +274,14 @@ public class User {
 
     public void setLogo(String logo) {
         this.logo = logo;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public LocalDateTime getPasswordChangedAt() {

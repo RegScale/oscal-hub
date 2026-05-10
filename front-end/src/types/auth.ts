@@ -16,6 +16,7 @@ export interface User {
   organization?: string;
   phoneNumber?: string;
   logo?: string;
+  avatar?: string;
 }
 
 export interface AuthResponse {
@@ -34,6 +35,7 @@ export interface AuthResponse {
   organization?: string;
   phoneNumber?: string;
   logo?: string;
+  avatar?: string;
 
   // MFA fields
   mfaRequired?: boolean;

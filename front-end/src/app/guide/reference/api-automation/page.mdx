@@ -1,0 +1,1115 @@
+---
+title: API Automation Guide
+description: Learn how to automate OSCAL operations using the REST API with Python, Bash, curl, and TypeScript.
+lastUpdated: 2026-05-04
+---
+
+# API Automation Guide
+
+Learn how to automate OSCAL operations using the REST API with Python, Bash, curl, and TypeScript.
+
+## Getting Started
+
+### API Base URL
+
+All API endpoints are relative to the base URL:
+
+```
+http://localhost:8090/api
+```
+
+<Callout type="info">
+For production deployments, replace `localhost:8090` with your actual API host. Production deployments use port `8080`.
+</Callout>
+
+### Available Endpoints
+
+- `POST /api/validate` — Validate OSCAL documents
+- `POST /api/convert` — Convert document formats
+- `POST /api/profile/resolve` — Resolve OSCAL profiles
+- `POST /api/batch` — Process multiple files
+- `GET /api/batch/:operationId` — Get batch operation status
+- `GET /api/files` — List saved files
+- `GET /api/files/:fileId` — Get file metadata
+- `GET /api/files/:fileId/content` — Get file content
+- `POST /api/files` — Upload and save file
+- `DELETE /api/files/:fileId` — Delete file
+- `GET /api/health` — Health check
+
+### OSCAL Model Types
+
+The following model types are supported:
+
+- `catalog`
+- `profile`
+- `component-definition`
+- `system-security-plan`
+- `assessment-plan`
+- `assessment-results`
+- `plan-of-action-and-milestones`
+
+### Supported Formats
+
+- `JSON`
+- `XML`
+- `YAML`
+
+---
+
+## Authentication
+
+All API requests require authentication using a service account token. You can generate tokens from the Profile page in the web interface.
+
+### Creating a Service Account Token
+
+<Steps>
+<Step title="Log in to the web interface">
+Navigate to OSCAL Hub and sign in.
+</Step>
+<Step title="Open your profile">
+Click your username and select **Profile**.
+</Step>
+<Step title="Generate a token">
+Scroll to **Service Account Tokens**, enter a name and expiration period (1–3650 days), then click **Generate Service Account Token**.
+</Step>
+<Step title="Copy the token">
+Copy the token immediately — it cannot be retrieved later.
+</Step>
+</Steps>
+
+### Using the Token
+
+Include the token in the `Authorization` header:
+
+```
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+<Callout type="warn">
+**Security Best Practices:** Store tokens in environment variables or secure vaults. Never commit tokens to version control. Use different tokens for different environments. Rotate tokens regularly and revoke them immediately if compromised.
+</Callout>
+
+---
+
+## Validate Documents
+
+Validate OSCAL documents against their schema to ensure compliance.
+
+### Endpoint
+
+```
+POST /api/validate
+```
+
+### Request Body
+
+```json
+{
+  "content": "... OSCAL document content as string ...",
+  "modelType": "catalog",
+  "format": "JSON",
+  "fileName": "my-catalog.json"
+}
+```
+
+### Example: curl
+
+```bash
+curl -X POST http://localhost:8090/api/validate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "content": "{\"catalog\": {\"uuid\": \"123\", \"metadata\": {...}}}",
+    "modelType": "catalog",
+    "format": "JSON",
+    "fileName": "my-catalog.json"
+  }'
+```
+
+### Example: Python
+
+```python
+import requests
+import json
+import os
+
+# Load your OSCAL document
+with open('my-catalog.json', 'r') as f:
+    content = f.read()
+
+# API configuration
+API_BASE_URL = 'http://localhost:8090/api'
+TOKEN = os.getenv('OSCAL_API_TOKEN')  # Store token in environment variable
+
+# Validate the document
+response = requests.post(
+    f'{API_BASE_URL}/validate',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {TOKEN}'
+    },
+    json={
+        'content': content,
+        'modelType': 'catalog',
+        'format': 'JSON',
+        'fileName': 'my-catalog.json'
+    }
+)
+
+result = response.json()
+
+if result['valid']:
+    print('✓ Document is valid!')
+else:
+    print('✗ Validation failed:')
+    for error in result['errors']:
+        print(f"  Line {error['line']}: {error['message']}")
+        print(f"  Path: {error['path']}")
+```
+
+### Example: Bash Script
+
+```bash
+#!/bin/bash
+
+# Configuration
+API_BASE_URL="http://localhost:8090/api"
+TOKEN="${OSCAL_API_TOKEN}"
+FILE_PATH="my-catalog.json"
+
+# Read file content (escape quotes for JSON)
+CONTENT=$(cat "$FILE_PATH" | jq -Rs .)
+
+# Create request body
+REQUEST_BODY=$(cat <<EOF
+{
+  "content": $CONTENT,
+  "modelType": "catalog",
+  "format": "JSON",
+  "fileName": "$FILE_PATH"
+}
+EOF
+)
+
+# Validate document
+response=$(curl -s -X POST "$API_BASE_URL/validate" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "$REQUEST_BODY")
+
+# Check if valid
+is_valid=$(echo "$response" | jq -r '.valid')
+
+if [ "$is_valid" = "true" ]; then
+  echo "✓ Document is valid!"
+  exit 0
+else
+  echo "✗ Validation failed:"
+  echo "$response" | jq -r '.errors[] | "  Line \(.line): \(.message)"'
+  exit 1
+fi
+```
+
+### Example: TypeScript
+
+```ts
+import * as fs from 'fs';
+
+interface ValidationRequest {
+  content: string;
+  modelType: string;
+  format: string;
+  fileName?: string;
+}
+
+interface ValidationError {
+  line: number;
+  column: number;
+  message: string;
+  severity: string;
+  path: string;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  fileName: string;
+  modelType: string;
+  format: string;
+  timestamp: string;
+}
+
+async function validateDocument(
+  filePath: string,
+  modelType: string,
+  format: string
+): Promise<ValidationResult> {
+  const API_BASE_URL = 'http://localhost:8090/api';
+  const TOKEN = process.env.OSCAL_API_TOKEN;
+
+  const content = fs.readFileSync(filePath, 'utf-8');
+
+  const request: ValidationRequest = { content, modelType, format, fileName: filePath };
+
+  const response = await fetch(`${API_BASE_URL}/validate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.statusText}`);
+  }
+
+  return await response.json() as ValidationResult;
+}
+
+// Usage
+(async () => {
+  try {
+    const result = await validateDocument('my-catalog.json', 'catalog', 'JSON');
+    if (result.valid) {
+      console.log('✓ Document is valid!');
+    } else {
+      console.log('✗ Validation failed:');
+      result.errors.forEach(error => {
+        console.log(`  Line ${error.line}: ${error.message}`);
+        console.log(`  Path: ${error.path}`);
+      });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    process.exit(1);
+  }
+})();
+```
+
+### Response Format
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "fileName": "my-catalog.json",
+  "modelType": "catalog",
+  "format": "JSON",
+  "timestamp": "2025-10-20T14:30:00Z"
+}
+```
+
+Or if invalid:
+
+```json
+{
+  "valid": false,
+  "errors": [
+    {
+      "line": 15,
+      "column": 8,
+      "message": "Missing required field 'uuid'",
+      "severity": "ERROR",
+      "path": "/catalog/metadata"
+    }
+  ],
+  "fileName": "my-catalog.json",
+  "modelType": "catalog",
+  "format": "JSON",
+  "timestamp": "2025-10-20T14:30:00Z"
+}
+```
+
+---
+
+## Convert Formats
+
+Convert OSCAL documents between XML, JSON, and YAML formats.
+
+### Endpoint
+
+```
+POST /api/convert
+```
+
+### Request Body
+
+```json
+{
+  "content": "... OSCAL document content ...",
+  "fromFormat": "XML",
+  "toFormat": "JSON",
+  "modelType": "catalog",
+  "fileName": "my-catalog.xml"
+}
+```
+
+### Example: curl
+
+```bash
+curl -X POST http://localhost:8090/api/convert \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "content": "<catalog>...</catalog>",
+    "fromFormat": "XML",
+    "toFormat": "JSON",
+    "modelType": "catalog",
+    "fileName": "my-catalog.xml"
+  }'
+```
+
+### Example: Python
+
+```python
+import requests
+import os
+
+def convert_oscal_format(
+    input_file: str,
+    from_format: str,
+    to_format: str,
+    model_type: str,
+    output_file: str
+):
+    """Convert OSCAL document from one format to another."""
+
+    API_BASE_URL = 'http://localhost:8090/api'
+    TOKEN = os.getenv('OSCAL_API_TOKEN')
+
+    with open(input_file, 'r') as f:
+        content = f.read()
+
+    response = requests.post(
+        f'{API_BASE_URL}/convert',
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {TOKEN}'
+        },
+        json={
+            'content': content,
+            'fromFormat': from_format,
+            'toFormat': to_format,
+            'modelType': model_type,
+            'fileName': input_file
+        }
+    )
+
+    result = response.json()
+
+    if result['success']:
+        with open(output_file, 'w') as f:
+            f.write(result['convertedContent'])
+        print(f'✓ Converted {input_file} from {from_format} to {to_format}')
+        print(f'  Output: {output_file}')
+    else:
+        print(f'✗ Conversion failed: {result.get("error", "Unknown error")}')
+        return False
+
+    return True
+
+# Usage
+convert_oscal_format(
+    input_file='catalog.xml',
+    from_format='XML',
+    to_format='JSON',
+    model_type='catalog',
+    output_file='catalog.json'
+)
+```
+
+### Example: Bash Script
+
+```bash
+#!/bin/bash
+# Convert OSCAL document format
+# Usage: ./convert.sh input.xml JSON catalog output.json
+
+INPUT_FILE="$1"
+TO_FORMAT="$2"
+MODEL_TYPE="$3"
+OUTPUT_FILE="$4"
+
+API_BASE_URL="http://localhost:8090/api"
+TOKEN="${OSCAL_API_TOKEN}"
+
+case "$INPUT_FILE" in
+  *.xml) FROM_FORMAT="XML" ;;
+  *.json) FROM_FORMAT="JSON" ;;
+  *.yaml|*.yml) FROM_FORMAT="YAML" ;;
+  *) echo "Error: Unknown file format"; exit 1 ;;
+esac
+
+CONTENT=$(cat "$INPUT_FILE" | jq -Rs .)
+
+response=$(curl -s -X POST "$API_BASE_URL/convert" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "{
+    \"content\": $CONTENT,
+    \"fromFormat\": \"$FROM_FORMAT\",
+    \"toFormat\": \"$TO_FORMAT\",
+    \"modelType\": \"$MODEL_TYPE\",
+    \"fileName\": \"$INPUT_FILE\"
+  }")
+
+success=$(echo "$response" | jq -r '.success')
+
+if [ "$success" = "true" ]; then
+  echo "$response" | jq -r '.convertedContent' > "$OUTPUT_FILE"
+  echo "✓ Converted $INPUT_FILE from $FROM_FORMAT to $TO_FORMAT"
+  echo "  Output: $OUTPUT_FILE"
+else
+  echo "✗ Conversion failed:"
+  echo "$response" | jq -r '.error'
+  exit 1
+fi
+```
+
+### Example: TypeScript
+
+```ts
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface ConversionRequest {
+  content: string;
+  fromFormat: string;
+  toFormat: string;
+  modelType: string;
+  fileName?: string;
+}
+
+interface ConversionResult {
+  success: boolean;
+  convertedContent?: string;
+  error?: string;
+  fileName: string;
+  modelType: string;
+  originalFormat: string;
+  convertedFormat: string;
+  timestamp: string;
+}
+
+async function convertFormat(
+  inputFile: string,
+  toFormat: string,
+  modelType: string,
+  outputFile: string
+): Promise<void> {
+  const API_BASE_URL = 'http://localhost:8090/api';
+  const TOKEN = process.env.OSCAL_API_TOKEN;
+
+  const ext = path.extname(inputFile).toLowerCase();
+  const formatMap: Record<string, string> = {
+    '.xml': 'XML', '.json': 'JSON', '.yaml': 'YAML', '.yml': 'YAML'
+  };
+  const fromFormat = formatMap[ext];
+  if (!fromFormat) throw new Error(`Unknown file format: ${ext}`);
+
+  const content = fs.readFileSync(inputFile, 'utf-8');
+
+  const response = await fetch(`${API_BASE_URL}/convert`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`
+    },
+    body: JSON.stringify({ content, fromFormat, toFormat, modelType, fileName: inputFile } as ConversionRequest)
+  });
+
+  if (!response.ok) throw new Error(`API request failed: ${response.statusText}`);
+
+  const result = await response.json() as ConversionResult;
+
+  if (result.success && result.convertedContent) {
+    fs.writeFileSync(outputFile, result.convertedContent, 'utf-8');
+    console.log(`✓ Converted ${inputFile} from ${fromFormat} to ${toFormat}`);
+    console.log(`  Output: ${outputFile}`);
+  } else {
+    throw new Error(`Conversion failed: ${result.error || 'Unknown error'}`);
+  }
+}
+```
+
+---
+
+## Resolve Profiles
+
+Resolve OSCAL profiles into fully resolved catalogs.
+
+### Endpoint
+
+```
+POST /api/profile/resolve
+```
+
+### Request Body
+
+```json
+{
+  "profileContent": "... OSCAL profile content ...",
+  "format": "JSON"
+}
+```
+
+### Example: curl
+
+```bash
+curl -X POST http://localhost:8090/api/profile/resolve \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{
+    "profileContent": "{\"profile\": {...}}",
+    "format": "JSON"
+  }'
+```
+
+### Example: Python
+
+```python
+import requests
+import os
+
+def resolve_profile(profile_file: str, output_file: str, format: str = 'JSON'):
+    """Resolve an OSCAL profile into a catalog."""
+
+    API_BASE_URL = 'http://localhost:8090/api'
+    TOKEN = os.getenv('OSCAL_API_TOKEN')
+
+    with open(profile_file, 'r') as f:
+        profile_content = f.read()
+
+    response = requests.post(
+        f'{API_BASE_URL}/profile/resolve',
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {TOKEN}'
+        },
+        json={'profileContent': profile_content, 'format': format}
+    )
+
+    result = response.json()
+
+    if result['success']:
+        with open(output_file, 'w') as f:
+            f.write(result['resolvedCatalog'])
+        print(f'✓ Profile resolved successfully')
+        print(f'  Output: {output_file}')
+    else:
+        print(f'✗ Resolution failed: {result.get("error", "Unknown error")}')
+        return False
+
+    return True
+
+# Usage
+resolve_profile('my-profile.json', 'resolved-catalog.json', 'JSON')
+```
+
+---
+
+## Batch Operations
+
+Process multiple OSCAL files in a single batch operation (validate or convert).
+
+### Endpoint
+
+```
+POST /api/batch
+```
+
+### Example: Python Batch Validation
+
+```python
+import requests
+import os
+import glob
+
+def batch_validate(file_pattern: str, model_type: str):
+    """Validate multiple OSCAL files in batch."""
+
+    API_BASE_URL = 'http://localhost:8090/api'
+    TOKEN = os.getenv('OSCAL_API_TOKEN')
+
+    files = glob.glob(file_pattern)
+    print(f'Found {len(files)} files to validate')
+
+    results = []
+    for file_path in files:
+        print(f'\nValidating {file_path}...')
+
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        if file_path.endswith('.xml'):
+            format = 'XML'
+        elif file_path.endswith('.json'):
+            format = 'JSON'
+        else:
+            format = 'YAML'
+
+        response = requests.post(
+            f'{API_BASE_URL}/validate',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {TOKEN}'
+            },
+            json={
+                'content': content,
+                'modelType': model_type,
+                'format': format,
+                'fileName': file_path
+            }
+        )
+
+        result = response.json()
+        results.append({
+            'file': file_path,
+            'valid': result['valid'],
+            'errors': result.get('errors', [])
+        })
+
+        if result['valid']:
+            print(f'  ✓ Valid')
+        else:
+            print(f'  ✗ Invalid ({len(result["errors"])} errors)')
+
+    print(f'\n{"="*60}')
+    print('BATCH VALIDATION SUMMARY')
+    print(f'{"="*60}')
+    valid_count = sum(1 for r in results if r['valid'])
+    print(f'Total: {len(results)} files')
+    print(f'Valid: {valid_count}')
+    print(f'Invalid: {len(results) - valid_count}')
+
+    return results
+
+# Usage
+batch_validate('oscal-files/*.json', 'catalog')
+```
+
+---
+
+## File Management
+
+Manage saved OSCAL files through the API.
+
+### List Files
+
+```python
+# curl
+curl -X GET http://localhost:8090/api/files \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+
+# Python
+response = requests.get(
+    f'{API_BASE_URL}/files',
+    headers={'Authorization': f'Bearer {TOKEN}'}
+)
+files = response.json()
+for file in files:
+    print(f"{file['id']}: {file['fileName']} ({file['modelType']})")
+```
+
+### Upload File
+
+```python
+with open('catalog.json', 'r') as f:
+    content = f.read()
+
+response = requests.post(
+    f'{API_BASE_URL}/files',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {TOKEN}'
+    },
+    json={
+        'content': content,
+        'fileName': 'catalog.json',
+        'modelType': 'catalog',
+        'format': 'JSON'
+    }
+)
+
+saved_file = response.json()
+print(f"File uploaded: {saved_file['id']}")
+```
+
+### Get File Content
+
+```python
+file_id = 'abc123'
+response = requests.get(
+    f'{API_BASE_URL}/files/{file_id}/content',
+    headers={'Authorization': f'Bearer {TOKEN}'}
+)
+content = response.json()['content']
+print(content)
+```
+
+### Delete File
+
+```python
+file_id = 'abc123'
+response = requests.delete(
+    f'{API_BASE_URL}/files/{file_id}',
+    headers={'Authorization': f'Bearer {TOKEN}'}
+)
+if response.status_code == 200:
+    print(f"File {file_id} deleted successfully")
+```
+
+---
+
+## Error Handling
+
+### HTTP Status Codes
+
+- `200 OK` — Request successful
+- `400 Bad Request` — Invalid request parameters
+- `401 Unauthorized` — Missing or invalid authentication token
+- `404 Not Found` — Resource not found
+- `500 Internal Server Error` — Server error
+
+### Example: Python Error Handling
+
+```python
+import requests
+from requests.exceptions import RequestException
+
+def validate_with_error_handling(file_path: str, model_type: str, format: str):
+    """Validate OSCAL document with comprehensive error handling."""
+
+    API_BASE_URL = 'http://localhost:8090/api'
+    TOKEN = os.getenv('OSCAL_API_TOKEN')
+
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        response = requests.post(
+            f'{API_BASE_URL}/validate',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {TOKEN}'
+            },
+            json={
+                'content': content,
+                'modelType': model_type,
+                'format': format,
+                'fileName': file_path
+            },
+            timeout=30
+        )
+
+        if response.status_code == 401:
+            print('Error: Invalid or expired authentication token')
+            return False
+        elif response.status_code == 400:
+            print('Error: Invalid request parameters')
+            print(response.json())
+            return False
+        elif response.status_code != 200:
+            print(f'Error: API returned status code {response.status_code}')
+            return False
+
+        result = response.json()
+
+        if result['valid']:
+            print(f'✓ {file_path} is valid')
+            return True
+        else:
+            print(f'✗ {file_path} has validation errors:')
+            for error in result['errors']:
+                print(f"  Line {error['line']}: {error['message']}")
+            return False
+
+    except FileNotFoundError:
+        print(f'Error: File not found: {file_path}')
+        return False
+    except RequestException as e:
+        print(f'Error: Network request failed: {e}')
+        return False
+    except ValueError as e:
+        print(f'Error: Invalid JSON response: {e}')
+        return False
+    except Exception as e:
+        print(f'Error: Unexpected error: {e}')
+        return False
+
+# Usage
+validate_with_error_handling('catalog.json', 'catalog', 'JSON')
+```
+
+---
+
+## Best Practices
+
+### Security
+
+- Always store API tokens in environment variables or secure vaults
+- Never hardcode tokens in source code
+- Use HTTPS in production environments
+- Implement token rotation policies
+- Use different tokens for different environments (dev, staging, prod)
+
+### Performance
+
+- Use batch operations when processing multiple files
+- Set appropriate timeouts for API requests
+- Implement retry logic with exponential backoff
+- Cache validation results when appropriate
+- Process large files asynchronously
+
+### Reliability
+
+- Always check HTTP status codes before parsing responses
+- Implement comprehensive error handling
+- Log API requests and responses for debugging
+- Validate input data before sending to API
+- Handle network timeouts gracefully
+
+### Example: Retry Logic with Exponential Backoff
+
+```python
+import time
+import requests
+from typing import Optional
+
+def api_request_with_retry(
+    url: str,
+    method: str = 'POST',
+    max_retries: int = 3,
+    **kwargs
+) -> Optional[requests.Response]:
+    """Make API request with exponential backoff retry."""
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.request(method, url, **kwargs)
+
+            if response.status_code == 200:
+                return response
+
+            if 400 <= response.status_code < 500:
+                return response
+
+            if response.status_code >= 500:
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                print(f'Server error, retrying in {wait_time}s...')
+                time.sleep(wait_time)
+                continue
+
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                raise
+            wait_time = 2 ** attempt
+            print(f'Request failed, retrying in {wait_time}s...')
+            time.sleep(wait_time)
+
+    return None
+```
+
+---
+
+## CI/CD Integration
+
+Integrate OSCAL validation and processing into your continuous integration and deployment pipelines.
+
+### GitHub Actions Example
+
+```yaml
+name: Validate OSCAL Documents
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install requests
+
+    - name: Validate OSCAL files
+      env:
+        OSCAL_API_TOKEN: ${{ secrets.OSCAL_API_TOKEN }}
+        OSCAL_API_URL: ${{ secrets.OSCAL_API_URL }}
+      run: |
+        python scripts/validate_all.py
+
+    - name: Upload validation results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: validation-results
+        path: validation-results.json
+```
+
+### GitLab CI Example
+
+```yaml
+validate-oscal:
+  image: python:3.11
+  stage: test
+
+  before_script:
+    - pip install requests
+
+  script:
+    - python scripts/validate_all.py
+
+  variables:
+    OSCAL_API_TOKEN: $OSCAL_API_TOKEN
+    OSCAL_API_URL: $OSCAL_API_URL
+
+  artifacts:
+    reports:
+      junit: validation-results.xml
+    paths:
+      - validation-results.json
+    when: always
+
+  only:
+    - main
+    - merge_requests
+```
+
+### Example Validation Script for CI/CD
+
+```python
+#!/usr/bin/env python3
+"""
+validate_all.py - Validate all OSCAL files in repository for CI/CD
+"""
+
+import os
+import sys
+import glob
+import json
+import requests
+from pathlib import Path
+
+def validate_all_oscal_files():
+    """Validate all OSCAL files and return exit code."""
+
+    API_BASE_URL = os.getenv('OSCAL_API_URL', 'http://localhost:8090/api')
+    TOKEN = os.getenv('OSCAL_API_TOKEN')
+
+    if not TOKEN:
+        print('Error: OSCAL_API_TOKEN environment variable not set')
+        return 1
+
+    patterns = ['**/*.json', '**/*.xml', '**/*.yaml']
+    files = []
+    for pattern in patterns:
+        files.extend(glob.glob(pattern, recursive=True))
+
+    oscal_files = []
+    for file_path in files:
+        with open(file_path, 'r') as f:
+            content = f.read()
+            if any(kw in content for kw in ['catalog', 'profile', 'component-definition',
+                                             'system-security-plan', 'assessment-plan']):
+                oscal_files.append(file_path)
+
+    print(f'Found {len(oscal_files)} OSCAL files to validate')
+
+    results = []
+    failed_count = 0
+
+    for file_path in oscal_files:
+        print(f'\nValidating {file_path}...')
+
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        if file_path.endswith('.xml'):
+            format = 'XML'
+        elif file_path.endswith('.json'):
+            format = 'JSON'
+        else:
+            format = 'YAML'
+
+        model_type = 'catalog'
+        if 'profile' in content.lower():
+            model_type = 'profile'
+        elif 'system-security-plan' in content.lower():
+            model_type = 'system-security-plan'
+
+        try:
+            response = requests.post(
+                f'{API_BASE_URL}/validate',
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {TOKEN}'
+                },
+                json={
+                    'content': content,
+                    'modelType': model_type,
+                    'format': format,
+                    'fileName': file_path
+                },
+                timeout=60
+            )
+
+            if response.status_code != 200:
+                print(f'  ✗ API error: {response.status_code}')
+                failed_count += 1
+                continue
+
+            result = response.json()
+            results.append({
+                'file': file_path,
+                'valid': result['valid'],
+                'errors': result.get('errors', [])
+            })
+
+            if result['valid']:
+                print(f'  ✓ Valid')
+            else:
+                print(f'  ✗ Invalid ({len(result["errors"])} errors)')
+                for error in result['errors'][:3]:
+                    print(f'    Line {error["line"]}: {error["message"]}')
+                failed_count += 1
+
+        except Exception as e:
+            print(f'  ✗ Error: {e}')
+            failed_count += 1
+
+    with open('validation-results.json', 'w') as f:
+        json.dump(results, f, indent=2)
+
+    print(f'\n{"="*60}')
+    print('VALIDATION SUMMARY')
+    print(f'{"="*60}')
+    print(f'Total files: {len(oscal_files)}')
+    print(f'Valid: {len(oscal_files) - failed_count}')
+    print(f'Invalid: {failed_count}')
+
+    return 1 if failed_count > 0 else 0
+
+if __name__ == '__main__':
+    sys.exit(validate_all_oscal_files())
+```
+
+---
+
+## Additional Resources
+
+- [Interactive API Documentation (Swagger UI)](http://localhost:8090/swagger-ui/index.html) — Test API endpoints directly in your browser
+- [User Guide](/guide) — Complete guide to using the web interface
+- [NIST OSCAL Documentation](https://pages.nist.gov/OSCAL/) — Official OSCAL documentation and specifications

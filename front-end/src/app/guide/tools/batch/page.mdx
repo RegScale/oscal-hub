@@ -1,0 +1,74 @@
+---
+title: Batch Processing
+description: Validate, convert, or resolve many OSCAL files at once with per-file progress tracking and a ZIP-archive download of all results.
+lastUpdated: 2026-05-04
+---
+
+# Batch Processing
+
+The Batch tool lets you process many OSCAL files in a single operation instead of uploading them one at a time. Choose an operation (validate, convert, or resolve), configure the settings that apply to all files, upload your files, and download a ZIP archive containing every result. Per-file progress and error reporting make it easy to see what succeeded and what needs attention.
+
+Use Batch whenever you have more than a handful of files to process — for example, validating an entire directory of OSCAL artifacts before submitting an authorization package, or converting a library of profiles from XML to JSON.
+
+---
+
+## What it does
+
+- **Upload multiple files at once.** Select files from your computer or drag a group of files onto the upload zone. Each file is listed individually with its own progress indicator.
+- **Three operation types.** Choose from Validate (check each file against schema and constraints), Convert (re-serialize each file into a different format), or Resolve (resolve each profile into a resolved catalog).
+- **Per-file progress tracking.** A progress bar and status badge next to each file shows whether it is queued, processing, succeeded, or failed. You do not have to wait for all files to finish before seeing which ones are done.
+- **ZIP-archive download.** When the operation completes, click **Download Results** to get a single ZIP file containing all the outputs. For a validate operation, this includes a JSON or HTML report per file. For convert and resolve, it includes the converted or resolved output files.
+- **Clear per-file error reporting.** Files that fail show a red status badge and an expandable error message so you know exactly which file had a problem and why, without having to re-run everything to find out.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to Batch">
+    From the dashboard, click the **Batch** card in the Core Tools section, or go to **Tools → Batch** in the left navigation.
+  </Step>
+  <Step title="Drag and drop your files">
+    Drag a group of OSCAL files onto the upload zone, or click **Browse files** to select multiple files from your computer using the file picker. Each uploaded file appears as a row in the file list with its name, size, and a "Queued" status badge.
+  </Step>
+  <Step title="Choose the operation type">
+    Select **Validate**, **Convert**, or **Resolve** from the **Operation** dropdown. The settings panel below updates to show only the options relevant to that operation.
+  </Step>
+  <Step title="Configure operation settings">
+    Fill in the settings for the chosen operation:
+    - **Validate** — select the OSCAL model type. If your files are a mix of model types, select **Auto-detect** and OSCAL Hub will infer the type from each file's root element.
+    - **Convert** — select the source model type and the output format (XML, JSON, or YAML).
+    - **Resolve** — select the output format for the resolved catalogs. All uploaded files must be Profile documents.
+  </Step>
+  <Step title="Click 'Process Files'">
+    Press the **Process Files** button. Files are submitted to the backend in parallel. The status badge for each file updates in real time as it moves from Queued → Processing → Succeeded (green) or Failed (red).
+  </Step>
+  <Step title="Download results">
+    Once all files have been processed (or while some are still running if you do not want to wait), click **Download Results**. OSCAL Hub packages all completed outputs into a ZIP archive and prompts your browser to download it. The archive preserves the original file names with appropriate extensions.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **10 MB per file.** Each individual file must be 10 MB or smaller. There is no limit on the number of files in a batch, but very large batches (hundreds of files) may take several minutes to complete.
+- **Mix of model types for validate.** When running a validate batch, you can mix Catalog, Profile, SSP, and other model types in the same batch as long as you select **Auto-detect** for the model type. OSCAL Hub identifies the type from each file's root element.
+- **Resolve requires all-profile input.** When running a resolve batch, every uploaded file must be an OSCAL Profile. Uploading a Catalog or SSP file in a resolve batch will cause that file to fail.
+- **Failed files do not block the rest.** If one file fails, the other files continue processing. The failed file is reported in the results panel, and the ZIP archive contains only the files that succeeded.
+- **Re-run individual failures.** After reviewing the error messages for failed files, you can fix those files and re-upload just the failures. There is no need to re-run the files that already succeeded.
+- **Results are also in History.** Every batch operation is logged in your [Operation History](/guide/tools/history) with the full file list, so you can look up what was processed and when.
+
+<Callout type="info">
+For very large batches or automated pipelines, use the REST API directly. The `/api/batch` endpoint accepts the same parameters as the UI and returns a job ID you can poll for progress. See the [API Automation guide](/guide/reference/api-automation) for details.
+</Callout>
+
+---
+
+## Related
+
+- [Validate Documents](/guide/tools/validate)
+- [Convert Document Formats](/guide/tools/convert)
+- [Resolve Profiles](/guide/tools/resolve)
+- [Operation History](/guide/tools/history)
+- [API Automation](/guide/reference/api-automation)

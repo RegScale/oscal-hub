@@ -13,6 +13,7 @@ import { CodeEditor } from '@/components/code-editor';
 import { apiClient } from '@/lib/api-client';
 import { downloadFile } from '@/lib/download';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { HelpButton } from '@/components/HelpButton';
 import { toast } from 'sonner';
 import type { OscalFormat, ProfileResolutionResult } from '@/types/oscal';
 
@@ -113,7 +114,10 @@ export default function ResolvePage() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Resolve OSCAL Profile</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold">Resolve OSCAL Profile</h1>
+            <HelpButton slug="resolve" />
+          </div>
           <p className="text-muted-foreground">
             Resolve profiles into catalogs with complete control selection
           </p>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { HelpButton } from '@/components/HelpButton';
 
 interface OrganizationResponse {
   id: number;
@@ -19,6 +20,7 @@ export default function AdminOrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form fields for creating organization
   const [newOrgName, setNewOrgName] = useState('');
@@ -29,6 +31,15 @@ export default function AdminOrganizationsPage() {
   useEffect(() => {
     loadOrganizations();
   }, []);
+
+  const filteredOrganizations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return organizations;
+    return organizations.filter((org) =>
+      org.name.toLowerCase().includes(q) ||
+      (org.description ?? '').toLowerCase().includes(q)
+    );
+  }, [organizations, searchQuery]);
 
   const loadOrganizations = async () => {
     try {
@@ -130,9 +141,12 @@ export default function AdminOrganizationsPage() {
 
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Manage Organizations
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Manage Organizations
+              </h1>
+              <HelpButton slug="admin-organizations" />
+            </div>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Create and manage organizations in the system
             </p>
@@ -222,6 +236,29 @@ export default function AdminOrganizationsPage() {
           </div>
         )}
 
+        <div className="mb-4 flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 3.5a7.5 7.5 0 0013.15 13.15z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search organizations by name or description..."
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {filteredOrganizations.length} of {organizations.length}
+          </span>
+        </div>
+
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
@@ -250,8 +287,14 @@ export default function AdminOrganizationsPage() {
                     No organizations found. Create your first organization to get started.
                   </td>
                 </tr>
+              ) : filteredOrganizations.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    No organizations match &ldquo;{searchQuery}&rdquo;.
+                  </td>
+                </tr>
               ) : (
-                organizations.map((org) => (
+                filteredOrganizations.map((org) => (
                   <tr key={org.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">

@@ -1,0 +1,108 @@
+---
+title: Platform Users
+description: Search, edit, lock, and manage every user account on the platform from the Super Admin Users page.
+lastUpdated: 2026-05-04
+---
+
+# Platform Users
+
+The Platform Users page at `/admin/users` is your cross-organization view of every account on the system. Unlike the Org Admin Users page — which is scoped to a single organization — this page shows all users regardless of which org they belong to.
+
+From here you can search for a specific user, edit their profile, set their global role, lock their account, force a password reset, or remove them from the platform entirely.
+
+---
+
+## What it shows
+
+The users table displays the following columns by default:
+
+| Column | Description |
+|---|---|
+| **Name** | Full name and avatar |
+| **Email** | Login email address |
+| **Global Role** | `USER` or `SUPER_ADMIN` |
+| **Status** | Active, Locked, or Pending verification |
+| **Organizations** | Orgs the user belongs to |
+| **Last Login** | Timestamp of the most recent session |
+
+Use the **search bar** to filter by name or email. Use the **Status** and **Global Role** dropdowns to narrow further.
+
+---
+
+## Common operations
+
+### Edit a user's profile and global role
+
+<Steps>
+<Step title="Navigate to Platform Users">
+Go to `/admin/users` or click the Users tile on the Super Admin Dashboard.
+</Step>
+<Step title="Find the user">
+Type in the search bar or scroll the table to locate the account. Filters for Status and Global Role help narrow large lists.
+</Step>
+<Step title="Open the user record">
+Click the user's row. The edit panel opens on the right (or navigates to a detail page, depending on screen size).
+</Step>
+<Step title="Edit fields">
+Update the display name, email, or any profile fields as needed.
+</Step>
+<Step title="Set the global role">
+In the **Global Role** dropdown, choose `USER` (standard access) or `SUPER_ADMIN` (platform-wide admin). Use `SUPER_ADMIN` sparingly.
+</Step>
+<Step title="Save">
+Click **Save Changes**. The update takes effect immediately — if you promoted the user to `SUPER_ADMIN`, they will see the `/admin` section on their next page load.
+</Step>
+</Steps>
+
+### Lock a user account
+
+<Steps>
+<Step title="Find the user">
+Use search or filters to locate the account.
+</Step>
+<Step title="Open row actions">
+Click the three-dot menu (or the Lock icon) on the user's row.
+</Step>
+<Step title="Select Lock Account">
+Confirm the action in the dialog. The user is immediately prevented from logging in and any active sessions are terminated.
+</Step>
+</Steps>
+
+### Reset a user's password
+
+<Steps>
+<Step title="Open row actions">
+Click the three-dot menu on the user's row.
+</Step>
+<Step title="Select Reset Password">
+Choose **Reset Password**. The system sends a password-reset email to the user's registered address.
+</Step>
+</Steps>
+
+### Remove a user from the platform
+
+<Steps>
+<Step title="Open row actions">
+Click the three-dot menu on the user's row.
+</Step>
+<Step title="Select Remove User">
+Click **Remove User** and confirm in the dialog.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Remove is destructive.** Removing a user from this page deletes their platform account and revokes access to all organizations. This action cannot be undone. If you only want to remove a user from a single organization (leaving their account intact), use the [Org Admin Users](/guide/org-admin/users) page instead.
+- **Locking vs removing.** Lock an account when you want to suspend access temporarily (e.g., during an investigation). Remove only when the account should not exist on the platform at all.
+- **Role changes are immediate.** If you demote a `SUPER_ADMIN` back to `USER`, their `/admin` access disappears on the next request — active sessions may still work for a short time until the token is re-validated.
+- **Password resets require a valid email.** If the user's email is unreachable, reset the password via the backend's admin CLI as a fallback.
+
+---
+
+## Related
+
+- [Organizations](/guide/admin/organizations)
+- [Org Admin Users](/guide/org-admin/users)
+- [Super Admin Overview](/guide/admin/overview)

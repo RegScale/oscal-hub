@@ -30,8 +30,8 @@ import type { LibraryItem, LibraryVersion, OscalModelType, RatingStats, LibraryC
 import { StarRating } from '@/components/ui/star-rating';
 import { CommentThread } from '@/components/library/comment-thread';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function LibraryItemDetailPage() {
   const params = useParams();
@@ -271,7 +271,6 @@ export default function LibraryItemDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -294,7 +293,6 @@ export default function LibraryItemDetailPage() {
             Back to Library
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -316,6 +314,7 @@ export default function LibraryItemDetailPage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold">{item.title}</h1>
                 <Badge variant="outline">{item.oscalType}</Badge>
+                <HelpButton slug="library" />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Version {item.currentVersion?.versionNumber || 1} • Updated {new Date(item.updatedAt).toLocaleDateString()}
@@ -335,6 +334,21 @@ export default function LibraryItemDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/*
+         * Public banner — shown to the creator when their item is
+         * PUBLIC, with a link to the (Phase 2) /catalog/{itemId} page.
+         * The link will 404 in Phase 1 and start working when Phase 2 ships.
+         */}
+        {item.visibility === 'PUBLIC' && user?.username === item.createdBy && (
+          <div className="bg-green-50 border-l-4 border-green-500 p-3 mb-6 text-sm">
+            This item is public — visible at{' '}
+            <a className="underline" href={`/catalog/${item.itemId}`}>
+              /catalog/{item.itemId}
+            </a>
+            .
+          </div>
+        )}
 
         {error && (
           <Alert variant="destructive" className="mb-6">
@@ -690,7 +704,6 @@ export default function LibraryItemDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

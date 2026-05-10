@@ -1,0 +1,73 @@
+---
+title: Visualize OSCAL Documents
+description: Explore OSCAL documents through interactive charts, control-family breakdowns, and structural hierarchy views.
+lastUpdated: 2026-05-04
+---
+
+# Visualize OSCAL Documents
+
+The Visualize tool renders an OSCAL document as an interactive visual summary — charts, hierarchy trees, and metadata panels — so you can quickly understand its structure and content without reading raw XML or JSON. Use it to get an at-a-glance understanding of a catalog's control coverage, an SSP's system boundary, or any other OSCAL document's key characteristics.
+
+---
+
+## What it does
+
+- **Control-family distribution chart.** For Catalog and Profile documents, a bar chart shows the number of controls in each control family (AC, AU, CA, CM, and so on). This makes it immediately obvious which families have the most controls and where tailoring has been applied.
+- **Structural hierarchy view.** A tree or outline view reflects the nesting of groups, controls, and subcontrols in the document. Expand and collapse branches to focus on the parts that matter to you.
+- **Cross-reference panel.** For SSP documents, the visualization surfaces the relationships between system components, implemented requirements, and responsible roles, letting you see at a glance which controls have implementations and which are still pending.
+- **Metadata summary.** Key document metadata — title, version, last modified date, responsible parties, and document identifiers — is extracted and shown in a clean summary card at the top of the view.
+- **Export visualization data.** Download the underlying data that drives the visualizations as JSON so you can import it into other tools or generate your own custom reports.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to Visualize">
+    From the dashboard, click the **Visualize** card in the Core Tools section, or go to **Tools → Visualize** in the left navigation.
+  </Step>
+  <Step title="Upload your file">
+    Drag your OSCAL file onto the upload zone or click **Browse files**. XML, JSON, and YAML files up to 10 MB are accepted. The tool works best with Catalog and SSP documents, though all 7 model types are supported.
+  </Step>
+  <Step title="Select the model type">
+    Open the **Model type** dropdown and select the type that matches your document: Catalog, Profile, Component Definition, System Security Plan, Assessment Plan, Assessment Results, or Plan of Action & Milestones. The visualization panels available will adjust based on the model type you select.
+  </Step>
+  <Step title="Click 'Visualize Document'">
+    Press the **Visualize Document** button. OSCAL Hub parses the document and builds the interactive visualizations. Most documents render in under three seconds; large catalogs (1000+ controls) may take up to fifteen seconds on the first render.
+  </Step>
+  <Step title="Explore the panels">
+    Use the tab bar at the top of the visualization area to switch between views:
+    - **Overview** — metadata summary card and key statistics.
+    - **Distribution** — control-family bar chart (Catalog and Profile only).
+    - **Structure** — interactive hierarchy tree of groups, controls, and subcontrols.
+    - **Cross-references** — relationship map (SSP and Component Definition only).
+
+    Click any control family bar or tree node to filter or highlight the relevant section. Use the zoom controls on charts to adjust the scale.
+  </Step>
+  <Step title="Export the data">
+    To save the visualization data for external use, click **Export Data** in the toolbar. You will receive a JSON file containing the parsed document structure and the computed chart data.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **Best results with Catalogs and SSPs.** The Distribution and Structure views are richest for Catalog documents (they have the most hierarchical content). The Cross-references view adds the most value for SSP documents.
+- **Large profiles render but can be slow.** A profile that imports a large base catalog (such as NIST SP 800-53 Rev 5) will parse and render, but the initial render may take 10–20 seconds because all referenced content must be loaded.
+- **10 MB upload limit.** Files larger than 10 MB should be processed via the [API](/guide/reference/api-automation), which has a higher limit for programmatic use cases.
+- **Visualization is read-only.** The Visualize tool does not allow editing. To modify a document, use the [Build](/guide/build/overview) tool, then come back to Visualize to review the result.
+- **Export for reports.** The exported JSON data can be fed into tools like Python's `matplotlib`, Observable Plot, or any charting library to produce custom reports or dashboards.
+
+<Callout type="info">
+If the chart panels are not rendering, try a hard refresh (Ctrl+Shift+R or Cmd+Shift+R). Occasionally the visualization libraries need a clean page load after a browser session has been open for a long time.
+</Callout>
+
+---
+
+## Related
+
+- [Validate Documents](/guide/tools/validate)
+- [Resolve Profiles](/guide/tools/resolve)
+- [OSCAL Model Types](/guide/reference/model-types)
+- [API Automation](/guide/reference/api-automation)

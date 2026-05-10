@@ -67,8 +67,27 @@ import type {
   ArtifactAnalytics,
   ArtifactComment,
   ArtifactVisibility,
+  AuthorizationRole,
+  AuthorizationGrantResponse,
+  OrgMemberResponse,
+  AuthorizationDocumentResponse,
+  PackageCompletenessResponse,
+  UpdateDocumentMetadataRequest,
+  DocumentType,
+  ConMonSnapshotSummary,
+  ConMonReconciliationDetail,
+  ConMonAnalytics,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
+import type {
+  CatalogRequest,
+  CatalogResponse,
+  ProfileBuildRequest,
+  ProfileBuildResponse,
+  OscalDocumentRequest,
+  OscalDocumentResponse,
+  GenericOscalModelSlug,
+} from '@/types/oscal-models';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
@@ -102,6 +121,20 @@ class ApiClient {
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
+    }
+  }
+
+  private async readErrorMessage(response: Response): Promise<string> {
+    try {
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const body = await response.json();
+        return body.message || body.error || `HTTP ${response.status}`;
+      }
+      const text = await response.text();
+      return text || `HTTP ${response.status}`;
+    } catch {
+      return `HTTP ${response.status}`;
     }
   }
 
@@ -450,6 +483,57 @@ class ApiClient {
       }
     } catch (error) {
       console.error('Failed to upload logo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload user avatar (base64-encoded data URL). Distinct from uploadLogo,
+   * which sets the company logo used in authorization templates.
+   */
+  async uploadAvatar(avatar: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/auth/avatar`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ avatar }),
+        },
+        10000
+      );
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload avatar';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            errorMessage = error.error || error.message || errorMessage;
+          } else {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          }
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+
+        if (response.status === 403) {
+          throw new Error('Access denied. Please make sure you are logged in.');
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        user.avatar = result.avatar;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
       throw error;
     }
   }
@@ -3049,15 +3133,21 @@ class ApiClient {
 
       const result = await response.json();
 
-      // Get existing user data to preserve firstName/lastName
+      // Preserve fields not returned by select-organization (firstName,
+      // lastName, logo, avatar) so they don't get wiped from the header
+      // mid-session.
       const existingUser = localStorage.getItem('user');
       let firstName = '';
       let lastName = '';
+      let logo: string | undefined;
+      let avatar: string | undefined;
       if (existingUser) {
         try {
           const parsed = JSON.parse(existingUser);
           firstName = parsed.firstName || '';
           lastName = parsed.lastName || '';
+          logo = parsed.logo;
+          avatar = parsed.avatar;
         } catch (e) {
           // ignore
         }
@@ -3076,6 +3166,8 @@ class ApiClient {
         orgRole: result.orgRole,
         globalRole: result.globalRole,
         mustChangePassword: result.mustChangePassword,
+        logo,
+        avatar,
       }));
 
       return result;
@@ -3116,15 +3208,20 @@ class ApiClient {
 
       const result = await response.json();
 
-      // Get existing user data to preserve firstName/lastName
+      // Preserve fields not returned by switch-organization so they don't
+      // get wiped (firstName, lastName, logo, avatar).
       const existingUser = localStorage.getItem('user');
       let firstName = '';
       let lastName = '';
+      let logo: string | undefined;
+      let avatar: string | undefined;
       if (existingUser) {
         try {
           const parsed = JSON.parse(existingUser);
           firstName = parsed.firstName || '';
           lastName = parsed.lastName || '';
+          logo = parsed.logo;
+          avatar = parsed.avatar;
         } catch (e) {
           // ignore
         }
@@ -3143,6 +3240,8 @@ class ApiClient {
         orgRole: result.orgRole,
         globalRole: result.globalRole,
         mustChangePassword: result.mustChangePassword,
+        logo,
+        avatar,
       }));
 
       return result;
@@ -3630,10 +3729,13 @@ class ApiClient {
    * Get audit log statistics
    * Super Admin only
    */
-  async getAuditLogStats(): Promise<AuditLogStats> {
+  async getAuditLogStats(username?: string): Promise<AuditLogStats> {
     try {
+      const url = username
+        ? `${API_BASE_URL}/admin/logs/stats?username=${encodeURIComponent(username)}`
+        : `${API_BASE_URL}/admin/logs/stats`;
       const response = await this.fetchWithTimeout(
-        `${API_BASE_URL}/admin/logs/stats`,
+        url,
         {
           method: 'GET',
           headers: this.getAuthHeaders(),
@@ -4866,10 +4968,15 @@ class ApiClient {
     id: number;
     username: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
     globalRole: string;
     enabled: boolean;
+    organizations: Array<{
+      id: number;
+      name: string;
+      role: string;
+    }>;
   }>> {
     try {
       const response = await this.fetchWithTimeout(
@@ -4891,6 +4998,73 @@ class ApiClient {
       console.error('Failed to get all users:', error);
       throw error;
     }
+  }
+
+  async getUserAnalytics(): Promise<{
+    newUsersByMonth: Array<{ month: string; count: number }>;
+    loginsByMonth: Array<{ month: string; count: number }>;
+    topActiveOrganizations: Array<{ id: number; name: string; eventCount: number }>;
+    staleUsers: { totalUsers: number; staleUsers: number; percentage: number; windowDays: number };
+  }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/analytics`,
+      { method: 'GET', headers: this.getAuthHeaders() },
+      10000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to load user analytics');
+    }
+    return await response.json();
+  }
+
+  async archiveUser(userId: number): Promise<{ message: string; username: string; enabled: boolean }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/archive`,
+      { method: 'POST', headers: this.getAuthHeaders() },
+      5000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to archive user');
+    }
+    return await response.json();
+  }
+
+  async unarchiveUser(userId: number): Promise<{ message: string; username: string; enabled: boolean }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/unarchive`,
+      { method: 'POST', headers: this.getAuthHeaders() },
+      5000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to unarchive user');
+    }
+    return await response.json();
+  }
+
+  async resetUserPassword(
+    userId: number,
+    options?: { password?: string; notify?: boolean }
+  ): Promise<{ message: string; username: string; email: string; notified: boolean; password?: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/admin/users/${userId}/reset-password`,
+      {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: options?.password,
+          notify: options?.notify ?? true,
+        }),
+      },
+      10000
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to reset password');
+    }
+    return await response.json();
   }
 
   async addMemberToOrg(organizationId: number, userId: number, role: string): Promise<void> {
@@ -5036,7 +5210,7 @@ class ApiClient {
     }
   }
 
-  async resetOrgUserPassword(organizationId: number, userId: number): Promise<{ tempPassword: string; username: string; email: string }> {
+  async resetOrgUserPassword(organizationId: number, userId: number): Promise<{ username: string; email: string }> {
     try {
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/org-admin/users/${userId}/reset-password?organizationId=${organizationId}`,
@@ -5222,11 +5396,21 @@ class ApiClient {
           method: 'GET',
           headers: this.getAuthHeaders(),
         },
-        5000
+        15000,
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to get org analytics summary: ${response.statusText}`);
+        // The backend wraps any exception as 400 + {"error":"<message>"}.
+        // Surface that message instead of the empty/generic statusText so the
+        // user (and the dev console) sees the real cause.
+        let detail = response.statusText || `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          if (body?.error) detail = String(body.error);
+        } catch {
+          // body wasn't JSON; keep the status text
+        }
+        throw new Error(`Failed to get org analytics summary: ${detail}`);
       }
 
       return await response.json();
@@ -5358,7 +5542,714 @@ class ApiClient {
       controlCount: 42,
     };
   }
+
+  /* ─────────────────────────────────────────────────────────────────
+   * AI Rule Generator wizard
+   * ────────────────────────────────────────────────────────────────*/
+
+  async startRuleGen(
+    organizationId: number,
+    modelType: import('@/types/rule-gen').OscalModelType
+  ): Promise<{ sessionId: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ organizationId, modelType }),
+      },
+      30000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async sendRuleGenTurn(
+    sessionId: string,
+    userMessage: string
+  ): Promise<import('@/types/rule-gen').RuleGenTurnResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/turn`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ userMessage }),
+      },
+      // up to 4 Anthropic round-trips at ~30s each in the auto-iterate path.
+      180000
+    );
+    if (response.status === 410) {
+      throw new RuleGenSessionExpiredError('Rule-gen session expired or evicted');
+    }
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async editRuleGenProposal(
+    sessionId: string,
+    constraintXml: string
+  ): Promise<import('@/types/rule-gen').RuleGenTurnResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/edit`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ constraintXml }),
+      },
+      30000
+    );
+    if (response.status === 410) {
+      throw new RuleGenSessionExpiredError('Rule-gen session expired or evicted');
+    }
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async saveRuleGenRule(
+    sessionId: string,
+    ruleId: string,
+    category?: string,
+    enabled = true
+  ): Promise<number> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}/save`,
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ ruleId, category, enabled }),
+      },
+      15000
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }
+
+  async abandonRuleGen(sessionId: string): Promise<void> {
+    await this.fetchWithTimeout(
+      `${API_BASE_URL}/rules/ai-generate/sessions/${sessionId}`,
+      { method: 'DELETE', headers: this.getAuthHeaders() },
+      5000
+    );
+  }
+
+  /**
+   * List all grants for an authorization
+   */
+  async listGrants(authorizationId: number): Promise<AuthorizationGrantResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list grants: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list grants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a grant to an authorization
+   */
+  async addGrant(
+    authorizationId: number,
+    userId: number,
+    role: AuthorizationRole
+  ): Promise<AuthorizationGrantResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ userId, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to add grant: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to add grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update the role on an existing grant
+   */
+  async updateGrant(
+    authorizationId: number,
+    grantId: number,
+    role: AuthorizationRole
+  ): Promise<AuthorizationGrantResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants/${grantId}`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          // Backend ignores userId on PATCH, but the request body type requires it.
+          body: JSON.stringify({ userId: 0, role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update grant: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a grant from an authorization
+   */
+  async removeGrant(authorizationId: number, grantId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/grants/${grantId}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to remove grant: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to remove grant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set or clear the share-with-org default role for an authorization
+   */
+  async setShareWithOrg(
+    authorizationId: number,
+    role: AuthorizationRole | null
+  ): Promise<AuthorizationResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/share-with-org`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ role }),
+        },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update share-with-org: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update share-with-org:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List all members in the current user's organization
+   */
+  async listMyOrgMembers(): Promise<OrgMemberResponse[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/organizations/me/members`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list org members: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list org members:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List documents attached to an authorization
+   */
+  async listDocuments(
+    authorizationId: number,
+    options?: { type?: DocumentType; q?: string }
+  ): Promise<AuthorizationDocumentResponse[]> {
+    try {
+      const params = new URLSearchParams();
+      if (options?.type) params.set('type', options.type);
+      if (options?.q) params.set('q', options.q);
+      const qs = params.toString();
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents${qs ? `?${qs}` : ''}`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list documents: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to list documents:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a document to an authorization
+   */
+  async uploadDocument(
+    authorizationId: number,
+    file: File,
+    metadata: {
+      documentType: DocumentType;
+      description?: string;
+      tags?: string;
+      version?: string;
+      effectiveDate?: string;
+      expiresAt?: string;
+    }
+  ): Promise<AuthorizationDocumentResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', metadata.documentType);
+      if (metadata.description) formData.append('description', metadata.description);
+      if (metadata.tags) formData.append('tags', metadata.tags);
+      if (metadata.version) formData.append('version', metadata.version);
+      if (metadata.effectiveDate) formData.append('effectiveDate', metadata.effectiveDate);
+      if (metadata.expiresAt) formData.append('expiresAt', metadata.expiresAt);
+
+      // Multipart: must NOT set Content-Type so the browser sets the boundary.
+      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await fetch(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents`,
+        { method: 'POST', headers, body: formData }
+      );
+
+      if (!response.ok) {
+        const message = await this.readErrorMessage(response);
+        throw new Error(message);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to upload document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update metadata on an existing authorization document
+   */
+  async updateDocumentMetadata(
+    authorizationId: number,
+    documentId: number,
+    body: UpdateDocumentMetadataRequest
+  ): Promise<AuthorizationDocumentResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}`,
+        {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(body),
+        },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update document metadata: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to update document metadata:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a document from an authorization
+   */
+  async deleteDocument(authorizationId: number, documentId: number): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}`,
+        { method: 'DELETE', headers: this.getAuthHeaders() },
+        8000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete document: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download a document from an authorization
+   */
+  async downloadDocument(authorizationId: number, documentId: number): Promise<Blob> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/${documentId}/download`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        30000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to download document: ${response.status}`);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get package completeness for an authorization
+   */
+  async getPackageCompleteness(authorizationId: number): Promise<PackageCompletenessResponse> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/authorizations/${authorizationId}/documents/completeness`,
+        { method: 'GET', headers: this.getAuthHeaders() },
+        5000
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to load package completeness: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to load package completeness:', error);
+      throw error;
+    }
+  }
+
+  // ---- Continuous Monitoring (ConMon) ----
+
+  async listConMonSnapshots(authorizationId: number): Promise<ConMonSnapshotSummary[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to list snapshots: ${response.status}`);
+    return await response.json();
+  }
+
+  async uploadConMonSnapshot(authorizationId: number, file: File, notes?: string): Promise<ConMonSnapshotSummary> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (notes) formData.append('notes', notes);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots`,
+      { method: 'POST', headers, body: formData });
+    if (!response.ok) {
+      const message = await this.readErrorMessage(response);
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  async getConMonReconciliation(authorizationId: number, snapshotId: number): Promise<ConMonReconciliationDetail> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/reconciliation`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to load reconciliation: ${response.status}`);
+    return await response.json();
+  }
+
+  async listConMonItems(authorizationId: number, snapshotId: number,
+                        opts?: { status?: 'OPEN'|'CLOSED'|'UNKNOWN'; severity?: string; overdue?: boolean; q?: string;
+                                 page?: number; size?: number }): Promise<{
+    items: import('@/types/oscal').ConMonPoamItem[];
+    totalElements: number;
+    totalPages: number;
+    page: number;
+    size: number;
+  }> {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set('status', opts.status);
+    if (opts?.severity) params.set('severity', opts.severity);
+    if (opts?.overdue) params.set('overdue', 'true');
+    if (opts?.q) params.set('q', opts.q);
+    if (opts?.page !== undefined) params.set('page', String(opts.page));
+    if (opts?.size !== undefined) params.set('size', String(opts.size));
+    const qs = params.toString();
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/items${qs ? `?${qs}` : ''}`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) {
+      const message = await this.readErrorMessage(response);
+      throw new Error(`Failed to list items (${response.status}): ${message}`);
+    }
+    return await response.json();
+  }
+
+  async deleteConMonSnapshot(authorizationId: number, snapshotId: number): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}`,
+      { method: 'DELETE', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to delete snapshot: ${response.status}`);
+  }
+
+  async downloadConMonSnapshot(authorizationId: number, snapshotId: number): Promise<Blob> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/snapshots/${snapshotId}/download`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 30000);
+    if (!response.ok) throw new Error(`Failed to download snapshot: ${response.status}`);
+    return await response.blob();
+  }
+
+  async getConMonAnalytics(authorizationId: number): Promise<ConMonAnalytics> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/authorizations/${authorizationId}/conmon/analytics`,
+      { method: 'GET', headers: this.getAuthHeaders() }, 8000);
+    if (!response.ok) throw new Error(`Failed to load analytics: ${response.status}`);
+    return await response.json();
+  }
+}
+
+// Thrown by the rule-gen client methods when the backend returns 410 Gone —
+// the in-memory session was lost (typically a backend restart). Hooks should
+// catch this and silently restart the session before retrying the user's
+// request.
+export class RuleGenSessionExpiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RuleGenSessionExpiredError';
+  }
 }
 
 // Export singleton instance
 export const apiClient = new ApiClient();
+
+// ========================================
+// Catalog Builder API Methods
+// ========================================
+const CATALOG_BASE = `${API_BASE_URL}/build/catalogs`;
+const PROFILE_BUILD_BASE = `${API_BASE_URL}/build/profiles`;
+
+function buildAuthHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 15000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status}): ${response.statusText}`);
+    }
+    if (response.status === 204) return undefined as unknown as T;
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export const catalogBuilderApi = {
+  async create(request: CatalogRequest): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(CATALOG_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(catalogId: number, request: Partial<CatalogRequest>): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(catalogId: number): Promise<CatalogResponse> {
+    return fetchJson<CatalogResponse>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(catalogId: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${CATALOG_BASE}/${catalogId}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(): Promise<CatalogResponse[]> {
+    return fetchJson<CatalogResponse[]>(CATALOG_BASE, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(searchTerm?: string): Promise<CatalogResponse[]> {
+    const qs = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    return fetchJson<CatalogResponse[]>(`${CATALOG_BASE}/search${qs}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(catalogId: number): Promise<void> {
+    await fetchJson<void>(`${CATALOG_BASE}/${catalogId}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async statistics(): Promise<Record<string, unknown>> {
+    return fetchJson<Record<string, unknown>>(`${CATALOG_BASE}/statistics`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+};
+
+const OSCAL_DOCS_BASE = `${API_BASE_URL}/build/oscal-documents`;
+
+/**
+ * Unified API for OSCAL models that share the generic builder
+ * (SSP, Assessment Plan, Assessment Results, POA&M).
+ */
+export const oscalDocumentApi = {
+  async create(request: OscalDocumentRequest): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(OSCAL_DOCS_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(id: number, request: Partial<OscalDocumentRequest>): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(id: number): Promise<OscalDocumentResponse> {
+    return fetchJson<OscalDocumentResponse>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(id: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${OSCAL_DOCS_BASE}/${id}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(modelType: GenericOscalModelSlug): Promise<OscalDocumentResponse[]> {
+    return fetchJson<OscalDocumentResponse[]>(`${OSCAL_DOCS_BASE}?modelType=${encodeURIComponent(modelType)}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(modelType: GenericOscalModelSlug, q?: string): Promise<OscalDocumentResponse[]> {
+    const params = new URLSearchParams({ modelType });
+    if (q) params.set('q', q);
+    return fetchJson<OscalDocumentResponse[]>(`${OSCAL_DOCS_BASE}/search?${params.toString()}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(id: number): Promise<void> {
+    await fetchJson<void>(`${OSCAL_DOCS_BASE}/${id}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+};
+
+export const profileBuilderApi = {
+  async create(request: ProfileBuildRequest): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(PROFILE_BUILD_BASE, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async update(profileId: number, request: Partial<ProfileBuildRequest>): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+  async get(profileId: number): Promise<ProfileBuildResponse> {
+    return fetchJson<ProfileBuildResponse>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async getContent(profileId: number): Promise<string> {
+    const data = await fetchJson<{ content: string }>(`${PROFILE_BUILD_BASE}/${profileId}/content`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+    return data.content;
+  },
+  async list(): Promise<ProfileBuildResponse[]> {
+    return fetchJson<ProfileBuildResponse[]>(PROFILE_BUILD_BASE, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async search(searchTerm?: string): Promise<ProfileBuildResponse[]> {
+    const qs = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    return fetchJson<ProfileBuildResponse[]>(`${PROFILE_BUILD_BASE}/search${qs}`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async remove(profileId: number): Promise<void> {
+    await fetchJson<void>(`${PROFILE_BUILD_BASE}/${profileId}`, {
+      method: 'DELETE',
+      headers: buildAuthHeaders(),
+    });
+  },
+  async statistics(): Promise<Record<string, unknown>> {
+    return fetchJson<Record<string, unknown>>(`${PROFILE_BUILD_BASE}/statistics`, {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+    });
+  },
+};

@@ -2,6 +2,7 @@ package gov.nist.oscal.tools.api.repository;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -89,4 +90,26 @@ public interface AuthorizationRepository extends JpaRepository<Authorization, Lo
            "(:searchTerm IS NULL OR LOWER(a.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(a.sspItemId) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     Page<Authorization> searchByNameOrSspItemIdPaged(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    // --- Org-scoped queries (multi-tenant isolation) ---
+
+    List<Authorization> findByOrganization(Organization organization);
+
+    Optional<Authorization> findByIdAndOrganization(Long id, Organization organization);
+
+    Page<Authorization> findByOrganizationOrderByAuthorizedAtDesc(
+            Organization organization, Pageable pageable);
+
+    @Query("SELECT a FROM Authorization a WHERE a.organization = :organization AND " +
+           "a.sspItemId = :sspItemId")
+    List<Authorization> findBySspItemIdAndOrganization(
+            @Param("sspItemId") String sspItemId,
+            @Param("organization") Organization organization);
+
+    @Query("SELECT a FROM Authorization a WHERE a.organization = :organization AND (" +
+           "LOWER(a.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.sspItemId) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    List<Authorization> searchByNameOrSspItemIdAndOrganization(
+            @Param("searchTerm") String searchTerm,
+            @Param("organization") Organization organization);
 }

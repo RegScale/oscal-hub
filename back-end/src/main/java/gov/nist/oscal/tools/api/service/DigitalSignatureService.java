@@ -7,7 +7,6 @@ import gov.nist.oscal.tools.api.model.CertificateInfo;
 import gov.nist.oscal.tools.api.model.CertificateValidationResult;
 import gov.nist.oscal.tools.api.model.SignatureResult;
 import gov.nist.oscal.tools.api.repository.AuthorizationRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,18 +43,15 @@ public class DigitalSignatureService {
     /**
      * Sign authorization with client certificate
      *
-     * @param authorizationId ID of authorization to sign
-     * @param certificate     X.509 certificate from TLS connection
+     * @param auth        Authorization entity (already loaded and org-scoped by the caller)
+     * @param certificate X.509 certificate from TLS connection
      * @return SignatureResult with signer information
      * @throws Exception if signing fails
      */
-    public SignatureResult signAuthorization(Long authorizationId, X509Certificate certificate)
+    public SignatureResult signAuthorization(Authorization auth, X509Certificate certificate)
             throws Exception {
 
-        logger.info("Signing authorization {} with certificate", authorizationId);
-
-        Authorization auth = authorizationRepository.findById(authorizationId)
-                .orElseThrow(() -> new EntityNotFoundException("Authorization not found: " + authorizationId));
+        logger.info("Signing authorization {} with certificate", auth.getId());
 
         // Extract certificate information
         CertificateInfo certInfo = extractCertificateInfo(certificate);
@@ -90,7 +86,7 @@ public class DigitalSignatureService {
 
         authorizationRepository.save(auth);
 
-        logger.info("Authorization {} successfully signed by {}", authorizationId, certInfo.getCommonName());
+        logger.info("Authorization {} successfully signed by {}", auth.getId(), certInfo.getCommonName());
 
         return SignatureResult.builder()
                 .success(true)

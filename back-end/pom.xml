@@ -46,6 +46,9 @@
         <!-- PostgreSQL JDBC 42.7.11 fixes GHSA-98qh-xjc8-98pq (unbounded PBKDF2
              iterations in SCRAM auth → CPU exhaustion DoS). -->
         <postgresql.version>42.7.11</postgresql.version>
+        <!-- Bouncy Castle 1.84 fixes GHSA-p93r-85wp-75v3 (covert timing channel
+             in bcprov-jdk18on 1.83). Pulled transitively by signing/JWT libs. -->
+        <bouncycastle.version>1.84</bouncycastle.version>
         <protobuf-java.version>4.34.1</protobuf-java.version>
 
         <!-- Cloud SDK BOM versions -->
@@ -55,12 +58,13 @@
         <opentelemetry-bom.version>1.61.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
-        <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
+        <anthropic-java.version>2.27.0</anthropic-java.version>
         <bucket4j.version>8.10.1</bucket4j.version>
-        <org-json.version>20251224</org-json.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
+        <jjwt.version>0.13.0</jjwt.version>
         <postgres-socket-factory.version>1.28.3</postgres-socket-factory.version>
+        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
+        <tika.version>3.3.0</tika.version>
     </properties>
 
     <repositories>
@@ -121,6 +125,43 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!--
+              jsoup 1.22.1 (transitive via metaschema-databind 3.0.0.M1) hangs
+              indefinitely on Java 25 inside NodeTraversor.traverse when the
+              head() callback mutates the tree — regression introduced in 1.21.2
+              and fixed in 1.22.2. Metaschema's whitespace normalization in
+              AbstractMarkupString triggers the bug on every OSCAL XML deserialize.
+              Pin to 1.22.2 to escape the loop.
+              See: https://github.com/jhy/jsoup/releases/tag/jsoup-1.22.2
+            -->
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>1.22.2</version>
+            </dependency>
+
+            <!--
+              Bouncy Castle pinned to ${bouncycastle.version} to override the
+              transitive 1.83 pulled by upstream libs (jjwt, signing, Tika).
+              All three artifacts must move together — they share a release
+              cycle and mixing versions causes provider initialization errors.
+            -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -180,10 +221,16 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Flyway Database Migrations -->
+        <!-- Flyway Database Migrations.
+             Spring Boot 4 modularised the Flyway autoconfiguration out of
+             spring-boot-autoconfigure into a dedicated module shipped via
+             spring-boot-starter-flyway. Without this starter on the classpath
+             FlywayAutoConfiguration is absent and Flyway never runs at boot,
+             even though flyway-core itself is present — the schema-authority
+             policy in CLAUDE.md silently no-ops. -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
 
         <!-- Flyway PostgreSQL support -->
@@ -197,6 +244,38 @@
             <groupId>dev.metaschema.oscal</groupId>
             <artifactId>liboscal-java</artifactId>
             <version>${liboscal-java.version}</version>
+        </dependency>
+
+        <!-- Anthropic Java SDK for Claude API integration -->
+        <!-- Exclude swagger-annotations (non-Jakarta): both this jar and
+             swagger-annotations-jakarta ship io.swagger.v3.oas.annotations.media.Schema
+             at the same FQCN. Whichever the classloader picks wins. The non-Jakarta
+             variant pinned at 2.2.31 lacks $dynamicRef(), causing NoSuchMethodError
+             at runtime when springdoc/Schema introspection runs. We use the Jakarta
+             variant (springdoc transitive 2.2.38), so exclude this one to avoid the
+             collision. -->
+        <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+            <version>${anthropic-java.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.swagger.core.v3</groupId>
+                    <artifactId>swagger-annotations</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Apache Tika for multi-format document extraction (PDF, Word, HTML, Excel, etc.) -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>${tika.version}</version>
         </dependency>
 
         <!-- JSON Support -->
@@ -215,13 +294,6 @@
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
-        <!-- org.json - Override transitive dependency to fix CVE-2023-5072 -->
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>${org-json.version}</version>
-        </dependency>
-
         <!-- XML Support -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -232,13 +304,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-        </dependency>
-
-        <!-- Lombok for reducing boilerplate -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- Spring Security -->
@@ -392,6 +457,20 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.3.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Apache POI for FedRAMP POA&M Excel parsing (PR 4 ConMon) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -411,14 +490,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

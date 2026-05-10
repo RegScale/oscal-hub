@@ -92,7 +92,7 @@ RUN curl -fsSL -o /tmp/opentelemetry-javaagent.jar \
 # =============================================================================
 # Stage 4: Runtime - Combine both applications (SECURITY HARDENED)
 # =============================================================================
-FROM eclipse-temurin:25-jre-jammy
+FROM eclipse-temurin:25-jre-noble
 
 # Add security metadata labels (OCI standard)
 LABEL org.opencontainers.image.title="OSCAL Tools"

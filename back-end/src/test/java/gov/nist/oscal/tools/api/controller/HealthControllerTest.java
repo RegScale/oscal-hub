@@ -500,8 +500,6 @@ class HealthControllerTest {
         DetailedHealthResponse.ApplicationInfo appInfo = new DetailedHealthResponse.ApplicationInfo();
         appInfo.setName("oscal-cli-api");
         appInfo.setVersion("1.0.0");
-        appInfo.setProfile("test");
-        appInfo.setUptime("2d 5h 30m 15s");
         appInfo.setStartTime("2025-02-14T05:00:00Z");
         response.setApplication(appInfo);
 
@@ -560,10 +558,7 @@ class HealthControllerTest {
         // Environment info
         DetailedHealthResponse.EnvironmentInfo envInfo = new DetailedHealthResponse.EnvironmentInfo();
         envInfo.setJavaVersion("17.0.2");
-        envInfo.setJavaVendor("Eclipse Adoptium");
         envInfo.setOsName("Linux");
-        envInfo.setOsVersion("5.15.0");
-        envInfo.setOsArch("amd64");
         envInfo.setTimezone("America/New_York");
         response.setEnvironment(envInfo);
 

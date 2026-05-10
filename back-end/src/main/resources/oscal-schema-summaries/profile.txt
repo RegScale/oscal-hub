@@ -1,0 +1,41 @@
+OSCAL Profile — Metaschema short-name "oscal-profile", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: profile
+Required children of profile:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+  - imports (list — at least one)
+Optional:
+  - merge (assembly)
+  - modify (assembly)
+  - back-matter
+
+Key Metapath addresses (relative to profile/):
+  - metadata/title (required, non-empty string)
+  - metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - imports/import@href (URI reference, required)
+  - imports/import/include-all
+  - imports/import/include-controls/with-id (control id from imported catalog)
+  - imports/import/exclude-controls/with-id
+  - merge/combine@method (use-first, merge, keep)
+  - merge/flat
+  - merge/as-is
+  - merge/custom
+  - modify/set-parameters/set-parameter@param-id
+  - modify/alters/alter@control-id
+  - modify/alters/alter/adds/add@by-id
+  - modify/alters/alter/removes/remove@by-id
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <expect target="imports" test="count(import)>=1">
+    <message>[custom: r1] profile must import at least one source</message>
+  </expect>
+  <has-cardinality target="imports/import" min-occurs="1"/>
+  <matches target="imports/import/@href" regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>
+  <allowed-values target="merge/combine/@method">
+    <enum value="use-first"/><enum value="merge"/><enum value="keep"/>
+  </allowed-values>
+  <is-unique target="modify/alters/alter" id="alter-control-unique">
+    <key-field target="@control-id"/>
+  </is-unique>

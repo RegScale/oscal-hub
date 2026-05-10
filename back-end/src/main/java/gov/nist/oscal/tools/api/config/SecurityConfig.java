@@ -115,6 +115,30 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/*").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/invitations/*/accept").permitAll()
                 .requestMatchers("/api/health", "/api/health/ping").permitAll()
+                // Public catalog: anonymous-readable browse + detail of PUBLIC library
+                // items. Content downloads (the /content paths below) deliberately fall
+                // through to the authenticated rule so anonymous users can discover
+                // items but must sign in to download them.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/items/*").permitAll()
+                // Public analytics tabs (Highest Rated, Most Downloaded, Top
+                // Contributors, Analytics charts) — all aggregate over PUBLIC
+                // items only, no auth required.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/most-downloaded").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/top-rated").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/top-contributors").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public/catalog/analytics").permitAll()
+                // Spring's /error forward: when an unhandled controller exception
+                // bubbles up, Spring forwards to /error to render the response. If
+                // /error itself required auth, server-side 500s would be masked as
+                // 401s by AuthenticationEntryPoint. Make the error path public so
+                // real status codes flow through to the client.
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/ai/settings/status").permitAll()
+                // Dev-only diagnostic endpoint — controller is @Profile("dev"), so it
+                // doesn't exist outside dev anyway, but whitelist regardless to ensure
+                // it works whether or not the JWT validates.
+                .requestMatchers("/api/ai/whoami").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                 .requestMatchers("/swagger-custom.css").permitAll()
                 // Actuator endpoints - health and info are public (for load balancers), others require auth

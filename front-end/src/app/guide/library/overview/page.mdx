@@ -1,0 +1,109 @@
+---
+title: Library Overview
+description: Where your OSCAL documents, your organization's documents, and the community's live — browse, search, download, and share.
+lastUpdated: 2026-05-04
+---
+
+# Library Overview
+
+The Library at `/library` is the central repository for OSCAL documents on OSCAL Hub. Every document you create in a Build wizard can be saved here. Teammates in your organization can share documents through it. The broader community can publish reference content that anyone — even unauthenticated visitors — can browse via the [Public Catalog](/catalog).
+
+Think of it as a searchable, versioned, analytics-aware shelf for all the OSCAL content your work produces.
+
+---
+
+## What it lets you do
+
+- **Store any OSCAL document type.** Catalogs, Profiles, Component Definitions, SSPs, Assessment Plans, Assessment Results, and POA&Ms are all supported.
+- **Organize with tags.** Attach free-form tags (e.g., `FedRAMP`, `NIST-800-53`, `baseline`) when uploading or saving. Tags feed into search and filtering.
+- **Control visibility.** Each item is either Private (only you), Organization (your org members), or Public (everyone). See [Library Visibility](/guide/library/visibility) for the full breakdown.
+- **Save directly from any builder.** Every Build wizard has a **Save to Library** button. See [Save to Library](/guide/library/save-to-library).
+- **Auto-version on resave.** Saving the same document to the library a second time appends a new version to the existing library card rather than creating a duplicate.
+- **Track downloads and ratings.** Every download is counted. Logged-in users can rate items. The Analytics tab surfaces the most downloaded and most popular items.
+
+---
+
+## Visibility modes at a glance
+
+| Mode | Who sees it | Icon color |
+|---|---|---|
+| Private | Only you (the creator) | Red badge |
+| Organization | All members of your org | Blue badge |
+| Public | Everyone, including unauthenticated visitors at `/catalog` | Green badge |
+
+New items default to **Private**. You can change visibility at any time. For the full rules and how to change visibility, see [Library Visibility](/guide/library/visibility).
+
+---
+
+## How to browse the library
+
+<Steps>
+  <Step title="Sign in and navigate to /library">
+    The library requires authentication. After logging in, click **Library** in the navigation or go to `/library` directly.
+  </Step>
+  <Step title="Use the Browse tab">
+    The **Browse** tab opens by default and shows all items visible to you (your private items, your org's items, and any public items). Use the **Visibility** dropdown to narrow down to a specific scope.
+  </Step>
+  <Step title="Filter and search">
+    Switch to the **Search** tab to filter by keyword, OSCAL type, or tag. All three filters can be combined. The search index covers title, description, and tags.
+  </Step>
+  <Step title="Click an item card to see the detail page">
+    Each card shows the item's type badge, visibility badge, tags, author, date, download count, view count, star rating, and comment count. Click the card to open the detail page at `/library/[itemId]`.
+  </Step>
+  <Step title="Download">
+    On the card or detail page, click **Download** to save the file locally. The download is logged for analytics. You must be signed in to download.
+  </Step>
+</Steps>
+
+---
+
+## How to upload directly
+
+If you have an OSCAL file on disk (from an external tool or another system), you can add it to the library without going through a builder wizard.
+
+<Steps>
+  <Step title="Go to /library and open the Upload tab">
+    Navigate to `/library` and click the **Upload** tab.
+  </Step>
+  <Step title="Fill in the metadata">
+    Enter a **Title** (required), optional **Description**, select the **OSCAL Type** that matches the file, and add any **Tags** (comma-separated).
+  </Step>
+  <Step title="Select the file">
+    Click the file picker and choose your `.json`, `.xml`, `.yaml`, or `.yml` file. The format is detected from the file extension.
+  </Step>
+  <Step title="Click Upload to Library">
+    The item appears in the Browse tab immediately. Default visibility is **Private** — you can change it from the library card using the visibility action menu.
+  </Step>
+</Steps>
+
+---
+
+## Saving from a builder
+
+The preferred path for new content is to build it in a wizard and then click **Save to Library** when you are ready to share it. This flow lets you set the name, description, tags, visibility, and version notes in one modal without leaving the builder context.
+
+See [Save to Library](/guide/library/save-to-library) for the full walkthrough.
+
+---
+
+## Tips & limits
+
+- **The search index covers title, description, and tags.** Body content of OSCAL documents is not full-text indexed. Use descriptive titles and tags to make items easy to find.
+- **The Analytics tab shows popular items.** The most-downloaded leaderboard updates in real time and is a quick way to find reference documents the community finds useful.
+- **"My uploads" filtering.** In the Browse tab, select the **Private** visibility filter to see only items you created and have not shared. Combine with the Search tab to find a specific one-of-yours quickly.
+- **There is no hard limit on library size**, but very large OSCAL files (multi-MB) may take a moment to upload and download.
+- **Visibility changes are audited.** Every time you publish, unpublish, or change the scope of a library item, the event is recorded in the audit trail.
+
+<Callout type="info">
+The library is for finalized or near-final documents. Work-in-progress documents that you are still editing live in the Build Hub. When you are ready to share, use **Save to Library** from the builder.
+</Callout>
+
+---
+
+## Related
+
+- [Library Visibility](/guide/library/visibility)
+- [Save to Library](/guide/library/save-to-library)
+- [Public Catalog](/guide/library/public-catalog)
+- [Artifacts](/guide/library/artifacts)
+- [Build Hub](/guide/build/overview)

@@ -1,0 +1,62 @@
+---
+title: Access Requests
+description: Review and approve or deny user requests to join your organization.
+lastUpdated: 2026-05-04
+---
+
+# Access Requests
+
+> **App location:** In the application, this feature lives at `/org-admin/requests`. This guide page is named `access-requests` for clarity.
+
+The Access Requests page lists users who have proactively asked to join your organization. When a user browses the Available Orgs screen or visits `/request-access`, they can submit a request for any org that accepts them. As an Org Admin, you review those requests here and either approve or deny them.
+
+---
+
+## What it does
+
+| Capability | Description |
+|---|---|
+| **View pending requests** | See each requester's name, email, and the date they applied |
+| **Approve** | Grant the user Member-level access to your org |
+| **Deny** | Reject the request; the user is notified and can request again later |
+
+---
+
+## Review and act on requests
+
+<Steps>
+<Step title="Open Access Requests">
+Navigate to `/org-admin/requests` (or click the **Access Requests** quick-link from the Org Admin dashboard).
+</Step>
+<Step title="Review the pending list">
+Each row shows the requester's display name, email address, and the timestamp of the request. Read the information to decide whether to approve or deny.
+</Step>
+<Step title="Approve or Deny">
+Click **Approve** to add the user to your org as a Member, or **Deny** to reject the request. The requester receives an email notification in both cases.
+</Step>
+</Steps>
+
+After you approve a request, the user appears on the [Users](/guide/org-admin/users) page with a **Member** role. You can promote them to Org Admin there if needed.
+
+---
+
+## Bulk operations
+
+The current interface supports per-row actions only (one approve/deny at a time). Bulk approval is not yet available.
+
+---
+
+## Tips and limits
+
+- **Opt-in to receive requests.** Your org must have the "Accept access requests" option enabled in org settings for it to appear in users' request-access lists. If you want complete control over who joins, keep this option off and use [Invitations](/guide/org-admin/invitations) instead.
+- **Approved users start as Members.** Approving a request always grants the `MEMBER` role. Promote to `ORG_ADMIN` from the Users page after approval.
+- **Denied requesters can request again.** Denying a request does not block the user from submitting a new one in the future. If you want to prevent a specific user from joining, deny the request and do not enable open access requests.
+- **Check Invitations first.** If you proactively want to add someone without waiting for them to discover your org, use the [Invitations](/guide/org-admin/invitations) flow.
+
+---
+
+## Related
+
+- [Invitations](/guide/org-admin/invitations)
+- [Org Users](/guide/org-admin/users)
+- [Org Admin Overview](/guide/org-admin/overview)

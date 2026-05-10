@@ -808,7 +808,7 @@ After successful local deployment:
 2. **Try sample OSCAL files**: Check `examples/` directory (if available)
 3. **Explore the API**: http://localhost:8080/swagger-ui.html
 4. **Watch application logs**: `./local-deploy.sh logs`
-5. **Learn about Azure deployment**: `docs/AZURE-DEPLOYMENT-GUIDE.md`
+5. **Learn about Azure deployment**: `docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md`
 
 ---
 
@@ -818,7 +818,7 @@ After successful local deployment:
 
 - **This Guide**: Local deployment with Docker
 - **CLI Guide**: `docs/CLI-DEPLOYMENT-GUIDE.md` - Command-line deployment
-- **Azure Guide**: `docs/AZURE-DEPLOYMENT-GUIDE.md` - Cloud deployment
+- **Azure Guide**: `docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md` - Cloud deployment
 - **PostgreSQL Guide**: `docs/POSTGRESQL-MIGRATION.md`
 - **Security Guide**: `docs/SECURITY-HARDENING-SUMMARY.md`
 - **Main README**: `README.md`
@@ -858,7 +858,7 @@ Before considering your local deployment complete:
 
 **🎉 Congratulations!** You now have OSCAL Tools running locally!
 
-For production deployment to Azure, see: **`docs/AZURE-DEPLOYMENT-GUIDE.md`**
+For production deployment to Azure, see: **`docs/SELF-HOSTED-DEPLOYMENT-GUIDE.md`**
 
 ---
 

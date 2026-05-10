@@ -5,6 +5,7 @@ import gov.nist.oscal.tools.api.model.health.DetailedHealthResponse;
 import gov.nist.oscal.tools.api.model.health.SimpleHealthResponse;
 import gov.nist.oscal.tools.api.service.HealthCheckService;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -105,6 +106,7 @@ public class HealthController {
             description = "Access denied - requires SUPER_ADMIN role"
         )
     })
+    @Hidden
     @GetMapping("/detailed")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<DetailedHealthResponse> detailedHealth() {
@@ -135,6 +137,7 @@ public class HealthController {
             description = "Access denied - requires SUPER_ADMIN role"
         )
     })
+    @Hidden
     @GetMapping("/component/{component}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ComponentHealth> componentHealth(

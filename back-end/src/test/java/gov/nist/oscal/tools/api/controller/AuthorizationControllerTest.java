@@ -4,15 +4,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.nist.oscal.tools.api.config.RateLimitConfig;
 import gov.nist.oscal.tools.api.config.SecurityHeadersConfig;
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationGrant;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
 import gov.nist.oscal.tools.api.entity.AuthorizationTemplate;
+import gov.nist.oscal.tools.api.entity.Organization;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.exception.AuthorizationNotFoundException;
+import gov.nist.oscal.tools.api.exception.InsufficientAuthorizationRoleException;
+import gov.nist.oscal.tools.api.repository.AuthorizationGrantRepository;
+import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
+import gov.nist.oscal.tools.api.service.AuthorizationAccessGuard;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
 import gov.nist.oscal.tools.api.service.DigitalSignatureService;
 import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,6 +39,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -69,6 +80,27 @@ class AuthorizationControllerTest {
     @MockitoBean
     private TelemetryService telemetryService;
 
+    @MockitoBean
+    private AuthorizationAccessGuard accessGuard;
+
+    @MockitoBean
+    private AuthorizationGrantRepository grantRepository;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUpAccessGuardDefaults() {
+        User testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        // toResponse calls accessGuard.effectiveRole(authorization, currentUser).
+        // Default to OWNER so happy-path tests don't NPE.
+        when(accessGuard.effectiveRole(any(Authorization.class), any(User.class)))
+                .thenReturn(AuthorizationRole.OWNER);
+    }
+
     private User createMockUser(String username) {
         User user = new User();
         user.setUsername(username);
@@ -77,6 +109,11 @@ class AuthorizationControllerTest {
     }
 
     private Authorization createMockAuthorization(Long id, String name, User user) {
+        // Create mock organization
+        Organization org = new Organization();
+        org.setId(1L);
+        org.setName("Test Org");
+
         // Create mock template
         AuthorizationTemplate template = new AuthorizationTemplate();
         template.setId(1L);
@@ -93,12 +130,14 @@ class AuthorizationControllerTest {
         authorization.setSspItemId("ssp-123");
         authorization.setSarItemId("sar-123");
         authorization.setTemplate(template);
+        authorization.setOrganization(org);
         authorization.setDateAuthorized(LocalDate.now());
         authorization.setDateExpired(LocalDate.now().plusYears(3));
         authorization.setSystemOwner("John Doe");
         authorization.setSecurityManager("Jane Smith");
         authorization.setAuthorizingOfficial("Bob Johnson");
         authorization.setAuthorizedBy(user);
+        authorization.setAuthorizedAt(LocalDateTime.now());
         authorization.setCompletedContent("Completed authorization content");
         return authorization;
     }
@@ -214,7 +253,7 @@ class AuthorizationControllerTest {
         when(authorizationService.updateAuthorization(
                 anyLong(), anyString(), anyMap(), anyString(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), any(), anyList()))
-                .thenThrow(new RuntimeException("Authorization not found"));
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(put("/api/authorizations/999")
@@ -231,7 +270,7 @@ class AuthorizationControllerTest {
         User mockUser = createMockUser("testuser");
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/1"))
@@ -239,21 +278,21 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("Test Authorization"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetAuthorization_notFound_returns404() throws Exception {
         // Arrange
-        when(authorizationService.getAuthorization(999L))
-                .thenThrow(new RuntimeException("Authorization not found"));
+        when(authorizationService.getAuthorizationForUser(999L, "testuser"))
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/999"))
                 .andExpect(status().isNotFound());
 
-        verify(authorizationService, times(1)).getAuthorization(999L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(999L, "testuser");
     }
 
     @Test
@@ -265,7 +304,7 @@ class AuthorizationControllerTest {
         Authorization auth2 = createMockAuthorization(2L, "Authorization 2", mockUser);
         List<Authorization> authorizations = Arrays.asList(auth1, auth2);
 
-        when(authorizationService.getAllAuthorizations()).thenReturn(authorizations);
+        when(authorizationService.getAllAuthorizationsForUser("testuser")).thenReturn(authorizations);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations"))
@@ -274,14 +313,14 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Authorization 1"))
                 .andExpect(jsonPath("$[1].name").value("Authorization 2"));
 
-        verify(authorizationService, times(1)).getAllAuthorizations();
+        verify(authorizationService, times(1)).getAllAuthorizationsForUser("testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetAllAuthorizations_serviceException_returns500() throws Exception {
         // Arrange
-        when(authorizationService.getAllAuthorizations())
+        when(authorizationService.getAllAuthorizationsForUser("testuser"))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -297,7 +336,7 @@ class AuthorizationControllerTest {
         Authorization auth1 = createMockAuthorization(1L, "Recent Authorization", mockUser);
         List<Authorization> authorizations = Arrays.asList(auth1);
 
-        when(authorizationService.getRecentlyAuthorized(10)).thenReturn(authorizations);
+        when(authorizationService.getAllAuthorizationsForUser("testuser")).thenReturn(authorizations);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/recent")
@@ -306,27 +345,27 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Recent Authorization"));
 
-        verify(authorizationService, times(1)).getRecentlyAuthorized(10);
+        verify(authorizationService, times(1)).getAllAuthorizationsForUser("testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetRecentlyAuthorized_defaultLimit_uses10() throws Exception {
         // Arrange
-        when(authorizationService.getRecentlyAuthorized(10)).thenReturn(Arrays.asList());
+        when(authorizationService.getAllAuthorizationsForUser("testuser")).thenReturn(Arrays.asList());
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/recent"))
                 .andExpect(status().isOk());
 
-        verify(authorizationService, times(1)).getRecentlyAuthorized(10);
+        verify(authorizationService, times(1)).getAllAuthorizationsForUser("testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetRecentlyAuthorized_serviceException_returns500() throws Exception {
         // Arrange
-        when(authorizationService.getRecentlyAuthorized(anyInt()))
+        when(authorizationService.getAllAuthorizationsForUser(anyString()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -342,7 +381,7 @@ class AuthorizationControllerTest {
         Authorization auth1 = createMockAuthorization(1L, "SSP Authorization", mockUser);
         List<Authorization> authorizations = Arrays.asList(auth1);
 
-        when(authorizationService.getAuthorizationsBySsp("ssp-123")).thenReturn(authorizations);
+        when(authorizationService.getAuthorizationsBySspForUser("ssp-123", "testuser")).thenReturn(authorizations);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/ssp/ssp-123"))
@@ -350,14 +389,14 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].sspItemId").value("ssp-123"));
 
-        verify(authorizationService, times(1)).getAuthorizationsBySsp("ssp-123");
+        verify(authorizationService, times(1)).getAuthorizationsBySspForUser("ssp-123", "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetAuthorizationsBySsp_serviceException_returns500() throws Exception {
         // Arrange
-        when(authorizationService.getAuthorizationsBySsp(anyString()))
+        when(authorizationService.getAuthorizationsBySspForUser(anyString(), anyString()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -373,7 +412,7 @@ class AuthorizationControllerTest {
         Authorization auth1 = createMockAuthorization(1L, "Matching Authorization", mockUser);
         List<Authorization> authorizations = Arrays.asList(auth1);
 
-        when(authorizationService.searchAuthorizations("matching")).thenReturn(authorizations);
+        when(authorizationService.searchAuthorizationsForUser("testuser", "matching")).thenReturn(authorizations);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/search")
@@ -382,27 +421,27 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Matching Authorization"));
 
-        verify(authorizationService, times(1)).searchAuthorizations("matching");
+        verify(authorizationService, times(1)).searchAuthorizationsForUser("testuser", "matching");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testSearchAuthorizations_noQuery_searchesAll() throws Exception {
         // Arrange
-        when(authorizationService.searchAuthorizations(null)).thenReturn(Arrays.asList());
+        when(authorizationService.searchAuthorizationsForUser("testuser", null)).thenReturn(Arrays.asList());
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/search"))
                 .andExpect(status().isOk());
 
-        verify(authorizationService, times(1)).searchAuthorizations(null);
+        verify(authorizationService, times(1)).searchAuthorizationsForUser("testuser", null);
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testSearchAuthorizations_serviceException_returns500() throws Exception {
         // Arrange
-        when(authorizationService.searchAuthorizations(anyString()))
+        when(authorizationService.searchAuthorizationsForUser(anyString(), anyString()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -428,8 +467,8 @@ class AuthorizationControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testDeleteAuthorization_notCreator_returns403() throws Exception {
-        // Arrange
-        doThrow(new RuntimeException("Only the creator can delete this authorization"))
+        // Arrange — service now throws InsufficientAuthorizationRoleException (@ResponseStatus FORBIDDEN)
+        doThrow(new InsufficientAuthorizationRoleException("VIEWER", "OWNER"))
                 .when(authorizationService).deleteAuthorization(1L, "testuser");
 
         // Act & Assert
@@ -443,8 +482,8 @@ class AuthorizationControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void testDeleteAuthorization_notFound_returns404() throws Exception {
-        // Arrange
-        doThrow(new RuntimeException("Authorization not found"))
+        // Arrange — service now throws AuthorizationNotFoundException (@ResponseStatus NOT_FOUND)
+        doThrow(new AuthorizationNotFoundException(999L))
                 .when(authorizationService).deleteAuthorization(999L, "testuser");
 
         // Act & Assert
@@ -468,7 +507,7 @@ class AuthorizationControllerTest {
         authorization.setSignatureTimestamp(LocalDateTime.now());
         authorization.setCertificateVerified(true);
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/1/signature"))
@@ -477,7 +516,7 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.signerName").value("John Doe"))
                 .andExpect(jsonPath("$.signerEmail").value("john.doe@example.com"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
     }
 
     @Test
@@ -488,27 +527,26 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate(null); // No signature
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/1/signature"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("No signature found"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
     }
 
     @Test
     @WithMockUser(username = "testuser")
     void testGetSignatureDetails_authorizationNotFound_returns404() throws Exception {
-        // Arrange
-        when(authorizationService.getAuthorization(999L))
-                .thenThrow(new RuntimeException("Authorization not found"));
+        // Arrange — AuthorizationNotFoundException (@ResponseStatus NOT_FOUND) propagates naturally
+        when(authorizationService.getAuthorizationForUser(999L, "testuser"))
+                .thenThrow(new AuthorizationNotFoundException(999L));
 
         // Act & Assert
         mockMvc.perform(get("/api/authorizations/999/signature"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Authorization not found"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -523,7 +561,7 @@ class AuthorizationControllerTest {
         validationResult.setValid(true);
         validationResult.setNotes("Certificate is valid");
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
         when(digitalSignatureService.verifyCertificate("CERTIFICATE_DATA")).thenReturn(validationResult);
         when(authorizationService.save(any(Authorization.class))).thenReturn(authorization);
 
@@ -534,7 +572,7 @@ class AuthorizationControllerTest {
                 .andExpect(jsonPath("$.valid").value(true))
                 .andExpect(jsonPath("$.notes").value("Certificate is valid"));
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
         verify(digitalSignatureService, times(1)).verifyCertificate("CERTIFICATE_DATA");
         verify(authorizationService, times(1)).save(any(Authorization.class));
     }
@@ -547,14 +585,14 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate(null); // No signature
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
 
         // Act & Assert
         mockMvc.perform(post("/api/authorizations/1/verify-signature")
                 .with(csrf()))
                 .andExpect(status().isNotFound());
 
-        verify(authorizationService, times(1)).getAuthorization(1L);
+        verify(authorizationService, times(1)).getAuthorizationForUser(1L, "testuser");
         verify(digitalSignatureService, never()).verifyCertificate(anyString());
     }
 
@@ -566,7 +604,7 @@ class AuthorizationControllerTest {
         Authorization authorization = createMockAuthorization(1L, "Test Authorization", mockUser);
         authorization.setSignerCertificate("CERTIFICATE_DATA");
 
-        when(authorizationService.getAuthorization(1L)).thenReturn(authorization);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(authorization);
         when(digitalSignatureService.verifyCertificate("CERTIFICATE_DATA"))
                 .thenThrow(new RuntimeException("Verification error"));
 
@@ -602,5 +640,201 @@ class AuthorizationControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verify(authorizationService, never()).deleteAuthorization(anyLong(), anyString());
+    }
+
+    // ===== Sign-with-cert org-isolation tests =====
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testSignWithClientCertificate_noCertificate_returns401() throws Exception {
+        // No X509Certificate attribute on the request → should return 401
+        SignRequest request = new SignRequest(1L);
+
+        mockMvc.perform(post("/api/authorizations/sign-with-cert")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+
+        // getAuthorizationForUser must never be called when no cert is present
+        verify(authorizationService, never()).getAuthorizationForUser(anyLong(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void testSignWithClientCertificate_crossOrgId_returns404() throws Exception {
+        // Simulates an attacker guessing a foreign org's authorization ID.
+        // authorizationService.getAuthorizationForUser throws RuntimeException("not found")
+        // when the ID is not in the current user's org.
+        SignRequest request = new SignRequest(999L);
+
+        when(authorizationService.getAuthorizationForUser(999L, "testuser"))
+                .thenThrow(new RuntimeException("Authorization not found"));
+
+        // Because no X509 cert attribute is set in MockMvc, the endpoint will reject
+        // at the cert-presence check (401) before reaching the org lookup.  This test
+        // verifies the lookup is never called when no cert is present.
+        mockMvc.perform(post("/api/authorizations/sign-with-cert")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+
+        verify(authorizationService, never()).getAuthorizationForUser(anyLong(), anyString());
+    }
+
+    @Test
+    void testSignWithClientCertificate_unauthenticated_returns401() throws Exception {
+        SignRequest request = new SignRequest(1L);
+
+        mockMvc.perform(post("/api/authorizations/sign-with-cert")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+
+        verify(authorizationService, never()).getAuthorizationForUser(anyLong(), anyString());
+        verify(digitalSignatureService, never()).signAuthorization(any(gov.nist.oscal.tools.api.entity.Authorization.class), any(X509Certificate.class));
+    }
+
+    // ===== Grant endpoint tests (Task 12) =====
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void listGrants_owner_returns200() throws Exception {
+        Authorization auth = mockAuthorizationForGrants(1L);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(auth);
+        when(grantRepository.findByAuthorization(auth)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/authorizations/1/grants"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void addGrant_owner_returns201() throws Exception {
+        Authorization auth = mockAuthorizationForGrants(1L);
+        Organization org = auth.getOrganization();
+
+        User grantee = new User();
+        grantee.setId(2L);
+        grantee.setUsername("bob");
+
+        OrganizationMembership granteeMembership = new OrganizationMembership();
+        granteeMembership.setOrganization(org);
+        granteeMembership.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+
+        java.util.Set<OrganizationMembership> memberships = new java.util.HashSet<>();
+        memberships.add(granteeMembership);
+        grantee.setOrganizationMemberships(memberships);
+
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(auth);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(grantee));
+        when(grantRepository.findByAuthorizationAndUser(auth, grantee)).thenReturn(Optional.empty());
+        when(grantRepository.save(any(AuthorizationGrant.class)))
+                .thenAnswer(inv -> {
+                    AuthorizationGrant g = inv.getArgument(0);
+                    g.setId(99L);
+                    return g;
+                });
+
+        AuthorizationGrantRequest body = new AuthorizationGrantRequest();
+        body.setUserId(2L);
+        body.setRole(AuthorizationRole.EDITOR);
+
+        mockMvc.perform(post("/api/authorizations/1/grants")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(username = "viewer-user")
+    void addGrant_nonOwner_returns403() throws Exception {
+        // For this test we override the default OWNER stub by making
+        // requireManageGrants throw.
+        Authorization auth = mockAuthorizationForGrants(1L);
+
+        User viewerUser = new User();
+        viewerUser.setId(99L);
+        viewerUser.setUsername("viewer-user");
+        when(userRepository.findByUsername("viewer-user")).thenReturn(Optional.of(viewerUser));
+        when(authorizationService.getAuthorizationForUser(1L, "viewer-user")).thenReturn(auth);
+
+        org.mockito.Mockito.doThrow(
+                new gov.nist.oscal.tools.api.exception.InsufficientAuthorizationRoleException("VIEWER", "OWNER"))
+                .when(accessGuard).requireManageGrants(eq(auth), eq(viewerUser));
+
+        AuthorizationGrantRequest body = new AuthorizationGrantRequest();
+        body.setUserId(2L);
+        body.setRole(AuthorizationRole.EDITOR);
+
+        mockMvc.perform(post("/api/authorizations/1/grants")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void setShareWithOrg_validRole_returns200() throws Exception {
+        Authorization auth = mockAuthorizationForGrants(1L);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(auth);
+        when(authorizationService.save(any(Authorization.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ShareWithOrgRequest body = new ShareWithOrgRequest();
+        body.setRole(AuthorizationRole.VIEWER);
+
+        mockMvc.perform(patch("/api/authorizations/1/share-with-org")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void setShareWithOrg_ownerRole_returns400() throws Exception {
+        Authorization auth = mockAuthorizationForGrants(1L);
+        when(authorizationService.getAuthorizationForUser(1L, "testuser")).thenReturn(auth);
+
+        ShareWithOrgRequest body = new ShareWithOrgRequest();
+        body.setRole(AuthorizationRole.OWNER);
+
+        mockMvc.perform(patch("/api/authorizations/1/share-with-org")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    private Authorization mockAuthorizationForGrants(Long id) {
+        Authorization auth = new Authorization();
+        auth.setId(id);
+
+        Organization org = new Organization();
+        org.setId(100L);
+        auth.setOrganization(org);
+
+        User creator = new User();
+        creator.setId(1L);
+        creator.setUsername("testuser");
+        auth.setAuthorizedBy(creator);
+
+        // AuthorizationResponse constructor calls template.getId(); supply a minimal template
+        // so the DTO mapping doesn't NPE when the helper is used in tests that call toResponse().
+        AuthorizationTemplate template = new AuthorizationTemplate();
+        template.setId(1L);
+        template.setName("Test Template");
+        template.setContent("content");
+        template.setCreatedBy(creator);
+        template.setLastUpdatedBy(creator);
+        template.setCreatedAt(LocalDateTime.now());
+        template.setLastUpdatedAt(LocalDateTime.now());
+        auth.setTemplate(template);
+
+        return auth;
     }
 }

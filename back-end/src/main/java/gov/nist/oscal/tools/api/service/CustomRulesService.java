@@ -20,10 +20,17 @@ public class CustomRulesService {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomRulesService.class);
     private final CustomValidationRuleRepository repository;
+    private final MetapathConstraintService constraintService;
 
     @Autowired
-    public CustomRulesService(CustomValidationRuleRepository repository) {
+    public CustomRulesService(CustomValidationRuleRepository repository,
+                              MetapathConstraintService constraintService) {
         this.repository = repository;
+        this.constraintService = constraintService;
+    }
+
+    private static Long ownerId(CustomValidationRule rule) {
+        return rule == null || rule.getUser() == null ? null : rule.getUser().getId();
     }
 
     /**
@@ -74,6 +81,7 @@ public class CustomRulesService {
         updateEntityFromRequest(entity, request);
 
         CustomValidationRule saved = repository.save(entity);
+        constraintService.evictForUser(ownerId(saved));
         logger.info("Created custom validation rule: {}", saved.getRuleId());
 
         return CustomRuleResponse.fromEntity(saved);
@@ -96,6 +104,7 @@ public class CustomRulesService {
         updateEntityFromRequest(entity, request);
 
         CustomValidationRule saved = repository.save(entity);
+        constraintService.evictForUser(ownerId(saved));
         logger.info("Updated custom validation rule: {}", saved.getRuleId());
 
         return CustomRuleResponse.fromEntity(saved);
@@ -106,11 +115,11 @@ public class CustomRulesService {
      */
     @Transactional
     public void deleteCustomRule(Long id) {
-        if (!repository.existsById(id)) {
-            throw new IllegalArgumentException("Custom rule not found with ID: " + id);
-        }
-
+        CustomValidationRule entity = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Custom rule not found with ID: " + id));
+        Long uid = ownerId(entity);
         repository.deleteById(id);
+        constraintService.evictForUser(uid);
         logger.info("Deleted custom validation rule with ID: {}", id);
     }
 
@@ -124,6 +133,7 @@ public class CustomRulesService {
 
         entity.setEnabled(!entity.getEnabled());
         CustomValidationRule saved = repository.save(entity);
+        constraintService.evictForUser(ownerId(saved));
 
         logger.info("Toggled custom validation rule {} to enabled: {}",
             saved.getRuleId(), saved.getEnabled());
@@ -169,6 +179,10 @@ public class CustomRulesService {
         } else {
             entity.setApplicableModelTypes(null);
         }
+
+        entity.setAiGenerated(Boolean.TRUE.equals(request.getAiGenerated()));
+        entity.setGenerationPrompt(request.getGenerationPrompt());
+        entity.setGenerationModel(request.getGenerationModel());
 
         entity.setEnabled(request.getEnabled());
     }

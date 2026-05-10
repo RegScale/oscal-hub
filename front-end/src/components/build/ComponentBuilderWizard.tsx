@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,12 +19,14 @@ import {
   Eye,
   CheckCircle2,
   Circle,
-  ArrowRight,
   Library,
   Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { libraryPublishApi } from '@/lib/api/library';
 import { ControlSelector } from '@/components/build/ControlSelector';
+import { SchemaValidationPanel } from '@/components/build/oscal/SchemaValidationPanel';
+import { SaveToLibraryModal } from '@/components/library/SaveToLibraryModal';
 import type { ComponentDefinitionRequest, ComponentDefinitionResponse } from '@/types/oscal';
 
 interface WizardStep {
@@ -56,7 +59,14 @@ interface ImplementationDetail {
 
 interface ComponentBuilderWizardProps {
   editingComponent?: ComponentDefinitionResponse | null;
+  initialComponent?: unknown | null;
   onSaveComplete?: () => void;
+  /**
+   * Caller's organization id, forwarded to the Save-to-Library modal so
+   * the user can publish at ORGANIZATION visibility. `null` when the user
+   * has no org membership.
+   */
+  userOrganizationId?: number | null;
 }
 
 const WIZARD_STEPS: WizardStep[] = [
@@ -68,7 +78,7 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 6, title: 'Review & Save', description: 'Preview and save your work' },
 ];
 
-export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: ComponentBuilderWizardProps) {
+export function ComponentBuilderWizard({ editingComponent, initialComponent, onSaveComplete, userOrganizationId }: ComponentBuilderWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -76,6 +86,10 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
   const [showControlSelector, setShowControlSelector] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Track the saved-row id so "Save to Library" works after a fresh create
+  // as well as in edit mode.
+  const [savedComponentId, setSavedComponentId] = useState<number | null>(editingComponent?.id ?? null);
+  const [saveToLibOpen, setSaveToLibOpen] = useState(false);
 
   // Step 1: Metadata
   const [metadata, setMetadata] = useState({
@@ -108,12 +122,30 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
   // Load component data when editing
   useEffect(() => {
     if (editingComponent) {
+      setSavedComponentId(editingComponent.id);
       loadComponentForEditing(editingComponent.id);
     } else {
-      // Reset to defaults when creating new
-      resetWizard();
+      // Reset to defaults when creating new, unless an AI draft is being loaded
+      if (!initialComponent) {
+        setSavedComponentId(null);
+        resetWizard();
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingComponent]);
+
+  // Hydrate from AI draft when provided and not in edit mode
+  useEffect(() => {
+    if (editingComponent) return; // edit mode takes precedence
+    if (!initialComponent) return;
+    try {
+      hydrateFromOscalJson(initialComponent);
+      setCurrentStep(1);
+    } catch {
+      // ignore malformed AI draft — form stays empty
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialComponent, editingComponent]);
 
   const resetWizard = () => {
     setCurrentStep(1);
@@ -127,6 +159,159 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     setSaveSuccess(false);
   };
 
+  const hydrateFromOscalJson = (oscalJson: unknown) => {
+    // Validate the structure
+    if (!oscalJson || typeof oscalJson !== 'object') {
+      throw new Error('No OSCAL data returned from server');
+    }
+
+    const oscalObj = oscalJson as Record<string, unknown>;
+    const compDefRaw = oscalObj['component-definition'];
+
+    if (!compDefRaw || typeof compDefRaw !== 'object') {
+      console.error('OSCAL JSON structure:', Object.keys(oscalObj));
+      throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalObj).join(', ')}`);
+    }
+
+    const compDef = compDefRaw as Record<string, unknown>;
+
+    if (!compDef.metadata || typeof compDef.metadata !== 'object') {
+      throw new Error('Invalid OSCAL structure: missing metadata');
+    }
+
+    const meta = compDef.metadata as Record<string, unknown>;
+
+    // Load metadata
+    setMetadata({
+      title: (meta.title as string) || '',
+      version: (meta.version as string) || '1.0.0',
+      oscalVersion: (meta['oscal-version'] as string) || '1.1.3',
+      description: (meta.description as string) || '',
+    });
+
+    // Load components and capabilities
+    const loadedItems: ComponentOrCapability[] = [];
+    const loadedAssignments: ControlAssignment[] = [];
+    const loadedDetails: ImplementationDetail[] = [];
+    const allControls: Set<string> = new Set();
+    let catalogSource: string | null = null;
+
+    // Process components
+    if (compDef.components && Array.isArray(compDef.components)) {
+      for (const compRaw of compDef.components) {
+        const comp = compRaw as Record<string, unknown>;
+        loadedItems.push({
+          uuid: comp.uuid as string,
+          type: 'component',
+          componentType: comp.type as string,
+          title: comp.title as string,
+          description: (comp.description as string) || '',
+        });
+
+        // Extract control implementations
+        if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
+          for (const controlImplRaw of comp['control-implementations']) {
+            const controlImpl = controlImplRaw as Record<string, unknown>;
+            if (!catalogSource) catalogSource = controlImpl.source as string;
+
+            const controlIds: string[] = [];
+            if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+              for (const reqRaw of controlImpl['implemented-requirements']) {
+                const req = reqRaw as Record<string, unknown>;
+                const controlId = req['control-id'] as string;
+                controlIds.push(controlId);
+                allControls.add(controlId);
+
+                // Store implementation details
+                if (req.description) {
+                  loadedDetails.push({
+                    componentUuid: comp.uuid as string,
+                    controlId,
+                    description: req.description as string,
+                  });
+                }
+              }
+            }
+
+            if (controlIds.length > 0) {
+              loadedAssignments.push({
+                componentUuid: comp.uuid as string,
+                controlIds,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Process capabilities
+    if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
+      for (const capRaw of compDef.capabilities) {
+        const cap = capRaw as Record<string, unknown>;
+        loadedItems.push({
+          uuid: cap.uuid as string,
+          type: 'capability',
+          name: cap.name as string,
+          title: (cap.name as string) || '',
+          description: (cap.description as string) || '',
+        });
+
+        // Extract control implementations for capabilities
+        if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
+          for (const controlImplRaw of cap['control-implementations']) {
+            const controlImpl = controlImplRaw as Record<string, unknown>;
+            if (!catalogSource) catalogSource = controlImpl.source as string;
+
+            const controlIds: string[] = [];
+            if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
+              for (const reqRaw of controlImpl['implemented-requirements']) {
+                const req = reqRaw as Record<string, unknown>;
+                const controlId = req['control-id'] as string;
+                controlIds.push(controlId);
+                allControls.add(controlId);
+
+                if (req.description) {
+                  loadedDetails.push({
+                    componentUuid: cap.uuid as string,
+                    controlId,
+                    description: req.description as string,
+                  });
+                }
+              }
+            }
+
+            if (controlIds.length > 0) {
+              loadedAssignments.push({
+                componentUuid: cap.uuid as string,
+                controlIds,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    setComponentsAndCapabilities(loadedItems);
+    setControlAssignments(loadedAssignments);
+    setImplementationDetails(loadedDetails);
+
+    // Set catalog and controls (simplified - just control IDs)
+    if (catalogSource && allControls.size > 0) {
+      setSelectedCatalog({
+        title: 'Loaded Catalog',
+        source: catalogSource,
+      });
+
+      setSelectedControls(
+        Array.from(allControls).map(id => ({
+          controlId: id,
+          title: id,
+          description: '',
+        }))
+      );
+    }
+  };
+
   const loadComponentForEditing = async (componentId: number) => {
     setIsLoadingEdit(true);
     setLoadError(null);
@@ -138,163 +323,14 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
       if (typeof oscalJson === 'string') {
         try {
           oscalJson = JSON.parse(oscalJson);
-        } catch (parseError) {
+        } catch {
           throw new Error('Failed to parse OSCAL JSON from server');
         }
       }
 
       console.log('Loaded OSCAL JSON:', oscalJson);
 
-      // Validate the structure
-      if (!oscalJson || typeof oscalJson !== 'object') {
-        throw new Error('No OSCAL data returned from server');
-      }
-
-      const oscalObj = oscalJson as Record<string, unknown>;
-      const compDefRaw = oscalObj['component-definition'];
-
-      if (!compDefRaw || typeof compDefRaw !== 'object') {
-        console.error('OSCAL JSON structure:', Object.keys(oscalObj));
-        throw new Error(`Invalid OSCAL structure: missing component-definition. Found keys: ${Object.keys(oscalObj).join(', ')}`);
-      }
-
-      const compDef = compDefRaw as Record<string, unknown>;
-
-      if (!compDef.metadata || typeof compDef.metadata !== 'object') {
-        throw new Error('Invalid OSCAL structure: missing metadata');
-      }
-
-      const metadata = compDef.metadata as Record<string, unknown>;
-
-      // Load metadata
-      setMetadata({
-        title: (metadata.title as string) || '',
-        version: (metadata.version as string) || '1.0.0',
-        oscalVersion: (metadata['oscal-version'] as string) || '1.1.3',
-        description: (metadata.description as string) || '',
-      });
-
-      // Load components and capabilities
-      const loadedItems: ComponentOrCapability[] = [];
-      const loadedAssignments: ControlAssignment[] = [];
-      const loadedDetails: ImplementationDetail[] = [];
-      const allControls: Set<string> = new Set();
-      let catalogSource: string | null = null;
-
-      // Process components
-      if (compDef.components && Array.isArray(compDef.components)) {
-        for (const compRaw of compDef.components) {
-          const comp = compRaw as Record<string, unknown>;
-          loadedItems.push({
-            uuid: comp.uuid as string,
-            type: 'component',
-            componentType: comp.type as string,
-            title: comp.title as string,
-            description: (comp.description as string) || '',
-          });
-
-          // Extract control implementations
-          if (comp['control-implementations'] && Array.isArray(comp['control-implementations'])) {
-            for (const controlImplRaw of comp['control-implementations']) {
-              const controlImpl = controlImplRaw as Record<string, unknown>;
-              if (!catalogSource) catalogSource = controlImpl.source as string;
-
-              const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
-                for (const reqRaw of controlImpl['implemented-requirements']) {
-                  const req = reqRaw as Record<string, unknown>;
-                  const controlId = req['control-id'] as string;
-                  controlIds.push(controlId);
-                  allControls.add(controlId);
-
-                  // Store implementation details
-                  if (req.description) {
-                    loadedDetails.push({
-                      componentUuid: comp.uuid as string,
-                      controlId,
-                      description: req.description as string,
-                    });
-                  }
-                }
-              }
-
-              if (controlIds.length > 0) {
-                loadedAssignments.push({
-                  componentUuid: comp.uuid as string,
-                  controlIds,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      // Process capabilities
-      if (compDef.capabilities && Array.isArray(compDef.capabilities)) {
-        for (const capRaw of compDef.capabilities) {
-          const cap = capRaw as Record<string, unknown>;
-          loadedItems.push({
-            uuid: cap.uuid as string,
-            type: 'capability',
-            name: cap.name as string,
-            title: (cap.name as string) || '',
-            description: (cap.description as string) || '',
-          });
-
-          // Extract control implementations for capabilities
-          if (cap['control-implementations'] && Array.isArray(cap['control-implementations'])) {
-            for (const controlImplRaw of cap['control-implementations']) {
-              const controlImpl = controlImplRaw as Record<string, unknown>;
-              if (!catalogSource) catalogSource = controlImpl.source as string;
-
-              const controlIds: string[] = [];
-              if (controlImpl['implemented-requirements'] && Array.isArray(controlImpl['implemented-requirements'])) {
-                for (const reqRaw of controlImpl['implemented-requirements']) {
-                  const req = reqRaw as Record<string, unknown>;
-                  const controlId = req['control-id'] as string;
-                  controlIds.push(controlId);
-                  allControls.add(controlId);
-
-                  if (req.description) {
-                    loadedDetails.push({
-                      componentUuid: cap.uuid as string,
-                      controlId,
-                      description: req.description as string,
-                    });
-                  }
-                }
-              }
-
-              if (controlIds.length > 0) {
-                loadedAssignments.push({
-                  componentUuid: cap.uuid as string,
-                  controlIds,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      setComponentsAndCapabilities(loadedItems);
-      setControlAssignments(loadedAssignments);
-      setImplementationDetails(loadedDetails);
-
-      // Set catalog and controls (simplified - just control IDs)
-      if (catalogSource && allControls.size > 0) {
-        setSelectedCatalog({
-          title: 'Loaded Catalog',
-          source: catalogSource,
-        });
-
-        setSelectedControls(
-          Array.from(allControls).map(id => ({
-            controlId: id,
-            title: id,
-            description: '',
-          }))
-        );
-      }
+      hydrateFromOscalJson(oscalJson);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Failed to load component for editing');
       console.error('Error loading component for editing:', error);
@@ -529,10 +565,12 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
 
       if (editingComponent) {
         // Update existing component
-        await apiClient.updateComponentDefinition(editingComponent.id, request);
+        const updated = await apiClient.updateComponentDefinition(editingComponent.id, request);
+        setSavedComponentId(updated.id);
       } else {
         // Create new component
-        await apiClient.createComponentDefinition(request);
+        const created = await apiClient.createComponentDefinition(request);
+        setSavedComponentId(created.id);
       }
 
       setSaveSuccess(true);
@@ -583,39 +621,28 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
     }
   };
 
+  // Compact step nav matching OscalDocumentWizard so the Component, SSP, AP,
+  // AR, and POA&M builders all look and feel the same.
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-between mb-8 overflow-x-auto">
-      {WIZARD_STEPS.map((step, index) => (
-        <div key={step.id} className="flex items-center flex-1 min-w-0">
-          <div className="flex flex-col items-center flex-1">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
-              currentStep > step.id
-                ? 'bg-primary border-primary text-primary-foreground'
-                : currentStep === step.id
-                ? 'border-primary text-primary'
-                : 'border-muted-foreground/30 text-muted-foreground'
-            }`}>
-              {currentStep > step.id ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <Circle className={`h-5 w-5 ${currentStep === step.id ? 'fill-current' : ''}`} />
-              )}
-            </div>
-            <div className="mt-2 text-center">
-              <div className={`text-xs sm:text-sm font-medium ${
-                currentStep === step.id ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-                {step.title}
-              </div>
-              <div className="text-xs text-muted-foreground hidden lg:block">
-                {step.description}
-              </div>
-            </div>
-          </div>
-          {index < WIZARD_STEPS.length - 1 && (
-            <ArrowRight className="h-4 w-4 text-muted-foreground mx-1 flex-shrink-0" />
+    <div className="flex flex-wrap items-center gap-2 px-1">
+      {WIZARD_STEPS.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => setCurrentStep(s.id)}
+          className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+            currentStep === s.id
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+          }`}
+        >
+          {currentStep > s.id ? (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          ) : (
+            <Circle className="h-3.5 w-3.5" />
           )}
-        </div>
+          <span>{s.id}. {s.title}</span>
+        </button>
       ))}
     </div>
   );
@@ -1055,6 +1082,8 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
           </CardContent>
         </Card>
 
+        <SchemaValidationPanel jsonContent={jsonString} modelType="component-definition" />
+
         {saveError && (
           <Card className="border-red-200 bg-red-50 dark:bg-red-950">
             <CardContent className="pt-6">
@@ -1147,6 +1176,20 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
           </Button>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setSaveToLibOpen(true)}
+              disabled={isSaving || savedComponentId == null}
+              title={
+                savedComponentId == null
+                  ? 'Save the component first, then publish it to the Library'
+                  : 'Publish this component definition to the Library'
+              }
+            >
+              <Library className="mr-2 h-4 w-4" />
+              Save to Library
+            </Button>
             {currentStep < WIZARD_STEPS.length ? (
               <Button
                 onClick={nextStep}
@@ -1188,6 +1231,26 @@ export function ComponentBuilderWizard({ editingComponent, onSaveComplete }: Com
           />
         </DialogContent>
       </Dialog>
+
+      <SaveToLibraryModal
+        open={saveToLibOpen}
+        onClose={() => setSaveToLibOpen(false)}
+        defaultTitle={metadata.title}
+        defaultDescription={metadata.description}
+        userOrganizationId={userOrganizationId ?? null}
+        onSubmit={async (req) => {
+          if (savedComponentId == null) return;
+          try {
+            await libraryPublishApi.saveComponentToLibrary(savedComponentId, req);
+            toast.success('Component definition published to Library');
+          } catch (e) {
+            toast.error(
+              `Failed to publish component: ${e instanceof Error ? e.message : 'unknown error'}`,
+            );
+            throw e;
+          }
+        }}
+      />
     </>
   );
 }

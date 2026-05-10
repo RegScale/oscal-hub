@@ -1,0 +1,97 @@
+---
+title: Profile
+description: How to edit your personal information, upload a profile logo, and manage service account tokens in OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Profile
+
+Your Profile page is the central place to manage your personal information, upload a profile logo, and create service account tokens for programmatic API access. You can reach it at any time by clicking your username or avatar in the top-right corner of the navigation bar and selecting **Profile**.
+
+---
+
+## What you can edit
+
+The profile form lets you update the following fields:
+
+| Field | Notes |
+|---|---|
+| **First name** | Shown in the user menu and header |
+| **Last name** | Combined with first name in display contexts |
+| **Email** | Used for notifications and password recovery |
+| **Phone number** | Optional; used for org-level contact info |
+| **Job title** | Optional; visible to org administrators |
+| **Organization affiliation** | Optional; your employer or affiliated entity |
+| **Street, City, State, ZIP** | Optional address fields |
+
+Email changes take effect immediately. If your organization uses email for MFA recovery, update this field carefully.
+
+---
+
+## How to update your profile
+
+<Steps>
+<Step title="Open the user menu">
+Click your **username or avatar** in the top-right corner of any page. A dropdown menu appears.
+</Step>
+<Step title="Click Profile">
+Select **Profile** from the dropdown. You are taken to `/profile`.
+</Step>
+<Step title="Edit your information">
+Update any fields you want to change. All fields except email are optional — clear a field to remove a previously saved value.
+</Step>
+<Step title="Click Save Changes">
+Scroll to the bottom of the form and click **Save Changes**. A success message confirms the update.
+</Step>
+</Steps>
+
+<Callout type="info">
+If you need to change your password, use the dedicated **Change Password** form at `/change-password`. Changing your password from the Profile page is no longer supported — the profile form handles personal info only.
+</Callout>
+
+---
+
+## Profile logo
+
+A profile logo (avatar) is displayed in the navigation bar user menu and in certain org-facing views where your identity is shown alongside documents you own or edited.
+
+**Supported formats:** JPG and PNG. Recommended size: at least 128 × 128 pixels.
+
+<Steps>
+<Step title="Click your current avatar">
+On the Profile page, click the circular avatar or placeholder image at the top of the form.
+</Step>
+<Step title="Choose a file">
+Your system file picker opens. Select a JPG or PNG image from your computer.
+</Step>
+<Step title="Preview and save">
+A preview of the new image appears. Click **Save Changes** at the bottom of the form to upload and apply the logo.
+</Step>
+</Steps>
+
+The new logo appears immediately in the top navigation bar after saving.
+
+---
+
+## Service account tokens
+
+Service account tokens let scripts, CI/CD pipelines, and external tools authenticate to the OSCAL Hub API without using your personal login credentials. They are managed from the **Service Account Tokens** section at the bottom of the Profile page.
+
+For full instructions on creating and using service account tokens — including API usage examples and security best practices — see [Service Account Tokens](/guide/account/service-tokens).
+
+---
+
+## Tips and limits
+
+- **Email uniqueness:** Each email address can only be associated with one OSCAL Hub account. If you receive an error when updating your email, it is likely already in use by another account.
+- **Logo file size:** Keep logo files under 2 MB to ensure fast uploads.
+- **Display name:** OSCAL Hub displays your first and last name together wherever your identity appears. Fill in both fields for the best experience.
+- **Organization affiliation** on your profile is distinct from the org you belong to in OSCAL Hub. The profile field is free-text metadata; actual org membership is managed through invitations and access requests.
+
+---
+
+## Related
+
+- [Change Password](/guide/account/password)
+- [MFA Setup](/guide/account/mfa-setup)
+- [Service Account Tokens](/guide/account/service-tokens)

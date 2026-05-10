@@ -27,12 +27,16 @@ import { StarRating } from '@/components/ui/star-rating';
 import { apiClient } from '@/lib/api-client';
 import type { LibraryItem, LibraryAnalytics, OscalModelType } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
+import { VisibilityBadge } from '@/components/library/VisibilityBadge';
+import { VisibilityActionMenu } from '@/components/library/VisibilityActionMenu';
+import type { Visibility } from '@/lib/api/library';
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [analytics, setAnalytics] = useState<LibraryAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +45,10 @@ export default function LibraryPage() {
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [activeTab, setActiveTab] = useState('browse');
+  // Visibility filter — applied client-side. Backend list endpoint already
+  // restricts results to items the caller can see; this narrows further by
+  // scope (Private / Organization / Public).
+  const [visibilityFilter, setVisibilityFilter] = useState<Visibility | 'ALL'>('ALL');
 
   // Upload form state
   const [uploadTitle, setUploadTitle] = useState('');
@@ -183,6 +191,12 @@ export default function LibraryPage() {
     }
   };
 
+  // Apply visibility filter client-side. Items without `visibility` are
+  // always shown when filter is "ALL" but excluded from any specific scope.
+  const visibleItems = items.filter((item) =>
+    visibilityFilter === 'ALL' ? true : item.visibility === visibilityFilter,
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -204,7 +218,6 @@ export default function LibraryPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -224,7 +237,10 @@ export default function LibraryPage() {
           <div className="flex items-center">
             <Library className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">OSCAL Library</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">OSCAL Library</h1>
+                <HelpButton slug="library" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Browse, share, and download example OSCAL documents
               </p>
@@ -268,23 +284,46 @@ export default function LibraryPage() {
 
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
+            {/* Visibility filter bar */}
+            <div className="flex items-center gap-3">
+              <Label htmlFor="visibility-filter" className="text-sm">
+                Visibility
+              </Label>
+              <select
+                id="visibility-filter"
+                aria-label="Filter by visibility"
+                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                value={visibilityFilter}
+                onChange={(e) => setVisibilityFilter(e.target.value as Visibility | 'ALL')}
+              >
+                <option value="ALL">All</option>
+                <option value="PRIVATE">Private</option>
+                <option value="ORGANIZATION">Organization</option>
+                <option value="PUBLIC">Public</option>
+              </select>
+              <span className="text-sm text-muted-foreground">
+                {visibleItems.length} of {items.length} items
+              </span>
+            </div>
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading library items...</p>
               </div>
-            ) : items.length === 0 ? (
+            ) : visibleItems.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Library className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <p className="text-lg text-muted-foreground">
-                    No items in the library yet. Be the first to upload!
+                    {items.length === 0
+                      ? 'No items in the library yet. Be the first to upload!'
+                      : 'No items match the selected visibility filter.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <Card
                     key={item.itemId}
                     className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -293,7 +332,10 @@ export default function LibraryPage() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <FileText className="h-8 w-8 text-primary" />
-                        <Badge variant="outline">{item.oscalType}</Badge>
+                        <div className="flex items-center gap-2">
+                          {item.visibility && <VisibilityBadge visibility={item.visibility} />}
+                          <Badge variant="outline">{item.oscalType}</Badge>
+                        </div>
                       </div>
                       <CardTitle className="mt-4">{item.title}</CardTitle>
                       <CardDescription className="line-clamp-2">
@@ -343,6 +385,23 @@ export default function LibraryPage() {
                           {item.commentCount || 0}
                         </div>
                       </div>
+                      {/* Visibility actions — shown when caller is creator or super-admin */}
+                      {item.visibility && (
+                        <div
+                          className="flex flex-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <VisibilityActionMenu
+                            itemId={item.itemId}
+                            currentVisibility={item.visibility}
+                            isCreator={user?.username === item.createdBy}
+                            isSuperAdmin={isSuperAdmin}
+                            onChanged={() => {
+                              loadLibrary();
+                            }}
+                          />
+                        </div>
+                      )}
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -637,7 +696,6 @@ export default function LibraryPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
     </div>
   );
 }

@@ -1,0 +1,75 @@
+---
+title: Operation History
+description: Track and manage all your past OSCAL operations — validate, convert, resolve, and batch — in one timestamped log.
+lastUpdated: 2026-05-04
+---
+
+# Operation History
+
+The History page gives you a complete, chronological record of every operation you have run: validations, conversions, profile resolutions, and batch jobs. Each row shows what was processed, when, whether it succeeded or failed, and how long it took. Use it to audit your work, find a past result you want to re-download, or spot patterns in failures.
+
+---
+
+## What it does
+
+- **Chronological operation log.** Every validate, convert, resolve, and batch operation you run is automatically recorded. The log is sorted newest-first and paginated so you can browse back through older entries without the page becoming unwieldy.
+- **Timestamps and duration.** Each row shows the date and time the operation started and how long it took to complete. Duration is useful for benchmarking performance across file sizes and operation types.
+- **Success and failure status.** A color-coded status badge — green for success, red for failed — lets you scan the list quickly to find operations that need attention. Failed rows expand to show the error message.
+- **Per-row delete with confirmation.** Click the delete icon on any row to remove that entry from your history. A confirmation dialog appears before anything is deleted, so accidental clicks do not cause data loss.
+- **Statistics dashboard.** The top of the History page shows aggregate statistics: total operations run, breakdown by operation type (validate / convert / resolve / batch), overall success rate, and average operation duration. These update in real time as new operations complete.
+- **Pagination.** History entries are paginated with 25 rows per page by default. Use the page controls at the bottom to navigate to older entries.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Navigate to History">
+    From the dashboard, click **History** in the left navigation, or find it under **Tools → History**. The page opens on the statistics dashboard at the top, followed by the full operations table.
+  </Step>
+  <Step title="Review the statistics dashboard">
+    Read the summary cards at the top of the page to get an overview of your activity:
+    - **Total operations** — the cumulative count of all operations you have run.
+    - **By type** — counts broken down by validate, convert, resolve, and batch.
+    - **Success rate** — the percentage of operations that completed without error.
+    - **Average duration** — mean processing time across all operations.
+  </Step>
+  <Step title="Browse the operations table">
+    Scroll down to the operations table. Each row shows:
+    - **Operation type** — an icon and label for validate, convert, resolve, or batch.
+    - **File name** — the name of the uploaded file (or the batch job label for multi-file operations).
+    - **Status** — green (success) or red (failed), with an expandable error message for failures.
+    - **Started at** — the timestamp when the operation began.
+    - **Duration** — how long the operation took to complete.
+
+    Click a failed row to expand the error details and see the full message from the backend.
+  </Step>
+  <Step title="Delete unwanted entries">
+    To remove an entry, click the trash-can icon at the right end of its row. A confirmation dialog appears: "Delete this history entry? This cannot be undone." Click **Delete** to confirm or **Cancel** to keep the entry. Deletion removes the record from the log but does not affect any files you downloaded during that operation.
+  </Step>
+  <Step title="Page through older entries">
+    Use the **Previous** and **Next** buttons at the bottom of the table, or click a specific page number, to navigate through older history. The most recent operations are always on page 1.
+  </Step>
+</Steps>
+
+---
+
+## Tips & limits
+
+- **History is per-user.** Each user sees only their own operations. Administrators do not have access to other users' history through the UI (though the audit log in the admin dashboard records system-level events separately).
+- **Deleting an entry does not affect downloaded results.** If you already downloaded the output of an operation, deleting the history entry will not delete that file from your computer. The delete only removes the record from the log.
+- **History is not currently exportable as CSV.** Exporting the full history table to CSV or Excel is planned for a future release. In the meantime, you can retrieve your history programmatically using the [API](/guide/reference/api-automation).
+- **Failed operations are still recorded.** Even if a validate or convert fails, the attempt is logged with an error status. This is intentional — it helps you see which files repeatedly fail so you can investigate the root cause.
+- **Batch jobs appear as a single row.** A batch operation with 50 files shows as one History row with the batch job label, not 50 individual rows. Expand the row to see the per-file breakdown.
+
+<Callout type="info">
+If you use service account tokens to call the API programmatically, those operations are also recorded in your History. You can distinguish them from browser-based operations by the `via API` label in the operation source column.
+</Callout>
+
+---
+
+## Related
+
+- [Validate Documents](/guide/tools/validate)
+- [Batch Processing](/guide/tools/batch)
+- [API Automation](/guide/reference/api-automation)

@@ -4,29 +4,29 @@ This directory contains comprehensive documentation for the OSCAL Hub project fe
 
 ## Table of Contents
 
-### Deployment Guides
+### Deployment
 
-- **[CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md)** - Complete guide for running OSCAL CLI in command-line mode
-  - Quick installation (2 minutes)
-  - Batch processing and automation
-  - CI/CD pipeline integration
-  - Workflow examples and scripts
-  - Troubleshooting CLI-specific issues
-  - Comparison with web and Azure deployments
+OSCAL Hub ships three first-class deploy options. Choose the one that
+matches your environment:
 
-- **[LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md)** - Deploy the full stack locally with Docker
-  - Web interface + REST API + CLI
-  - Quick start (5 minutes)
-  - Database management
-  - Local development setup
-  - Docker Compose configuration
+- **[../deploy/compose/](../deploy/compose/)** — Docker Compose. Single VM,
+  bundled Postgres + Nginx (TLS termination). Fastest path to running.
+- **[../deploy/helm/oscal-hub/](../deploy/helm/oscal-hub/)** — Helm chart for
+  Kubernetes. Bundles Postgres as a subchart by default; supports external
+  managed databases and shared object storage.
+- **[GCP-DEPLOYMENT-GUIDE.md](GCP-DEPLOYMENT-GUIDE.md)** — Cloud Run +
+  Cloud SQL on GCP (the maintainer's hosted environment).
 
-- **[AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md)** - Production deployment to Azure cloud
-  - Infrastructure as Code (Terraform)
-  - CI/CD with GitHub Actions
-  - Azure Blob Storage integration
-  - PostgreSQL database
-  - Security and monitoring
+Supporting docs:
+
+- **[CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md)** — running the
+  OSCAL CLI tool standalone for batch / CI use.
+- **[LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md)** — local dev
+  stack via `./dev.sh`.
+- **[CICD-BOOTSTRAP.md](CICD-BOOTSTRAP.md)** — one-time bootstrap for the
+  GCP-hosted deployment's GitHub Actions pipeline.
+- **[DEPLOYMENT-CHECKLIST.md](DEPLOYMENT-CHECKLIST.md)** — production
+  go-live checklist (TLS, secrets, backups, monitoring).
 
 ### Feature Documentation
 
@@ -124,7 +124,7 @@ When adding new features or making significant changes:
 ### For New Users
 - **Start here**: [CLI-DEPLOYMENT-GUIDE.md](CLI-DEPLOYMENT-GUIDE.md) - Quick 2-minute setup for command-line usage
 - **Local testing**: [LOCAL-DEPLOYMENT-GUIDE.md](LOCAL-DEPLOYMENT-GUIDE.md) - Run the full web interface locally
-- **Production**: [AZURE-DEPLOYMENT-GUIDE.md](AZURE-DEPLOYMENT-GUIDE.md) - Deploy to Azure cloud
+- **Production**: [SELF-HOSTED-DEPLOYMENT-GUIDE.md](SELF-HOSTED-DEPLOYMENT-GUIDE.md) - Self-hosted via Helm or Docker Compose
 
 ### For Developers
 - Start with [AUTHORIZATION-FEATURE-SUMMARY.md](AUTHORIZATION-FEATURE-SUMMARY.md) to understand the full authorization system
@@ -152,7 +152,7 @@ docs/
 ├── Deployment Guides/
 │   ├── CLI-DEPLOYMENT-GUIDE.md           # Command-line deployment
 │   ├── LOCAL-DEPLOYMENT-GUIDE.md         # Local Docker deployment
-│   └── AZURE-DEPLOYMENT-GUIDE.md         # Azure cloud deployment
+│   └── SELF-HOSTED-DEPLOYMENT-GUIDE.md   # On-prem / customer-cloud (Helm + Compose)
 │
 ├── Feature Documentation/
 │   ├── AUTHORIZATION-FEATURE-SUMMARY.md

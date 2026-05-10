@@ -1,0 +1,87 @@
+---
+title: Welcome to OSCAL Hub
+description: An introduction to OSCAL Hub — what it does, who it is for, and where to go next.
+lastUpdated: 2026-05-04
+---
+
+# Welcome to OSCAL Hub
+
+OSCAL Hub is a web platform for working with [OSCAL](https://pages.nist.gov/OSCAL/) — the Open Security Controls Assessment Language developed by NIST. Whether you are validating a single system security plan, converting a catalog between formats, or generating full ATO documentation from reusable templates, OSCAL Hub gives your team a single, browser-based workspace to do all of it without setting up local toolchains.
+
+OSCAL is the machine-readable standard that the federal government and compliance community use to express security controls, assessments, and authorizations. OSCAL Hub lowers the barrier to working with that standard: instead of writing XML by hand or scripting your own format conversions, you upload a file, click a button, and get results — or use the visual builders to create OSCAL documents from scratch, or ask the AI Wizards to generate a first draft for you.
+
+---
+
+## Who is OSCAL Hub for?
+
+OSCAL Hub is designed for anyone who works with security controls, system authorizations, or compliance documentation:
+
+- **Compliance teams** who need to validate, convert, and manage OSCAL artifacts as part of a continuous ATO process.
+- **Security engineers** who want to author component definitions, assessment plans, and POA&Ms without writing raw XML or JSON.
+- **FedRAMP Cloud Service Providers (CSPs)** who need to produce and maintain OSCAL-formatted SSPs, SAPs, SARs, and POA&Ms for agency review.
+- **Federal agencies** reviewing authorization packages, managing their own system inventories, or consuming OSCAL catalogs and profiles.
+- **Internal ATO programs** at organizations that have adopted the OSCAL standard for their own authorization workflows and want a shared platform for authors and reviewers.
+
+---
+
+## The big features
+
+OSCAL Hub is organized into several major feature areas. Each has its own section in this guide:
+
+### Core Tools
+
+The bread-and-butter operations for anyone processing OSCAL files:
+
+- **[Validate](/guide/tools/validate)** — Check a document against the OSCAL schema and constraint rules. Instantly see which fields are missing, which values are invalid, and which constraints are violated.
+- **[Convert](/guide/tools/convert)** — Translate a document between XML, JSON, and YAML formats. Format is auto-detected from the file extension; you choose the output format.
+- **[Resolve](/guide/tools/resolve)** — Flatten an OSCAL Profile (which references and tailors a Catalog) into a fully resolved Catalog that contains only the controls that survived tailoring.
+- **[Batch](/guide/tools/batch)** — Validate or convert many files at once. Upload a ZIP archive or select multiple files from your Library and kick off a bulk operation.
+- **[Visualize](/guide/tools/visualize)** — Render an SSP or other OSCAL document as a human-readable summary with control tables, system boundary diagrams, and metadata panels.
+- **[History](/guide/tools/history)** — Review a timestamped log of every operation you have performed, re-download past outputs, and track changes over time.
+
+### Build
+
+Visual form-based builders for creating OSCAL documents from scratch:
+
+- **[Build overview](/guide/build/overview)** — Create and edit all seven OSCAL model types: Catalog, Profile, Component Definition, System Security Plan, Assessment Plan, Assessment Results, and POA&M. No raw XML or JSON required.
+
+### AI Wizards
+
+Generative AI accelerators powered by Anthropic Claude:
+
+- **[AI overview](/guide/ai/overview)** — Generate an OSCAL Catalog from a PDF control framework, or generate a Component Definition from a STIG or CIS Benchmark. The wizard drafts the structure; you review and refine.
+
+### Library
+
+A personal and shared document store built into OSCAL Hub:
+
+- **[Library overview](/guide/library/overview)** — Upload, tag, version, and manage your OSCAL documents. Each file has a visibility setting: **Private** (only you), **Organization** (everyone in your org), or **Public** (all OSCAL Hub users).
+- **[Public Catalog](/guide/library/public-catalog)** — Browse publicly shared catalogs and profiles without signing in. Search, filter by OSCAL type, and preview control content inline.
+
+### Authorizations
+
+Document generation for authorization-to-operate programs:
+
+- **[Authorizations overview](/guide/authorizations/overview)** — Create authorization templates that pull in controls, responsible roles, and inherited risks, then generate ATO packages (Word, PDF, OSCAL) from those templates.
+
+---
+
+## Sign in vs. browse
+
+You can browse the [Public Catalog](/catalog) and read publicly shared OSCAL documents without an account. Everything else — the builders, AI Wizards, Library uploads, authorization templates, and the history log — requires signing in.
+
+Signing in also enables organization features: once you belong to an organization, you can see your team's shared Library, collaborate on documents with Organization visibility, and access org-level configuration if your role permits it. If your organization enforces multi-factor authentication, you will be prompted to enroll when you first log in.
+
+<Callout type="info">
+Downloading files from the Public Catalog also requires signing in, even though browsing does not. This allows the platform to enforce any organization-level export controls and keep an audit trail of downloads.
+</Callout>
+
+---
+
+## Where to next?
+
+If this is your first time here, the suggested path is:
+
+1. **[Requirements](/guide/getting-started/requirements)** — Confirm your browser and environment meet the prerequisites before you dive in.
+2. **[Sign in & MFA](/guide/getting-started/sign-in-and-mfa)** — Create your account, log in, and optionally enroll in multi-factor authentication.
+3. **[Validate](/guide/tools/validate)** — Try uploading an OSCAL file and running your first validation.

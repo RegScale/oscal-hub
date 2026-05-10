@@ -1,0 +1,111 @@
+---
+title: Artifacts
+description: Markdown templates with embedded variables for compliance documentation that lives outside OSCAL — SOPs, policies, runbooks, and plans.
+lastUpdated: 2026-05-04
+---
+
+# Artifacts
+
+Artifacts are reusable Markdown templates that contain embedded variables. They live at `/artifacts` and are designed for compliance documentation that is not OSCAL — standard operating procedures, security policies, runbooks, onboarding checklists, plan summaries, and anything else your compliance program needs in document form.
+
+Where the Library stores OSCAL XML/JSON/YAML files, the Artifacts section stores human-readable documents that follow a fill-in-the-blanks template model. Write the template once, fill in the variables for each use, and export a finished document.
+
+---
+
+## Visibility model
+
+Artifacts use the same three-tier visibility model as the Library:
+
+| Mode | Who sees it |
+|---|---|
+| Private | Only you |
+| Organization | All members of your organization |
+| Public | Everyone, including unauthenticated visitors |
+
+The color-coded badge on each artifact card (gray = Private, blue = Organization, green = Public) mirrors the Library's visual language. Visibility is set at creation time and can be changed later from the artifact card.
+
+---
+
+## Variables
+
+Any text in the artifact using the `{{ variable_name }}` syntax is treated as a template variable. The platform automatically detects variables as you type content in the Create tab and displays them as purple badges labeled with their names.
+
+Examples of valid variable syntax:
+
+```
+{{ organization_name }}
+{{ system_owner }}
+{{ date_of_review }}
+{{ classification_level }}
+{{ control_id }}
+```
+
+Variable names can contain letters, digits, underscores, and hyphens. Spaces inside the double-braces are stripped, so `{{ system owner }}` and `{{ system_owner }}` resolve to the same variable.
+
+On the artifact detail page at `/artifacts/[artifactId]`, users can preview the template with sample values filled in — a rendered view that shows what the finished document will look like before downloading.
+
+---
+
+## How to create an artifact
+
+<Steps>
+  <Step title="Navigate to /artifacts and open the Create tab">
+    Go to `/artifacts` (requires sign-in). Click the **Create** tab in the tab strip at the top of the page.
+  </Step>
+  <Step title="Enter a title and description">
+    Give the artifact a descriptive **Title** (required). Add an optional **Description** — this appears on the browse card and in search results.
+  </Step>
+  <Step title="Set visibility">
+    Choose **Private**, **Organization**, or **Public** from the Visibility dropdown. Private is the safest starting point; you can promote it later.
+  </Step>
+  <Step title="Write or paste the Markdown content">
+    Enter your template in the large **Content** textarea. Use standard Markdown formatting (headings, bold, lists, tables) and insert `{{ variable_name }}` wherever you want a fill-in value. The **Detected Variables** section below the textarea updates in real time as you type, showing each unique variable found.
+  </Step>
+  <Step title="Add tags">
+    Enter comma-separated tags in the **Tags** field (e.g., `SOP, policy, FedRAMP`). Tags improve discoverability in the Browse and Search tabs.
+  </Step>
+  <Step title="Click 'Create Artifact'">
+    Submit the form. The new artifact appears in the Browse tab immediately. Click its card to open the detail page and preview the template with sample variable values.
+  </Step>
+</Steps>
+
+---
+
+## Browse and Search tabs
+
+**Browse tab** — Shows all artifacts visible to you (Private, Organization-shared, and Public). Each card displays the artifact title, description snippet, visibility badge, detected variable names (up to three, with an overflow count), tags, author, date, download count, view count, star rating, and comment count.
+
+**Search tab** — Filter artifacts by keyword (title/description), visibility scope, or tag. All three filters combine. Click **Search** to execute the query.
+
+---
+
+## Detail page and preview
+
+Clicking an artifact card navigates to `/artifacts/[artifactId]`. On the detail page you can:
+
+- Read the full rendered Markdown
+- See all detected variables
+- Fill in sample values for each variable and click **Preview** to see the rendered output with those values substituted
+- Download the raw Markdown template
+- Rate the artifact and leave comments (requires sign-in)
+
+---
+
+## Tips
+
+- **Preview before sharing.** Use the variable preview on the detail page to confirm the template renders correctly with representative values before setting visibility to Organization or Public.
+- **Use descriptive variable names.** `{{ system_owner_full_name }}` is clearer than `{{ name1 }}` and makes the template self-documenting for anyone filling it in later.
+- **Artifacts complement OSCAL, they do not replace it.** Use Artifacts for human-readable narrative documents and use the Library for machine-readable OSCAL data. Many compliance workflows need both: an SSP in the Library plus a companion policies document in Artifacts.
+- **Tags overlap with the Library.** If an artifact and a library item belong to the same compliance program, tagging both with the same tag (e.g., `FedRAMP-High`) makes it easy to pull related content across both sections in a single search.
+
+<Callout type="info">
+If you have already authored Markdown templates with variables for Authorization workflows, you will find the same `{{ variable }}` syntax and preview capability here. Artifacts is the general-purpose version of that feature, available outside the Authorization wizard context.
+</Callout>
+
+---
+
+## Related
+
+- [Library Overview](/guide/library/overview)
+- [Library Visibility](/guide/library/visibility)
+- [Authorization Templates](/guide/authorizations/templates)

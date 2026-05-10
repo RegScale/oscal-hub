@@ -1,0 +1,79 @@
+---
+title: Accessibility
+description: Accessibility standards, keyboard navigation, screen reader support, and how to report issues in OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Accessibility
+
+OSCAL Hub is designed to be usable by people with disabilities and is developed with accessibility as a first-class requirement, not an afterthought. This page describes the standards we target, the assistive technology we test with, and how to report issues you encounter.
+
+---
+
+## Standards
+
+OSCAL Hub targets compliance with:
+
+- **WCAG 2.1 Level AA** — the internationally recognized Web Content Accessibility Guidelines at the double-A conformance level. This covers perceivability, operability, understandability, and robustness of the user interface.
+- **Section 508 of the Rehabilitation Act** — the U.S. federal standard for electronic and information technology accessibility, which maps closely to WCAG 2.1 Level AA for web applications.
+
+We treat deviations from these standards as bugs. If something in OSCAL Hub does not meet WCAG 2.1 Level AA, please report it (see [Reporting issues](#reporting-issues) below).
+
+---
+
+## Keyboard navigation
+
+Every interactive element in OSCAL Hub — buttons, links, form fields, dropdowns, modals, and sidebar items — is reachable and operable using only a keyboard.
+
+| Key | Action |
+|---|---|
+| `Tab` | Move focus forward through interactive elements |
+| `Shift + Tab` | Move focus backward |
+| `Enter` | Activate a focused link or button |
+| `Space` | Toggle a focused checkbox or button |
+| `Escape` | Close a modal dialog, dropdown, or mobile sidebar drawer |
+| `Arrow keys` | Navigate within a component that has internal focus management (e.g., select menus, radio groups, comboboxes) |
+
+### Skip-to-main-content link
+
+The very first focusable element on every page is a **"Skip to main content"** link. When you press `Tab` from the browser address bar, this link receives focus. Pressing `Enter` jumps focus directly to the primary content area, bypassing the navigation sidebar. This link is visually hidden until it receives keyboard focus, at which point it becomes visible at the top of the viewport.
+
+<Callout type="info">
+If you are a keyboard-only user, pressing `Tab` once after loading a page and then `Enter` will immediately skip past the sidebar — useful when navigating long guide pages where the sidebar would otherwise require many additional `Tab` presses.
+</Callout>
+
+---
+
+## Screen readers
+
+OSCAL Hub is tested with the following screen readers:
+
+- **NVDA** (NonVisual Desktop Access) on Windows with Firefox
+- **JAWS** (Job Access With Speech) on Windows with Chrome
+- **VoiceOver** on macOS and iOS with Safari
+
+All pages use semantic HTML — headings create a logical document outline (`h1` → `h2` → `h3`), lists use `<ul>` / `<ol>` / `<li>`, and form elements have associated `<label>` elements or `aria-label` attributes. Buttons that contain only an icon include an `aria-label` that describes their action.
+
+Dialog modals trap focus within the dialog while open, use `role="dialog"` and `aria-modal="true"`, and return focus to the triggering element when closed. Status messages (such as validation results appearing after a file upload) use `role="status"` or `aria-live` regions so screen readers announce them without requiring a page reload.
+
+---
+
+## Visual design
+
+OSCAL Hub uses a **dark theme by default** with sufficient contrast ratios between text and background colors to meet WCAG 2.1 Level AA. Specifically:
+
+- Normal text (below 18 pt or 14 pt bold) meets a **4.5:1 minimum contrast ratio**.
+- Large text (18 pt or 14 pt bold and above) meets a **3:1 minimum contrast ratio**.
+- Interactive components (focus rings, active states, form field borders) meet a **3:1 contrast ratio** against adjacent colors.
+
+Focus indicators are clearly visible: focused elements receive a 2 px solid ring offset from the element boundary. The ring color is drawn from the theme's `ring` token, which maintains sufficient contrast against both light and dark backgrounds.
+
+Color is never used as the **sole** means of conveying information. Error states, for example, use both a red icon and a text description. Callout boxes use both a border color and a labeled icon (`Info`, `Warning`, `Danger`).
+
+---
+
+## Reporting issues
+
+If you encounter an accessibility barrier in OSCAL Hub — something that prevents you from using a feature or that does not meet WCAG 2.1 Level AA — please contact your organization administrator or file an issue on the [project repository](https://github.com/metaschema-framework/oscal-cli/issues). Include the page URL, the browser and assistive technology you are using, and a description of what you expected to happen versus what actually happened.
+
+We review accessibility reports with the same priority as functional bugs.

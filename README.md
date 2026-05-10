@@ -181,145 +181,76 @@ This starts:
 
 For detailed local deployment instructions, see [docs/LOCAL-DEPLOYMENT-GUIDE.md](docs/LOCAL-DEPLOYMENT-GUIDE.md).
 
-## Cloud Deployment
+## Deployment
 
-OSCAL Hub supports deployment to multiple cloud platforms with integrated cloud storage.
+OSCAL Hub ships three first-class deployment options:
 
-### Supported Cloud Platforms
+| Option | When to use | Path |
+|---|---|---|
+| **Docker Compose** | One Linux VM, no Kubernetes. App + Postgres + Nginx (TLS). | [`deploy/compose/`](deploy/compose/) |
+| **Helm chart** | Kubernetes (any distro / cloud). | [`deploy/helm/oscal-hub/`](deploy/helm/oscal-hub/) |
+| **Cloud Run + Cloud SQL (GCP)** | The maintainer's hosted environment. Customers can fork. | [`terraform/gcp/`](terraform/gcp/) |
 
-- **Azure** - Azure App Service or Container Instances with Azure Blob Storage
-- **AWS** - Elastic Beanstalk or ECS with Amazon S3
-- **GCP** - Cloud Run with Google Cloud Storage
-
-### Prerequisites (All Platforms)
-
-1. **Cloud Storage** - For storing OSCAL files (Azure Blob Storage, AWS S3, or GCS)
-2. **Compute Service** - For hosting the application
-3. **PostgreSQL Database** - For production data storage
-
-### Cloud Storage Configuration
-
-The application automatically configures cloud storage based on environment variables:
-
-**Azure Blob Storage:**
-```bash
-STORAGE_PROVIDER=azure
-AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
-AZURE_STORAGE_CONTAINER_NAME=oscal-files
-```
-
-**AWS S3:**
-```bash
-STORAGE_PROVIDER=s3
-AWS_REGION=us-east-1
-AWS_S3_BUCKET_BUILD=oscal-tools-build
-# Uses IAM roles (no access keys needed on EC2/ECS)
-```
-
-**Google Cloud Storage:**
-```bash
-STORAGE_PROVIDER=gcs
-GCP_PROJECT_ID=your-project-id
-GCS_BUCKET_BUILD=oscal-tools-build
-# Uses Application Default Credentials
-```
-
-### Required Environment Variables
-
-Configure these environment variables in your cloud platform:
+### Quickstart — Docker Compose
 
 ```bash
-# JWT Authentication (REQUIRED)
-JWT_SECRET=your-secure-secret-key-minimum-256-bits
-
-# Database Configuration (REQUIRED for production)
-DB_URL=jdbc:postgresql://your-db-host:5432/oscal_production
-DB_USERNAME=oscal_user
-DB_PASSWORD=your-secure-database-password
-
-# Cloud Storage (choose one provider - see above)
-STORAGE_PROVIDER=azure  # or 's3' or 'gcs'
-
-# CORS Configuration
-CORS_ALLOWED_ORIGINS=https://your-domain.com
-
-# Server Configuration
-SERVER_PORT=8080
-SPRING_PROFILES_ACTIVE=prod  # or 'gcp' for GCP deployments
-```
-
-### Deployment Guides
-
-Detailed deployment guides are available for each cloud platform:
-
-- **[Local Deployment Guide](docs/LOCAL-DEPLOYMENT-GUIDE.md)** - Deploy locally with Docker for testing and development
-- **[Azure Deployment Guide](docs/AZURE-DEPLOYMENT-GUIDE.md)** - Deploy to Azure App Service or Container Instances
-- **[AWS Deployment Guide](docs/AWS-DEPLOYMENT-GUIDE.md)** - Deploy to AWS Elastic Beanstalk or ECS
-- **[GCP Deployment Guide](docs/GCP-DEPLOYMENT-GUIDE.md)** - Deploy to Google Cloud Run
-- **[CLI Deployment Guide](docs/CLI-DEPLOYMENT-GUIDE.md)** - Use the CLI tool for automation and CI/CD
-
-### Quick Deploy Examples
-
-**Azure (using Terraform):**
-```bash
-cd terraform
-terraform init
-terraform apply -var-file="azure.tfvars"
-```
-
-**AWS (using Elastic Beanstalk):**
-```bash
-./deploy-backend-aws.sh
-```
-
-**GCP (using Cloud Run):**
-```bash
-cd terraform/gcp
-terraform init
-terraform apply
-```
-
-**GCP (Manual Deployment):**
-```bash
-# Deploy to production
-./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment prod
-
-# Deploy to staging
-./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment staging
-
-# Build and push images only (without Terraform)
-./build-and-push.sh oscal-hub us-central1
-```
-
-### Local Development with Cloud Storage
-
-For local development, you can configure cloud storage using a `.env` file:
-
-```bash
-# Copy the template
+cd deploy/compose
 cp .env.example .env
-
-# Edit .env with your cloud provider credentials
-# For Azure:
-export STORAGE_PROVIDER=azure
-export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;..."
-export AZURE_STORAGE_CONTAINER_NAME="oscal-files"
-
-# For AWS:
-export STORAGE_PROVIDER=s3
-export AWS_REGION=us-east-1
-export AWS_S3_BUCKET_BUILD=oscal-tools-build
-
-# For GCP:
-export STORAGE_PROVIDER=gcs
-export GCP_PROJECT_ID=your-project-id
-export GCS_BUCKET_BUILD=oscal-tools-build
-
-# Start the application
-./dev.sh
+# set DB_PASSWORD, JWT_SECRET, PUBLIC_ORIGIN in .env
+docker compose up -d
 ```
 
-The `.env` file is gitignored and won't be committed. The startup scripts automatically load environment variables from this file.
+See [`deploy/compose/README.md`](deploy/compose/README.md) for TLS,
+backups, upgrades.
+
+### Quickstart — Helm
+
+```bash
+helm dependency update deploy/helm/oscal-hub
+helm upgrade --install oscal-hub deploy/helm/oscal-hub \
+  --namespace oscal --create-namespace \
+  --set image.repository=your-registry.example.com/oscal-hub \
+  --set ingress.host=oscal.example.com \
+  --set ingress.className=nginx \
+  --set secrets.jwtSecret="$(openssl rand -base64 64 | tr -d '\n')" \
+  --set secrets.dbPassword="$DB_PW" \
+  --set postgresql.auth.password="$DB_PW"
+```
+
+See [`deploy/helm/oscal-hub/README.md`](deploy/helm/oscal-hub/README.md)
+for the values reference, secrets management, and external-database /
+shared-storage patterns.
+
+### Quickstart — GCP (maintainer)
+
+```bash
+./deploy-gcp.sh --project-id oscal-hub --region us-central1 --environment prod
+```
+
+See [`docs/GCP-DEPLOYMENT-GUIDE.md`](docs/GCP-DEPLOYMENT-GUIDE.md) and
+[`docs/CICD-BOOTSTRAP.md`](docs/CICD-BOOTSTRAP.md). For most customers,
+prefer Helm or Compose.
+
+### Storage providers
+
+The app supports four storage backends, controlled by `STORAGE_PROVIDER`:
+
+| Value | Backend | Notes |
+|---|---|---|
+| `azure` (with no connection string) | Local filesystem | Default. Single replica. |
+| `azure` | Azure Blob Storage | `AZURE_STORAGE_CONNECTION_STRING` |
+| `s3`    | AWS S3 / S3-compatible (MinIO) | `AWS_REGION`, `AWS_S3_BUCKET_BUILD` |
+| `gcs`   | Google Cloud Storage | uses ADC |
+
+Use shared object storage when running multiple replicas — local-filesystem
+storage is per-pod and replicas will diverge.
+
+### Local development with cloud storage
+
+For local development against a real object store, copy `.env.example` to
+`.env` and set `STORAGE_PROVIDER` plus the matching credentials (see the
+table above). `./dev.sh` loads the file automatically. `.env` is
+gitignored.
 
 ## API Documentation
 
@@ -459,7 +390,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api
 
 For production, set the API URL to your deployed backend:
 ```bash
-NEXT_PUBLIC_API_URL=https://your-backend.azurewebsites.net/api
+NEXT_PUBLIC_API_URL=https://oscal.example.com/api
 ```
 
 ## Security Features

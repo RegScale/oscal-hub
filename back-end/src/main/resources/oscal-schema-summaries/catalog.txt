@@ -1,0 +1,43 @@
+OSCAL Catalog — Metaschema short-name "oscal-catalog", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: catalog
+Required children of catalog:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+Optional:
+  - params (list of parameter assemblies)
+  - controls (list of control assemblies)
+  - groups (list of group assemblies, may be nested)
+  - back-matter
+
+Key Metapath addresses (relative to catalog/):
+  - metadata/title (required, non-empty string)
+  - metadata/last-modified (required, dateTime)
+  - metadata/version (required, string)
+  - metadata/oscal-version (required, string)
+  - metadata/parties (list)
+  - metadata/parties/party@uuid (UUID, unique within metadata)
+  - metadata/roles/role@id (string, unique within metadata)
+  - controls/control@id (string, unique within catalog)
+  - controls/control/title (required)
+  - controls/control/params/param@id
+  - controls/control/parts/part@name (string, e.g. "statement")
+  - controls/control/parts/part/@id
+  - controls/control/links/link@href
+  - groups/group@id
+  - groups/group/controls/control@id
+  - groups/group/groups (recursive)
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <expect target="controls/control" test="title and string-length(title)>0">
+    <message>[custom: r1] every control must have a non-empty title</message>
+  </expect>
+  <has-cardinality target="controls/control" min-occurs="1"/>
+  <is-unique target="controls/control" id="catalog-controls-unique">
+    <key-field target="@id"/>
+  </is-unique>
+  <allowed-values target="controls/control/parts/part/@name" allow-other="yes">
+    <enum value="statement"/><enum value="guidance"/><enum value="example"/>
+  </allowed-values>
+  <matches target="metadata/version" regex="^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"/>

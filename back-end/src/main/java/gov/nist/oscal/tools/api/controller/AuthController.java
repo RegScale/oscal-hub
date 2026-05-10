@@ -69,7 +69,7 @@ public class AuthController {
             // Structured response specifically for org-name collisions so the frontend can
             // render a field-level error. Other exceptions from the service
             // (UsernameAlreadyExistsException, IllegalArgumentException,
-            // DataIntegrityViolationException) are mapped by GlobalExceptionHandler. The
+            // DataIntegrityViolationException) are mapped by GlobalErrorAdvice. The
             // previous "catch (RuntimeException) → e.getMessage()" clause was removed
             // because it leaked raw Hibernate/JDBC details to clients.
             Map<String, String> error = new HashMap<>();
@@ -166,6 +166,7 @@ public class AuthController {
         response.put("organization", user.getOrganization());
         response.put("phoneNumber", user.getPhoneNumber());
         response.put("logo", user.getLogo());
+        response.put("avatar", user.getAvatar());
 
         return ResponseEntity.ok(response);
     }
@@ -207,24 +208,70 @@ public class AuthController {
         String username = authentication.getName();
         User user = authService.getCurrentUser(username);
 
-        // Generate new token
-        org.springframework.security.core.userdetails.UserDetails userDetails =
-                new org.springframework.security.core.userdetails.User(
-                        user.getUsername(),
-                        user.getPassword(),
-                        user.getEnabled(),
-                        true, true, true,
-                        java.util.Collections.emptyList()
-                );
+        // Extract org-context claims from the *current* token so we can
+        // preserve them in the refreshed one. Previously this endpoint
+        // generated a token with an empty claims map, which silently
+        // stripped organizationId / orgRole every 5 minutes (the
+        // frontend's auto-refresh cadence). After enough refreshes the
+        // user's authorities collapsed to just ROLE_USER + globalRole and
+        // any @PreAuthorize check that required ROLE_ORG_ADMIN started
+        // returning 403. Re-issuing with the same claims keeps the
+        // session intact across the refresh.
+        String authHeader = ((org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                .getRequest().getHeader("Authorization");
 
-        String newToken = authService.generateToken(userDetails);
+        Long organizationId = null;
+        String orgRole = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String currentToken = authHeader.substring(7);
+            try {
+                organizationId = jwtUtil.extractOrganizationId(currentToken);
+                orgRole = jwtUtil.extractOrganizationRole(currentToken);
+            } catch (RuntimeException ignored) {
+                // Token may have been issued by an older flow without these
+                // claims; leave nulls and the refreshed token will simply
+                // omit them too — same as before.
+            }
+        }
+
+        String globalRoleName = user.getGlobalRole() != null ? user.getGlobalRole().name() : null;
+
+        String newToken;
+        if (organizationId != null && orgRole != null) {
+            newToken = jwtUtil.generateTokenWithOrgContext(
+                    user.getUsername(),
+                    user.getId(),
+                    globalRoleName,
+                    organizationId,
+                    orgRole,
+                    user.getMustChangePassword()
+            );
+        } else {
+            // No org context (e.g., super admin who hasn't selected an org,
+            // or pre-org-selection state). Fall back to the legacy empty-
+            // claims token; the JwtAuthenticationFilter still grants
+            // ROLE_<globalRole> from the user record, so SUPER_ADMIN access
+            // is unaffected.
+            org.springframework.security.core.userdetails.UserDetails userDetails =
+                    new org.springframework.security.core.userdetails.User(
+                            user.getUsername(),
+                            user.getPassword(),
+                            user.getEnabled(),
+                            true, true, true,
+                            java.util.Collections.emptyList()
+                    );
+            newToken = authService.generateToken(userDetails);
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", newToken);
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
         response.put("userId", user.getId());
-        response.put("globalRole", user.getGlobalRole() != null ? user.getGlobalRole().name() : null);
+        response.put("globalRole", globalRoleName);
+        response.put("organizationId", organizationId);
+        response.put("orgRole", orgRole);
         response.put("street", user.getStreet());
         response.put("city", user.getCity());
         response.put("state", user.getState());
@@ -233,6 +280,7 @@ public class AuthController {
         response.put("organization", user.getOrganization());
         response.put("phoneNumber", user.getPhoneNumber());
         response.put("logo", user.getLogo());
+        response.put("avatar", user.getAvatar());
 
         return ResponseEntity.ok(response);
     }
@@ -256,7 +304,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(error);
         }
 
-        // Exceptions from the service are mapped by GlobalExceptionHandler.
+        // Exceptions from the service are mapped by GlobalErrorAdvice.
         String username = authentication.getName();
         User user = authService.updateProfile(username, updates);
 
@@ -319,6 +367,51 @@ public class AuthController {
             // Other errors - return 500 Internal Server Error
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to upload logo: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    @Operation(
+        summary = "Upload user avatar",
+        description = "Upload or update the avatar image shown in the header for the current user. Avatar should be provided as a base64-encoded data URL. Distinct from /logo, which manages the company logo used in authorization templates."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Avatar uploaded successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid avatar data"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PostMapping("/avatar")
+    public ResponseEntity<?> uploadAvatar(@RequestBody Map<String, String> avatarData) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        try {
+            String username = authentication.getName();
+            String avatar = avatarData.get("avatar");
+
+            // Reuse the same image validation as /logo: same MIME whitelist,
+            // size cap, and magic-number check apply to avatars.
+            fileValidationService.validateBase64Logo(avatar);
+
+            User user = authService.updateAvatar(username, avatar);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Avatar uploaded successfully");
+            response.put("avatar", user.getAvatar());
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to upload avatar: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }

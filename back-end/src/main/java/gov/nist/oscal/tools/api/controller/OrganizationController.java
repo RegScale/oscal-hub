@@ -12,24 +12,37 @@ import gov.nist.oscal.tools.api.model.OrganizationRequest;
 import gov.nist.oscal.tools.api.model.OrganizationResponse;
 import gov.nist.oscal.tools.api.model.OrganizationSummaryResponse;
 import gov.nist.oscal.tools.api.model.UpdateMemberRoleRequest;
+import gov.nist.oscal.tools.api.repository.AuditEventRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.UserAccessRequestRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrganizationService;
 import gov.nist.oscal.tools.api.service.UserAccessRequestService;
+import gov.nist.oscal.tools.api.service.UserManagementService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,7 +54,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @Tag(name = "Organization Management", description = "Super Admin APIs for managing organizations")
+@Hidden
 public class OrganizationController {
+
+    private static final Logger logger = LoggerFactory.getLogger(OrganizationController.class);
 
     @Autowired
     private OrganizationService organizationService;
@@ -61,6 +77,12 @@ public class OrganizationController {
     @Autowired
     private OrganizationMembershipRepository organizationMembershipRepository;
 
+    @Autowired
+    private AuditEventRepository auditEventRepository;
+
+    @Autowired
+    private UserManagementService userManagementService;
+
     @Operation(
         summary = "Get all users",
         description = "Retrieve all users in the system. Super Admin only."
@@ -71,6 +93,7 @@ public class OrganizationController {
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @GetMapping("/users")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getAllUsers() {
         List<User> users = userRepository.findAll();
         List<Map<String, Object>> response = users.stream()
@@ -79,11 +102,196 @@ public class OrganizationController {
                     user.put("id", u.getId());
                     user.put("username", u.getUsername());
                     user.put("email", u.getEmail());
+                    user.put("firstName", u.getFirstName());
+                    user.put("lastName", u.getLastName());
                     user.put("globalRole", u.getGlobalRole().toString());
+                    user.put("enabled", u.getEnabled());
+
+                    List<Map<String, Object>> orgs = organizationMembershipRepository.findByUser(u).stream()
+                            .map(m -> {
+                                Map<String, Object> org = new HashMap<>();
+                                org.put("id", m.getOrganization().getId());
+                                org.put("name", m.getOrganization().getName());
+                                org.put("role", m.getRole().toString());
+                                return org;
+                            })
+                            .collect(Collectors.toList());
+                    user.put("organizations", orgs);
+
                     return user;
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Archive user", description = "Disable a user account so they can no longer log in. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/archive")
+    public ResponseEntity<?> archiveUser(@PathVariable Long userId) {
+        try {
+            Long adminId = currentAdminId();
+            if (adminId != null && adminId.equals(userId)) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "You cannot archive your own account");
+                return ResponseEntity.badRequest().body(error);
+            }
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            user.setEnabled(false);
+            userRepository.save(user);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User archived. They can no longer log in.");
+            response.put("username", user.getUsername());
+            response.put("enabled", false);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(summary = "Unarchive user", description = "Re-enable an archived user account. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/unarchive")
+    public ResponseEntity<?> unarchiveUser(@PathVariable Long userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            user.setEnabled(true);
+            userRepository.save(user);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User unarchived. They can log in again.");
+            response.put("username", user.getUsername());
+            response.put("enabled", true);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(summary = "Reset user password (admin)",
+            description = "Reset a user's password. Body fields: password (optional, auto-generated if omitted), notify (default true; if false, the plaintext password is returned in the response so the admin can deliver it out-of-band). Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/users/{userId}/reset-password")
+    public ResponseEntity<?> resetUserPassword(@PathVariable Long userId, @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            Long adminId = currentAdminId();
+            if (adminId == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Could not resolve current admin user");
+                return ResponseEntity.status(401).body(error);
+            }
+            String customPassword = body != null && body.get("password") != null ? body.get("password").toString() : null;
+            boolean notify = body == null || body.get("notify") == null || Boolean.parseBoolean(body.get("notify").toString());
+
+            Map<String, String> result = userManagementService.resetPasswordByAdmin(userId, adminId, customPassword, notify);
+            Map<String, Object> response = new HashMap<>();
+            response.put("username", result.get("username"));
+            response.put("email", result.get("email"));
+            if (notify) {
+                response.put("message", "Password reset. A temporary password has been emailed to the user; they must change it on next login.");
+                response.put("notified", true);
+            } else {
+                response.put("message", "Password reset. Deliver the password to the user securely; they will be required to change it on next login.");
+                response.put("notified", false);
+                response.put("password", result.get("password"));
+            }
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @Operation(summary = "User analytics", description = "Aggregated user signups/logins/activity for the admin dashboard. Super Admin only.")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/users/analytics")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getUserAnalytics() {
+        long t0 = System.currentTimeMillis();
+        logger.info("getUserAnalytics: starting");
+        final int monthsBack = 12;
+        final int staleDays = 90;
+
+        // ---- Build calendar of last 12 months (oldest → newest, inclusive of current month) ----
+        YearMonth currentMonth = YearMonth.now();
+        List<String> monthKeys = new ArrayList<>(monthsBack);
+        for (int i = monthsBack - 1; i >= 0; i--) {
+            monthKeys.add(currentMonth.minusMonths(i).toString()); // YYYY-MM
+        }
+        LocalDateTime since12mo = currentMonth.minusMonths(monthsBack - 1).atDay(1).atStartOfDay();
+
+        // ---- New users by month ----
+        logger.info("getUserAnalytics: querying countNewUsersByMonth ({} ms)", System.currentTimeMillis() - t0);
+        Map<String, Long> newUsersBucket = new LinkedHashMap<>();
+        monthKeys.forEach(k -> newUsersBucket.put(k, 0L));
+        for (Object[] row : userRepository.countNewUsersByMonth(since12mo)) {
+            String ym = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            newUsersBucket.put(ym, count);
+        }
+
+        // ---- Logins by month ----
+        logger.info("getUserAnalytics: querying countLoginsByMonth ({} ms)", System.currentTimeMillis() - t0);
+        Map<String, Long> loginsBucket = new LinkedHashMap<>();
+        monthKeys.forEach(k -> loginsBucket.put(k, 0L));
+        for (Object[] row : auditEventRepository.countLoginsByMonth(since12mo)) {
+            String ym = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            loginsBucket.put(ym, count);
+        }
+
+        // ---- Most active organizations (last 90 days, single native aggregation) ----
+        logger.info("getUserAnalytics: querying topOrganizationsByEventCount ({} ms)", System.currentTimeMillis() - t0);
+        LocalDateTime since90d = LocalDate.now().minusDays(staleDays).atStartOfDay();
+        List<Map<String, Object>> topOrgs = auditEventRepository
+                .topOrganizationsByEventCount(since90d)
+                .stream()
+                .limit(5)
+                .map(row -> {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("id", row[0]);
+                    r.put("name", row[1]);
+                    r.put("eventCount", ((Number) row[2]).longValue());
+                    return r;
+                })
+                .collect(Collectors.toList());
+
+        // ---- % stale users (no login in last 90 days) ----
+        logger.info("getUserAnalytics: querying stale-user counts ({} ms)", System.currentTimeMillis() - t0);
+        long totalUsers = userRepository.count();
+        long staleUsers = userRepository.countStaleUsers(since90d);
+        double stalePct = totalUsers == 0 ? 0.0 : Math.round((staleUsers * 1000.0 / totalUsers)) / 10.0;
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("newUsersByMonth", newUsersBucket.entrySet().stream()
+                .map(e -> Map.of("month", e.getKey(), "count", e.getValue()))
+                .collect(Collectors.toList()));
+        response.put("loginsByMonth", loginsBucket.entrySet().stream()
+                .map(e -> Map.of("month", e.getKey(), "count", e.getValue()))
+                .collect(Collectors.toList()));
+        response.put("topActiveOrganizations", topOrgs);
+        Map<String, Object> staleSummary = new LinkedHashMap<>();
+        staleSummary.put("totalUsers", totalUsers);
+        staleSummary.put("staleUsers", staleUsers);
+        staleSummary.put("percentage", stalePct);
+        staleSummary.put("windowDays", staleDays);
+        response.put("staleUsers", staleSummary);
+
+        logger.info("getUserAnalytics: done in {} ms", System.currentTimeMillis() - t0);
+        return ResponseEntity.ok(response);
+    }
+
+    private Long currentAdminId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) return null;
+        return userRepository.findByUsername(auth.getName())
+                .map(User::getId)
+                .orElse(null);
     }
 
     @Operation(

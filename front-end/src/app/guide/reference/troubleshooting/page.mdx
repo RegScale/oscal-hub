@@ -1,0 +1,174 @@
+---
+title: Troubleshooting
+description: Solutions for common issues encountered when running or using OSCAL Hub.
+lastUpdated: 2026-05-04
+---
+
+# Troubleshooting
+
+This page covers the most common problems encountered when running OSCAL Hub locally or in production, along with the quickest path to resolution.
+
+---
+
+## Backend Not Responding
+
+If the browser console shows connection errors or the UI displays "Could not reach server", the Spring Boot backend is likely not running.
+
+Start everything from the project root:
+
+```bash
+./dev.sh
+```
+
+In development the backend listens on **port 8090** (`http://localhost:8090/api`). Production deployments default to port 8080. You can verify the backend is healthy without logging in:
+
+```bash
+curl http://localhost:8090/api/health
+```
+
+If the backend crashes on startup, check the terminal output from `./dev.sh`. The most common causes are a stale database lock (see below) or a missing environment variable. To restart cleanly:
+
+```bash
+./stop.sh && ./dev.sh
+```
+
+---
+
+## 403 Forbidden After a Backend Restart
+
+OSCAL Hub generates a random JWT signing secret each time the Spring Boot process starts. Any token issued before a restart is immediately invalid, even if it has not expired yet.
+
+If you see 403 errors after restarting the backend:
+
+1. Sign out of the web interface.
+2. Sign back in to receive a fresh token.
+3. Hard-refresh the page (Cmd+Shift+R on macOS, Ctrl+Shift+R on Windows/Linux) to clear any cached frontend assets.
+
+This is expected behavior in the development configuration. Production deployments can pin a persistent JWT secret via `JWT_SECRET` in the environment.
+
+---
+
+## Validation Errors
+
+Read the error message in the results panel carefully — it identifies the offending field, line number, and rule that failed. Clicking an error jumps to the relevant line in the document preview.
+
+Common validation problems:
+
+- **Missing required fields** — `metadata.title`, `metadata.last-modified`, and `metadata.version` are required on every OSCAL document. Check that none are absent or empty.
+- **Invalid UUID** — UUIDs must follow the standard `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` format. Version 4 (random) UUIDs are recommended.
+- **Wrong model type selected** — if you upload a Profile but select "Catalog" in the model type picker, schema validation will fail. Match the model type to the root element in your document.
+- **Constraint violations** — beyond schema validity, OSCAL has semantic constraints (e.g., `control-id` references must resolve). Use the rules explorer at [/rules](/rules) to look up the meaning of a specific rule ID.
+
+If you are unsure whether a document is syntactically well-formed before worrying about semantic rules, validate the raw JSON/XML/YAML with a generic linter first.
+
+---
+
+## Conversion Fails
+
+The Convert tool requires a valid, well-formed source document. Malformed XML or JSON cannot be parsed, and the converter will return an error before it has a chance to produce output.
+
+**Recommended workflow:** Run Validate on the source document first. Once validation passes, conversion to JSON, XML, or YAML should succeed.
+
+If conversion fails even on a valid document, confirm that the model type you selected in the Convert form matches the actual root element of the document. A mismatch causes the deserializer to reject the content.
+
+---
+
+## Profile Resolution Fails
+
+Profile resolution fetches each catalog referenced in the profile's `import` elements. If any referenced URI is unreachable from the backend, resolution fails with a "could not resolve import" error.
+
+Things to check:
+
+- **URI syntax** — The `href` value in the `import` element must be an absolute HTTPS URL or a relative file path that the backend can resolve from its working directory.
+- **Network access** — In a locked-down environment, the backend may not have outbound internet access to fetch NIST catalog URLs. Consider downloading the catalog locally and referencing it via a relative path or a pre-loaded file URI.
+- **File uploads** — If you have uploaded the catalog to OSCAL Hub, use the file's stored identifier as the `href` value, not a local filesystem path.
+
+---
+
+## Large Files
+
+The default upload limit is **10 MB per file**. Files larger than this are rejected before the backend processes them.
+
+Options if your file exceeds the limit:
+
+- **Split the document** — OSCAL allows profiles and SSPs to reference external resources by URI. Breaking a monolithic document into a catalog plus a profile is often a cleaner architectural choice anyway.
+- **Use the API directly** — If your deployment has been configured with a higher limit, the REST API (`POST /api/validate`) accepts the same request body. See the [API Automation Guide](/guide/reference/api-automation) for request examples.
+
+---
+
+## AI Features Greyed Out
+
+AI-powered features (component wizard, narrative drafting, and similar tools) require two conditions to be met:
+
+1. **An Anthropic API key must be configured** — Your org admin sets this under [/org-admin/ai-settings](/org-admin/ai-settings).
+2. **AI must be enabled for your organization** — Even with an API key present, AI features can be gated by org-level policy.
+
+If the AI tile shows "Coming Soon" or a disabled state, ask your org admin to verify both conditions. Super admins can inspect the platform-level configuration from the admin panel.
+
+---
+
+## Browser Compatibility
+
+OSCAL Hub supports the current stable release of Chrome, Firefox, Safari, and Edge. Older browsers may encounter rendering or JavaScript compatibility issues.
+
+After a deployment, the browser may serve stale JavaScript and CSS from its cache. Always **hard-refresh** after a known deployment:
+
+- macOS: `Cmd + Shift + R`
+- Windows / Linux: `Ctrl + Shift + R`
+
+If a page looks broken after a refresh, open the browser's developer tools (F12), go to the Network tab, check "Disable cache", and reload once more.
+
+---
+
+## Database Lock During Local Development
+
+If the backend refuses to start and the logs show:
+
+```
+Database may be already in use: "...oscal-history.mv.db"
+```
+
+A previous JVM process did not release the H2 file lock. Kill all Spring Boot processes and restart:
+
+```bash
+pkill -f 'spring-boot:run'
+./dev.sh
+```
+
+If `pkill` does not help, find the process manually:
+
+```bash
+lsof -i :8090
+kill -9 <PID>
+./dev.sh
+```
+
+The lock releases as soon as the JVM exits. You do not need to delete the database file.
+
+---
+
+## Account Locked
+
+If a user cannot log in and sees an "account locked" message, the account has been disabled or locked by an administrator. The user cannot unlock their own account.
+
+- **Org admins** can manage users at [/org-admin/users](/org-admin/users).
+- **Super admins** can manage all users at [/admin/users](/admin/users).
+
+---
+
+## Where to Go for More Help
+
+If none of the above resolves your issue:
+
+1. **Org admin** — Can reset passwords, manage account status, and toggle org-level feature flags.
+2. **Super admin** — Has access to the full health dashboard at [/admin/health](/admin/health) and platform configuration.
+3. **GitHub Issues** — For bugs or unexpected behavior, open an issue at the project repository. Include the browser console output, backend log lines, and the OSCAL document that triggered the problem (sanitize any sensitive data first).
+
+---
+
+## Related
+
+- [Health Check API](/guide/reference/api-automation)
+- [Validation Rules Explorer](/rules)
+- [Authentication & Sign-In](/guide/getting-started/sign-in-and-mfa)
+- [Accessibility](/guide/getting-started/accessibility)

@@ -342,7 +342,7 @@ export default function Dashboard() {
             <Link
               href="/build"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
-              aria-label="Navigate to Build page to visually create OSCAL component definitions"
+              aria-label="Navigate to Build page to visually create OSCAL catalogs, profiles, and component definitions"
             >
             <Card className="h-full transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 hover:border-primary/50 cursor-pointer">
               <CardHeader className="space-y-4">
@@ -352,7 +352,7 @@ export default function Dashboard() {
                 <div>
                   <CardTitle className="text-2xl mb-2">Build</CardTitle>
                   <CardDescription className="text-base">
-                    Visually create and manage OSCAL component definitions with reusable elements
+                    Visually create and manage OSCAL catalogs, profiles, and component definitions
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -547,7 +547,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <Link
-                    href="/guide/automation"
+                    href="/guide/reference/api-automation"
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     API Automation Guide
@@ -556,7 +556,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <Link
-                    href="/guide/rules"
+                    href="/guide/reference/rules"
                     className="text-primary hover:underline font-medium inline-flex items-center"
                   >
                     Validation Rules Guide
@@ -631,7 +631,7 @@ export default function Dashboard() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
-                    href="http://localhost:8080/swagger-ui/index.html"
+                    href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090/api').replace(/\/api\/?$/, '')}/swagger-ui/index.html`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center"

@@ -1,10 +1,12 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.AuditEvent;
+import gov.nist.oscal.tools.api.model.AuditEventResponse;
 import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuditLogStats;
 import gov.nist.oscal.tools.api.repository.AuditEventRepository;
 import gov.nist.oscal.tools.api.service.SiemForwardingService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +43,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/logs")
 @Tag(name = "Admin Audit Logs", description = "Audit log viewing and management for administrators")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
+@Hidden
 public class AuditLogController {
 
     private final AuditEventRepository auditEventRepository;
@@ -63,7 +66,7 @@ public class AuditLogController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved logs"),
         @ApiResponse(responseCode = "403", description = "Access denied - SUPER_ADMIN required")
     })
-    public ResponseEntity<Page<AuditEvent>> getAllLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getAllLogs(
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size (max 100)") @RequestParam(defaultValue = "50") int size,
             @Parameter(description = "Filter by username") @RequestParam(required = false) String username,
@@ -105,12 +108,12 @@ public class AuditLogController {
             result = auditEventRepository.findAllByOrderByTimestampDesc(pageable);
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/raw")
     @Operation(summary = "Get raw access logs", description = "Retrieve API access logs (Authentication and Data Access categories)")
-    public ResponseEntity<Page<AuditEvent>> getRawLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getRawLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -119,18 +122,20 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findRawLogsByUsername(username, pageable));
+            result = auditEventRepository.findByUsernameOrderByTimestampDesc(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findRawLogsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findRawLogsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findRawLogs(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findRawLogs(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/security")
     @Operation(summary = "Get security logs", description = "Retrieve security-related logs (Security, Authorization categories and HIGH risk events)")
-    public ResponseEntity<Page<AuditEvent>> getSecurityLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getSecurityLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -139,18 +144,20 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findSecurityEventsByUsername(username, pageable));
+            result = auditEventRepository.findSecurityEventsByUsername(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findSecurityEventsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findSecurityEventsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findAllSecurityEvents(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findAllSecurityEvents(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/errors")
     @Operation(summary = "Get error logs", description = "Retrieve logs with FAILURE or ERROR outcomes")
-    public ResponseEntity<Page<AuditEvent>> getErrorLogs(
+    public ResponseEntity<Page<AuditEventResponse>> getErrorLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String username,
@@ -159,31 +166,34 @@ public class AuditLogController {
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
 
-        // Apply additional filters if provided
+        Page<AuditEvent> result;
         if (username != null && !username.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findErrorsByUsername(username, pageable));
+            result = auditEventRepository.findErrorsByUsername(username, pageable);
         } else if (riskLevel != null && !riskLevel.isBlank()) {
-            return ResponseEntity.ok(auditEventRepository.findErrorsByRiskLevel(riskLevel, pageable));
+            result = auditEventRepository.findErrorsByRiskLevel(riskLevel, pageable);
+        } else {
+            result = auditEventRepository.findAllFailedEvents(pageable);
         }
-        return ResponseEntity.ok(auditEventRepository.findAllFailedEvents(pageable));
+        return ResponseEntity.ok(result.map(AuditEventResponse::from));
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search logs", description = "Search logs by keyword in username, resource, URL, or error message")
-    public ResponseEntity<Page<AuditEvent>> searchLogs(
+    public ResponseEntity<Page<AuditEventResponse>> searchLogs(
             @Parameter(description = "Search keyword") @RequestParam String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
 
         size = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(auditEventRepository.searchByKeyword(q, pageable));
+        return ResponseEntity.ok(auditEventRepository.searchByKeyword(q, pageable).map(AuditEventResponse::from));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get log by ID", description = "Retrieve a specific audit log entry by ID")
-    public ResponseEntity<AuditEvent> getLogById(@PathVariable Long id) {
+    public ResponseEntity<AuditEventResponse> getLogById(@PathVariable Long id) {
         return auditEventRepository.findById(id)
+            .map(AuditEventResponse::from)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
@@ -193,19 +203,24 @@ public class AuditLogController {
     // ========================================
 
     @GetMapping("/stats")
-    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs (cached for 1 minute)")
-    @Cacheable(value = "auditStats", key = "'stats'")
-    public ResponseEntity<AuditLogStats> getStats() {
+    @Operation(summary = "Get log statistics", description = "Retrieve summary statistics for audit logs. Pass ?username=<u> to scope to one user.")
+    @Cacheable(value = "auditStats", key = "#username != null && !#username.isBlank() ? 'user:' + #username : 'stats'")
+    public ResponseEntity<AuditLogStats> getStats(@RequestParam(required = false) String username) {
+        if (username != null && !username.isBlank()) {
+            return ResponseEntity.ok(getStatsForUser(username));
+        }
+        return ResponseEntity.ok(getGlobalStats());
+    }
+
+    private AuditLogStats getGlobalStats() {
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
 
-        // Total counts
         long totalLogs = auditEventRepository.count();
         long logsToday = auditEventRepository.countEventsSince(startOfToday);
         long securityEventsToday = auditEventRepository.countSecurityEventsSince(startOfToday);
         long errorsToday = auditEventRepository.countErrorsSince(startOfToday);
         long highRiskUnreviewed = auditEventRepository.countUnreviewedHighRiskEvents();
 
-        // Breakdown by category
         Map<String, Long> byCategory = new HashMap<>();
         byCategory.put("Authentication", auditEventRepository.countByCategory("Authentication"));
         byCategory.put("Authorization", auditEventRepository.countByCategory("Authorization"));
@@ -214,24 +229,53 @@ public class AuditLogController {
         byCategory.put("Security", auditEventRepository.countByCategory("Security"));
         byCategory.put("System", auditEventRepository.countByCategory("System"));
 
-        // Breakdown by risk level
         Map<String, Long> byRiskLevel = new HashMap<>();
         byRiskLevel.put("LOW", auditEventRepository.countByRiskLevel("LOW"));
         byRiskLevel.put("MEDIUM", auditEventRepository.countByRiskLevel("MEDIUM"));
         byRiskLevel.put("HIGH", auditEventRepository.countByRiskLevel("HIGH"));
 
-        // Breakdown by outcome
         Map<String, Long> byOutcome = new HashMap<>();
         byOutcome.put("SUCCESS", auditEventRepository.countByOutcome("SUCCESS"));
         byOutcome.put("FAILURE", auditEventRepository.countByOutcome("FAILURE"));
         byOutcome.put("ERROR", auditEventRepository.countByOutcome("ERROR"));
 
-        AuditLogStats stats = new AuditLogStats(
+        return new AuditLogStats(
             totalLogs, logsToday, securityEventsToday, errorsToday, highRiskUnreviewed,
             byCategory, byRiskLevel, byOutcome
         );
+    }
 
-        return ResponseEntity.ok(stats);
+    private AuditLogStats getStatsForUser(String username) {
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
+        long totalLogs = auditEventRepository.countByUsername(username);
+        long logsToday = auditEventRepository.countByUsernameSince(username, startOfToday);
+        long securityEventsToday = auditEventRepository.countSecurityEventsByUsernameSince(username, startOfToday);
+        long errorsToday = auditEventRepository.countErrorsByUsernameSince(username, startOfToday);
+        long highRiskUnreviewed = auditEventRepository.countUnreviewedHighRiskByUsername(username);
+
+        Map<String, Long> byCategory = new HashMap<>();
+        byCategory.put("Authentication", auditEventRepository.countByUsernameAndCategory(username, "Authentication"));
+        byCategory.put("Authorization", auditEventRepository.countByUsernameAndCategory(username, "Authorization"));
+        byCategory.put("Data Access", auditEventRepository.countByUsernameAndCategory(username, "Data Access"));
+        byCategory.put("Configuration", auditEventRepository.countByUsernameAndCategory(username, "Configuration"));
+        byCategory.put("Security", auditEventRepository.countByUsernameAndCategory(username, "Security"));
+        byCategory.put("System", auditEventRepository.countByUsernameAndCategory(username, "System"));
+
+        Map<String, Long> byRiskLevel = new HashMap<>();
+        byRiskLevel.put("LOW", auditEventRepository.countByUsernameAndRiskLevel(username, "LOW"));
+        byRiskLevel.put("MEDIUM", auditEventRepository.countByUsernameAndRiskLevel(username, "MEDIUM"));
+        byRiskLevel.put("HIGH", auditEventRepository.countByUsernameAndRiskLevel(username, "HIGH"));
+
+        Map<String, Long> byOutcome = new HashMap<>();
+        byOutcome.put("SUCCESS", auditEventRepository.countByUsernameAndOutcome(username, "SUCCESS"));
+        byOutcome.put("FAILURE", auditEventRepository.countByUsernameAndOutcome(username, "FAILURE"));
+        byOutcome.put("ERROR", auditEventRepository.countByUsernameAndOutcome(username, "ERROR"));
+
+        return new AuditLogStats(
+            totalLogs, logsToday, securityEventsToday, errorsToday, highRiskUnreviewed,
+            byCategory, byRiskLevel, byOutcome
+        );
     }
 
     // ========================================

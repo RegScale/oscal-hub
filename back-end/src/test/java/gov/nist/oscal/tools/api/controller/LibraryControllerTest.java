@@ -242,7 +242,7 @@ class LibraryControllerTest {
         mockItem.setTags(new HashSet<>());
         mockItem.setVersions(new HashSet<>());
 
-        when(libraryService.getLibraryItem("1")).thenReturn(mockItem);
+        when(libraryService.getLibraryItem(eq("1"), any())).thenReturn(mockItem);
 
         // Act & Assert
         mockMvc.perform(get("/api/library/1"))
@@ -254,7 +254,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetLibraryItem_notFound_returns404() throws Exception {
         // Arrange
-        when(libraryService.getLibraryItem("999"))
+        when(libraryService.getLibraryItem(eq("999"), any()))
                 .thenThrow(new RuntimeException("Item not found"));
 
         // Act & Assert
@@ -269,7 +269,7 @@ class LibraryControllerTest {
     void testGetLibraryItemContent_success_returnsContent() throws Exception {
         // Arrange
         String content = "<catalog></catalog>";
-        when(libraryService.getCurrentVersionContent("1")).thenReturn(content);
+        when(libraryService.getCurrentVersionContent(eq("1"), any())).thenReturn(content);
 
         // Act & Assert
         mockMvc.perform(get("/api/library/1/content"))
@@ -322,7 +322,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq("NIST"), eq(null), eq(null), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq("NIST"), eq(null), eq(null), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -349,7 +349,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq(null), eq("catalog"), eq(null), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq(null), eq("catalog"), eq(null), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -383,7 +383,7 @@ class LibraryControllerTest {
         item2.setTags(new HashSet<>());
         item2.setVersions(new HashSet<>());
 
-        when(libraryService.getAllLibraryItemsPaged(any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.getAllLibraryItemsVisibleToPaged(any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item1, item2)));
 
         // Act & Assert
@@ -410,7 +410,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.getLibraryItemsByOscalTypePaged(eq("catalog"), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.getLibraryItemsByOscalTypeVisibleToPaged(eq("catalog"), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert
@@ -508,7 +508,7 @@ class LibraryControllerTest {
         version2.setVersionNumber(2);
         version2.setUploadedBy(mockUser);
 
-        when(libraryService.getVersionHistory("1"))
+        when(libraryService.getVersionHistory(eq("1"), any()))
                 .thenReturn(Arrays.asList(version1, version2));
 
         // Act & Assert
@@ -523,7 +523,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetVersionHistory_notFound_returns404() throws Exception {
         // Arrange
-        when(libraryService.getVersionHistory("999"))
+        when(libraryService.getVersionHistory(eq("999"), any()))
                 .thenThrow(new RuntimeException("Item not found"));
 
         // Act & Assert
@@ -538,7 +538,7 @@ class LibraryControllerTest {
     void testGetVersionContent_success_returnsContent() throws Exception {
         // Arrange
         String content = "<catalog version=\"2\"></catalog>";
-        when(libraryService.getVersionContent("v2")).thenReturn(content);
+        when(libraryService.getVersionContent(eq("v2"), any())).thenReturn(content);
 
         // Act & Assert
         mockMvc.perform(get("/api/library/versions/v2/content"))
@@ -550,7 +550,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetVersionContent_notFound_returns404() throws Exception {
         // Arrange
-        when(libraryService.getVersionContent("invalid"))
+        when(libraryService.getVersionContent(eq("invalid"), any()))
                 .thenThrow(new RuntimeException("Version not found"));
 
         // Act & Assert
@@ -577,7 +577,7 @@ class LibraryControllerTest {
         item1.setVersions(new HashSet<>());
         item1.setDownloadCount(100L);
 
-        when(libraryService.getMostPopular(10))
+        when(libraryService.getMostPopularVisibleTo(any(), eq(10)))
                 .thenReturn(Arrays.asList(item1));
 
         // Act & Assert
@@ -590,7 +590,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetMostPopular_serviceException_returns500() throws Exception {
         // Arrange
-        when(libraryService.getMostPopular(anyInt()))
+        when(libraryService.getMostPopularVisibleTo(any(), anyInt()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -616,7 +616,7 @@ class LibraryControllerTest {
         item1.setTags(new HashSet<>());
         item1.setVersions(new HashSet<>());
 
-        when(libraryService.getRecentlyUpdated(10))
+        when(libraryService.getRecentlyUpdatedVisibleTo(any(), eq(10)))
                 .thenReturn(Arrays.asList(item1));
 
         // Act & Assert
@@ -629,7 +629,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetRecentlyUpdated_serviceException_returns500() throws Exception {
         // Arrange
-        when(libraryService.getRecentlyUpdated(anyInt()))
+        when(libraryService.getRecentlyUpdatedVisibleTo(any(), anyInt()))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert
@@ -678,7 +678,7 @@ class LibraryControllerTest {
     @WithMockUser(username = "testuser")
     void testGetLibraryItemContent_notFound_returns404() throws Exception {
         // Arrange
-        when(libraryService.getCurrentVersionContent("999"))
+        when(libraryService.getCurrentVersionContent(eq("999"), any()))
                 .thenThrow(new RuntimeException("Item not found"));
 
         // Act & Assert
@@ -722,7 +722,7 @@ class LibraryControllerTest {
         item.setTags(new HashSet<>());
         item.setVersions(new HashSet<>());
 
-        when(libraryService.searchLibraryPaged(eq(null), eq(null), eq("nist"), any(org.springframework.data.domain.Pageable.class)))
+        when(libraryService.searchLibraryVisibleToPaged(eq(null), eq(null), eq("nist"), any(), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(Arrays.asList(item)));
 
         // Act & Assert

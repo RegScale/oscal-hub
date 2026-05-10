@@ -127,6 +127,30 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.outcome IN ('FAILURE', 'ERROR') AND a.timestamp >= :since")
     long countErrorsSince(@Param("since") LocalDateTime since);
 
+    // ----- Username-scoped counts (for per-user stats tiles) -----
+    // (countByUsername(String) already defined further down — reused here.)
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.timestamp >= :since")
+    long countByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND (a.category = 'Security' OR a.riskLevel = 'HIGH') AND a.timestamp >= :since")
+    long countSecurityEventsByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.outcome IN ('FAILURE', 'ERROR') AND a.timestamp >= :since")
+    long countErrorsByUsernameSince(@Param("username") String username, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.riskLevel = 'HIGH' AND a.reviewed = false")
+    long countUnreviewedHighRiskByUsername(@Param("username") String username);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.category = :category")
+    long countByUsernameAndCategory(@Param("username") String username, @Param("category") String category);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.riskLevel = :riskLevel")
+    long countByUsernameAndRiskLevel(@Param("username") String username, @Param("riskLevel") String riskLevel);
+
+    @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username = :username AND a.outcome = :outcome")
+    long countByUsernameAndOutcome(@Param("username") String username, @Param("outcome") String outcome);
+
     // ========================================
     // Find by User
     // ========================================
@@ -533,6 +557,44 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.eventType = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since")
     long countLoginsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
 
+    /**
+     * Successful logins grouped by year/month (e.g. "2026-05") for the last N months.
+     * Returns rows of [yearMonthString, count]. Postgres-specific: TO_CHAR.
+     */
+    @Query(value = "SELECT TO_CHAR(a.timestamp, 'YYYY-MM') AS ym, COUNT(*) FROM audit_events a WHERE a.event_type = 'AUTH_LOGIN_SUCCESS' AND a.timestamp >= :since GROUP BY ym ORDER BY ym", nativeQuery = true)
+    List<Object[]> countLoginsByMonth(@Param("since") LocalDateTime since);
+
+    /**
+     * Distinct active users by username over a window (any event counts).
+     * Returns [username, eventCount] sorted desc.
+     */
+    @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IS NOT NULL AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
+    List<Object[]> countEventsByUsernameSinceDesc(@Param("since") LocalDateTime since);
+
+    /**
+     * Top organizations by audit-event volume since the cutoff. Native SQL —
+     * the JPQL cross-join form was generating slow plans on Postgres dev data,
+     * so this version uses an explicit join through the user/membership tables
+     * and a derived per-username count to avoid duplicate-counting events for
+     * users in multiple orgs.
+     */
+    @Query(value =
+        "SELECT m.organization_id, o.name, SUM(uc.cnt) AS total " +
+        "FROM ( " +
+        "  SELECT username, COUNT(*) AS cnt " +
+        "  FROM audit_events " +
+        "  WHERE username IS NOT NULL AND timestamp >= :since " +
+        "  GROUP BY username " +
+        ") uc " +
+        "JOIN users u ON u.username = uc.username " +
+        "JOIN organization_memberships m ON m.user_id = u.id " +
+        "JOIN organizations o ON o.id = m.organization_id " +
+        "GROUP BY m.organization_id, o.name " +
+        "ORDER BY total DESC " +
+        "LIMIT 5",
+        nativeQuery = true)
+    List<Object[]> topOrganizationsByEventCount(@Param("since") LocalDateTime since);
+
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since")
     long countOperationsByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
 
@@ -550,4 +612,23 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
 
     @Query("SELECT a.username, COUNT(a) FROM AuditEvent a WHERE a.username IN :usernames AND a.category != 'Authentication' AND a.timestamp >= :since GROUP BY a.username ORDER BY COUNT(a) DESC")
     List<Object[]> countTopUsersByUsernamesSince(@Param("usernames") List<String> usernames, @Param("since") LocalDateTime since);
+
+    // ========================================
+    // Library download trend queries
+    // ========================================
+
+    /**
+     * Library item downloads bucketed by ISO week since :since. Powers the
+     * public catalog "Downloads over time" chart. Returns rows of
+     * [weekStart, count]. Native query so we can use date_trunc — JPQL has
+     * no portable equivalent.
+     */
+    @Query(value = """
+        SELECT date_trunc('week', a.timestamp) AS bucket, COUNT(a.id)
+        FROM audit_events a
+        WHERE a.event_type = 'LIBRARY_ITEM_DOWNLOAD' AND a.timestamp >= :since
+        GROUP BY bucket
+        ORDER BY bucket
+        """, nativeQuery = true)
+    List<Object[]> getLibraryDownloadsPerWeek(@Param("since") LocalDateTime since);
 }

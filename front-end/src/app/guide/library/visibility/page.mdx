@@ -1,0 +1,119 @@
+---
+title: Library Visibility
+description: Understanding Private, Organization, and Public visibility modes for library items and how to change them.
+lastUpdated: 2026-05-04
+---
+
+# Library Visibility
+
+Every library item has a **visibility** setting that controls who can see it. The three modes map to three circles of access: just you, your organization, or the entire internet. Choosing the right visibility is the primary way you control the reach of every document you publish.
+
+---
+
+## The three visibility modes
+
+### Private
+
+**Who sees it:** Only the creator.
+
+Private is the default for all new library items (whether uploaded directly or saved from a builder). A Private item does not appear in any other user's library view, in organization searches, or in the Public Catalog. Only you can see, download, or manage it.
+
+Use Private for:
+- Work-in-progress documents you are not ready to share
+- Reference files you want in the library for your own convenience
+- Items that contain data that should not leave your account
+
+The library card displays a red **Private** badge.
+
+### Organization
+
+**Who sees it:** Every member of the creator's organization.
+
+Organization-scoped items appear in the library for all users who belong to the same organization as the creator. They do not appear in the Public Catalog. Members can browse, view the detail page, and download the item. Only the creator (or a super-admin) can edit metadata or change visibility.
+
+Use Organization for:
+- Shared control baseline templates your team reuses
+- Internal reference SSPs or component definitions
+- Documents that are ready internally but not ready for public release
+
+The library card displays a blue **Organization** badge.
+
+### Public
+
+**Who sees it:** Everyone, including unauthenticated visitors via the Public Catalog at `/catalog`.
+
+Public items are indexed in the public-facing catalog. Any visitor — signed in or not — can search, filter, and view the detail page. Downloading still requires a sign-in (to support analytics and rate limiting). Once an item is Public, anyone can link directly to its catalog detail page.
+
+Use Public for:
+- Community reference content (open baselines, example catalogs, annotated profiles)
+- Documents produced under open licenses that you want to share broadly
+- Any content you are comfortable with being found by internet search engines
+
+The library card displays a green **Public** badge.
+
+---
+
+## Visibility at a glance
+
+| Visibility | Your account | Your org | Unauthenticated visitors |
+|---|---|---|---|
+| Private | Visible | Hidden | Hidden |
+| Organization | Visible | Visible | Hidden |
+| Public | Visible | Visible | Visible (read-only; download requires sign-in) |
+
+---
+
+## How to change visibility
+
+You can change the visibility of any item you created (or any item if you are a super-admin) directly from the library card.
+
+<Steps>
+  <Step title="Navigate to /library and find the item">
+    Go to `/library` and browse or search for the item you want to change. Only items you created (or all items if you are a super-admin) show the visibility action controls.
+  </Step>
+  <Step title="Locate the visibility action menu on the card">
+    Each card shows a **Visibility** action area below the tags row. The available actions depend on the current visibility: you will see **Publish** (to make it Public), **Share with Org**, or **Unpublish** (to revert to Private).
+  </Step>
+  <Step title="Click the desired action">
+    Click the action button. The change takes effect immediately and the badge on the card updates to reflect the new scope.
+  </Step>
+  <Step title="Confirm in the detail page">
+    Click the card to open the detail page at `/library/[itemId]`. The visibility badge at the top of the page confirms the current scope.
+  </Step>
+</Steps>
+
+---
+
+## Audit trail
+
+Every visibility change is recorded in the platform audit log. The following events are emitted:
+
+| Event | Trigger |
+|---|---|
+| `LIBRARY_ITEM_PUBLISHED` | Visibility changed to Public |
+| `LIBRARY_ITEM_UNPUBLISHED` | Visibility changed from Public back to Private or Organization |
+| `LIBRARY_ITEM_SHARED` | Visibility changed to Organization |
+
+Super-admins can review the full audit trail. This log is useful for compliance evidence and for tracking when community content was made available.
+
+---
+
+## What the Public Catalog looks like
+
+When an item is set to Public, it appears at `/catalog` — the unauthenticated-accessible front-end view of community OSCAL content. Visitors can search, filter by OSCAL type, and sort by newest, most downloaded, or highest rated. They can view all metadata on the detail page but must sign in to download.
+
+For a full description of the Public Catalog experience, see [Public Catalog](/guide/library/public-catalog).
+
+---
+
+<Callout type="warn">
+**Think before you publish.** Setting visibility to Public means anyone on the internet can see the document — including search engines and automated scrapers. Do not publish anything that contains secrets, customer data, internal system details, pre-decisional content, or personally identifiable information. If you are unsure, keep the item Private or Organization-scoped until it has been reviewed.
+</Callout>
+
+---
+
+## Related
+
+- [Library Overview](/guide/library/overview)
+- [Save to Library](/guide/library/save-to-library)
+- [Public Catalog](/guide/library/public-catalog)

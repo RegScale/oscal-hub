@@ -1,7 +1,14 @@
 package gov.nist.oscal.tools.api.controller;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationGrant;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
+import gov.nist.oscal.tools.api.entity.OrganizationMembership;
+import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.model.*;
+import gov.nist.oscal.tools.api.repository.AuthorizationGrantRepository;
+import gov.nist.oscal.tools.api.repository.UserRepository;
+import gov.nist.oscal.tools.api.service.AuthorizationAccessGuard;
 import gov.nist.oscal.tools.api.service.AuthorizationService;
 import gov.nist.oscal.tools.api.service.DigitalSignatureService;
 import gov.nist.oscal.tools.api.telemetry.EventNames;
@@ -18,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.security.cert.X509Certificate;
@@ -36,15 +44,24 @@ public class AuthorizationController {
     private final AuthorizationService authorizationService;
     private final DigitalSignatureService digitalSignatureService;
     private final TelemetryService telemetryService;
+    private final AuthorizationAccessGuard accessGuard;
+    private final AuthorizationGrantRepository grantRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public AuthorizationController(
             AuthorizationService authorizationService,
             DigitalSignatureService digitalSignatureService,
-            TelemetryService telemetryService) {
+            TelemetryService telemetryService,
+            AuthorizationAccessGuard accessGuard,
+            AuthorizationGrantRepository grantRepository,
+            UserRepository userRepository) {
         this.authorizationService = authorizationService;
         this.digitalSignatureService = digitalSignatureService;
         this.telemetryService = telemetryService;
+        this.accessGuard = accessGuard;
+        this.grantRepository = grantRepository;
+        this.userRepository = userRepository;
     }
 
     @Operation(
@@ -87,8 +104,9 @@ public class AuthorizationController {
                 logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
             }
 
+            User currentUser = requireCurrentUser(principal);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new AuthorizationResponse(authorization));
+                    .body(toResponse(authorization, currentUser));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -108,25 +126,26 @@ public class AuthorizationController {
             @PathVariable Long id,
             @RequestBody AuthorizationRequest request,
             Principal principal) {
-        try {
-            Authorization authorization = authorizationService.updateAuthorization(
-                    id,
-                    request.getName(),
-                    request.getVariableValues(),
-                    principal.getName(),
-                    request.getDateAuthorized(),
-                    request.getDateExpired(),
-                    request.getSystemOwner(),
-                    request.getSecurityManager(),
-                    request.getAuthorizingOfficial(),
-                    request.getEditedContent(),
-                    request.getConditions()
-            );
+        // No broad catch here — AuthorizationNotFoundException (@ResponseStatus 404),
+        // InsufficientAuthorizationRoleException (@ResponseStatus 403), and
+        // NoActiveOrganizationException (@ResponseStatus 403) all propagate to
+        // Spring's exception resolver so the correct HTTP status is returned.
+        Authorization authorization = authorizationService.updateAuthorization(
+                id,
+                request.getName(),
+                request.getVariableValues(),
+                principal.getName(),
+                request.getDateAuthorized(),
+                request.getDateExpired(),
+                request.getSystemOwner(),
+                request.getSecurityManager(),
+                request.getAuthorizingOfficial(),
+                request.getEditedContent(),
+                request.getConditions()
+        );
 
-            return ResponseEntity.ok(new AuthorizationResponse(authorization));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+        User currentUser = requireCurrentUser(principal);
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
     }
 
     @Operation(
@@ -138,13 +157,14 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "404", description = "Authorization not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<AuthorizationResponse> getAuthorization(@PathVariable Long id) {
-        try {
-            Authorization authorization = authorizationService.getAuthorization(id);
-            return ResponseEntity.ok(new AuthorizationResponse(authorization));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<AuthorizationResponse> getAuthorization(@PathVariable Long id,
+                                                                  Principal principal) {
+        // AuthorizationNotFoundException (@ResponseStatus 404) and
+        // NoActiveOrganizationException (@ResponseStatus 403) propagate naturally.
+        Authorization authorization = authorizationService.getAuthorizationForUser(
+                id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
     }
 
     @Operation(
@@ -155,11 +175,13 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "200", description = "Authorizations retrieved successfully")
     })
     @GetMapping
-    public ResponseEntity<List<AuthorizationResponse>> getAllAuthorizations() {
+    public ResponseEntity<List<AuthorizationResponse>> getAllAuthorizations(Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getAllAuthorizations();
+            List<Authorization> authorizations =
+                    authorizationService.getAllAuthorizationsForUser(principal.getName());
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -176,11 +198,18 @@ public class AuthorizationController {
     })
     @GetMapping("/recent")
     public ResponseEntity<List<AuthorizationResponse>> getRecentlyAuthorized(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getRecentlyAuthorized(limit);
+            List<Authorization> all =
+                    authorizationService.getAllAuthorizationsForUser(principal.getName());
+            List<Authorization> authorizations = all.stream()
+                    .sorted((a, b) -> b.getAuthorizedAt().compareTo(a.getAuthorizedAt()))
+                    .limit(limit)
+                    .toList();
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -196,11 +225,15 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "200", description = "Authorizations retrieved successfully")
     })
     @GetMapping("/ssp/{sspItemId}")
-    public ResponseEntity<List<AuthorizationResponse>> getAuthorizationsBySsp(@PathVariable String sspItemId) {
+    public ResponseEntity<List<AuthorizationResponse>> getAuthorizationsBySsp(
+            @PathVariable String sspItemId,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.getAuthorizationsBySsp(sspItemId);
+            List<Authorization> authorizations =
+                    authorizationService.getAuthorizationsBySspForUser(sspItemId, principal.getName());
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -217,11 +250,14 @@ public class AuthorizationController {
     })
     @GetMapping("/search")
     public ResponseEntity<List<AuthorizationResponse>> searchAuthorizations(
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            Principal principal) {
         try {
-            List<Authorization> authorizations = authorizationService.searchAuthorizations(q);
+            List<Authorization> authorizations =
+                    authorizationService.searchAuthorizationsForUser(principal.getName(), q);
+            User currentUser = requireCurrentUser(principal);
             List<AuthorizationResponse> responses = authorizations.stream()
-                    .map(AuthorizationResponse::new)
+                    .map(a -> toResponse(a, currentUser))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
@@ -240,17 +276,12 @@ public class AuthorizationController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAuthorization(@PathVariable Long id, Principal principal) {
-        try {
-            authorizationService.deleteAuthorization(id, principal.getName());
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Only the creator")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        // No broad catch here — AuthorizationNotFoundException (@ResponseStatus 404),
+        // InsufficientAuthorizationRoleException (@ResponseStatus 403), and
+        // NoActiveOrganizationException (@ResponseStatus 403) all propagate to
+        // Spring's exception resolver so the correct HTTP status is returned.
+        authorizationService.deleteAuthorization(id, principal.getName());
+        return ResponseEntity.ok().build();
     }
 
     // ===== Digital Signature Endpoints =====
@@ -268,7 +299,8 @@ public class AuthorizationController {
     @PostMapping("/sign-with-cert")
     public ResponseEntity<SignatureResult> signWithClientCertificate(
             @RequestBody SignRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            Principal principal) {
 
         logger.info("Sign request for authorization {}", request.getAuthorizationId());
 
@@ -297,9 +329,14 @@ public class AuthorizationController {
                                 "Certificate validation failed: " + validation.getNotes()));
             }
 
+            // Load authorization scoped to the current user's organization — prevents
+            // cross-org signing by rejecting IDs that don't belong to this user's org.
+            Authorization authorization = authorizationService.getAuthorizationForUser(
+                    request.getAuthorizationId(), principal.getName());
+
             // Sign the authorization
             SignatureResult result = digitalSignatureService.signAuthorization(
-                    request.getAuthorizationId(),
+                    authorization,
                     clientCert
             );
 
@@ -339,7 +376,8 @@ public class AuthorizationController {
     })
     @PostMapping("/sign-electronically")
     public ResponseEntity<SignatureResult> signElectronically(
-            @RequestBody ElectronicSignatureRequest request) {
+            @RequestBody ElectronicSignatureRequest request,
+            Principal principal) {
 
         logger.info("Electronic signature request for authorization {}", request.getAuthorizationId());
 
@@ -357,8 +395,9 @@ public class AuthorizationController {
         }
 
         try {
-            // Get the authorization
-            Authorization auth = authorizationService.getAuthorization(request.getAuthorizationId());
+            // Get the authorization scoped to the current user's organization
+            Authorization auth = authorizationService.getAuthorizationForUser(
+                    request.getAuthorizationId(), principal.getName());
 
             // Save electronic signature
             auth.setDigitalSignatureMethod("ELECTRONIC");
@@ -410,9 +449,10 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "404", description = "Authorization or signature not found")
     })
     @GetMapping("/{id}/signature")
-    public ResponseEntity<SignatureDetailsResponse> getSignatureDetails(@PathVariable Long id) {
+    public ResponseEntity<SignatureDetailsResponse> getSignatureDetails(@PathVariable Long id,
+                                                                        Principal principal) {
         try {
-            Authorization auth = authorizationService.getAuthorization(id);
+            Authorization auth = authorizationService.getAuthorizationForUser(id, principal.getName());
 
             if (auth.getSignerCertificate() == null) {
                 logger.debug("No signature found for authorization {}", id);
@@ -454,9 +494,10 @@ public class AuthorizationController {
         @ApiResponse(responseCode = "500", description = "Verification failed")
     })
     @PostMapping("/{id}/verify-signature")
-    public ResponseEntity<SignatureVerificationResponse> verifySignature(@PathVariable Long id) {
+    public ResponseEntity<SignatureVerificationResponse> verifySignature(@PathVariable Long id,
+                                                                         Principal principal) {
         try {
-            Authorization auth = authorizationService.getAuthorization(id);
+            Authorization auth = authorizationService.getAuthorizationForUser(id, principal.getName());
 
             if (auth.getSignerCertificate() == null) {
                 logger.debug("No signature to verify for authorization {}", id);
@@ -486,5 +527,180 @@ public class AuthorizationController {
             logger.error("Verification failed for authorization {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    // ===== Grant Management Endpoints =====
+
+    @Operation(
+        summary = "List grants for an authorization",
+        description = "List all user grants on a specific authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grants retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization not found")
+    })
+    @GetMapping("/{id}/grants")
+    public ResponseEntity<List<AuthorizationGrantResponse>> listGrants(@PathVariable Long id,
+                                                                       Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        List<AuthorizationGrantResponse> grants = grantRepository.findByAuthorization(authorization).stream()
+                .map(AuthorizationGrantResponse::new)
+                .toList();
+        return ResponseEntity.ok(grants);
+    }
+
+    @Operation(
+        summary = "Add a grant to an authorization",
+        description = "Grant a user a specific role on an authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Grant created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or user not in org"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or user not found")
+    })
+    @PostMapping("/{id}/grants")
+    public ResponseEntity<AuthorizationGrantResponse> addGrant(@PathVariable Long id,
+                                                               @Valid @RequestBody AuthorizationGrantRequest request,
+                                                               Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        User grantee = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "User " + request.getUserId() + " not found."));
+
+        // Reject grants for users not in the authorization's organization.
+        if (!isInSameOrg(authorization, grantee)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "User is not a member of this authorization's organization.");
+        }
+
+        AuthorizationGrant grant = grantRepository.findByAuthorizationAndUser(authorization, grantee)
+                .orElseGet(() -> new AuthorizationGrant(authorization, grantee, request.getRole(), currentUser));
+        grant.setRole(request.getRole());
+        grant.setGrantedBy(currentUser);
+        grantRepository.save(grant);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AuthorizationGrantResponse(grant));
+    }
+
+    @Operation(
+        summary = "Update a grant on an authorization",
+        description = "Change the role for an existing grant (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grant updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or grant not found")
+    })
+    @PatchMapping("/{id}/grants/{grantId}")
+    public ResponseEntity<AuthorizationGrantResponse> updateGrant(@PathVariable Long id,
+                                                                  @PathVariable Long grantId,
+                                                                  @Valid @RequestBody AuthorizationGrantRequest request,
+                                                                  Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        AuthorizationGrant grant = grantRepository.findById(grantId)
+                .filter(g -> g.getAuthorization().getId().equals(id))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Grant " + grantId + " not found on authorization " + id));
+
+        grant.setRole(request.getRole());
+        grant.setGrantedBy(currentUser);
+        grantRepository.save(grant);
+
+        return ResponseEntity.ok(new AuthorizationGrantResponse(grant));
+    }
+
+    @Operation(
+        summary = "Remove a grant from an authorization",
+        description = "Revoke a user's access grant on an authorization (requires OWNER role)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Grant removed successfully"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization or grant not found")
+    })
+    @DeleteMapping("/{id}/grants/{grantId}")
+    public ResponseEntity<Void> removeGrant(@PathVariable Long id,
+                                            @PathVariable Long grantId,
+                                            Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        AuthorizationGrant grant = grantRepository.findById(grantId)
+                .filter(g -> g.getAuthorization().getId().equals(id))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Grant " + grantId + " not found on authorization " + id));
+
+        grantRepository.delete(grant);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "Set or clear the share-with-org default role",
+        description = "Set a default role for all org members on this authorization (requires OWNER role). "
+                + "Pass null to clear. Allowed values: VIEWER, CONTRIBUTOR, EDITOR."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Share-with-org setting updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid role (OWNER not allowed as default)"),
+        @ApiResponse(responseCode = "403", description = "Insufficient role — OWNER required"),
+        @ApiResponse(responseCode = "404", description = "Authorization not found")
+    })
+    @PatchMapping("/{id}/share-with-org")
+    public ResponseEntity<AuthorizationResponse> setShareWithOrg(@PathVariable Long id,
+                                                                 @RequestBody ShareWithOrgRequest request,
+                                                                 Principal principal) {
+        Authorization authorization = authorizationService.getAuthorizationForUser(id, principal.getName());
+        User currentUser = requireCurrentUser(principal);
+        accessGuard.requireManageGrants(authorization, currentUser);
+
+        if (request.getRole() != null && !AuthorizationRole.isAssignableAsShareDefault(request.getRole())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot set share-with-org default to " + request.getRole()
+                            + ". Allowed: VIEWER, CONTRIBUTOR, EDITOR.");
+        }
+
+        authorization.setShareWithOrgDefaultRole(request.getRole());
+        authorizationService.save(authorization);
+
+        return ResponseEntity.ok(toResponse(authorization, currentUser));
+    }
+
+    // ===== Private helpers =====
+
+    private AuthorizationResponse toResponse(Authorization authorization, User currentUser) {
+        AuthorizationResponse response = new AuthorizationResponse(authorization);
+        response.setEffectiveRole(accessGuard.effectiveRole(authorization, currentUser));
+        response.setShareWithOrgDefaultRole(authorization.getShareWithOrgDefaultRole());
+        return response;
+    }
+
+    private User requireCurrentUser(Principal principal) {
+        return userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User '" + principal.getName() + "' not found."));
+    }
+
+    private boolean isInSameOrg(Authorization authorization, User user) {
+        return user.getOrganizationMemberships().stream()
+                .anyMatch(m -> m.getOrganization().getId().equals(authorization.getOrganization().getId())
+                        && m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE);
     }
 }

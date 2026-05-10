@@ -13,10 +13,10 @@ import {
 import { apiClient } from '@/lib/api-client';
 import type { AuthorizationTemplateResponse } from '@/types/oscal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
 import { MarkdownPreview } from '@/components/markdown-preview';
 import { TemplateEditor } from '@/components/template-editor';
 import { toast } from 'sonner';
+import { HelpButton } from '@/components/HelpButton';
 
 export default function TemplateDetailPage() {
   const params = useParams();
@@ -90,7 +90,6 @@ export default function TemplateDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -114,7 +113,6 @@ export default function TemplateDetailPage() {
             </AlertDescription>
           </Alert>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -134,7 +132,10 @@ export default function TemplateDetailPage() {
           <div className="flex items-center">
             <FileText className="h-10 w-10 text-primary mr-4" />
             <div>
-              <h1 className="text-4xl font-bold">{template.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl font-bold">{template.name}</h1>
+                <HelpButton slug="authorization-template" />
+              </div>
               <p className="text-muted-foreground mt-2">
                 Created by {template.createdBy} on{' '}
                 {new Date(template.createdAt).toLocaleDateString()}
@@ -178,7 +179,6 @@ export default function TemplateDetailPage() {
         </Card>
       </div>
 
-      <Footer />
     </div>
   );
 }

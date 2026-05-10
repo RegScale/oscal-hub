@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
@@ -18,6 +18,7 @@ import {
   AlertCircle,
   FileText,
   Eye,
+  Search,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type {
@@ -27,6 +28,7 @@ import type {
   ControlStatus,
   GapSeverity,
 } from '@/types/oscal';
+import { HelpButton } from '@/components/HelpButton';
 
 const CATEGORY_INFO: Record<string, { name: string; icon: React.ReactNode; description: string }> = {
   CC6: {
@@ -71,6 +73,7 @@ export default function SecurityCompliancePage() {
   const [gaps, setGaps] = useState<GapAnalysis[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = useCallback(async (showRefreshIndicator = false) => {
     try {
@@ -165,7 +168,28 @@ export default function SecurityCompliancePage() {
     }
   };
 
-  const controlsByCategory = controls.reduce((acc, control) => {
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+
+  const filteredControls = useMemo(() => {
+    if (!trimmedQuery) return controls;
+    return controls.filter((c) =>
+      c.controlId.toLowerCase().includes(trimmedQuery) ||
+      c.name.toLowerCase().includes(trimmedQuery) ||
+      c.category.toLowerCase().includes(trimmedQuery) ||
+      (c.implementation ?? '').toLowerCase().includes(trimmedQuery)
+    );
+  }, [controls, trimmedQuery]);
+
+  const filteredGaps = useMemo(() => {
+    if (!trimmedQuery) return gaps;
+    return gaps.filter((g) =>
+      g.title.toLowerCase().includes(trimmedQuery) ||
+      g.controlId.toLowerCase().includes(trimmedQuery) ||
+      (g.recommendation ?? '').toLowerCase().includes(trimmedQuery)
+    );
+  }, [gaps, trimmedQuery]);
+
+  const controlsByCategory = filteredControls.reduce((acc, control) => {
     const category = control.category;
     if (!acc[category]) {
       acc[category] = [];
@@ -173,6 +197,11 @@ export default function SecurityCompliancePage() {
     acc[category].push(control);
     return acc;
   }, {} as Record<string, Soc2Control[]>);
+
+  const matchingCategories = useMemo(
+    () => (trimmedQuery ? new Set(Object.keys(controlsByCategory)) : null),
+    [trimmedQuery, controlsByCategory]
+  );
 
   if (loading) {
     return (
@@ -214,6 +243,7 @@ export default function SecurityCompliancePage() {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
                   <ShieldCheck className="w-8 h-8 mr-3 text-indigo-600" />
                   SOC 2 Compliance
+                  <HelpButton slug="admin-security" />
                 </h1>
                 <p className="mt-1 text-gray-600 dark:text-gray-400">
                   Security control implementation status and gap analysis
@@ -336,6 +366,25 @@ export default function SecurityCompliancePage() {
               </div>
             </div>
 
+            {/* Search */}
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search controls and gaps..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                />
+              </div>
+              {trimmedQuery && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {filteredControls.length} controls · {filteredGaps.length} gaps
+                </span>
+              )}
+            </div>
+
             {/* Control Categories Accordion */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -343,16 +392,23 @@ export default function SecurityCompliancePage() {
                   Control Categories
                 </h2>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Click a category to view its controls
+                  {trimmedQuery
+                    ? `Showing categories with controls matching "${searchQuery}"`
+                    : 'Click a category to view its controls'}
                 </p>
               </div>
 
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {trimmedQuery && filteredControls.length === 0 && (
+                  <div className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                    No controls match &ldquo;{searchQuery}&rdquo;.
+                  </div>
+                )}
                 {Object.keys(CATEGORY_INFO).map((category) => {
                   const categoryInfo = CATEGORY_INFO[category];
                   const categoryControls = controlsByCategory[category] || [];
                   const categorySummary = summary.byCategory[category];
-                  const isExpanded = expandedCategories.has(category);
+                  const isExpanded = (matchingCategories?.has(category) ?? false) || expandedCategories.has(category);
 
                   if (categoryControls.length === 0) return null;
 
@@ -454,7 +510,7 @@ export default function SecurityCompliancePage() {
             </div>
 
             {/* Gap Analysis Section */}
-            {gaps.length > 0 && (
+            {gaps.length > 0 && filteredGaps.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
                 <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -478,7 +534,7 @@ export default function SecurityCompliancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {gaps.map((gap) => (
+                      {filteredGaps.map((gap) => (
                         <tr key={gap.gapId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="px-6 py-4">
                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium">

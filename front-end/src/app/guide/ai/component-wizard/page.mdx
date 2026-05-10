@@ -1,0 +1,84 @@
+---
+title: AI Component-Definition Wizard
+description: Turn a STIG, CIS benchmark, or vendor configuration guide into a draft OSCAL Component Definition mapped to NIST 800-53.
+lastUpdated: 2026-05-04
+---
+
+# AI Component-Definition Wizard
+
+The AI Component-Definition Wizard ingests a Security Technical Implementation Guide (STIG), CIS Benchmark, or vendor configuration guide and drafts an OSCAL Component Definition with each recommended setting mapped to the appropriate NIST SP 800-53 control. Instead of manually reading through hundreds of STIG rules and mapping them one-by-one, you provide the source and let the AI do the initial mapping pass.
+
+---
+
+## What it does
+
+The wizard processes your source in several passes:
+
+1. **Ingestion & noise trimming** — The source is parsed and stripped of content that adds bulk without helping the AI map controls: OVAL check references, check/fix prose details, profile names, and similar metadata.
+2. **Chunking** — Large sources (many STIGs run to thousands of rules) are split into manageable chunks so each pass fits within the model's context window.
+3. **Mapping** — Each rule or recommendation is mapped to one or more NIST 800-53 control identifiers based on subject matter and intent.
+4. **Draft assembly** — Mapped rules are assembled into an OSCAL Component Definition, with each rule becoming a control implementation entry linked to its 800-53 control.
+5. **Handoff** — The draft is passed to the [Component Builder](/guide/build/component) for review and editing.
+
+Progress is displayed per-pass in the UI so you can follow along as each chunk is processed.
+
+---
+
+## Supported source formats
+
+| Format | Notes |
+|--------|-------|
+| XCCDF (`.xml`) | Preferred for STIGs; richest structure for the AI to work with |
+| JSON | Vendor or custom benchmark data in JSON format |
+| YAML | Vendor or custom benchmark data in YAML format |
+| CSV | Tabular rule lists; columns are inferred automatically |
+
+PDF is not listed as a supported format because STIG PDFs have very limited machine-readable structure compared to XCCDF. If you have only a PDF version, conversion to XCCDF or CSV first will produce significantly better results.
+
+---
+
+## How to use it
+
+<Steps>
+  <Step title="Open the AI Wizard hub">
+    Navigate to `/ai/wizard` or click **AI Wizard** in the main navigation.
+  </Step>
+  <Step title="Select 'Build Component-definition from STIG / CIS / Config Guide'">
+    Click the **Build Component-definition from STIG / CIS / Config Guide** card, then click **Start →**.
+  </Step>
+  <Step title="Upload your source file">
+    Drag-and-drop or browse to select your XCCDF, JSON, YAML, or CSV file. XCCDF files can be quite large — the wizard handles them by chunking internally, so upload the full file rather than trying to split it manually. Click **Next** when ready.
+  </Step>
+  <Step title="Generate the draft">
+    Click **Generate**. The UI shows per-pass progress as the wizard works through each chunk. If the Anthropic API returns a 429 (rate limit) or 529 (overloaded) response, the wizard retries automatically with exponential backoff. The retry timeout is capped at two minutes to prevent silent stalls — if that limit is reached you will see an error and can try again.
+  </Step>
+  <Step title="Review the draft mapping">
+    When generation finishes the wizard navigates you to the [Component Builder](/guide/build/component) with the draft pre-populated. Inspect the 800-53 mappings carefully: mapping confidence varies by control family and source quality. Pay particular attention to mappings in families where the source material uses indirect or non-standard language.
+  </Step>
+  <Step title="Edit, validate, and save">
+    Correct any incorrect mappings, fill in missing implementation descriptions, and update metadata. Run validation on the Review & Save step, then click **Save to Library** when the component definition is ready.
+  </Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **XCCDF first.** XCCDF files carry richer semantic structure than JSON, YAML, or CSV equivalents of the same benchmark. Use XCCDF whenever possible for the highest-quality draft.
+- **Mapping confidence varies.** The AI is reliable for common control families (AC, AU, CM, IA, SC, SI) but less consistent for families with ambiguous mapping boundaries (PM, RA, SA). Always verify mappings in the areas where your security posture is most critical.
+- **Large STIGs take time.** A full DISA STIG with 200+ rules may take several minutes to process across many chunks. Keep the tab open and watch the per-pass progress log.
+- **Chunking is automatic.** You do not need to split large XCCDF files before uploading. The wizard handles chunking internally — uploading a partial file produces an incomplete draft.
+- **Retry is automatic but bounded.** The wizard retries on transient Anthropic API errors with exponential backoff, but stops after a two-minute window. If generation fails with a timeout error, wait a minute and try again.
+- **AI features must be enabled.** If the wizard card is greyed out or you see "AI features are disabled," ask your Org Admin to enable AI at `/org-admin/ai-settings`.
+
+<Callout type="warn">
+Always review AI-generated 800-53 mappings before treating them as authoritative. The model is useful for producing a first pass quickly, but control mapping is a security-significant activity that requires human judgement. Never submit a component definition to an assessor or AO without verifying the mappings yourself.
+</Callout>
+
+---
+
+## Related
+
+- [AI Wizards Overview](/guide/ai/overview) — feature gating, cost, and privacy
+- [AI Catalog Wizard](/guide/ai/catalog-wizard) — generate a catalog from prose documents
+- [Build a Component Definition](/guide/build/component) — manual component builder reference

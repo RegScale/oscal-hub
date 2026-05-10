@@ -1,0 +1,132 @@
+---
+title: Security Policy
+description: Configure MFA enforcement, session duration per role, password complexity, and API key rotation policy for the entire platform.
+lastUpdated: 2026-05-04
+---
+
+# Security Policy
+
+The Security Policy page at `/admin/security-policy` controls the enforcement rules that govern authentication strength, session lifetime, and credential hygiene across all users on the platform. While the [Platform Security](/guide/admin/security) page manages *who* can access the platform, this page manages *how strong* that access must be.
+
+<Callout type="warn">
+Enabling **Required MFA** immediately invalidates sessions for all users who have not yet configured MFA. Those users will be unable to log in until they complete MFA setup. Communicate the change to your user base before saving, and give users adequate lead time to set up their authenticators.
+</Callout>
+
+---
+
+## MFA enforcement
+
+Multi-factor authentication can be configured at three levels:
+
+| Option | Behavior |
+|---|---|
+| **Optional** | Users may enable MFA on their account but are not required to do so |
+| **Required (admins only)** | `ORG_ADMIN` and `SUPER_ADMIN` accounts must have MFA enabled; standard users are unaffected |
+| **Required (all users)** | Every account must have MFA configured before they can log in |
+
+### Change the MFA enforcement level
+
+<Steps>
+<Step title="Navigate to Security Policy">
+Go to `/admin/security-policy` or click the Security Policy tile on the Super Admin Dashboard.
+</Step>
+<Step title="Open the MFA section">
+Find the **MFA Enforcement** card. The current setting is shown as a radio selection.
+</Step>
+<Step title="Choose the enforcement level">
+Select **Optional**, **Required (admins only)**, or **Required (all users)** based on your compliance requirements.
+</Step>
+<Step title="Review the impact warning">
+If you are switching to a more restrictive setting, a warning dialog summarizes how many users will be affected and do not yet have MFA set up. Review the count before proceeding.
+</Step>
+<Step title="Save">
+Click **Save Policy**. The enforcement level takes effect immediately. Affected users receive an email prompting them to visit their [Account MFA Setup](/guide/account/mfa) page before their next login.
+</Step>
+</Steps>
+
+---
+
+## Session duration
+
+Session duration controls the maximum lifetime of an authenticated token, per global role. Unlike idle timeout (configured on [Platform Security](/guide/admin/security)), this is an absolute ceiling — even an active user is required to re-authenticate when the token age exceeds this limit.
+
+| Setting | Default |
+|---|---|
+| `USER` session duration | 24 hours |
+| `ORG_ADMIN` session duration | 12 hours |
+| `SUPER_ADMIN` session duration | 8 hours |
+
+To change a duration, edit the value in hours and click **Save Policy**.
+
+---
+
+## Password complexity
+
+Password complexity rules are enforced at every password-set and password-reset event. This page controls the full set of complexity constraints:
+
+| Setting | Description | Default |
+|---|---|---|
+| **Minimum length** | Fewest characters allowed | 10 |
+| **Maximum length** | Most characters allowed | 128 |
+| **Character classes required** | Uppercase, lowercase, digit, special — each can be toggled | Uppercase, digit, special |
+| **Password history** | Number of previous passwords that cannot be reused | 5 |
+| **Maximum password age** | Days before a user must change their password (`0` = never) | 0 |
+
+<Steps>
+<Step title="Update password complexity rules">
+Edit the fields in the **Password Complexity** card.
+</Step>
+<Step title="Set password history">
+Enter the number of previous passwords to remember. Setting this to `5` prevents users from cycling through five passwords to get back to their original one.
+</Step>
+<Step title="Set maximum age (optional)">
+Enter a number of days (e.g., `90` for quarterly rotation). Users with passwords older than this threshold are prompted to change their password on next login. Set to `0` to disable forced rotation.
+</Step>
+<Step title="Save">
+Click **Save Policy**. The new rules apply on the next password set or reset event. Existing passwords are not invalidated immediately unless you combine this with a forced-reset workflow.
+</Step>
+</Steps>
+
+---
+
+## API key rotation policy
+
+Service accounts and integrations that use API keys are subject to a separate rotation policy:
+
+| Setting | Description | Default |
+|---|---|---|
+| **Maximum key age** | Maximum number of days an API key can exist before it must be rotated | 90 |
+| **Expiry warning (days before)** | Days before expiration to send a warning email to the key owner | 14 |
+| **Allow indefinite keys** | If disabled, all keys must have an expiry date | Disabled |
+
+<Steps>
+<Step title="Open the API Key Rotation card">
+Scroll to the **API Key Rotation** section on `/admin/security-policy`.
+</Step>
+<Step title="Set the maximum key age">
+Enter the maximum lifetime in days. Keys older than this are automatically revoked on their expiry date.
+</Step>
+<Step title="Set the warning lead time">
+Enter the number of days before expiry to send an email reminder to the key owner.
+</Step>
+<Step title="Save">
+Click **Save Policy**. Keys that already exceed the new maximum age are flagged immediately; owners receive an expiry warning email and have until midnight of the effective expiry date to rotate.
+</Step>
+</Steps>
+
+---
+
+## Tips and limits
+
+- **Graduated rollout for MFA.** Consider setting MFA to "Required (admins only)" first, then moving to "Required (all users)" after a grace period. This gives regular users time to set up an authenticator app without a sudden lockout.
+- **Password history interacts with rotation.** If you enable forced rotation (`max age > 0`) and set a large history count, users cannot recycle old passwords even across multiple rotation cycles.
+- **API key expiry is not retroactive for keys created before the policy.** Keys created before this policy was enabled will be governed by the policy as of the first time they are accessed after the policy saves.
+- **Audit log retention.** The `auditLogRetentionDays` field on this page controls how long security-relevant log entries are retained. This is separate from the application log rotation described on the [Application Logs](/guide/admin/logs) page.
+
+---
+
+## Related
+
+- [Platform Security](/guide/admin/security)
+- [Account MFA Setup](/guide/account/sign-in-and-mfa)
+- [Super Admin Overview](/guide/admin/overview)

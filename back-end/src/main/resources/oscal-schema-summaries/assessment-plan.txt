@@ -1,0 +1,50 @@
+OSCAL Assessment Plan — Metaschema short-name "oscal-ap", namespace http://csrc.nist.gov/ns/oscal/1.0
+
+Top-level: assessment-plan
+Required children of assessment-plan:
+  - uuid (flag, UUID)
+  - metadata (assembly)
+  - import-ssp (assembly with @href)
+  - reviewed-controls (assembly)
+Optional:
+  - local-definitions (assembly)
+  - terms-and-conditions
+  - assessment-subjects (list)
+  - assessment-assets (assembly)
+  - tasks (list)
+  - back-matter
+
+Key Metapath addresses (relative to assessment-plan/):
+  - metadata/title, metadata/last-modified, metadata/version, metadata/oscal-version (all required)
+  - import-ssp@href (URI reference, required)
+  - local-definitions/components/component@uuid
+  - local-definitions/inventory-items/inventory-item@uuid
+  - local-definitions/users/user@uuid
+  - local-definitions/objectives-and-methods/local-objective@control-id
+  - local-definitions/activities/activity@uuid
+  - terms-and-conditions/parts/part@name
+  - reviewed-controls/control-selections/control-selection
+  - reviewed-controls/control-selections/control-selection/include-controls/with-id
+  - reviewed-controls/control-objective-selections/control-objective-selection
+  - assessment-subjects/assessment-subject@type (component, inventory-item, location, party, user)
+  - assessment-subjects/assessment-subject/include-subjects/include-subject@subject-uuid
+  - assessment-assets/components/component@uuid
+  - assessment-assets/assessment-platforms/assessment-platform@uuid
+  - tasks/task@uuid
+  - tasks/task@type (milestone, action)
+  - tasks/task/title
+  - tasks/task/timing
+  - tasks/task/dependencies/dependency@task-uuid
+  - back-matter/resources/resource@uuid
+
+Common constraint patterns:
+  <has-cardinality target="reviewed-controls/control-selections/control-selection" min-occurs="1"/>
+  <allowed-values target="assessment-subjects/assessment-subject/@type">
+    <enum value="component"/><enum value="inventory-item"/><enum value="location"/>
+    <enum value="party"/><enum value="user"/>
+  </allowed-values>
+  <allowed-values target="tasks/task/@type">
+    <enum value="milestone"/><enum value="action"/>
+  </allowed-values>
+  <is-unique target="tasks/task" id="tasks-unique"><key-field target="@uuid"/></is-unique>
+  <matches target="import-ssp/@href" regex="^[a-zA-Z][a-zA-Z0-9+.-]*:.+|^#"/>

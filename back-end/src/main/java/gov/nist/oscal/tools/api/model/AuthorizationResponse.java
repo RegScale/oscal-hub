@@ -1,6 +1,7 @@
 package gov.nist.oscal.tools.api.model;
 
 import gov.nist.oscal.tools.api.entity.Authorization;
+import gov.nist.oscal.tools.api.entity.AuthorizationRole;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,6 +15,9 @@ import java.util.stream.Collectors;
 public class AuthorizationResponse {
 
     private Long id;
+    private Long organizationId;
+    private AuthorizationRole effectiveRole;
+    private AuthorizationRole shareWithOrgDefaultRole;
     private String name;
     private String sspItemId;
     private String sarItemId;
@@ -54,6 +58,7 @@ public class AuthorizationResponse {
 
     public AuthorizationResponse(Authorization authorization) {
         this.id = authorization.getId();
+        this.organizationId = authorization.getOrganization().getId();
         this.name = authorization.getName();
         this.sspItemId = authorization.getSspItemId();
         this.sarItemId = authorization.getSarItemId();
@@ -122,6 +127,7 @@ public class AuthorizationResponse {
         this.certificateVerified = authorization.getCertificateVerified();
         this.certificateVerificationDate = authorization.getCertificateVerificationDate();
         this.certificateVerificationNotes = authorization.getCertificateVerificationNotes();
+        this.shareWithOrgDefaultRole = authorization.getShareWithOrgDefaultRole();
     }
 
     // Getters and Setters
@@ -131,6 +137,14 @@ public class AuthorizationResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(Long organizationId) {
+        this.organizationId = organizationId;
     }
 
     public String getName() {
@@ -380,5 +394,21 @@ public class AuthorizationResponse {
 
     public void setCertificateVerificationNotes(String certificateVerificationNotes) {
         this.certificateVerificationNotes = certificateVerificationNotes;
+    }
+
+    public AuthorizationRole getEffectiveRole() {
+        return effectiveRole;
+    }
+
+    public void setEffectiveRole(AuthorizationRole effectiveRole) {
+        this.effectiveRole = effectiveRole;
+    }
+
+    public AuthorizationRole getShareWithOrgDefaultRole() {
+        return shareWithOrgDefaultRole;
+    }
+
+    public void setShareWithOrgDefaultRole(AuthorizationRole shareWithOrgDefaultRole) {
+        this.shareWithOrgDefaultRole = shareWithOrgDefaultRole;
     }
 }

@@ -24,6 +24,9 @@ public class CustomRuleResponse {
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     private String createdBy;
+    private Boolean aiGenerated;
+    private String generationPrompt;
+    private String generationModel;
 
     // Constructors
     public CustomRuleResponse() {
@@ -55,6 +58,9 @@ public class CustomRuleResponse {
         response.setCreatedDate(entity.getCreatedDate());
         response.setUpdatedDate(entity.getUpdatedDate());
         response.setCreatedBy(entity.getCreatedBy());
+        response.setAiGenerated(entity.getAiGenerated());
+        response.setGenerationPrompt(entity.getGenerationPrompt());
+        response.setGenerationModel(entity.getGenerationModel());
 
         return response;
     }
@@ -178,5 +184,29 @@ public class CustomRuleResponse {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Boolean getAiGenerated() {
+        return aiGenerated;
+    }
+
+    public void setAiGenerated(Boolean aiGenerated) {
+        this.aiGenerated = aiGenerated;
+    }
+
+    public String getGenerationPrompt() {
+        return generationPrompt;
+    }
+
+    public void setGenerationPrompt(String generationPrompt) {
+        this.generationPrompt = generationPrompt;
+    }
+
+    public String getGenerationModel() {
+        return generationModel;
+    }
+
+    public void setGenerationModel(String generationModel) {
+        this.generationModel = generationModel;
     }
 }
