@@ -370,13 +370,25 @@ ALTER TABLE widgets
 
 ### Configuration locations
 
-- `application.properties` — base defaults (`spring.flyway.enabled=true`, `ddl-auto=validate`, `baseline-version=1.23`).
+- `application.properties` — base defaults (`spring.flyway.enabled=true`, `ddl-auto=validate`, `baseline-version=1.0`, `baseline-on-migrate=true`).
 - `application-dev.properties`, `application-prod.properties`, `application-gcp.properties` — all set `ddl-auto=validate`.
 - Migration files — `back-end/src/main/resources/db/migration/V*.sql`.
 
 ### Fresh database bootstrap
 
 `V1.0__baseline.sql` contains the full current schema (generated via `pg_dump`). On an empty database Flyway runs it automatically — no manual steps. The historical migration files V1.5..V1.23 that built the schema incrementally during the `ddl-auto=update` era are preserved under `back-end/src/main/resources/db/historical/` for reference but are not loaded by Flyway.
+
+### Existing database (drift catch-up)
+
+With `baseline-on-migrate=true` and `baseline-version=1.0`, an existing prod DB without a `flyway_schema_history` table is **baselined at V1.0 — V1.0 is *not* run on existing DBs**. Flyway only applies V1.1+. This is correct only if the prod DB's actual schema matches V1.0's content.
+
+In practice, prod DBs that ran with `ddl-auto=update` will be missing any tables/columns added to entities *between the last update-mode deploy* and the moment V1.0 was generated (because `update` only adds tables for entities present in the currently-running code; entities added later never reached prod). When the new image boots with `ddl-auto=validate`, Hibernate fails with `Schema validation: missing table [...]`.
+
+Fix pattern: write a forward migration (e.g., `V1.11__catchup_X.sql`) that creates the missing tables/columns idempotently (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`). It will be a no-op on dev/staging where V1.0 already created them, and a real catch-up on prod. See `V1.11__catchup_ai_tables.sql` for the canonical example.
+
+Tables consolidated into V1.0 from the historical migration era that may not exist on older prod DBs:
+
+- `ai_sessions`, `org_ai_settings` — added in V1.22 (post 2026-05-02 prod deploys missed this).
 
 ### Override knobs (escape hatches)
 
