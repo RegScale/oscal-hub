@@ -109,7 +109,8 @@ for ROLE in \
   roles/logging.configWriter \
   roles/bigquery.admin \
   roles/pubsub.admin \
-  roles/resourcemanager.projectIamAdmin
+  roles/resourcemanager.projectIamAdmin \
+  roles/cloudscheduler.admin
 do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${DEPLOY_SA}" \
@@ -122,13 +123,30 @@ done
 > `main.tf` has them commented out), drop those two roles. Add them back if
 > you uncomment those modules.
 
-The last six roles cover resource types added by the OTel/analytics work
+The last seven roles cover resource types added by the OTel/analytics work
 (`alerts.tf`, `dashboards.tf`, `events-sink.tf`, `modules/analytics-bigquery`,
 `modules/analytics-pubsub`, `modules/otel-collector`, `modules/dimsync-job`).
 Without them, `terraform refresh` fails with `403 Permission denied` on
 `monitoring.alertPolicies.get`, `monitoring.dashboards.get`,
-`logging.sinks.get`, `bigquery.datasets.get`, `pubsub.topics.get`, and
-`resourcemanager.projects.getIamPolicy`.
+`logging.sinks.get`, `bigquery.datasets.get`, `pubsub.topics.get`,
+`resourcemanager.projects.getIamPolicy`, or `cloudscheduler.jobs.get`.
+
+### Two more roles that are NOT granted by default
+
+These are time bombs — refresh works fine with `iam.serviceAccountUser`
+because it includes `serviceAccounts.get`, but mutate operations need
+admin-tier roles:
+
+- `roles/iam.serviceAccountAdmin` — required only if Terraform creates,
+  deletes, or modifies a `google_service_account` resource. Today every
+  SA in our config (`oscal-tools-sa-prod`, `dimsync-prod`, `otel-collector-prod`)
+  was created out-of-band by manual deploys, so refresh + steady-state
+  works without this role. Add it if a future change touches SA config.
+- `roles/servicenetworking.networksAdmin` — required only if Terraform
+  creates or modifies the `google_service_networking_connection` for
+  Cloud SQL private IP. Same caveat as above.
+
+Grant these as needed; do not grant pre-emptively.
 
 ## Step 4 — Create the Workload Identity Pool + Provider
 
