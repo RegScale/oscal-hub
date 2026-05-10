@@ -197,6 +197,12 @@ module "oscal_app" {
       GCS_BUCKET_BUILD       = module.storage.build_bucket_name
       BACKEND_PORT           = "8081"
 
+      # Swagger UI is reachable in prod via the /api-docs auth gate at the
+      # frontend; the SpringDoc backend itself stays on permitAll for
+      # /swagger-ui/** so the static shell can bootstrap, while the link
+      # is only rendered to authenticated users.
+      SWAGGER_ENABLED = "true"
+
       # Next.js frontend settings
       NODE_ENV = "production"
       # Note: NEXT_PUBLIC_* variables are baked into the build at Docker build time
