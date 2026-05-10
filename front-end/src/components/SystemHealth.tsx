@@ -235,7 +235,7 @@ export function SystemHealth() {
             <div className="flex items-center gap-2">
               {apiDocsStatus === 'UP' && (
                 <a
-                  href="/swagger-ui/index.html"
+                  href="/api-docs"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"

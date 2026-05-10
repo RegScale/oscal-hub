@@ -12,10 +12,9 @@ import {
   BookOpen, Code2,
 } from 'lucide-react';
 
-// Backend Swagger UI lives at <api-host>/swagger-ui/index.html. The frontend
-// only knows the API URL, so strip the trailing /api segment and append the
-// Swagger path. Mirrors the helper on the home page.
-const SWAGGER_URL = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090/api').replace(/\/api\/?$/, '')}/swagger-ui/index.html`;
+// Authenticated wrapper that gates the public SpringDoc UI behind a login
+// check before redirecting to /swagger-ui/index.html.
+const SWAGGER_URL = '/api-docs';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
 import { UserAvatarMenu } from '@/components/UserAvatarMenu';
 
