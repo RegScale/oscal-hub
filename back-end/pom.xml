@@ -46,6 +46,9 @@
         <!-- PostgreSQL JDBC 42.7.11 fixes GHSA-98qh-xjc8-98pq (unbounded PBKDF2
              iterations in SCRAM auth → CPU exhaustion DoS). -->
         <postgresql.version>42.7.11</postgresql.version>
+        <!-- Bouncy Castle 1.84 fixes GHSA-p93r-85wp-75v3 (covert timing channel
+             in bcprov-jdk18on 1.83). Pulled transitively by signing/JWT libs. -->
+        <bouncycastle.version>1.84</bouncycastle.version>
         <protobuf-java.version>4.34.1</protobuf-java.version>
 
         <!-- Cloud SDK BOM versions -->
@@ -136,6 +139,28 @@
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
                 <version>1.22.2</version>
+            </dependency>
+
+            <!--
+              Bouncy Castle pinned to ${bouncycastle.version} to override the
+              transitive 1.83 pulled by upstream libs (jjwt, signing, Tika).
+              All three artifacts must move together — they share a release
+              cycle and mixing versions causes provider initialization errors.
+            -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
