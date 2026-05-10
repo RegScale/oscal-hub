@@ -85,7 +85,14 @@ jobs:
 
       - name: Terraform plan
         id: plan
+        # `pipefail` is critical: without it, the exit status of the pipeline
+        # is `tee`'s (always 0), so terraform refresh/plan errors silently
+        # report the step as success and the plan-pass-required check below
+        # never fires. We learned this the hard way — a missing IAM role
+        # caused refresh to 403 and the workflow happily marked the PR green.
+        shell: bash
         run: |
+          set -o pipefail
           terraform plan -no-color -input=false -lock-timeout=5m \
             -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
             -var="region=${{ vars.GCP_REGION }}" \
