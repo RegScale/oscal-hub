@@ -16,13 +16,26 @@ variable "image" {
 }
 
 variable "min_instances" {
-  type    = number
-  default = 1
+  type        = number
+  default     = 1
+  description = "Minimum warm instances. Must be ≥1 — the OTel agent on the API service exports OTLP/gRPC here and a cold start drops spans."
 }
 
 variable "max_instances" {
   type    = number
-  default = 10
+  default = 3
+}
+
+variable "cpu" {
+  type        = string
+  default     = "1000m"
+  description = "CPU allocation."
+}
+
+variable "memory" {
+  type        = string
+  default     = "512Mi"
+  description = "Memory allocation."
 }
 
 variable "api_service_account" {

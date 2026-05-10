@@ -37,4 +37,9 @@ module "dimsync" {
   cloud_sql_connection = module.database.instance_connection_name
   db_username          = var.db_username
   db_password          = random_password.db_password.result
+
+  cpu             = var.dimsync_cpu
+  memory          = var.dimsync_memory
+  timeout_seconds = var.dimsync_timeout_seconds
+  max_retries     = var.dimsync_max_retries
 }
