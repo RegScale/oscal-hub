@@ -344,7 +344,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload OWASP DC report bundle (HTML/XML/JSON/CSV)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && hashFiles('reports/owasp/dependency-check-report.html') != ''
         with:
           name: owasp-dependency-check-report
@@ -352,7 +352,7 @@ jobs:
           retention-days: 14
 
       - name: Upload npm audit JSON
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && hashFiles('npm-audit.json') != ''
         with:
           name: npm-audit-report
@@ -368,7 +368,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Grype SARIF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && hashFiles('grype-results.sarif') != ''
         with:
           name: grype-report
