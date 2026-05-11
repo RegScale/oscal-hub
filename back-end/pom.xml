@@ -33,7 +33,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- OSCAL dependencies versions -->
-        <liboscal-java.version>6.0.0</liboscal-java.version>
+        <liboscal-java.version>7.1.0</liboscal-java.version>
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.4</log4j2.version>
