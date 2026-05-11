@@ -161,7 +161,7 @@ jobs:
       # the source-dependency scanners above do not see.
       # ----------------------------------------------------------------
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build Docker image for scanning
         id: docker_build
