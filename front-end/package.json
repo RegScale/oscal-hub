@@ -60,7 +60,7 @@
     "remark-gfm": "^4.0.1",
     "remark-mdx-frontmatter": "^5.2.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0",
+    "tailwind-merge": "^3.6.0",
     "yaml": "^2.8.4"
   },
   "overrides": {
