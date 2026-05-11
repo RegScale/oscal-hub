@@ -61,7 +61,7 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
-    "yaml": "^2.8.4"
+    "yaml": "^2.9.0"
   },
   "overrides": {
     "dompurify": "^3.4.2",
