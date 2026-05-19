@@ -105,9 +105,26 @@ export function useAiSession(sessionId: string | null): UseAiSessionState {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        // Track whether we saw a terminal event ('complete' or 'error'). If
+        // the connection closes without one, that's a silent failure — most
+        // likely an upstream proxy timeout (Cloud Run cuts SSE at 300s by
+        // default, others have similar limits). Show an actionable error
+        // instead of leaving the user with a perpetual spinner.
+        let sawTerminal = false;
         for (;;) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            if (!sawTerminal) {
+              setError(
+                'The connection to the server closed before the wizard finished. '
+                + 'This usually means a proxy timeout (Cloud Run caps requests at 60 minutes). '
+                + 'The wizard may have completed on the server — check Org Admin → AI Analytics '
+                + 'for the session, or run again with a smaller source.',
+              );
+              setIsComplete(true);
+            }
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
 
           // SSE event blocks are separated by a blank line (\n\n).
@@ -126,10 +143,12 @@ export function useAiSession(sessionId: string | null): UseAiSessionState {
             const type = parsed.event as AiEventType;
             setEvents((prev) => [...prev, { type, data }]);
             if (type === 'complete') {
+              sawTerminal = true;
               setFinalDocument((data as { document?: unknown }).document ?? null);
               setIsComplete(true);
               ac.abort();
             } else if (type === 'error') {
+              sawTerminal = true;
               setError(formatAiError((data as { message?: string }).message));
               setIsComplete(true);
               ac.abort();
