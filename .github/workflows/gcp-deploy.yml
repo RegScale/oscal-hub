@@ -177,7 +177,12 @@ jobs:
       image_tag: ${{ steps.meta.outputs.tag }}
       image_uri: ${{ steps.meta.outputs.uri }}
     steps:
+      # submodules: recursive pulls in the claude-plugins submodule whose
+      # SKILL.md files are baked into the JAR and loaded at runtime by
+      # KnowledgeLoader. Without this the AI wizards run without skill context.
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v3

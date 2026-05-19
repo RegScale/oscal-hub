@@ -3,17 +3,19 @@ package gov.nist.oscal.tools.api.service.ai;
 import gov.nist.oscal.tools.api.entity.WizardKind;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class KnowledgeLoaderTest {
 
+    /**
+     * The test fixtures live under {@code back-end/src/test/resources/claude-plugins},
+     * which Maven puts on the test classpath at {@code /claude-plugins}.
+     */
+    private static final String TEST_ROOT = "classpath:/claude-plugins";
+
     @Test
     void loadsCatalogSystemPromptIncludesBasicsAndCatalog() {
-        Path root = Paths.get("src/test/resources/claude-plugins");
-        KnowledgeLoader loader = new KnowledgeLoader(root);
+        KnowledgeLoader loader = new KnowledgeLoader(TEST_ROOT);
         String prompt = loader.systemFor(WizardKind.CATALOG);
 
         assertThat(prompt).contains("OSCAL Layer Overview"); // from oscal-basics
@@ -23,8 +25,7 @@ class KnowledgeLoaderTest {
 
     @Test
     void loadsProfileSystemPromptStillLoadsAllForUntightenedKinds() {
-        Path root = Paths.get("src/test/resources/claude-plugins");
-        KnowledgeLoader loader = new KnowledgeLoader(root);
+        KnowledgeLoader loader = new KnowledgeLoader(TEST_ROOT);
         String prompt = loader.systemFor(WizardKind.PROFILE);
         // PROFILE wizard plan hasn't landed yet — still load-all
         assertThat(prompt).contains("OSCAL Layer Overview");
@@ -33,8 +34,7 @@ class KnowledgeLoaderTest {
 
     @Test
     void smokeWizardSystemPromptIsTerse() {
-        Path root = Paths.get("src/test/resources/claude-plugins");
-        KnowledgeLoader loader = new KnowledgeLoader(root);
+        KnowledgeLoader loader = new KnowledgeLoader(TEST_ROOT);
         String prompt = loader.systemFor(WizardKind.SMOKE);
 
         assertThat(prompt).contains("smoke");
@@ -43,8 +43,7 @@ class KnowledgeLoaderTest {
 
     @Test
     void loadsComponentDefSystemPromptIncludesBasicsAndComponentDef() {
-        Path root = Paths.get("src/test/resources/claude-plugins");
-        KnowledgeLoader loader = new KnowledgeLoader(root);
+        KnowledgeLoader loader = new KnowledgeLoader(TEST_ROOT);
         String prompt = loader.systemFor(WizardKind.COMPONENT_DEF);
 
         assertThat(prompt).contains("OSCAL Layer Overview");         // from oscal-basics

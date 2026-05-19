@@ -15,6 +15,7 @@ import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.security.JwtUtil;
 import gov.nist.oscal.tools.api.service.RateLimitService;
 import gov.nist.oscal.tools.api.service.ai.AiOrchestrator;
+import gov.nist.oscal.tools.api.service.ai.UrlContentFetcher;
 import gov.nist.oscal.tools.api.service.ai.stream.AiSessionEventStream;
 import gov.nist.oscal.tools.api.telemetry.TelemetryService;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,7 @@ class AiSessionControllerTest {
     @MockitoBean private UserRepository users;
     @MockitoBean private OrganizationMembershipRepository memberships;
     @MockitoBean private AiSessionRepository sessions;
+    @MockitoBean private UrlContentFetcher urlFetcher;
     @MockitoBean private JwtUtil jwtUtil;
     @MockitoBean private UserDetailsService userDetailsService;
     @MockitoBean private RateLimitService rateLimitService;
@@ -182,5 +184,102 @@ class AiSessionControllerTest {
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sessionId").value(expected.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "alice", roles = "USER")
+    void startWithUrlFetchesAndForwardsBytesToOrchestrator() throws Exception {
+        User u = new User();
+        u.setId(7L);
+        u.setUsername("alice");
+        when(users.findByUsername("alice")).thenReturn(Optional.of(u));
+        OrganizationMembership m = new OrganizationMembership();
+        m.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+        when(memberships.findByUserIdAndOrganizationId(7L, 1L)).thenReturn(Optional.of(m));
+
+        byte[] fetchedBytes = "<html><body>controls</body></html>".getBytes();
+        when(urlFetcher.fetch(eq("https://nist.gov/sp800-53r5.html")))
+                .thenReturn(new UrlContentFetcher.FetchResult(fetchedBytes, "sp800-53r5.html", "text/html"));
+
+        UUID expected = UUID.randomUUID();
+        when(orchestrator.start(eq(1L), eq(7L), eq(WizardKind.CATALOG),
+                eq(AiSessionMode.STREAMING), isNull(),
+                eq(fetchedBytes), eq("sp800-53r5.html"), isNull()))
+                .thenReturn(expected);
+
+        mockMvc.perform(post("/api/ai/sessions/url")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("organizationId", "1")
+                        .param("wizardKind", "CATALOG")
+                        .param("url", "https://nist.gov/sp800-53r5.html")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(expected.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "alice", roles = "USER")
+    void startWithUrlReturns400ForInvalidUrl() throws Exception {
+        User u = new User();
+        u.setId(7L);
+        u.setUsername("alice");
+        when(users.findByUsername("alice")).thenReturn(Optional.of(u));
+        OrganizationMembership m = new OrganizationMembership();
+        m.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+        when(memberships.findByUserIdAndOrganizationId(7L, 1L)).thenReturn(Optional.of(m));
+
+        when(urlFetcher.fetch(anyString()))
+                .thenThrow(new IllegalArgumentException("Refusing to fetch loopback address: localhost"));
+
+        mockMvc.perform(post("/api/ai/sessions/url")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("organizationId", "1")
+                        .param("wizardKind", "CATALOG")
+                        .param("url", "http://localhost/admin")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "alice", roles = "USER")
+    void startWithUrlReturns400ForFetchFailure() throws Exception {
+        User u = new User();
+        u.setId(7L);
+        u.setUsername("alice");
+        when(users.findByUsername("alice")).thenReturn(Optional.of(u));
+        OrganizationMembership m = new OrganizationMembership();
+        m.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+        when(memberships.findByUserIdAndOrganizationId(7L, 1L)).thenReturn(Optional.of(m));
+
+        when(urlFetcher.fetch(anyString()))
+                .thenThrow(new java.io.IOException("Connection refused"));
+
+        mockMvc.perform(post("/api/ai/sessions/url")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("organizationId", "1")
+                        .param("wizardKind", "CATALOG")
+                        .param("url", "https://no-such-server.invalid/")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "bob", roles = "USER")
+    void startWithUrlForbiddenWhenNotOrgMember() throws Exception {
+        User bob = new User();
+        bob.setId(99L);
+        bob.setUsername("bob");
+        bob.setGlobalRole(User.GlobalRole.USER);
+        when(users.findByUsername(eq("bob"))).thenReturn(Optional.of(bob));
+        when(memberships.findByUserIdAndOrganizationId(eq(99L), eq(1L)))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/ai/sessions/url")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("organizationId", "1")
+                        .param("wizardKind", "CATALOG")
+                        .param("url", "https://nist.gov/x.pdf")
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
     }
 }

@@ -3,9 +3,6 @@ package gov.nist.oscal.tools.api.service.ai;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
-import java.net.URI;
 
 @Service
 public class SourceIngestor {
@@ -15,7 +12,6 @@ public class SourceIngestor {
     private static final long MAX_TEXT_CHARS = 1_500_000;
 
     private final DocumentNormalizer normalizer;
-    private final RestTemplate restTemplate = new RestTemplate();
 
     public SourceIngestor(DocumentNormalizer normalizer) {
         this.normalizer = normalizer;
@@ -53,13 +49,4 @@ public class SourceIngestor {
         return ingestText(d.plainText());
     }
 
-    public IngestedSource ingestUrl(String url) {
-        try {
-            String body = restTemplate.getForObject(URI.create(url), String.class);
-            String text = body == null ? "" : body.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
-            return ingestText(text);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to fetch URL " + url + ": " + e.getMessage(), e);
-        }
-    }
 }

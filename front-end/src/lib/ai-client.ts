@@ -166,6 +166,37 @@ export const aiClient = {
     return res.json();
   },
 
+  async startSessionWithUrl(
+    organizationId: number,
+    wizardKind: WizardKind,
+    url: string,
+    options?: { prompt?: string; mode?: SessionMode; profileHref?: string | null },
+  ): Promise<StartSessionResponse> {
+    // The /url endpoint expects form params (matches /upload's parameter style).
+    // Build a urlencoded body — keep the parameter ordering deterministic for
+    // easier test assertions and log reading.
+    const params = new URLSearchParams();
+    params.set('organizationId', String(organizationId));
+    params.set('wizardKind', wizardKind);
+    params.set('mode', options?.mode ?? 'STREAMING');
+    params.set('url', url);
+    if (options?.prompt) params.set('prompt', options.prompt);
+    if (options?.profileHref) params.set('profileHref', options.profileHref);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const res = await aiFetch(`${API_BASE_URL}/ai/sessions/url`, {
+      method: 'POST',
+      headers,
+      body: params.toString(),
+    });
+    return res.json();
+  },
+
   async cancelSession(sessionId: string): Promise<void> {
     const res = await aiFetch(`${API_BASE_URL}/ai/sessions/${sessionId}`, {
       method: 'DELETE',
