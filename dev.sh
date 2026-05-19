@@ -24,6 +24,15 @@ if ! docker info >/dev/null 2>&1; then
 fi
 echo "✓ Docker OK"
 
+# Initialize the claude-plugins submodule if missing. The AI wizard's
+# KnowledgeLoader loads SKILL.md files from this submodule at runtime; an
+# uninitialized submodule means wizards run without skill context.
+if [ -d .git ] && [ ! -f back-end/src/main/resources/claude-plugins/.git ] \
+        && [ ! -d back-end/src/main/resources/claude-plugins/plugins ]; then
+    echo "Initializing git submodules (claude-plugins)..."
+    git submodule update --init --recursive
+fi
+
 # Load .env
 [ -f .env ] && source .env
 

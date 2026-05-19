@@ -14,7 +14,7 @@ interface Props {
   onSessionStarted: (sessionId: string) => void;
 }
 
-type SourceTab = 'file' | 'paste';
+type SourceTab = 'file' | 'paste' | 'url';
 type ProfileMode = 'library' | 'url' | 'skip';
 
 export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
@@ -27,6 +27,7 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
   const [tab, setTab] = useState<SourceTab>('file');
   const [file, setFile] = useState<File | null>(null);
   const [pasted, setPasted] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
@@ -61,7 +62,9 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
     (profileMode === 'url' && profileUrl.trim().length > 0);
 
   const sourceValid =
-    (tab === 'file' && file !== null) || (tab === 'paste' && pasted.trim().length > 0);
+    (tab === 'file' && file !== null) ||
+    (tab === 'paste' && pasted.trim().length > 0) ||
+    (tab === 'url' && sourceUrl.trim().length > 0);
 
   const canRun = profileValid && sourceValid;
 
@@ -69,16 +72,20 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
     if (!canRun) return;
     setRunning(true);
     try {
-      const res =
-        tab === 'file' && file
-          ? await aiClient.startSessionWithUpload(organizationId, 'SSP', file, { profileHref })
-          : await aiClient.startSession({
-              organizationId,
-              wizardKind: 'SSP',
-              mode: 'STREAMING',
-              input: pasted,
-              profileHref,
-            });
+      let res;
+      if (tab === 'file' && file) {
+        res = await aiClient.startSessionWithUpload(organizationId, 'SSP', file, { profileHref });
+      } else if (tab === 'url') {
+        res = await aiClient.startSessionWithUrl(organizationId, 'SSP', sourceUrl.trim(), { profileHref });
+      } else {
+        res = await aiClient.startSession({
+          organizationId,
+          wizardKind: 'SSP',
+          mode: 'STREAMING',
+          input: pasted,
+          profileHref,
+        });
+      }
       onSessionStarted(res.sessionId);
     } catch (err) {
       toast.error('Failed to start: ' + (err instanceof Error ? err.message : 'unknown'));
@@ -176,12 +183,19 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
           >
             Paste text
           </button>
+          <button
+            onClick={() => setTab('url')}
+            className={`px-4 py-2 text-sm font-medium ${tab === 'url' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`}
+          >
+            From URL
+          </button>
         </div>
 
         {tab === 'file' ? (
-          <div className="space-y-2">
+          <div key="file-tab" className="space-y-2">
             <Label htmlFor="ssp-file-upload">Source document</Label>
             <Input
+              key="ssp-file-input"
               id="ssp-file-upload"
               type="file"
               accept=".pdf,.docx,.html,.htm,.txt,.md,.odt,.rtf"
@@ -192,8 +206,8 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
               draft SSP. PDF, Word, HTML, plain text, Markdown, OpenDocument, or RTF.
             </p>
           </div>
-        ) : (
-          <div className="space-y-2">
+        ) : tab === 'paste' ? (
+          <div key="paste-tab" className="space-y-2">
             <Label htmlFor="ssp-paste-text">Paste source content</Label>
             <Textarea
               id="ssp-paste-text"
@@ -202,6 +216,22 @@ export function SspWizardForm({ organizationId, onSessionStarted }: Props) {
               onChange={(e) => setPasted(e.target.value)}
               placeholder="Paste the system description or draft SSP text here…"
             />
+          </div>
+        ) : (
+          <div key="url-tab" className="space-y-2">
+            <Label htmlFor="ssp-source-url">Source URL</Label>
+            <Input
+              key="ssp-url-input"
+              id="ssp-source-url"
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="https://example.com/system-description.pdf"
+            />
+            <p className="text-sm text-muted-foreground">
+              We&apos;ll fetch the architecture write-up or system description server-side.
+              Only http/https URLs to public hosts are allowed.
+            </p>
           </div>
         )}
 

@@ -88,8 +88,34 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
       body,
     });
 
-    // Get content type to determine how to handle response body
     const contentType = backendResponse.headers.get('content-type') || '';
+
+    // SSE responses must be streamed straight through, NOT buffered. The AI
+    // wizard's /ai/sessions/{id}/stream endpoint emits progress events over
+    // many minutes; calling .text() here would hold the entire response in
+    // memory until the upstream closed, which is what produced the "spinner
+    // forever then 504" behavior in GCP. Pass backendResponse.body (a
+    // ReadableStream) directly so Next.js forwards chunks as they arrive.
+    if (contentType.includes('text/event-stream')) {
+      const responseHeaders = new Headers();
+      backendResponse.headers.forEach((value, key) => {
+        // Drop hop-by-hop / framing headers — Next.js + Node will recompute
+        // them. Leaving content-length on a chunked body breaks streaming.
+        const k = key.toLowerCase();
+        if (k === 'content-length' || k === 'transfer-encoding' || k === 'content-encoding') return;
+        responseHeaders.set(key, value);
+      });
+      // Belt-and-braces hints for any intermediate proxy (Cloud Run LB,
+      // nginx) to stop buffering this response.
+      responseHeaders.set('cache-control', 'no-cache, no-transform');
+      responseHeaders.set('x-accel-buffering', 'no');
+      return new NextResponse(backendResponse.body, {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        headers: responseHeaders,
+      });
+    }
+
     const isBinary = contentType.startsWith('image/') ||
                      contentType.startsWith('application/octet-stream') ||
                      contentType.startsWith('application/pdf') ||

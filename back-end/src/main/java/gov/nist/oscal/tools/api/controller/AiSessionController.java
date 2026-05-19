@@ -12,6 +12,7 @@ import gov.nist.oscal.tools.api.repository.AiSessionRepository;
 import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.ai.AiOrchestrator;
+import gov.nist.oscal.tools.api.service.ai.UrlContentFetcher;
 import gov.nist.oscal.tools.api.service.ai.stream.AiSessionEventStream;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,15 +41,17 @@ public class AiSessionController {
     private final UserRepository users;
     private final OrganizationMembershipRepository memberships;
     private final AiSessionRepository sessions;
+    private final UrlContentFetcher urlFetcher;
 
     public AiSessionController(AiOrchestrator orchestrator, AiSessionEventStream stream,
                                UserRepository users, OrganizationMembershipRepository memberships,
-                               AiSessionRepository sessions) {
+                               AiSessionRepository sessions, UrlContentFetcher urlFetcher) {
         this.orchestrator = orchestrator;
         this.stream = stream;
         this.users = users;
         this.memberships = memberships;
         this.sessions = sessions;
+        this.urlFetcher = urlFetcher;
     }
 
     @Operation(summary = "Start an AI wizard session")
@@ -79,6 +82,38 @@ public class AiSessionController {
         requireOrgMembership(user, organizationId);
         UUID id = orchestrator.start(organizationId, user.getId(), wizardKind, mode,
                 prompt, file.getBytes(), file.getOriginalFilename(), profileHref);
+        return ResponseEntity.ok(new StartSessionResponse(id));
+    }
+
+    @Operation(summary = "Start an AI wizard session by fetching a source URL")
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping(value = "/url", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<StartSessionResponse> startWithUrl(
+            @RequestParam Long organizationId,
+            @RequestParam WizardKind wizardKind,
+            @RequestParam(required = false, defaultValue = "STREAMING") AiSessionMode mode,
+            @RequestParam(required = false) String prompt,
+            @RequestParam(required = false) String profileHref,
+            @RequestParam String url) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = users.findByUsername(username).orElseThrow();
+        requireOrgMembership(user, organizationId);
+
+        // Fetch BEFORE creating the session — if the URL is rejected (bad
+        // scheme, SSRF, redirect loop, oversized response) we don't want to
+        // litter the DB with FAILED sessions. IllegalArgumentException
+        // already lands as 400 via GlobalErrorAdvice; wrap IOException in one
+        // so transport-level errors surface to the user as "Failed to fetch
+        // URL: ..." instead of a generic 500.
+        UrlContentFetcher.FetchResult fetched;
+        try {
+            fetched = urlFetcher.fetch(url);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to fetch URL: " + e.getMessage(), e);
+        }
+
+        UUID id = orchestrator.start(organizationId, user.getId(), wizardKind, mode,
+                prompt, fetched.bytes(), fetched.filename(), profileHref);
         return ResponseEntity.ok(new StartSessionResponse(id));
     }
 

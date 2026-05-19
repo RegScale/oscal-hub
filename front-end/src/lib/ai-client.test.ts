@@ -63,6 +63,89 @@ describe('aiClient.startSessionWithUpload', () => {
   });
 });
 
+describe('aiClient.startSessionWithUrl', () => {
+  it('POSTs urlencoded body with required params', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 'url-sess' }),
+    });
+    const result = await aiClient.startSessionWithUrl(2, 'CATALOG', 'https://nist.gov/sp.pdf');
+    expect(result.sessionId).toBe('url-sess');
+    const [calledUrl, opts] = fetchMock.mock.calls[0];
+    expect(calledUrl).toContain('/ai/sessions/url');
+    expect(opts.method).toBe('POST');
+    expect(opts.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+    const body = new URLSearchParams(opts.body as string);
+    expect(body.get('organizationId')).toBe('2');
+    expect(body.get('wizardKind')).toBe('CATALOG');
+    expect(body.get('mode')).toBe('STREAMING');
+    expect(body.get('url')).toBe('https://nist.gov/sp.pdf');
+  });
+
+  it('includes profileHref when provided', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 's' }),
+    });
+    await aiClient.startSessionWithUrl(1, 'SSP', 'https://example.com/desc.pdf', {
+      profileHref: 'library:42',
+    });
+    const body = new URLSearchParams(fetchMock.mock.calls[0][1].body as string);
+    expect(body.get('profileHref')).toBe('library:42');
+  });
+
+  it('omits profileHref when null', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 's' }),
+    });
+    await aiClient.startSessionWithUrl(1, 'CATALOG', 'https://example.com/x.html', {
+      profileHref: null,
+    });
+    const body = new URLSearchParams(fetchMock.mock.calls[0][1].body as string);
+    expect(body.has('profileHref')).toBe(false);
+  });
+
+  it('uses provided mode override', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 's' }),
+    });
+    await aiClient.startSessionWithUrl(1, 'CATALOG', 'https://example.com/x.html', {
+      mode: 'THOROUGH',
+    });
+    const body = new URLSearchParams(fetchMock.mock.calls[0][1].body as string);
+    expect(body.get('mode')).toBe('THOROUGH');
+  });
+
+  it('surfaces backend error body in thrown Error message', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      clone: () => ({
+        text: async () => '{"error":"Bad Request","message":"Refusing to fetch loopback address: localhost"}',
+      }),
+    });
+    await expect(aiClient.startSessionWithUrl(1, 'CATALOG', 'http://localhost/admin'))
+      .rejects.toThrow(/Refusing to fetch loopback/);
+  });
+
+  it('sends Authorization header from localStorage token', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sessionId: 's' }),
+    });
+    await aiClient.startSessionWithUrl(1, 'CATALOG', 'https://x.test/');
+    const opts = fetchMock.mock.calls[0][1];
+    expect(opts.headers.Authorization).toBe('Bearer fake-token');
+  });
+});
+
 describe('aiClient.listSessions', () => {
   it('GETs /api/ai/analytics/sessions with page/size params and authHeaders', async () => {
     const sessions = [{ id: 'sess-1', status: 'COMPLETED' }];
