@@ -35,7 +35,44 @@ public class CatalogPromptBuilder {
     }
 
     public String familyPrompt(String familyId, String familyTitle, List<String> controlIds) {
-        return """
+        return familyPrompt(familyId, familyTitle, controlIds, false);
+    }
+
+    /**
+     * Builds the per-family generation prompt.
+     *
+     * <p>The base prompt now includes a "Style guidance" clause that asks the
+     * model to stay at the policy / process / governance abstraction level
+     * appropriate for compliance catalogs — this both produces better OSCAL
+     * output and avoids tripping Anthropic's output safety filter on
+     * security-heavy families (operations security, incident response,
+     * penetration testing, vulnerability management) where the source document
+     * tends to mention specific attack techniques.
+     *
+     * <p>When {@code safeMode} is true, an additional "SAFETY RETRY" preface
+     * is prepended that tightens the rules further. Used by the wizard after a
+     * content-filter rejection to give the family one more chance before
+     * skipping it.
+     */
+    public String familyPrompt(String familyId, String familyTitle, List<String> controlIds, boolean safeMode) {
+        String safetyPreface = safeMode
+                ? """
+                  SAFETY RETRY: The previous attempt for this family was rejected by
+                  Anthropic's output safety filter. Rewrite using ONLY high-level
+                  compliance language. Strictly avoid:
+                  - specific attack techniques, vectors, or named adversary TTPs
+                  - exploit details, payloads, indicators of compromise, or signatures
+                  - step-by-step offensive procedures or "how to" descriptions
+                  Reference threats generically (e.g. "applicable cyber risks",
+                  "threats to the system", "external adversaries"). Express each
+                  control as an obligation: "must implement", "must monitor", "must
+                  demonstrate", "must establish", "must maintain". Treat the output
+                  as a compliance requirement document, not a threat-intelligence
+                  summary.
+
+                  """
+                : "";
+        return safetyPreface + """
             CRITICAL: Respond with a SINGLE raw JSON object only. No prose. No
             preamble like "Here is the JSON" or "I'll draft...". No ```json fences.
             No commentary after the JSON. The first character of your reply MUST
@@ -53,6 +90,14 @@ public class CatalogPromptBuilder {
             }
 
             Control IDs to produce: %s
+
+            Style guidance: Write each control's narrative in defensive, policy-oriented
+            compliance language. Describe what the organisation MUST do, MUST monitor
+            for, and MUST be capable of. Refer to threats generically ("applicable
+            cyber risks") rather than naming specific attack techniques, exploits,
+            payloads, indicators, signatures, or adversary TTPs. Stay at the policy,
+            process, governance, and accountability abstraction — a control statement
+            is a requirement, not a threat-intelligence summary.
 
             For each control include: id, title, params (if any), parts (statement /
             guidance / objective / assessment), and props where the source supplies them.
