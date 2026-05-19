@@ -248,6 +248,13 @@ module "oscal_app" {
   memory_limit  = var.app_memory
   concurrency   = var.app_concurrency
 
+  # AI wizard catalog generation makes ~20 sequential Anthropic calls (one per
+  # control family) and runs 8-10+ minutes on a real-world publication. The
+  # SSE emitter is configured for 30 minutes server-side; raise the Cloud Run
+  # request timeout to its 3600s max so the stream isn't cut at 5 minutes
+  # mid-run (which leaves the FE spinning forever — the wizard finishes on
+  # the server but the user never sees the result).
+  request_timeout_seconds = 3600
 
   # Health check on backend API health endpoint
   health_check_path = "/api/health"

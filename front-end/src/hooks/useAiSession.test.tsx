@@ -55,6 +55,63 @@ describe('useAiSession', () => {
     expect(result.current.finalDocument).toEqual({ ok: true });
   });
 
+  it('surfaces an error when the stream closes without a terminal event', async () => {
+    // Simulates Cloud Run cutting the SSE connection at 5 minutes — chunks
+    // streamed in, no `complete` or `error` event ever arrives, then the
+    // server closes the response. The UI must not be left spinning forever.
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse([
+        'event: progress\ndata: {"message":"Drafting GP family"}\n\n',
+        'event: progress\ndata: {"message":"Drafting SP family"}\n\n',
+        // No complete/error — stream just ends.
+      ]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useAiSession('abc'));
+
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true);
+    });
+    expect(result.current.error).toMatch(/connection.*closed.*before.*finished/i);
+    expect(result.current.events).toHaveLength(2);
+  });
+
+  it('does NOT surface a closed-without-terminal error when complete arrived normally', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse([
+        'event: progress\ndata: {"message":"working"}\n\n',
+        'event: complete\ndata: {"document":{"ok":true}}\n\n',
+      ]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useAiSession('abc'));
+
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.finalDocument).toEqual({ ok: true });
+  });
+
+  it('does NOT surface a closed-without-terminal error when error event arrived', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse([
+        'event: error\ndata: {"message":"model error"}\n\n',
+      ]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useAiSession('abc'));
+
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true);
+    });
+    // The explicit error event wins, not the close-without-terminal fallback.
+    expect(result.current.error).toBe('model error');
+  });
+
   it('clears stale credentials and surfaces error on 401 from the stream endpoint', async () => {
     const removeItem = vi.fn();
     vi.stubGlobal('localStorage', {
