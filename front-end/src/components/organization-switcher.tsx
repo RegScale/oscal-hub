@@ -40,6 +40,16 @@ export function OrganizationSwitcher() {
     loadOrganizations();
   }, []);
 
+  // Refetch the dropdown list when an org is renamed elsewhere (org-admin
+  // dashboard rename, settings page, etc.) so the names in the open menu
+  // stay in sync without a hard reload. The `current org` label itself is
+  // driven by AuthContext.user and updates automatically via updateUser().
+  useEffect(() => {
+    const onOrgUpdated = () => loadOrganizations();
+    window.addEventListener('organization-updated', onOrgUpdated);
+    return () => window.removeEventListener('organization-updated', onOrgUpdated);
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

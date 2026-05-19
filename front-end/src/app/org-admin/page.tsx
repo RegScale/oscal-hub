@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles, BarChart3 } from 'lucide-react';
+import { Users, ClipboardCheck, LogIn, Activity, ChevronRight, Loader2, Building2, Mail, Sparkles, BarChart3, Pencil, Check, X, Upload, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { aiClient } from '@/lib/ai-client';
 import { HelpButton } from '@/components/HelpButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface DashboardSummary {
   totalMembers: number;
@@ -21,6 +23,7 @@ interface OrgOption {
 
 export default function OrgAdminDashboardPage() {
   const router = useRouter();
+  const { updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -29,6 +32,14 @@ export default function OrgAdminDashboardPage() {
   const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
   const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
+  // Org name inline editor state.
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  // Org logo upload state.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -114,6 +125,118 @@ export default function OrgAdminDashboardPage() {
     fetchSummary(org.id);
   };
 
+  const beginEditName = () => {
+    setNameDraft(orgName);
+    setEditingName(true);
+  };
+
+  const cancelEditName = () => {
+    setEditingName(false);
+    setNameDraft('');
+  };
+
+  const saveName = async () => {
+    if (!selectedOrgId) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      toast.error('Organization name cannot be empty');
+      return;
+    }
+    if (trimmed === orgName) {
+      cancelEditName();
+      return;
+    }
+    setSavingName(true);
+    try {
+      const updated = await apiClient.updateOrgAdminOrganization(selectedOrgId, { name: trimmed });
+      setOrgName(updated.name);
+      setEditingName(false);
+      // Refresh persisted org selection so other pages (sidebar, dashboard,
+      // OSCAL builder, etc.) see the new name without a hard reload.
+      localStorage.setItem(
+        'currentOrganization',
+        JSON.stringify({ id: updated.id, name: updated.name }),
+      );
+      // The cached `user` blob also carries organizationName — keep it in sync
+      // so the dashboard greeting and the AI wizard org picker stay current.
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const userData = JSON.parse(stored);
+          if (userData.organizationId === updated.id) {
+            userData.organizationName = updated.name;
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        }
+      } catch {
+        /* ignore — best-effort cache refresh */
+      }
+      broadcastOrgUpdate(updated.id, updated.name);
+      toast.success('Organization renamed');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Failed to rename organization: ' + msg);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const refreshLogo = async (organizationId: number) => {
+    try {
+      const profile = await apiClient.getOrgAdminOrganization(organizationId);
+      setLogoUrl(profile.logoUrl ?? null);
+    } catch (err) {
+      // Non-fatal — we just don't show the logo. The main dashboard already
+      // surfaces auth/load failures via the analytics path.
+      console.warn('Failed to load org logo:', err);
+      setLogoUrl(null);
+    }
+  };
+
+  const broadcastOrgUpdate = (id: number, name: string) => {
+    // Re-hydrate AuthContext from localStorage and tell the top-nav switcher to
+    // refetch — same channel used by the rename flow so the new logo shows up
+    // in the dropdown and any other consumer of useAuth().user.
+    updateUser();
+    window.dispatchEvent(new CustomEvent('organization-updated', {
+      detail: { id, name },
+    }));
+  };
+
+  const handleLogoFilePicked = async (file: File | null) => {
+    if (!file || !selectedOrgId) return;
+    setLogoBusy(true);
+    try {
+      const result = await apiClient.uploadOrgAdminLogo(selectedOrgId, file);
+      setLogoUrl(result.logoUrl);
+      broadcastOrgUpdate(selectedOrgId, orgName);
+      toast.success('Logo updated');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Failed to upload logo: ' + msg);
+    } finally {
+      setLogoBusy(false);
+      // Allow re-picking the same filename.
+      if (logoFileRef.current) logoFileRef.current.value = '';
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!selectedOrgId || !logoUrl) return;
+    setLogoBusy(true);
+    try {
+      await apiClient.deleteOrgAdminLogo(selectedOrgId);
+      setLogoUrl(null);
+      broadcastOrgUpdate(selectedOrgId, orgName);
+      toast.success('Logo removed');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Failed to remove logo: ' + msg);
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   const fetchSummary = async (organizationId: number) => {
     try {
       setLoading(true);
@@ -130,6 +253,7 @@ export default function OrgAdminDashboardPage() {
       .getSettingsStatus(organizationId)
       .then((s) => setAiConfigured(s.enabled))
       .catch(() => setAiConfigured(false));
+    refreshLogo(organizationId);
   };
 
   if (loading) {
@@ -253,15 +377,120 @@ export default function OrgAdminDashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Setup - Admin Panel
-            </h1>
-            <HelpButton slug="org-admin" />
+        <div className="mb-12">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative group shrink-0">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={orgName || 'Organization logo'}
+                  className="h-12 w-12 rounded-lg object-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+              )}
+              {/* Hover overlay: upload (always) + delete (only when logo present). */}
+              {selectedOrgId !== null && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-hidden={logoBusy ? 'false' : undefined}
+                >
+                  {logoBusy ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => logoFileRef.current?.click()}
+                        aria-label={logoUrl ? 'Replace logo' : 'Upload logo'}
+                        title={logoUrl ? 'Replace logo' : 'Upload logo'}
+                        className="p-1 rounded text-white hover:bg-white/20"
+                      >
+                        <Upload className="h-4 w-4" />
+                      </button>
+                      {logoUrl && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteLogo}
+                          aria-label="Remove logo"
+                          title="Remove logo"
+                          className="p-1 rounded text-white hover:bg-red-500/40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              <input
+                ref={logoFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                className="hidden"
+                onChange={(e) => handleLogoFilePicked(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            {editingName ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  aria-label="Organization name"
+                  autoFocus
+                  type="text"
+                  value={nameDraft}
+                  disabled={savingName}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveName();
+                    if (e.key === 'Escape') cancelEditName();
+                  }}
+                  className="text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none px-1 text-gray-900 dark:text-white min-w-[16ch]"
+                />
+                <button
+                  type="button"
+                  onClick={saveName}
+                  disabled={savingName}
+                  aria-label="Save organization name"
+                  title="Save"
+                  className="p-2 rounded-md text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-50"
+                >
+                  {savingName ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditName}
+                  disabled={savingName}
+                  aria-label="Cancel rename"
+                  title="Cancel"
+                  className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {orgName || 'Organization'}
+                </h1>
+                {selectedOrgId !== null && orgName && (
+                  <button
+                    type="button"
+                    onClick={beginEditName}
+                    aria-label="Edit organization name"
+                    title="Rename organization"
+                    className="p-2 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                )}
+                <HelpButton slug="org-admin" />
+              </>
+            )}
           </div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {orgName ? `Managing ${orgName}` : 'Manage your organization'}
+            Admin Panel — manage members, invitations, AI settings, and analytics.
           </p>
         </div>
 

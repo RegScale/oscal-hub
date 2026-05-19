@@ -655,7 +655,35 @@ public class LibraryService {
             Organization o = organizationRepository.findById(req.getOrganizationId())
                 .orElseThrow(() -> new IllegalArgumentException("unknown organizationId"));
             item.setOrganization(o);
+        } else if (next == Visibility.PUBLIC) {
+            // Public items attribute to the publishing organisation so the
+            // "Top Organizations" leaderboard and per-card attribution work.
+            // We resolve from the item's creator (not the caller — a SUPER_ADMIN
+            // changing visibility on someone else's item should attribute to
+            // the original creator's org, not the admin's). When req specifies
+            // an explicit organizationId the caller must belong to it; this is
+            // an escape hatch for cases where the creator has since left their
+            // org and an admin is re-publishing on their behalf.
+            Organization publishingOrg = null;
+            if (req.getOrganizationId() != null) {
+                publishingOrg = organizationRepository.findById(req.getOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("unknown organizationId"));
+            } else if (item.getCreatedBy() != null) {
+                Long creatorOrgId = resolveOrgId(item.getCreatedBy());
+                if (creatorOrgId != null) {
+                    publishingOrg = organizationRepository.findById(creatorOrgId).orElse(null);
+                }
+            }
+            // Fallback to caller's org if creator has no membership but caller does.
+            if (publishingOrg == null && caller != null) {
+                Long callerOrgId = resolveOrgId(caller);
+                if (callerOrgId != null) {
+                    publishingOrg = organizationRepository.findById(callerOrgId).orElse(null);
+                }
+            }
+            item.setOrganization(publishingOrg); // may still be null for legacy users
         } else {
+            // PRIVATE — no organisation scoping or attribution.
             item.setOrganization(null);
         }
 

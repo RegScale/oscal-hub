@@ -5420,6 +5420,111 @@ class ApiClient {
     }
   }
 
+  /**
+   * Fetch the profile of an organisation the caller administers. Backend gates
+   * on ORG_ADMIN membership of the target org (or SUPER_ADMIN platform-wide).
+   */
+  async getOrgAdminOrganization(organizationId: number): Promise<{
+    id: number;
+    name: string;
+    description: string | null;
+    logoUrl: string | null;
+    active: boolean | null;
+  }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/org-admin/organizations/${organizationId}`,
+      { method: 'GET', headers: this.getAuthHeaders() },
+      10000,
+    );
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        if (body?.error) detail = body.error;
+      } catch { /* ignore */ }
+      throw new Error(`Failed to load organization: ${detail}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Update an organisation's name / description. ORG_ADMIN of that org or
+   * SUPER_ADMIN required. Either field may be omitted to leave it unchanged
+   * (PATCH semantics).
+   */
+  async updateOrgAdminOrganization(
+    organizationId: number,
+    patch: { name?: string; description?: string },
+  ): Promise<{
+    id: number;
+    name: string;
+    description: string | null;
+    logoUrl: string | null;
+    active: boolean | null;
+  }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/org-admin/organizations/${organizationId}`,
+      {
+        method: 'PATCH',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      },
+      10000,
+    );
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        if (body?.error) detail = body.error;
+      } catch { /* ignore */ }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  /**
+   * Upload a logo (PNG/JPG/SVG, max 2MB) for an organisation the caller administers.
+   * Returns the new `logoUrl` (a path under /api/files/org-logos/).
+   */
+  async uploadOrgAdminLogo(organizationId: number, file: File): Promise<{ logoUrl: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    const headers = this.getAuthHeaders();
+    // Let the browser set the multipart Content-Type with its boundary.
+    delete (headers as Record<string, string>)['Content-Type'];
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/org-admin/organizations/${organizationId}/logo`,
+      { method: 'POST', headers, body: form },
+      30000,
+    );
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        if (body?.error) detail = body.error;
+      } catch { /* ignore */ }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  /** Remove the organisation's logo. Returns void; backend responds 204. */
+  async deleteOrgAdminLogo(organizationId: number): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/org-admin/organizations/${organizationId}/logo`,
+      { method: 'DELETE', headers: this.getAuthHeaders() },
+      10000,
+    );
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        if (body?.error) detail = body.error;
+      } catch { /* ignore */ }
+      throw new Error(detail);
+    }
+  }
+
   // ========================================
   // Invitation Methods
   // ========================================

@@ -33,7 +33,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -181,6 +183,56 @@ class LibraryVisibilityChangeTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json(body)))
                .andExpect(status().isOk());
+    }
+
+    /**
+     * Publishing a PRIVATE item to PUBLIC must attribute it to the creator's
+     * organisation so the Top Organizations leaderboard and the per-card
+     * "Published by" attribution work. Prior to V1.13 this field was being
+     * nulled by the publish flow.
+     */
+    @Test
+    @WithMockUser(username = "alice-attrib")
+    void publishingToPublic_attributesToCreatorOrganization() throws Exception {
+        Organization orgA = makeOrg("orgA");
+        User alice = makeUser("alice-attrib", orgA);
+
+        LibraryItem item = makeItem(alice, null, Visibility.PRIVATE); // start with no org set
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("visibility", "PUBLIC");
+
+        mockMvc.perform(patch("/api/library/{itemId}/visibility", item.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(body)))
+               .andExpect(status().isOk());
+
+        LibraryItem updated = libraryItemRepo.findByItemId(item.getItemId()).orElseThrow();
+        assertNotNull(updated.getOrganization(), "PUBLIC item must carry the publishing organisation");
+        assertEquals(orgA.getId(), updated.getOrganization().getId());
+    }
+
+    /**
+     * Unpublishing (PUBLIC -> PRIVATE) clears the organisation reference.
+     * Attribution is only meaningful while the item is publicly listed.
+     */
+    @Test
+    @WithMockUser(username = "alice-unpublisher")
+    void unpublishing_clearsOrganization() throws Exception {
+        Organization orgA = makeOrg("orgA");
+        User alice = makeUser("alice-unpublisher", orgA);
+        LibraryItem item = makeItem(alice, orgA, Visibility.PUBLIC);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("visibility", "PRIVATE");
+
+        mockMvc.perform(patch("/api/library/{itemId}/visibility", item.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(body)))
+               .andExpect(status().isOk());
+
+        LibraryItem updated = libraryItemRepo.findByItemId(item.getItemId()).orElseThrow();
+        assertNull(updated.getOrganization(), "PRIVATE items shouldn't carry org attribution");
     }
 
     /** 4. ORGANIZATION visibility without organizationId returns 400. */
