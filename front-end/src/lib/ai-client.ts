@@ -146,19 +146,23 @@ export const aiClient = {
   ): Promise<StartSessionResponse> {
     const fd = new FormData();
     fd.append('file', file);
-    const url = new URL(`${API_BASE_URL}/ai/sessions/upload`);
-    url.searchParams.set('organizationId', String(organizationId));
-    url.searchParams.set('wizardKind', wizardKind);
-    url.searchParams.set('mode', options?.mode ?? 'STREAMING');
-    if (options?.prompt) url.searchParams.set('prompt', options.prompt);
-    if (options?.profileHref) url.searchParams.set('profileHref', options.profileHref);
+    // Build query string with URLSearchParams rather than `new URL(...)`, because
+    // in GCP NEXT_PUBLIC_API_URL is a relative path (`/api`) and the URL
+    // constructor rejects relative inputs with "Invalid URL". fetch() accepts
+    // both absolute and relative URL strings, so concatenation is portable.
+    const params = new URLSearchParams();
+    params.set('organizationId', String(organizationId));
+    params.set('wizardKind', wizardKind);
+    params.set('mode', options?.mode ?? 'STREAMING');
+    if (options?.prompt) params.set('prompt', options.prompt);
+    if (options?.profileHref) params.set('profileHref', options.profileHref);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
     // Don't set Content-Type — browser sets multipart boundary
 
-    const res = await aiFetch(url.toString(), { method: 'POST', headers, body: fd });
+    const res = await aiFetch(`${API_BASE_URL}/ai/sessions/upload?${params.toString()}`, { method: 'POST', headers, body: fd });
     return res.json();
   },
 

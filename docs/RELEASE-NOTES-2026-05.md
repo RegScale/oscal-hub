@@ -1,8 +1,8 @@
 # What's New in OSCAL Hub — May 2026
 
-A major release lands today. The headline is that **OSCAL Hub now generates compliance documentation from natural-language inputs**, plus a full visual builder for every OSCAL model type, multi-tenant authorization packages, continuous-monitoring ingestion for FedRAMP POA&Ms, and a public catalog of shareable OSCAL data products. There's also a built-in user guide and an in-app ticketing system so questions and requests no longer scatter across email and Slack.
+A major release lands today. The headline is that **OSCAL Hub now generates compliance documentation using AI from natural-language inputs**, plus a full visual builder for every OSCAL model type, multi-tenant authorization packages, continuous-monitoring ingestion for FedRAMP POA&Ms, and a public catalog of shareable OSCAL data products. There's also a built-in user guide and an in-app ticketing system so questions and requests no longer scatter across email and Slack.
 
-Below: each new capability, the feature that implements it, and the benefit you'll get.
+Below: we describe each new capability, the feature that implements it, and the benefit you'll get.
 
 ---
 
@@ -15,12 +15,12 @@ Below: each new capability, the feature that implements it, and the benefit you'
 - **Catalog Wizard** — paste a control catalog (NIST 800-53, FedRAMP baseline, internal policy doc), get a valid OSCAL Catalog with controls and parameters wired up.
 - **Component Definition Wizard** — feed it a STIG, SCAP benchmark, or CIS guide; it produces an OSCAL Component Definition with each rule mapped to controls.
 - **SSP Wizard** — pick a profile, drop in your existing security plan PDF, get an SSP draft with control implementations populated and ready to refine.
-- **POA&M Wizard** — describe the gap or upload a finding; it produces a structured POA&M item.
-- **AI Rule Generator** — describe a custom validation rule in plain English ("flag any control that lacks an implementation status"), and it generates Metapath constraint code that you can edit, test, and save.
+- **POA&M Wizard** — upload a POAM spreadsheet or a Penetration Test report; it produces a structured POA&M item.
+- **AI Rule Generator** — describe a custom validation rule in plain English ("flag any control that lacks an implementation status"), and it generates Metaschema constraint code that you can edit, test, and save.
 
 **How it works:** Bring your own Anthropic API key — each organization configures its own at `Org Admin → AI Settings`. The key is encrypted at rest and never leaves your tenant. Token usage and cost are tracked per session in an Org-Admin analytics dashboard.
 
-**Benefit:** Time-to-first-draft drops from hours to minutes. The output is real OSCAL — schema-valid, reviewable, editable, not a "summary." You stay in control of the AI provider and spend.
+**Benefit:** Time-to-first-draft drops from days to minutes. The output is real OSCAL — schema-valid, reviewable, editable, not a "summary." You stay in control of the AI provider and spend.
 
 ---
 
@@ -38,17 +38,17 @@ Below: each new capability, the feature that implements it, and the benefit you'
 - Assessment Results
 - Plan of Action & Milestones (POA&M)
 
-Each builder is step-based with a Validate panel on every step, a structured controls editor with autocomplete, dark-mode Monaco code editor for power users, and one-click UUID regeneration. AI-generated drafts hand off directly into the builder for refinement.
+Each builder is step-based with a validator at then end of each step that validates the OSCAL document against the OSCAL Metaschema and a structured controls editor with autocomplete, dark-mode Monaco code editor for power users, and one-click UUID regeneration. AI-generated drafts hand off directly into the builder for refinement.
 
-**Benefit:** Anyone on the compliance team can edit OSCAL documents — not just engineers comfortable in JSON. Validation errors surface inline as you type, so you catch issues before export.
+**Benefit:** Anyone on the compliance team can edit OSCAL documents — not just engineers comfortable in JSON. Validation errors surface inline as you type, so you catch issues before export or publishing.
 
 ---
 
-## 3. OSCAL Data Products — share and discover catalogs publicly
+## 3. OSCAL Data Products — share and discover compliance as code publicly
 
-**Use case:** Many organizations have OSCAL artifacts they want to publish (control overlays, baseline mappings, component libraries) but no good place to host them. Customers/partners need to discover and download those artifacts without creating accounts.
+**Use case:** Many organizations have OSCAL artifacts they want to publish (catalogs, control overlays, baseline mappings, component libraries) but no good place to host them. Customers/partners need to discover and download those artifacts without creating accounts.
 
-**Feature:** **Public Catalog** at `/catalog` — anonymous browsing of any OSCAL artifact you mark as public, with a polished detail page per item, search, and downloads.
+**Feature:** **Public Data Mart** at `/catalog` — anonymous browsing of any OSCAL artifact you mark as public, with a polished detail page per item, search, and downloads.
 
 Pair it with **Save to Library** (a button on every builder) and the **three-tier visibility model** — Private, Organization, Public — to control who sees what:
 
@@ -58,7 +58,7 @@ Pair it with **Save to Library** (a button on every builder) and the **three-tie
 
 Publishing is one click; unpublishing is one click; downloads of public items are gated to authenticated users so you keep attribution data.
 
-**Benefit:** Turn your internal compliance work into a public knowledge resource (or browse what others have published). Customers and partners can find your published OSCAL content without needing accounts; your internal teams keep all private documents fully isolated.
+**Benefit:** Turn your internal compliance work into a public knowledge resource (or browse what others have published). Customers and partners can find your published OSCAL content without needing accounts; your internal teams keep all private documents fully isolated.  OSCAL Hub is also accessible via API for programmatically pulling OSCAL content into your automation workflows.
 
 ---
 
@@ -77,9 +77,9 @@ Publishing is one click; unpublishing is one click; downloads of public items ar
 
 ---
 
-## 5. Continuous Monitoring (ConMon) for FedRAMP POA&Ms
+## 5. Continuous Monitoring (ConMon) for POA&Ms
 
-**Use case:** ConMon teams ingest a fresh FedRAMP POA&M Excel each month and need to reconcile it against the prior snapshot — what's new, what closed, what aged out, what changed severity.
+**Use case:** ConMon teams ingest a fresh FedRAMP, eMASS, or RMF POA&M Excel each month and need to reconcile it against the prior snapshot — what's new, what closed, what aged out, what changed severity.
 
 **Feature:** **ConMon tab** on every authorization with:
 
