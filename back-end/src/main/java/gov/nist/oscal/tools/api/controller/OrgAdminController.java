@@ -1,12 +1,16 @@
 package gov.nist.oscal.tools.api.controller;
 
+import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.model.AccessRequestResponse;
+import gov.nist.oscal.tools.api.model.OrganizationResponse;
 import gov.nist.oscal.tools.api.model.ReviewAccessRequestRequest;
+import gov.nist.oscal.tools.api.repository.OrganizationMembershipRepository;
 import gov.nist.oscal.tools.api.repository.UserRepository;
 import gov.nist.oscal.tools.api.service.OrgAnalyticsService;
+import gov.nist.oscal.tools.api.service.OrganizationService;
 import gov.nist.oscal.tools.api.service.UserAccessRequestService;
 import gov.nist.oscal.tools.api.service.UserManagementService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +26,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +57,12 @@ public class OrgAdminController {
 
     @Autowired
     private OrgAnalyticsService orgAnalyticsService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private OrganizationMembershipRepository membershipRepository;
 
     // ========================================================================
     // Access Request Management
@@ -429,6 +441,163 @@ public class OrgAdminController {
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    // ========================================================================
+    // Organization profile (name + description)
+    // ========================================================================
+
+    @Operation(
+        summary = "Get organization profile",
+        description = "Return the organization's profile (name, description, logo). ORG_ADMIN of the target org or SUPER_ADMIN."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organization profile retrieved"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not an ORG_ADMIN of this organization"),
+        @ApiResponse(responseCode = "404", description = "Organization not found")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @GetMapping("/organizations/{organizationId}")
+    public ResponseEntity<?> getOrganizationProfile(@PathVariable Long organizationId) {
+        User caller = currentUser();
+        if (!isOrgAdminOf(caller, organizationId)) {
+            return forbidden();
+        }
+        try {
+            Organization org = organizationService.getOrganization(organizationId);
+            return ResponseEntity.ok(new OrganizationResponse(org));
+        } catch (RuntimeException e) {
+            return notFound(e.getMessage());
+        }
+    }
+
+    @Operation(
+        summary = "Update organization profile",
+        description = "Update the organization's name and/or description. ORG_ADMIN of the target org or SUPER_ADMIN."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Organization profile updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid request (e.g. name already taken)"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not an ORG_ADMIN of this organization"),
+        @ApiResponse(responseCode = "404", description = "Organization not found")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @PatchMapping("/organizations/{organizationId}")
+    public ResponseEntity<?> updateOrganizationProfile(
+            @PathVariable Long organizationId,
+            @Valid @RequestBody UpdateOrgProfileRequest request) {
+        User caller = currentUser();
+        if (!isOrgAdminOf(caller, organizationId)) {
+            return forbidden();
+        }
+        try {
+            // updateOrganization treats nulls as "leave alone", which matches PATCH semantics.
+            // We never let an ORG_ADMIN flip `active` from here — that's a platform-admin operation.
+            Organization org = organizationService.updateOrganization(
+                    organizationId,
+                    request.name(),
+                    request.description(),
+                    null);
+            return ResponseEntity.ok(new OrganizationResponse(org));
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /** PATCH body for {@link #updateOrganizationProfile}. Both fields optional; nulls mean "leave alone". */
+    public record UpdateOrgProfileRequest(String name, String description) {}
+
+    @Operation(
+        summary = "Upload organization logo",
+        description = "Upload a logo (PNG/JPG/SVG, max 2MB) for the organization. ORG_ADMIN of the target org or SUPER_ADMIN."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Logo uploaded"),
+        @ApiResponse(responseCode = "400", description = "Invalid file or file too large"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not an ORG_ADMIN of this organization"),
+        @ApiResponse(responseCode = "404", description = "Organization not found")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @PostMapping("/organizations/{organizationId}/logo")
+    public ResponseEntity<?> uploadOrganizationLogo(
+            @PathVariable Long organizationId,
+            @RequestParam("file") MultipartFile file) {
+        User caller = currentUser();
+        if (!isOrgAdminOf(caller, organizationId)) {
+            return forbidden();
+        }
+        try {
+            String logoUrl = organizationService.uploadLogo(organizationId, file);
+            Map<String, String> response = new HashMap<>();
+            response.put("logoUrl", logoUrl);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (IOException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to upload logo: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        } catch (RuntimeException e) {
+            return notFound(e.getMessage());
+        }
+    }
+
+    @Operation(
+        summary = "Delete organization logo",
+        description = "Remove the logo from the organization. ORG_ADMIN of the target org or SUPER_ADMIN."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Logo deleted"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not an ORG_ADMIN of this organization"),
+        @ApiResponse(responseCode = "404", description = "Organization not found")
+    })
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @DeleteMapping("/organizations/{organizationId}/logo")
+    public ResponseEntity<?> deleteOrganizationLogo(@PathVariable Long organizationId) {
+        User caller = currentUser();
+        if (!isOrgAdminOf(caller, organizationId)) {
+            return forbidden();
+        }
+        try {
+            organizationService.deleteLogo(organizationId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return notFound(e.getMessage());
+        }
+    }
+
+    private User currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    /**
+     * True if the caller is a SUPER_ADMIN (platform-level bypass) or an ACTIVE
+     * ORG_ADMIN member of the target organization.
+     */
+    private boolean isOrgAdminOf(User user, Long organizationId) {
+        if (user.getGlobalRole() == User.GlobalRole.SUPER_ADMIN) return true;
+        return membershipRepository.findByUserIdAndOrganizationId(user.getId(), organizationId)
+                .filter(m -> m.getStatus() == OrganizationMembership.MembershipStatus.ACTIVE
+                          && m.getRole() == OrganizationMembership.OrganizationRole.ORG_ADMIN)
+                .isPresent();
+    }
+
+    private ResponseEntity<?> forbidden() {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "You are not an organization admin of this organization");
+        return ResponseEntity.status(403).body(body);
+    }
+
+    private ResponseEntity<?> notFound(String message) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", message == null ? "Not found" : message);
+        return ResponseEntity.status(404).body(body);
     }
 
     /**

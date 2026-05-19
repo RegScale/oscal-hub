@@ -7,14 +7,14 @@ import {
   LineChart, Line, PieChart, Pie,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Award, BarChart3, Building2, Download, Eye, Library, Search, Star,
-  TrendingUp, Users,
+  Award, BarChart3, Building2, Calendar, Download, Eye, FileText, Library,
+  Search, Star, Tag, TrendingUp, Users,
 } from 'lucide-react';
 import { HelpButton } from '@/components/HelpButton';
 import {
@@ -607,55 +607,89 @@ function ItemList({
 
 function ItemGrid({ items }: { items: PublicItemSummary[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((it) => (
-        <Link key={it.itemId} href={`/catalog/${it.itemId}`} className="group">
-          <Card className="h-full flex flex-col transition-all group-hover:border-primary/40 group-hover:shadow-md cursor-pointer">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <Badge variant="outline" className="text-xs uppercase tracking-wide">
-                  {it.oscalType}
-                </Badge>
-                {it.averageRating != null && it.totalRatings != null && it.totalRatings > 0 && (
-                  <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                    {it.averageRating.toFixed(1)} ({it.totalRatings})
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {items.map((it) => {
+        const rating = it.averageRating ?? 0;
+        const ratingCount = it.totalRatings ?? 0;
+        const downloads = it.downloadCount ?? 0;
+        const published = it.lastPublishedAt ?? it.publishedAt;
+        return (
+          <Link key={it.itemId} href={`/catalog/${it.itemId}`} className="group">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <FileText className="h-8 w-8 text-primary" />
+                  <Badge variant="outline">{it.oscalType}</Badge>
+                </div>
+                <CardTitle className="mt-4 line-clamp-2">{it.title}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {it.description || 'No description provided'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 flex-1 flex flex-col">
+                {it.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {it.tags.slice(0, 4).map((t) => (
+                      <Badge key={t} variant="secondary" className="text-xs">
+                        <Tag className="h-3 w-3 mr-1" />
+                        {t}
+                      </Badge>
+                    ))}
+                    {it.tags.length > 4 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{it.tags.length - 4}
+                      </Badge>
+                    )}
                   </div>
                 )}
-              </div>
-              <h3 className="font-semibold text-base leading-tight line-clamp-2 mt-3">
-                {it.title}
-              </h3>
-              {it.description && (
-                <p className="text-sm text-muted-foreground line-clamp-3 mt-1">
-                  {it.description}
-                </p>
-              )}
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col justify-end pt-0 pb-4 space-y-2">
-              {it.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {it.tags.slice(0, 4).map((t) => (
-                    <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
-                  ))}
-                  {it.tags.length > 4 && (
-                    <Badge variant="outline" className="text-xs">+{it.tags.length - 4}</Badge>
+                <div className="space-y-2 text-sm text-muted-foreground flex-1">
+                  <div className="flex items-center gap-2">
+                    {it.organizationLogoUrl ? (
+                      <img
+                        src={it.organizationLogoUrl}
+                        alt={it.organizationName ?? ''}
+                        className="h-4 w-4 rounded object-contain"
+                      />
+                    ) : (
+                      <Building2 className="h-4 w-4" />
+                    )}
+                    <span className="truncate">{it.organizationName ?? 'Community'}</span>
+                  </div>
+                  {published && (
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Published {new Date(published).toLocaleDateString()}
+                    </div>
                   )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Download className="h-4 w-4 mr-2" />
+                      {downloads.toLocaleString()}
+                    </div>
+                    <div className="flex items-center">
+                      <Eye className="h-4 w-4 mr-2" />v{it.currentVersionNumber ?? '—'}
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-                <span className="inline-flex items-center gap-1">
-                  <Download className="h-3 w-3" />
-                  {it.downloadCount ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Eye className="h-3 w-3" />v{it.currentVersionNumber ?? '—'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      ))}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  {ratingCount > 0 ? (
+                    <div className="flex items-center gap-1 text-sm">
+                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      <span className="font-medium">{rating.toFixed(1)}</span>
+                      <span className="text-muted-foreground">({ratingCount})</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No ratings yet</span>
+                  )}
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    View details
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        );
+      })}
     </div>
   );
 }

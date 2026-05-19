@@ -12,6 +12,9 @@ export interface PublicItemSummary {
   downloadCount: number | null;
   averageRating: number | null;
   totalRatings: number | null;
+  // Publishing-org attribution. Null for legacy items with no org membership.
+  organizationName: string | null;
+  organizationLogoUrl: string | null;
 }
 
 export interface PublicCatalogPage {

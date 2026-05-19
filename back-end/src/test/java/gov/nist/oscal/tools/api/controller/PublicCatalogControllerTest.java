@@ -172,7 +172,9 @@ class PublicCatalogControllerTest {
                 item.getLastPublishedAt(),
                 item.getDownloadCount() == null ? 0L : item.getDownloadCount(),
                 null,
-                0L);
+                0L,
+                item.getOrganization() != null ? item.getOrganization().getName() : null,
+                item.getOrganization() != null ? item.getOrganization().getLogoUrl() : null);
     }
 
     // -------------------------------------------------------------------------

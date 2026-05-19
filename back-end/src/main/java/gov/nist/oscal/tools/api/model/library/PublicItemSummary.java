@@ -17,7 +17,12 @@ public record PublicItemSummary(
         LocalDateTime lastPublishedAt,
         Long downloadCount,
         Double averageRating,
-        Long totalRatings) {
+        Long totalRatings,
+        // Publishing-org attribution. Both are null for items published without
+        // org context (legacy items or items created by users with no active
+        // membership). Cards fall back to a generic "Community" label when null.
+        String organizationName,
+        String organizationLogoUrl) {
 
     public static PublicItemSummary fromEntity(LibraryItem item, Double averageRating, Long totalRatings) {
         return new PublicItemSummary(
@@ -32,6 +37,8 @@ public record PublicItemSummary(
             item.getLastPublishedAt(),
             item.getDownloadCount(),
             averageRating,
-            totalRatings);
+            totalRatings,
+            item.getOrganization() != null ? item.getOrganization().getName() : null,
+            item.getOrganization() != null ? item.getOrganization().getLogoUrl() : null);
     }
 }
