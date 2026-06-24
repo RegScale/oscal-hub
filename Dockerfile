@@ -84,7 +84,7 @@ RUN npm run build
 # =============================================================================
 # Stage: Fetch OpenTelemetry Java agent (pinned version)
 # =============================================================================
-FROM curlimages/curl:8.10.1 AS otel-agent
+FROM curlimages/curl:8.21.0 AS otel-agent
 ARG OTEL_AGENT_VERSION=2.27.0
 RUN curl -fsSL -o /tmp/opentelemetry-javaagent.jar \
     "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar"
