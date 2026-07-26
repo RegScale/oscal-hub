@@ -63,6 +63,20 @@ resource "google_logging_metric" "email_send_failures" {
   }
 }
 
+# Cloud Monitoring can take up to ~10 minutes to make a freshly created
+# log-based metric descriptor visible to the AlertPolicy API; creating the
+# policies in the same apply 404s without this wait (observed on the first
+# prod apply). Only delays creation — no-op on every subsequent apply.
+resource "time_sleep" "metric_descriptor_propagation" {
+  create_duration = "180s"
+
+  depends_on = [
+    google_logging_metric.registration_failures,
+    google_logging_metric.scheduled_task_failures,
+    google_logging_metric.email_send_failures,
+  ]
+}
+
 # --- Alert policies ---------------------------------------------------------
 
 resource "google_monitoring_alert_policy" "registration_failures" {
@@ -83,7 +97,7 @@ resource "google_monitoring_alert_policy" "registration_failures" {
   conditions {
     display_name = "registration failures per hour"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/oscal_registration_failures\" resource.type=\"cloud_run_revision\""
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.registration_failures.name}\" resource.type=\"cloud_run_revision\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 3
@@ -98,6 +112,8 @@ resource "google_monitoring_alert_policy" "registration_failures" {
   }
 
   notification_channels = local.notification_channels
+
+  depends_on = [time_sleep.metric_descriptor_propagation]
 }
 
 resource "google_monitoring_alert_policy" "scheduled_task_failure" {
@@ -118,7 +134,7 @@ resource "google_monitoring_alert_policy" "scheduled_task_failure" {
   conditions {
     display_name = "any scheduled task failure"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/oscal_scheduled_task_failures\" resource.type=\"cloud_run_revision\""
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.scheduled_task_failures.name}\" resource.type=\"cloud_run_revision\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0
@@ -133,6 +149,8 @@ resource "google_monitoring_alert_policy" "scheduled_task_failure" {
   }
 
   notification_channels = local.notification_channels
+
+  depends_on = [time_sleep.metric_descriptor_propagation]
 }
 
 resource "google_monitoring_alert_policy" "email_send_failures" {
@@ -154,7 +172,7 @@ resource "google_monitoring_alert_policy" "email_send_failures" {
   conditions {
     display_name = "email failures in 15 min"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/oscal_email_send_failures\" resource.type=\"cloud_run_revision\""
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.email_send_failures.name}\" resource.type=\"cloud_run_revision\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0
@@ -169,4 +187,6 @@ resource "google_monitoring_alert_policy" "email_send_failures" {
   }
 
   notification_channels = local.notification_channels
+
+  depends_on = [time_sleep.metric_descriptor_propagation]
 }
