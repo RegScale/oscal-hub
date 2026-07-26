@@ -40,7 +40,7 @@ export function FormatSelector({
           onValueChange={(value) => onFromFormatChange(value as OscalFormat)}
           disabled={disabled}
         >
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className="flex-1" aria-label="Source format">
             <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>
@@ -63,7 +63,7 @@ export function FormatSelector({
           onValueChange={(value) => onToFormatChange(value as OscalFormat)}
           disabled={disabled}
         >
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className="flex-1" aria-label="Target format">
             <SelectValue placeholder="Target" />
           </SelectTrigger>
           <SelectContent>
