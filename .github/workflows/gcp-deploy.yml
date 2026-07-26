@@ -100,6 +100,7 @@ jobs:
             -var="otel_enabled=${{ vars.OTEL_ENABLED || 'false' }}" \
             -var="otel_collector_image=${{ vars.OTEL_COLLECTOR_IMAGE }}" \
             -var="alert_email=${{ vars.ALERT_EMAIL }}" \
+            -var="hubspot_service_key=${{ secrets.HUBSPOT_SERVICE_KEY }}" \
             -out=tfplan 2>&1 | tee plan.txt
         continue-on-error: true
 
@@ -259,7 +260,8 @@ jobs:
             -var="image_tag=${{ needs.build-and-push.outputs.image_tag }}" \
             -var="otel_enabled=${{ vars.OTEL_ENABLED || 'false' }}" \
             -var="otel_collector_image=${{ vars.OTEL_COLLECTOR_IMAGE }}" \
-            -var="alert_email=${{ vars.ALERT_EMAIL }}"
+            -var="alert_email=${{ vars.ALERT_EMAIL }}" \
+            -var="hubspot_service_key=${{ secrets.HUBSPOT_SERVICE_KEY }}"
 
       - name: Capture outputs
         id: outputs

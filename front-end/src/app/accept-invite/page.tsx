@@ -128,6 +128,11 @@ function AcceptInviteContent() {
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
                 <PasswordRequirements password={password} username={username} policy={passwordPolicy} />
               </div>
+              <p className="text-xs text-muted-foreground">
+                OSCAL Hub is free to use. By creating an account, you agree to receive
+                occasional emails about new OSCAL-related products and services. You can
+                unsubscribe at any time.
+              </p>
               <Button
                 onClick={handleAccept}
                 disabled={submitting || !username || !password || !isPasswordValid(password, username, passwordPolicy)}

@@ -195,6 +195,14 @@ function LoginPageContent() {
                 </div>
               )}
 
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground">
+                  OSCAL Hub is free to use. By creating an account, you agree to receive
+                  occasional emails about new OSCAL-related products and services. You can
+                  unsubscribe at any time.
+                </p>
+              )}
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Please wait...' : isLogin ? 'Login' : 'Create Account'}
               </Button>

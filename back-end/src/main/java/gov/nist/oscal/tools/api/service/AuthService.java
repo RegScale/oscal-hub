@@ -166,6 +166,11 @@ public class AuthService {
         // registration transaction.
         eventPublisher.publishEvent(new gov.nist.oscal.tools.api.email.EmailEvents.WelcomeEmail(user.getId()));
 
+        // Register the new user in the marketing CRM after commit (CrmSyncListener).
+        // Signup consent is disclosed on the registration form.
+        eventPublisher.publishEvent(new gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered(
+                user.getId(), "self_serve_registration"));
+
         // Enforce the global MFA policy at registration, mirroring login.
         // Without this, the first session bypassed a required MFA setup and the
         // requirement only kicked in on the next login.

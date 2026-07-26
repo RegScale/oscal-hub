@@ -353,6 +353,12 @@ export default function RequestAccessPage() {
               />
             </div>
 
+            <p className="text-xs text-muted-foreground">
+              OSCAL Hub is free to use. By requesting access, you agree to receive
+              occasional emails about new OSCAL-related products and services. You can
+              unsubscribe at any time.
+            </p>
+
             <div className="flex justify-end">
               <Button
                 type="submit"

@@ -108,6 +108,13 @@ variable "app_memory" {
   default     = "4Gi" # 4GB (needs to run both Spring Boot and Node.js)
 }
 
+variable "hubspot_service_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "HubSpot Service Key (Settings > Integrations > Service Keys) for marketing CRM sync of new users/orgs; empty disables the sync (no-op). Supply via TF_VAR_hubspot_service_key."
+}
+
 variable "app_min_instances" {
   description = "Minimum warm instances. 1 prevents cold-start login timeouts during idle hours; the main app's Spring Boot startup is ~30–60s."
   type        = number

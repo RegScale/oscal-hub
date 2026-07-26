@@ -69,6 +69,9 @@ public class OrganizationService {
     @Autowired
     private AuditLogService auditLogService;
 
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @Value("${storage.provider:azure}")
     private String storageProvider;
 
@@ -254,6 +257,11 @@ public class OrganizationService {
         OrganizationMembership membership = new OrganizationMembership(
             user, org, OrganizationRole.ORG_ADMIN);
         membershipRepository.save(membership);
+
+        // Register the new organization in the marketing CRM after commit
+        // (CrmSyncListener) — company record associated with the owner contact.
+        eventPublisher.publishEvent(new gov.nist.oscal.tools.api.crm.CrmEvents.OrganizationSignedUp(
+            org.getId(), user.getId()));
 
         logger.info("User {} created organization {} (ID: {}) via self-serve",
             user.getUsername(), org.getName(), org.getId());
