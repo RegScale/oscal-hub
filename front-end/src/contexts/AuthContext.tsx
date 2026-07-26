@@ -189,6 +189,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (username: string, password: string, email: string, organizationName?: string) => {
     try {
       const response = await apiClient.register(username, password, email, organizationName);
+
+      // The backend enforces the global MFA policy at registration too —
+      // mirror the login flow and route to MFA setup before anything else.
+      if (response.mfaSetupRequired && response.mfaToken) {
+        router.push(`/mfa-setup?token=${encodeURIComponent(response.mfaToken)}`);
+        return;
+      }
+
       const userData = {
         userId: response.userId,
         username: response.username,

@@ -55,6 +55,8 @@ class RateLimitFilterTest {
         ReflectionTestUtils.setField(filter, "rateLimitService", service);
         ReflectionTestUtils.setField(filter, "rateLimitConfig", config);
         ReflectionTestUtils.setField(filter, "objectMapper", mapper);
+        ReflectionTestUtils.setField(filter, "clientIpResolver",
+                new gov.nist.oscal.tools.api.util.ClientIpResolver(1));
         SecurityContextHolder.clearContext();
     }
 
@@ -198,14 +200,16 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void xForwardedFor_multipleIps_takesFirst() throws Exception {
-        // Behind a load balancer the chain looks like "client, lb1, lb2"; the
-        // first entry is the originating client and is what we should rate-limit.
+    void xForwardedFor_multipleIps_takesRightmostTrustedEntry() throws Exception {
+        // Proxies APPEND the connection IP they observed: earlier entries are
+        // client-supplied and spoofable. With one trusted hop (Cloud Run), the
+        // rightmost entry is the real client — rate-limiting the FIRST entry let
+        // attackers rotate fake IPs to bypass the per-IP buckets.
         when(service.isLoginAllowed("203.0.113.5")).thenReturn(true);
 
         MockHttpServletRequest req = req("POST", "/api/auth/login");
-        req.addHeader("X-Forwarded-For", "203.0.113.5, 10.0.0.1, 10.0.0.2");
-        req.setRemoteAddr("10.0.0.99"); // would be the LB
+        req.addHeader("X-Forwarded-For", "6.6.6.6, 6.6.6.7, 203.0.113.5");
+        req.setRemoteAddr("10.0.0.99"); // the proxy itself
         MockHttpServletResponse res = new MockHttpServletResponse();
 
         filter.doFilter(req, res, chain);
@@ -228,8 +232,10 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void xRealIp_used_whenNoForwardedFor() throws Exception {
-        when(service.isLoginAllowed("198.51.100.7")).thenReturn(true);
+    void xRealIp_isIgnored_asClientSpoofable() throws Exception {
+        // X-Real-IP is not set by Cloud Run/GFE and is trivially client-spoofable;
+        // without X-Forwarded-For the socket address is authoritative.
+        when(service.isLoginAllowed("10.0.0.99")).thenReturn(true);
 
         MockHttpServletRequest req = req("POST", "/api/auth/login");
         req.addHeader("X-Real-IP", "198.51.100.7");
@@ -238,7 +244,7 @@ class RateLimitFilterTest {
 
         filter.doFilter(req, res, chain);
 
-        verify(service, times(1)).isLoginAllowed("198.51.100.7");
+        verify(service, times(1)).isLoginAllowed("10.0.0.99");
     }
 
     @Test

@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
+import { isPasswordValid } from '@/lib/password-policy';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -31,6 +33,7 @@ function LoginPageContent() {
   const [orgNameFieldError, setOrgNameFieldError] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const passwordPolicy = usePasswordPolicy();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +55,8 @@ function LoginPageContent() {
           setIsLoading(false);
           return;
         }
-        if (password.length < 8) {
-          setError('Password must be at least 8 characters');
+        if (!isPasswordValid(password, username, passwordPolicy)) {
+          setError('Password does not meet all the requirements listed below the password field');
           setIsLoading(false);
           return;
         }
@@ -146,19 +149,10 @@ function LoginPageContent() {
                   required
                   autoComplete={isLogin ? 'current-password' : 'new-password'}
                   placeholder="Enter your password"
-                  minLength={8}
+                  minLength={isLogin ? undefined : passwordPolicy.minLength}
                 />
                 {!isLogin && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium">Password requirements:</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      <li>At least 8 characters</li>
-                      <li>At least one uppercase letter</li>
-                      <li>At least one lowercase letter</li>
-                      <li>At least one number</li>
-                      <li>At least one special character (!@#$%^&*)</li>
-                    </ul>
-                  </div>
+                  <PasswordRequirements password={password} username={username} policy={passwordPolicy} />
                 )}
               </div>
 
@@ -173,8 +167,11 @@ function LoginPageContent() {
                     required={!isLogin}
                     autoComplete="new-password"
                     placeholder="Confirm your password"
-                    minLength={8}
+                    minLength={passwordPolicy.minLength}
                   />
+                  {confirmPassword.length > 0 && password !== confirmPassword && (
+                    <p className="text-xs text-destructive">Passwords do not match</p>
+                  )}
                 </div>
               )}
 
@@ -202,6 +199,14 @@ function LoginPageContent() {
                 {isLoading ? 'Please wait...' : isLogin ? 'Login' : 'Create Account'}
               </Button>
             </form>
+
+            {isLogin && (
+              <div className="mt-3 text-center text-sm">
+                <Link href="/forgot-password" className="text-muted-foreground hover:underline">
+                  Forgot your password?
+                </Link>
+              </div>
+            )}
 
             <div className="mt-4 text-center text-sm">
               <button

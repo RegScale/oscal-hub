@@ -70,22 +70,18 @@ public class SecurityPolicyService {
         // Double-check if another thread created it (handles race conditions)
         return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
                 .orElseGet(() -> {
+                    logger.info("Creating default security policy");
+                    // Native INSERT ... ON CONFLICT DO NOTHING: the id column is
+                    // IDENTITY-generated, so save() with a pre-set id would issue
+                    // an UPDATE against a missing row and fail (StaleObjectState).
+                    // The insert is also race-safe against concurrent creation.
                     try {
-                        logger.info("Creating default security policy");
-                        SecurityPolicy policy = new SecurityPolicy();
-                        policy.setId(SecurityPolicy.SINGLETON_ID);
-                        policy.setMfaRequired(false);
-                        policy.setPasswordMinLength(10);
-                        policy.setPasswordMaxLength(128);
-                        policy.setPasswordRotationDays(0);
-                        policy.setAuditLogRetentionDays(90);
-                        return securityPolicyRepository.save(policy);
+                        securityPolicyRepository.insertDefaultPolicy();
                     } catch (Exception e) {
-                        // Another thread might have created it, try to fetch again
-                        logger.warn("Failed to create default policy (likely concurrent creation): {}", e.getMessage());
-                        return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
-                                .orElseThrow(() -> new RuntimeException("Failed to create or fetch security policy", e));
+                        logger.warn("Failed to insert default policy (likely concurrent creation): {}", e.getMessage());
                     }
+                    return securityPolicyRepository.findById(SecurityPolicy.SINGLETON_ID)
+                            .orElseThrow(() -> new RuntimeException("Failed to create or fetch security policy"));
                 });
     }
 

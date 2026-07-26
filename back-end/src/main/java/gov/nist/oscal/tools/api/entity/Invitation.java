@@ -50,6 +50,14 @@ public class Invitation {
     @JoinColumn(name = "accepted_by_user_id")
     private User acceptedBy;
 
+    /**
+     * Whether the invitation email was sent successfully. When false, admins
+     * fall back to copying the accept link from the UI or resending.
+     */
+    @Column(name = "email_sent", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private Boolean emailSent = false;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
@@ -92,4 +100,7 @@ public class Invitation {
 
     public User getAcceptedBy() { return acceptedBy; }
     public void setAcceptedBy(User acceptedBy) { this.acceptedBy = acceptedBy; }
+
+    public Boolean getEmailSent() { return emailSent; }
+    public void setEmailSent(Boolean emailSent) { this.emailSent = emailSent; }
 }

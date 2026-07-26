@@ -8,6 +8,14 @@ public final class EventNames {
     public static final String AUTH_SESSION_STARTED       = "auth.session_started";
     public static final String AUTH_SESSION_ENDED         = "auth.session_ended";
 
+    // Onboarding funnel (resilience plan, Phase 5): registration → invitation /
+    // access request → membership. Emitted so drop-off between stages is measurable.
+    public static final String AUTH_REGISTER_SUCCEEDED    = "auth.register_succeeded";
+    public static final String INVITATION_CREATED         = "invitation.created";
+    public static final String INVITATION_ACCEPTED        = "invitation.accepted";
+    public static final String ACCESS_REQUEST_SUBMITTED   = "access_request.submitted";
+    public static final String ACCESS_REQUEST_APPROVED    = "access_request.approved";
+
     public static final String FEATURE_VIEWED             = "feature.viewed";
 
     public static final String OSCAL_VALIDATE             = "oscal.validate";

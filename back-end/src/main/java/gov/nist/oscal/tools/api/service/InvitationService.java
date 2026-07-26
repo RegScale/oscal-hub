@@ -45,11 +45,11 @@ public class InvitationService {
         Organization org = orgRepo.findById(orgId)
             .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + orgId));
 
-        // Already an active member?
-        Optional<User> existingUser = userRepo.findByEmailIgnoreCase(email);
-        if (existingUser.isPresent()) {
+        // Already an active member? Emails are not unique — check every account
+        // sharing this email (an Optional lookup crashes on duplicates).
+        for (User existingUser : userRepo.findAllByEmailIgnoreCase(email)) {
             Optional<OrganizationMembership> existingMembership =
-                memRepo.findByUserIdAndOrganizationId(existingUser.get().getId(), orgId);
+                memRepo.findByUserIdAndOrganizationId(existingUser.getId(), orgId);
             if (existingMembership.isPresent()
                 && existingMembership.get().getStatus() == OrganizationMembership.MembershipStatus.ACTIVE) {
                 throw new UserAlreadyMemberException(email);
@@ -73,9 +73,12 @@ public class InvitationService {
 
         try {
             emailService.sendInvitation(inv, inviter, org);
+            inv.setEmailSent(true);
         } catch (Exception e) {
             logger.warn("Failed to send invitation email for invitation {}: {}", inv.getId(), e.getMessage());
+            inv.setEmailSent(false);
         }
+        inv = invRepo.save(inv);
 
         Map<String, Object> meta = new HashMap<>();
         meta.put("invitationId", inv.getId());
@@ -87,10 +90,32 @@ public class InvitationService {
         return inv;
     }
 
+    /**
+     * Accept an invitation.
+     *
+     * @param authenticatedUser the signed-in caller, or null for anonymous accepts.
+     *        When present, the invitation binds to THIS account. When absent and
+     *        the invitation email matches an existing account, acceptance is
+     *        refused — possession of the emailed link must never yield a session
+     *        for an existing account (that was an account-takeover vector).
+     */
     @Transactional
-    public User acceptInvitation(String token, String username, String password) {
+    public User acceptInvitation(String token, String username, String password, User authenticatedUser) {
         Invitation inv = invRepo.findByToken(token)
             .orElseThrow(() -> new InvitationNotFoundException(token));
+
+        // Idempotency: a double-click or client retry after a successful accept
+        // re-sends the same token. Return the accepted user instead of failing
+        // with "no longer valid".
+        if (inv.getStatus() == Status.ACCEPTED && inv.getAcceptedBy() != null) {
+            if (authenticatedUser != null
+                    && authenticatedUser.getId().equals(inv.getAcceptedBy().getId())) {
+                return inv.getAcceptedBy();
+            }
+            if (username != null && username.equals(inv.getAcceptedBy().getUsername())) {
+                return inv.getAcceptedBy();
+            }
+        }
 
         if (inv.getStatus() != Status.PENDING) {
             throw new InvitationExpiredException("Invitation no longer valid");
@@ -101,34 +126,75 @@ public class InvitationService {
             throw new InvitationExpiredException("Invitation has expired");
         }
 
-        // Find or create user
-        User user = userRepo.findByEmailIgnoreCase(inv.getEmail()).orElseGet(() -> {
-            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+        User user;
+        if (authenticatedUser != null) {
+            // Signed-in accept: bind the caller's own account. The email may
+            // legitimately differ (personal vs work address) — the join is
+            // attributed to the real username and visible to org admins.
+            user = authenticatedUser;
+            if (!inv.getEmail().equalsIgnoreCase(user.getEmail())) {
+                logger.info("Invitation {} addressed to {} accepted by signed-in user {} ({})",
+                    inv.getId(), inv.getEmail(), user.getUsername(), user.getEmail());
+            }
+        } else if (!userRepo.findAllByEmailIgnoreCase(inv.getEmail()).isEmpty()) {
+            // Anonymous accept for an email that already has an account:
+            // require sign-in. Handing out a session here would let anyone
+            // holding the link take over the existing account.
+            throw new IllegalArgumentException(
+                "An account already exists for this email address. Please sign in to your "
+                + "account first, then open the invitation link again.");
+        } else {
+            String newUsername = username == null ? null : username.trim();
+            if (newUsername == null || newUsername.isBlank() || password == null || password.isBlank()) {
                 throw new IllegalArgumentException(
                     "username and password are required for first-time invite acceptance");
             }
+            // Pre-check so the common case is a clear message instead of a
+            // DB constraint violation (the unique constraint still backstops races).
+            // Case-insensitive: "Iorga" and "iorga" are the same identity.
+            if (userRepo.existsByUsernameIgnoreCase(newUsername)) {
+                throw new IllegalArgumentException(
+                    "That username is already taken. Please choose another.");
+            }
             try {
-                passwordValidationService.validatePassword(password, username);
+                passwordValidationService.validatePassword(password, newUsername);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
                     "Password does not meet complexity requirements: " + e.getMessage());
             }
             User u = new User();
             u.setEmail(inv.getEmail());
-            u.setUsername(username);
+            u.setUsername(newUsername);
             u.setPassword(passwordEncoder.encode(password));
             u.setEnabled(true);
             u.setPasswordChangedAt(LocalDateTime.now());
             u.setFailedLoginAttempts(0);
-            return userRepo.save(u);
-        });
+            user = userRepo.save(u);
+        }
 
-        // Add membership if not already present
+        // Add membership, or repair an inactive one. An admin re-inviting a
+        // DEACTIVATED member is an explicit signal to reactivate — previously the
+        // invitation was consumed while the membership stayed DEACTIVATED, leaving
+        // the user locked out with no way to retry.
+        OrganizationMembership.OrganizationRole role =
+            OrganizationMembership.OrganizationRole.valueOf(inv.getRole().name());
         Optional<OrganizationMembership> existing =
             memRepo.findByUserIdAndOrganizationId(user.getId(), inv.getOrganization().getId());
-        if (existing.isEmpty()) {
-            OrganizationMembership.OrganizationRole role =
-                OrganizationMembership.OrganizationRole.valueOf(inv.getRole().name());
+        if (existing.isPresent()) {
+            OrganizationMembership membership = existing.get();
+            if (membership.getStatus() == OrganizationMembership.MembershipStatus.LOCKED) {
+                throw new IllegalArgumentException(
+                    "Your membership in this organization is locked. "
+                    + "Please contact your organization admin.");
+            }
+            if (membership.getStatus() == OrganizationMembership.MembershipStatus.DEACTIVATED) {
+                membership.setStatus(OrganizationMembership.MembershipStatus.ACTIVE);
+                membership.setRole(role);
+                memRepo.save(membership);
+                logger.info("Reactivated membership of user {} in org {} via invitation {}",
+                    user.getUsername(), inv.getOrganization().getId(), inv.getId());
+            }
+        } else {
             memRepo.save(new OrganizationMembership(user, inv.getOrganization(), role));
         }
 
@@ -157,6 +223,49 @@ public class InvitationService {
             auditLogService.logEvent(AuditEventType.INVITATION_REVOKED, actor.getUsername(), actor.getId(),
                 "SUCCESS", "INVITATION", "REVOKE", meta);
         }
+    }
+
+    /**
+     * Re-send an invitation email. Works for PENDING and EXPIRED invitations:
+     * the token is regenerated (invalidating any copy of the old link), the
+     * expiry window restarts, and an EXPIRED invitation returns to PENDING.
+     *
+     * @throws IllegalArgumentException for ACCEPTED/REVOKED invitations
+     */
+    @Transactional
+    public Invitation resendInvitation(Long invitationId, User actor) {
+        Invitation inv = invRepo.findById(invitationId)
+            .orElseThrow(() -> new InvitationNotFoundException(String.valueOf(invitationId)));
+
+        if (inv.getStatus() == Status.ACCEPTED) {
+            throw new IllegalArgumentException("This invitation was already accepted.");
+        }
+        if (inv.getStatus() == Status.REVOKED) {
+            throw new IllegalArgumentException(
+                "This invitation was revoked. Create a new invitation instead.");
+        }
+
+        inv.setToken(java.util.UUID.randomUUID().toString().replace("-", ""));
+        inv.setExpiresAt(LocalDateTime.now().plusDays(7));
+        inv.setStatus(Status.PENDING);
+
+        try {
+            emailService.sendInvitation(inv, actor, inv.getOrganization());
+            inv.setEmailSent(true);
+        } catch (Exception e) {
+            logger.warn("Failed to re-send invitation email for invitation {}: {}", inv.getId(), e.getMessage());
+            inv.setEmailSent(false);
+        }
+        inv = invRepo.save(inv);
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("invitationId", inv.getId());
+        meta.put("email", inv.getEmail());
+        meta.put("organizationId", inv.getOrganization().getId());
+        auditLogService.logEvent(AuditEventType.INVITATION_CREATED, actor.getUsername(), actor.getId(),
+            "SUCCESS", "INVITATION", "RESEND", meta);
+
+        return inv;
     }
 
     public List<Invitation> listForOrganization(Long orgId, Status status) {

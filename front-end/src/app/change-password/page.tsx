@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { HelpButton } from '@/components/HelpButton';
+import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
+import { isPasswordValid } from '@/lib/password-policy';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -12,6 +14,15 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const passwordPolicy = usePasswordPolicy();
+
+  const currentUsername = () => {
+    try {
+      return JSON.parse(localStorage.getItem('user') ?? '{}')?.username ?? '';
+    } catch {
+      return '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +39,8 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters long');
+    if (!isPasswordValid(newPassword, currentUsername(), passwordPolicy)) {
+      setError('New password does not meet all the requirements listed below');
       return;
     }
 
@@ -118,8 +129,11 @@ export default function ChangePasswordPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800"
-                placeholder="Enter new password (min 8 characters)"
+                placeholder="Enter new password"
               />
+              <div className="mt-2">
+                <PasswordRequirements password={newPassword} username={currentUsername()} policy={passwordPolicy} />
+              </div>
             </div>
 
             <div>
@@ -152,7 +166,7 @@ export default function ChangePasswordPage() {
 
           <div className="text-sm text-center">
             <p className="text-gray-600 dark:text-gray-400">
-              Password must be at least 8 characters long and different from your current password
+              Your new password must meet the requirements above and be different from your current password
             </p>
           </div>
         </form>

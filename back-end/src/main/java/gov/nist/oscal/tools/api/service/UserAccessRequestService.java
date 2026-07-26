@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -173,12 +174,20 @@ public class UserAccessRequestService {
             }
 
             // Fall back to email — covers the case where the requester registered
-            // separately under a different username (same email, different account)
+            // separately under a different username (same email, different account).
+            // Emails are NOT unique: an Optional lookup crashes on duplicates, so
+            // only bind when exactly one account matches.
             if (user == null && request.getEmail() != null) {
-                user = userRepository.findByEmailIgnoreCase(request.getEmail()).orElse(null);
-                if (user != null) {
+                List<User> matches = userRepository.findAllByEmailIgnoreCase(request.getEmail());
+                if (matches.size() == 1) {
+                    user = matches.get(0);
                     logger.info("Found existing user {} by email for access request {}",
                         user.getUsername(), request.getId());
+                } else if (matches.size() > 1) {
+                    throw new RuntimeException(
+                        "The email on this request matches more than one existing account, so it "
+                        + "cannot be approved automatically. Ask the requester which username is "
+                        + "theirs, then add them as a member directly.");
                 }
             }
 
@@ -191,11 +200,29 @@ public class UserAccessRequestService {
             }
         }
 
-        // Guard against duplicate membership if this user already belongs to the org
-        if (membershipRepository.findByUserIdAndOrganizationId(
-                user.getId(), request.getOrganization().getId()).isPresent()) {
-            logger.info("User {} is already a member of org {} — approving request without creating membership",
-                user.getUsername(), request.getOrganization().getId());
+        // Guard against duplicate membership if this user already belongs to the org.
+        // A DEACTIVATED membership is reactivated — the admin approving this request
+        // is an explicit signal to restore access; previously the request was marked
+        // APPROVED while the membership stayed DEACTIVATED, leaving the user locked
+        // out with no visible error.
+        Optional<OrganizationMembership> existingMembership = membershipRepository
+                .findByUserIdAndOrganizationId(user.getId(), request.getOrganization().getId());
+        if (existingMembership.isPresent()) {
+            OrganizationMembership membership = existingMembership.get();
+            if (membership.getStatus() == MembershipStatus.LOCKED) {
+                throw new RuntimeException(
+                        "This user's membership in the organization is locked. "
+                        + "Unlock the member instead of approving a new access request.");
+            }
+            if (membership.getStatus() == MembershipStatus.DEACTIVATED) {
+                membership.setStatus(MembershipStatus.ACTIVE);
+                membershipRepository.save(membership);
+                logger.info("Reactivated membership of user {} in org {} via access request {}",
+                        user.getUsername(), request.getOrganization().getId(), request.getId());
+            } else {
+                logger.info("User {} is already a member of org {} — approving request without creating membership",
+                        user.getUsername(), request.getOrganization().getId());
+            }
             request.setStatus(RequestStatus.APPROVED);
             request.setReviewedBy(reviewer);
             request.setReviewedDate(LocalDateTime.now());
@@ -300,6 +327,10 @@ public class UserAccessRequestService {
      * Format: 3 uppercase + 3 lowercase + 3 digits + 3 special characters (randomized)
      */
     private String generateTemporaryPassword() {
+        // SecureRandom, not Math.random(): these are real credentials. Math.random()
+        // is a single shared java.util.Random whose state is recoverable from
+        // observed outputs.
+        java.security.SecureRandom random = new java.security.SecureRandom();
         String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Excludes I, O for clarity
         String lower = "abcdefghijkmnopqrstuvwxyz"; // Excludes l for clarity
         String digits = "23456789"; // Excludes 0, 1 for clarity
@@ -309,22 +340,22 @@ public class UserAccessRequestService {
 
         // Add 3 from each category
         for (int i = 0; i < 3; i++) {
-            password.append(upper.charAt((int) (Math.random() * upper.length())));
+            password.append(upper.charAt(random.nextInt(upper.length())));
         }
         for (int i = 0; i < 3; i++) {
-            password.append(lower.charAt((int) (Math.random() * lower.length())));
+            password.append(lower.charAt(random.nextInt(lower.length())));
         }
         for (int i = 0; i < 3; i++) {
-            password.append(digits.charAt((int) (Math.random() * digits.length())));
+            password.append(digits.charAt(random.nextInt(digits.length())));
         }
         for (int i = 0; i < 3; i++) {
-            password.append(special.charAt((int) (Math.random() * special.length())));
+            password.append(special.charAt(random.nextInt(special.length())));
         }
 
-        // Shuffle the password characters
+        // Fisher–Yates shuffle
         char[] chars = password.toString().toCharArray();
         for (int i = chars.length - 1; i > 0; i--) {
-            int j = (int) (Math.random() * (i + 1));
+            int j = random.nextInt(i + 1);
             char temp = chars[i];
             chars[i] = chars[j];
             chars[j] = temp;

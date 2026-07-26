@@ -244,7 +244,9 @@ public class OrganizationService {
         org.setActive(true);
         org.setCreatedAt(LocalDateTime.now());
         try {
-            org = organizationRepository.save(org);
+            // Flush so a concurrent same-name creation surfaces here (as the intended
+            // OrganizationNameInUseException) rather than at transaction commit.
+            org = organizationRepository.saveAndFlush(org);
         } catch (DataIntegrityViolationException e) {
             throw new OrganizationNameInUseException(trimmedName);
         }

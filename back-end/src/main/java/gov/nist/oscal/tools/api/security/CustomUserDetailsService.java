@@ -22,6 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
+                .or(() -> findUniqueCaseInsensitive(username))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
         return new org.springframework.security.core.userdetails.User(
@@ -33,6 +34,16 @@ public class CustomUserDetailsService implements UserDetailsService {
                 true, // accountNonLocked
                 getAuthorities(user)
         );
+    }
+
+    /**
+     * Login fallback: users often type their username with different casing
+     * ("Iorga" vs "iorga"). Only used when the case-insensitive match is
+     * UNIQUE — with legacy case-duplicate accounts the exact form is required.
+     */
+    private java.util.Optional<User> findUniqueCaseInsensitive(String username) {
+        java.util.List<User> matches = userRepository.findAllByUsernameIgnoreCase(username);
+        return matches.size() == 1 ? java.util.Optional.of(matches.get(0)) : java.util.Optional.empty();
     }
 
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {

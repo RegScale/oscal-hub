@@ -10,8 +10,10 @@ public class RegisterRequest {
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
     private String username;
 
+    // Length/complexity are enforced by PasswordValidationService against the
+    // admin-editable policy — no duplicate minimum here.
     @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @Size(max = 128, message = "Password must not exceed 128 characters")
     private String password;
 
     @NotBlank(message = "Email is required")

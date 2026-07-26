@@ -44,6 +44,12 @@ public class AuthController {
     private AuthService authService;
 
     @Autowired
+    private gov.nist.oscal.tools.api.service.PasswordResetService passwordResetService;
+
+    @Autowired
+    private gov.nist.oscal.tools.api.service.PasswordValidationService passwordValidationService;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     @Autowired
@@ -64,6 +70,16 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             AuthResponse response = authService.register(request);
+            try {
+                telemetryService.emit(EventNames.AUTH_REGISTER_SUCCEEDED, Map.of(
+                        "user_id", response.getUserId() != null ? String.valueOf(response.getUserId()) : "",
+                        "created_org", Boolean.toString(request.getOrganizationName() != null
+                                && !request.getOrganizationName().isBlank()),
+                        "mfa_setup_required", Boolean.toString(Boolean.TRUE.equals(response.getMfaSetupRequired()))
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
             return ResponseEntity.ok(response);
         } catch (OrganizationNameInUseException e) {
             // Structured response specifically for org-name collisions so the frontend can
@@ -645,6 +661,45 @@ public class AuthController {
     }
 
     @Operation(
+        summary = "Get the password policy",
+        description = "Machine-readable password requirements, as enforced by the server. "
+            + "Public so registration and reset forms can render live rules.")
+    @GetMapping("/password-policy")
+    public ResponseEntity<Map<String, Object>> passwordPolicy() {
+        return ResponseEntity.ok(passwordValidationService.getPolicyDescriptor());
+    }
+
+    @Operation(
+        summary = "Request a password reset",
+        description = "Sends a single-use reset link to the account's email. The response is identical "
+            + "whether or not the identifier matches an account (no user enumeration).")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody gov.nist.oscal.tools.api.model.ForgotPasswordRequest request) {
+        try {
+            passwordResetService.requestReset(request.getUsernameOrEmail());
+        } catch (Exception e) {
+            // Never leak whether the identifier matched — log and return the standard message.
+            logger.error("forgot-password processing error: {}", e.getMessage(), e);
+        }
+        Map<String, String> response = new HashMap<>();
+        response.put("message",
+            "If an account matches that username or email, a password reset link has been sent.");
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "Reset password with a token",
+        description = "Consumes a reset token from the emailed link and sets a new password.")
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody gov.nist.oscal.tools.api.model.ResetPasswordRequest request) {
+        // IllegalArgumentException (bad token / weak password) → 400 via GlobalErrorAdvice
+        passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Your password has been reset. You can now sign in with your new password.");
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
         summary = "Request access to organization",
         description = "Submit an access request to join an organization (public endpoint)"
     )
@@ -656,6 +711,13 @@ public class AuthController {
     public ResponseEntity<?> requestAccess(@Valid @RequestBody RequestAccessRequest request) {
         try {
             authService.requestAccess(request);
+            try {
+                telemetryService.emit(EventNames.ACCESS_REQUEST_SUBMITTED, Map.of(
+                        "organization_id", String.valueOf(request.getOrganizationId())
+                ));
+            } catch (Exception telEx) {
+                logger.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             Map<String, String> response = new HashMap<>();
             response.put("message", "Access request submitted successfully. An administrator will review your request.");

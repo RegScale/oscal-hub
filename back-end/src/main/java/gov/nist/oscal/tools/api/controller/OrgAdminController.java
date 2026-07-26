@@ -47,6 +47,9 @@ public class OrgAdminController {
     private static final Logger log = LoggerFactory.getLogger(OrgAdminController.class);
 
     @Autowired
+    private gov.nist.oscal.tools.api.telemetry.TelemetryService telemetryService;
+
+    @Autowired
     private UserAccessRequestService accessRequestService;
 
     @Autowired
@@ -142,6 +145,15 @@ public class OrgAdminController {
 
             String notes = request != null ? request.getNotes() : null;
             UserAccessRequest approvedRequest = accessRequestService.approveRequest(id, reviewerId, notes);
+
+            try {
+                telemetryService.emit(gov.nist.oscal.tools.api.telemetry.EventNames.ACCESS_REQUEST_APPROVED, Map.of(
+                        "request_id", String.valueOf(id),
+                        "organization_id", approvedRequest.getOrganization() != null
+                                ? String.valueOf(approvedRequest.getOrganization().getId()) : ""));
+            } catch (Exception telEx) {
+                log.debug("Telemetry emit failed (non-fatal): {}", telEx.getMessage());
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Access request approved successfully");

@@ -61,6 +61,28 @@ public class GlobalErrorAdvice {
     }
 
     /**
+     * Bean-validation failures (@NotBlank, @Size, @Email on request DTOs) → 400
+     * with the first field message in the body. Without this handler Spring's
+     * default rendering returns {"error":"Bad Request"} with NO message field,
+     * so the frontend could only show a bare "Bad Request" — the exact failure
+     * mode that made the July 2026 registration errors unreadable.
+     */
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValid(
+            org.springframework.web.bind.MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(fe -> fe.getDefaultMessage())
+                .orElse("Invalid request");
+        log.warn("400 Bad Request (validation): {}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "error", "Bad Request",
+                        "message", message == null ? "Invalid request" : message
+                ));
+    }
+
+    /**
      * IllegalArgumentException → 400 with the message in the body.
      * Common case: bad input that we throw without using ResponseStatusException.
      */

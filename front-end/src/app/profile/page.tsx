@@ -15,6 +15,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { ServiceAccountTokenGenerator } from '@/components/ServiceAccountTokenGenerator';
 import { toast } from 'sonner';
 import { HelpButton } from '@/components/HelpButton';
+import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
+import { isPasswordValid } from '@/lib/password-policy';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -32,6 +34,7 @@ export default function ProfilePage() {
   const [organization, setOrganization] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const passwordPolicy = usePasswordPolicy();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -70,9 +73,9 @@ export default function ProfilePage() {
       return;
     }
 
-    // Validate password length
-    if (newPassword && newPassword.length < 8) {
-      setErrorMessage('Password must be at least 8 characters');
+    // Validate against the server-provided password policy
+    if (newPassword && !isPasswordValid(newPassword, user?.username ?? '', passwordPolicy)) {
+      setErrorMessage('Password does not meet all the requirements listed below the password field');
       return;
     }
 
@@ -655,16 +658,7 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium">Password requirements:</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      <li>At least 8 characters</li>
-                      <li>At least one uppercase letter</li>
-                      <li>At least one lowercase letter</li>
-                      <li>At least one number</li>
-                      <li>At least one special character (!@#$%^&*)</li>
-                    </ul>
-                  </div>
+                  <PasswordRequirements password={newPassword} username={user?.username ?? ''} policy={passwordPolicy} />
                 </div>
 
                 {/* Submit Button */}
