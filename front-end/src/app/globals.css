@@ -130,3 +130,19 @@
 .dark .text-primary {
   color: oklch(0.68 0.18 255);
 }
+
+/*
+ * WCAG 2.1 SC 1.4.1 (Use of Color) — links inside blocks of body text must be
+ * distinguishable without relying on color alone (axe: link-in-text-block).
+ * Decision (issue #18): persistent underlines for links WITHIN prose only;
+ * standalone navigation links (menus, cards, sidebars) stay underline-free
+ * because their placement distinguishes them. The footer's in-text links get
+ * the same treatment via utility classes (issue #19).
+ */
+.prose-guide a {
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
+}
+.prose-guide a:hover {
+  text-decoration-thickness: 2px;
+}
