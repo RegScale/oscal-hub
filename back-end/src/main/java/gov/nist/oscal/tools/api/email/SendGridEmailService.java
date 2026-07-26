@@ -122,6 +122,16 @@ public class SendGridEmailService implements EmailService {
     }
 
     @Override
+    public void sendPasswordResetLink(User user, String resetUrl, int ttlMinutes) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("username", user.getUsername());
+        vars.put("resetUrl", resetUrl);
+        vars.put("ttlMinutes", String.valueOf(ttlMinutes));
+        send("password-reset-link", user.getEmail(),
+             "Reset your OSCAL Hub password", vars);
+    }
+
+    @Override
     public void sendTicketCreatedToAdmin(Ticket t) {
         Map<String, String> vars = ticketVars(t);
         send("ticket-created-admin", supportEmail,

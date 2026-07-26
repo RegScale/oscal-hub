@@ -54,6 +54,9 @@ public class AuditLogService {
     @Lazy
     private AuditLogService self;
 
+    @Autowired
+    private gov.nist.oscal.tools.api.util.ClientIpResolver clientIpResolver;
+
     /**
      * Thread-safe storage of the last audit event hash for chain linking.
      * This creates a blockchain-like chain of audit events.
@@ -92,20 +95,16 @@ public class AuditLogService {
     /**
      * Log an audit event asynchronously
      */
-    @Async
-    @Transactional
     public void logEvent(AuditEventType eventType, String username, String outcome) {
         if (!config.isEnabled()) return;
 
         AuditEvent event = createBaseEvent(eventType, username, outcome);
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
      * Log an audit event with additional details
      */
-    @Async
-    @Transactional
     public void logEvent(AuditEventType eventType, String username, String outcome,
                         String resource, String action) {
         if (!config.isEnabled()) return;
@@ -113,14 +112,12 @@ public class AuditLogService {
         AuditEvent event = createBaseEvent(eventType, username, outcome);
         event.setResource(resource);
         event.setAction(action);
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
      * Log an audit event with metadata
      */
-    @Async
-    @Transactional
     public void logEvent(AuditEventType eventType, String username, Long userId,
                         String outcome, String resource, String action,
                         Map<String, Object> metadata) {
@@ -139,20 +136,18 @@ public class AuditLogService {
             }
         }
 
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
      * Log a failed event with error message
      */
-    @Async
-    @Transactional
     public void logFailure(AuditEventType eventType, String username, String errorMessage) {
         if (!config.isEnabled()) return;
 
         AuditEvent event = createBaseEvent(eventType, username, "FAILURE");
         event.setErrorMessage(errorMessage);
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
@@ -220,8 +215,6 @@ public class AuditLogService {
      * @param details Description of what happened
      * @param request The HTTP request (for IP, user agent, etc.)
      */
-    @Async
-    @Transactional
     public void logSecurityEvent(AuditEventType eventType, String username, String details,
                                   HttpServletRequest request) {
         if (!config.isEnabled()) return;
@@ -238,7 +231,7 @@ public class AuditLogService {
             event.setRequestUrl(request.getRequestURI());
         }
 
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
@@ -249,8 +242,6 @@ public class AuditLogService {
      * @param details Description of what happened
      * @param request The HTTP request (for IP, user agent, etc.)
      */
-    @Async
-    @Transactional
     public void logSecurityEventFailure(AuditEventType eventType, String username, String details,
                                          HttpServletRequest request) {
         if (!config.isEnabled()) return;
@@ -268,7 +259,7 @@ public class AuditLogService {
             event.setRequestUrl(request.getRequestURI());
         }
 
-        saveEvent(event);
+        self.persistEventAsync(event);
     }
 
     /**
@@ -278,8 +269,6 @@ public class AuditLogService {
      * @param details Description of the configuration change
      * @param request The HTTP request (for IP, user agent, etc.)
      */
-    @Async
-    @Transactional
     public void logConfigChange(String username, String details, HttpServletRequest request) {
         if (!config.isEnabled()) return;
 
@@ -296,6 +285,19 @@ public class AuditLogService {
             event.setRequestUrl(request.getRequestURI());
         }
 
+        self.persistEventAsync(event);
+    }
+
+    /**
+     * Persist (hash, chain, forward) an already-built event off the request
+     * thread. Events MUST be fully built by the caller: this runs on an async
+     * executor where the HTTP request context is gone and the container may
+     * have recycled the request object. Building on the async thread was why
+     * audit entries showed "from unknown" for IP addresses.
+     */
+    @Async
+    @Transactional
+    public void persistEventAsync(AuditEvent event) {
         saveEvent(event);
     }
 
@@ -408,19 +410,9 @@ public class AuditLogService {
     }
 
     /**
-     * Extract client IP address from request
+     * Extract client IP address from request (shared trusted-proxy-aware logic).
      */
     private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }

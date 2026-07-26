@@ -1,7 +1,8 @@
 package gov.nist.oscal.tools.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -23,8 +24,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
+@RecordApplicationEvents
 @SpringBootTest
 @Transactional
 class AccessRequestEmailTriggerTest {
@@ -53,12 +57,18 @@ class AccessRequestEmailTriggerTest {
     @MockitoBean
     EmailService emailService;
 
+    @Autowired
+    ApplicationEvents applicationEvents;
+
     // =====================================================================
     // Test 1: submitting an access request triggers acknowledged + admins emails
     // =====================================================================
 
     @Test
-    void requestAccessFiresAcknowledgedAndAdminEmails() {
+    void requestAccessPublishesAfterCommitEmailEvent() {
+        // These emails are sent AFTER COMMIT by TransactionalEmailListener, so in a
+        // rolled-back test transaction we assert the published event instead of
+        // mock invocations (the listener would never fire here).
         Organization org = makeOrg("Acme-" + System.nanoTime());
         User admin = makeAdminFor(org);
 
@@ -71,8 +81,9 @@ class AccessRequestEmailTriggerTest {
 
         authService.requestAccess(req);
 
-        verify(emailService, times(1)).sendAccessRequestAcknowledged(any(UserAccessRequest.class));
-        verify(emailService, times(1)).sendAccessRequestPendingForAdmins(any(UserAccessRequest.class), anyList());
+        assertEquals(1, applicationEvents
+                .stream(gov.nist.oscal.tools.api.email.EmailEvents.AccessRequestSubmittedEmails.class)
+                .count());
     }
 
     // =====================================================================

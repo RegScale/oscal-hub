@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Loader2, Mail, Clock } from 'lucide-react';
+import { ChevronLeft, Loader2, Mail, Clock, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { HelpButton } from '@/components/HelpButton';
 
@@ -13,6 +13,8 @@ interface InvitationRow {
   status: string;
   createdAt: string;
   expiresAt: string;
+  emailSent?: boolean;
+  acceptUrl?: string;
 }
 
 export default function InvitationsPage() {
@@ -85,12 +87,19 @@ export default function InvitationsPage() {
     setError('');
     setInfo('');
     try {
-      await apiClient.createInvitation({
+      const created = (await apiClient.createInvitation({
         organizationId,
         email,
         role,
-      });
-      setInfo(`Invitation sent to ${email}`);
+      })) as InvitationRow | undefined;
+      if (created && created.emailSent === false) {
+        setError(
+          `The invitation for ${email} was created, but the email could not be sent. ` +
+          'Use "Copy link" below to share the invite link directly, or try "Resend".'
+        );
+      } else {
+        setInfo(`Invitation sent to ${email}`);
+      }
       setEmail('');
       await loadInvitations(organizationId);
     } catch (e: any) {
@@ -108,6 +117,37 @@ export default function InvitationsPage() {
       await loadInvitations(organizationId);
     } catch (e: any) {
       setError(e?.message || 'Failed to revoke invitation');
+    }
+  };
+
+  const handleResend = async (inv: InvitationRow) => {
+    if (!organizationId) return;
+    setError('');
+    setInfo('');
+    try {
+      const resent = (await apiClient.resendInvitation(inv.id)) as InvitationRow | undefined;
+      if (resent && resent.emailSent === false) {
+        setError(
+          `The invitation email to ${inv.email} could not be sent. ` +
+          'Use "Copy link" to share the invite link directly.'
+        );
+      } else {
+        setInfo(`Invitation re-sent to ${inv.email}`);
+      }
+      await loadInvitations(organizationId);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to resend invitation');
+    }
+  };
+
+  const handleCopyLink = async (inv: InvitationRow) => {
+    if (!inv.acceptUrl) return;
+    setError('');
+    try {
+      await navigator.clipboard.writeText(inv.acceptUrl);
+      setInfo(`Invite link for ${inv.email} copied to clipboard`);
+    } catch {
+      setError('Could not copy to clipboard. The invite link is: ' + inv.acceptUrl);
     }
   };
 
@@ -241,7 +281,20 @@ export default function InvitationsPage() {
                         key={inv.id}
                         className="border-b border-gray-100 dark:border-gray-700 last:border-0"
                       >
-                        <td className="py-3 text-gray-900 dark:text-white">{inv.email}</td>
+                        <td className="py-3 text-gray-900 dark:text-white">
+                          <span className="inline-flex items-center gap-1.5">
+                            {inv.email}
+                            {inv.emailSent === false && (
+                              <span
+                                title="The invitation email could not be delivered. Copy the link and share it directly, or resend."
+                                className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+                              >
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                email failed
+                              </span>
+                            )}
+                          </span>
+                        </td>
                         <td className="py-3 text-gray-600 dark:text-gray-400">{inv.role}</td>
                         <td className="py-3 text-gray-600 dark:text-gray-400">
                           {new Date(inv.createdAt).toLocaleString()}
@@ -249,7 +302,24 @@ export default function InvitationsPage() {
                         <td className="py-3 text-gray-600 dark:text-gray-400">
                           {new Date(inv.expiresAt).toLocaleString()}
                         </td>
-                        <td className="py-3 text-right">
+                        <td className="py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleCopyLink(inv)}
+                            disabled={!inv.acceptUrl}
+                            title="Copy the invite link to share directly"
+                            className="px-3 py-1.5 mr-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy link
+                          </button>
+                          <button
+                            onClick={() => handleResend(inv)}
+                            title="Re-send the invitation email with a fresh link and expiry"
+                            className="px-3 py-1.5 mr-2 text-sm text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 inline-flex items-center gap-1"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Resend
+                          </button>
                           <button
                             onClick={() => handleRevoke(inv.id)}
                             className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"

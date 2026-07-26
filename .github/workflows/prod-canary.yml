@@ -1,0 +1,62 @@
+name: Production Canary - Registration Funnel
+
+# Synthetic probe of the production onboarding endpoints (resilience plan,
+# Phase 5). Creates NO data: the registration probe intentionally sends a
+# policy-violating password and asserts the 400 error CONTRACT — proving
+# routing, validation, and the error shape the frontend depends on all work.
+#
+# A failing run sends the standard GitHub Actions failure notification.
+
+on:
+  schedule:
+    - cron: '17 */6 * * *' # every 6 hours (17 past to avoid top-of-hour load)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE_URL: https://oscalhub.com/api
+
+jobs:
+  canary:
+    name: Probe production onboarding endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health ping
+        run: |
+          status=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 20 "$BASE_URL/health/ping")
+          echo "status=$status body=$(cat /tmp/body)"
+          [ "$status" = "200" ] || { echo "::error::health/ping returned $status"; exit 1; }
+
+      - name: Password policy is served
+        run: |
+          status=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 20 "$BASE_URL/auth/password-policy")
+          echo "status=$status body=$(cat /tmp/body)"
+          [ "$status" = "200" ] || { echo "::error::password-policy returned $status"; exit 1; }
+          jq -e '.minLength >= 8' /tmp/body > /dev/null \
+            || { echo "::error::password-policy body missing minLength"; exit 1; }
+
+      - name: Registration validation contract (no data created)
+        run: |
+          # Policy-violating password: the endpoint must answer 400 with the
+          # human-readable reason in .message — the exact contract whose
+          # breakage caused the July 2026 silent registration failures.
+          status=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 20 \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\": \"canary-${{ github.run_id }}\", \"email\": \"canary@example.invalid\", \"password\": \"weak\"}" \
+            "$BASE_URL/auth/register")
+          echo "status=$status body=$(cat /tmp/body)"
+          [ "$status" = "400" ] || { echo "::error::register probe expected 400, got $status"; exit 1; }
+          jq -e '.message | test("[Pp]assword")' /tmp/body > /dev/null \
+            || { echo "::error::register 400 body lacks a password message — frontend error display would be broken"; exit 1; }
+
+      - name: Invitation lookup contract
+        run: |
+          status=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 20 \
+            "$BASE_URL/invitations/canary-nonexistent-token")
+          echo "status=$status body=$(cat /tmp/body)"
+          [ "$status" = "404" ] || { echo "::error::invitation probe expected 404, got $status"; exit 1; }
+          jq -e '.error == "INVITATION_NOT_FOUND"' /tmp/body > /dev/null \
+            || { echo "::error::invitation 404 body has wrong shape"; exit 1; }

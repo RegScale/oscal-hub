@@ -100,6 +100,51 @@ describe('LoginPage signup with organization', () => {
     });
   });
 
+  it('blocks signup when the password fails the policy and never calls the API', async () => {
+    renderWithProviders();
+
+    fireEvent.click(screen.getByText(/sign up/i));
+    fireEvent.change(screen.getByLabelText(/^username/i), { target: { value: 'iorga' } });
+    fireEvent.change(screen.getByLabelText(/^email/i), { target: { value: 'iorga@example.com' } });
+    // No uppercase — the exact failure mode from the July 2026 production logs
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'lowercase0nly!pw' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'lowercase0nly!pw' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/does not meet all the requirements/i)).toBeInTheDocument();
+    });
+    expect(apiClient.register).not.toHaveBeenCalled();
+  });
+
+  it('shows the live password requirements checklist in signup mode', () => {
+    renderWithProviders();
+    fireEvent.click(screen.getByText(/sign up/i));
+
+    expect(screen.getByText(/password requirements/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least 10 characters/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least one uppercase letter/i)).toBeInTheDocument();
+  });
+
+  it('surfaces the server rejection message when the backend rejects registration', async () => {
+    // api-client maps {error: "Bad Request", message: "<reason>"} to Error(<reason>)
+    vi.mocked(apiClient.register).mockRejectedValue(
+      new Error('Password is too common. Please choose a more unique password')
+    );
+    renderWithProviders();
+
+    fireEvent.click(screen.getByText(/sign up/i));
+    fireEvent.change(screen.getByLabelText(/^username/i), { target: { value: 'newuser' } });
+    fireEvent.change(screen.getByLabelText(/^email/i), { target: { value: 'n@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'CorrectH0rse!Batt' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'CorrectH0rse!Batt' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too common/i)).toBeInTheDocument();
+    });
+  });
+
   it('request-access link writes sessionStorage', async () => {
     renderWithProviders();
     fireEvent.click(screen.getByText(/sign up/i));

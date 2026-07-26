@@ -40,7 +40,11 @@ public class InvitationController {
     private static final Logger log = LoggerFactory.getLogger(InvitationController.class);
 
     @Autowired private InvitationService invitationService;
+    @Autowired private gov.nist.oscal.tools.api.telemetry.TelemetryService telemetryService;
     @Autowired private UserRepository userRepo;
+
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:http://localhost:3000}")
+    private String baseUrl;
     @Autowired private OrganizationMembershipRepository memRepo;
     @Autowired private InvitationRepository invRepo;
     @Autowired private JwtUtil jwtUtil;
@@ -66,7 +70,10 @@ public class InvitationController {
         try {
             Invitation inv = invitationService.createInvitation(
                 req.getOrganizationId(), req.getEmail(), req.getRole(), inviter);
-            return ResponseEntity.ok(InvitationResponse.from(inv));
+            emitTelemetry(gov.nist.oscal.tools.api.telemetry.EventNames.INVITATION_CREATED, Map.of(
+                "organization_id", String.valueOf(req.getOrganizationId()),
+                "email_sent", String.valueOf(Boolean.TRUE.equals(inv.getEmailSent()))));
+            return ResponseEntity.ok(InvitationResponse.from(inv, baseUrl));
         } catch (UserAlreadyMemberException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "ALREADY_MEMBER", "message", e.getMessage()));
@@ -91,9 +98,35 @@ public class InvitationController {
         }
 
         List<InvitationResponse> result = invitationService.listForOrganization(organizationId, status).stream()
-            .map(InvitationResponse::from)
+            .map(inv -> InvitationResponse.from(inv, baseUrl))
             .collect(Collectors.toList());
         return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Resend invitation",
+        description = "Re-send an invitation email with a fresh token and expiry. Works for PENDING and "
+            + "EXPIRED invitations. ORG_ADMIN role required.")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'SUPER_ADMIN')")
+    @PostMapping("/api/org-admin/invitations/{id}/resend")
+    public ResponseEntity<?> resend(@PathVariable Long id, Authentication auth) {
+        User actor = userRepo.findByUsername(auth.getName())
+            .orElseThrow(() -> new IllegalStateException("authenticated user not found"));
+
+        try {
+            Invitation inv = invRepo.findById(id)
+                .orElseThrow(() -> new InvitationNotFoundException(String.valueOf(id)));
+
+            if (!isOrgAdmin(actor, inv.getOrganization().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "FORBIDDEN", "message", "You are not an admin of that organization."));
+            }
+
+            Invitation resent = invitationService.resendInvitation(id, actor);
+            return ResponseEntity.ok(InvitationResponse.from(resent, baseUrl));
+        } catch (InvitationNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "INVITATION_NOT_FOUND"));
+        }
     }
 
     @Operation(summary = "Revoke invitation",
@@ -145,15 +178,21 @@ public class InvitationController {
     }
 
     @Operation(summary = "Accept invitation by token",
-        description = "Accept an invitation. For new users, provide username and password in the request body. "
-            + "For existing users, the account is located by the invitation email. No authentication required.")
+        description = "Accept an invitation. New users provide username and password in the request body. "
+            + "Existing users must be signed in — the invitation binds to the authenticated account. "
+            + "Anonymous accepts for an email that already has an account are refused.")
     @PostMapping("/api/invitations/{token}/accept")
     public ResponseEntity<?> accept(@PathVariable String token,
-                                     @RequestBody(required = false) AcceptInvitationRequest body) {
+                                     @RequestBody(required = false) AcceptInvitationRequest body,
+                                     Authentication auth) {
         try {
             String username = body == null ? null : body.getUsername();
             String password = body == null ? null : body.getPassword();
-            User accepted = invitationService.acceptInvitation(token, username, password);
+            User authenticatedUser = resolveAuthenticatedUser(auth);
+            User accepted = invitationService.acceptInvitation(token, username, password, authenticatedUser);
+            emitTelemetry(gov.nist.oscal.tools.api.telemetry.EventNames.INVITATION_ACCEPTED, Map.of(
+                "user_id", String.valueOf(accepted.getId()),
+                "existing_account", String.valueOf(authenticatedUser != null)));
             UserDetails userDetails = userDetailsService.loadUserByUsername(accepted.getUsername());
             String jwt = jwtUtil.generateToken(userDetails);
             return ResponseEntity.ok(Map.of(
@@ -175,6 +214,28 @@ public class InvitationController {
     // ========================================================================
     // Private helpers
     // ========================================================================
+
+    /** Telemetry is best-effort — never let it affect the request outcome. */
+    private void emitTelemetry(String eventName, Map<String, Object> attributes) {
+        try {
+            telemetryService.emit(eventName, attributes);
+        } catch (Exception e) {
+            log.debug("Telemetry emit failed (non-fatal): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * The signed-in caller, or null when the request is anonymous. The accept
+     * endpoint is permitAll, but the JWT filter still authenticates callers who
+     * send a token — that identity is what an existing-account accept binds to.
+     */
+    private User resolveAuthenticatedUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()
+                || auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
+            return null;
+        }
+        return userRepo.findByUsername(auth.getName()).orElse(null);
+    }
 
     /**
      * Returns true if the user is a SUPER_ADMIN (platform-level bypass) or is an

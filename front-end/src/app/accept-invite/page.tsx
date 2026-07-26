@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
+import { isPasswordValid } from '@/lib/password-policy';
 
 interface Invite {
   email: string;
@@ -40,6 +42,7 @@ function AcceptInviteContent() {
   const [password, setPassword] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const passwordPolicy = usePasswordPolicy();
 
   useEffect(() => {
     if (!token) { setLoadError('Missing invitation token.'); return; }
@@ -123,8 +126,12 @@ function AcceptInviteContent() {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordRequirements password={password} username={username} policy={passwordPolicy} />
               </div>
-              <Button onClick={handleAccept} disabled={submitting || !username || !password}>
+              <Button
+                onClick={handleAccept}
+                disabled={submitting || !username || !password || !isPasswordValid(password, username, passwordPolicy)}
+              >
                 {submitting ? 'Accepting…' : 'Accept'}
               </Button>
               <p className="text-xs text-muted-foreground">

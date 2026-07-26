@@ -108,6 +108,8 @@ public class SecurityConfig {
                 // Public endpoints - allow without authentication
                 .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers("/api/auth/organizations", "/api/auth/request-access").permitAll()
+                .requestMatchers("/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/password-policy").permitAll()
                 // MFA endpoints that work during login flow (before user has full JWT)
                 .requestMatchers("/api/auth/mfa/setup/initiate", "/api/auth/mfa/setup/complete").permitAll()
                 .requestMatchers("/api/auth/mfa/verify", "/api/auth/mfa/verify-backup").permitAll()

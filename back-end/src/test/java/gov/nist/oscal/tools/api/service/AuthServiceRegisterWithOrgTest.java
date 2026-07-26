@@ -25,12 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
+@org.springframework.test.context.event.RecordApplicationEvents
 class AuthServiceRegisterWithOrgTest {
 
     @Autowired AuthService authService;
     @Autowired UserRepository userRepo;
     @Autowired OrganizationRepository orgRepo;
     @Autowired OrganizationMembershipRepository membershipRepo;
+    @Autowired org.springframework.test.context.event.ApplicationEvents applicationEvents;
     @MockitoBean EmailService emailService;
 
     @Test
@@ -107,7 +109,10 @@ class AuthServiceRegisterWithOrgTest {
     }
 
     @Test
-    void registerSendsWelcomeEmail() {
+    void registerPublishesWelcomeEmailEvent() {
+        // The welcome email is sent AFTER COMMIT by TransactionalEmailListener;
+        // in a rolled-back test transaction the listener never fires, so assert
+        // the published event instead of a mock invocation.
         long suffix = System.nanoTime();
         RegisterRequest r = new RegisterRequest();
         r.setUsername("welcomed-" + suffix);
@@ -115,9 +120,12 @@ class AuthServiceRegisterWithOrgTest {
         r.setPassword("CorrectH0rse!Batt");
         r.setOrganizationName("Welcomed " + suffix);
 
-        authService.register(r);
+        AuthResponse resp = authService.register(r);
 
-        org.mockito.Mockito.verify(emailService, org.mockito.Mockito.times(1))
-            .sendWelcome(org.mockito.ArgumentMatchers.any());
+        List<gov.nist.oscal.tools.api.email.EmailEvents.WelcomeEmail> events =
+            applicationEvents.stream(gov.nist.oscal.tools.api.email.EmailEvents.WelcomeEmail.class)
+                .collect(Collectors.toList());
+        assertEquals(1, events.size());
+        assertEquals(resp.getUserId(), events.get(0).userId());
     }
 }

@@ -64,6 +64,8 @@ class AuditLogServiceTest {
         });
 
         service = new AuditLogService(repo, config, mapper, siem);
+        ReflectionTestUtils.setField(service, "clientIpResolver",
+                new gov.nist.oscal.tools.api.util.ClientIpResolver(1));
         // The @Autowired self-reference is null in unit tests; methods that
         // rely on self.* (logAuthSuccess, etc.) won't work without it. For
         // those, we point self at the same instance so the call goes through.
@@ -140,6 +142,8 @@ class AuditLogServiceTest {
 
         AuditLogService freshService = new AuditLogService(repo, config, mapper, siem);
         ReflectionTestUtils.setField(freshService, "self", freshService);
+        ReflectionTestUtils.setField(freshService, "clientIpResolver",
+                new gov.nist.oscal.tools.api.util.ClientIpResolver(1));
 
         freshService.logEvent(AuditEventType.AUTH_LOGIN_SUCCESS, "alice", "SUCCESS");
         ArgumentCaptor<AuditEvent> cap = ArgumentCaptor.forClass(AuditEvent.class);
@@ -211,11 +215,13 @@ class AuditLogServiceTest {
     }
 
     @Test
-    void logSecurityEvent_xForwardedFor_takesFirstIp() {
-        // Behind a load balancer, the client IP is the first entry in the
-        // X-Forwarded-For chain. The audit log must record that, not the LB.
+    void logSecurityEvent_xForwardedFor_takesRightmostTrustedIp() {
+        // Proxies APPEND the connection IP they observed; earlier entries are
+        // client-supplied and spoofable. With one trusted hop, the rightmost
+        // entry is the real client — the audit trail must not record an
+        // attacker-chosen address.
         MockHttpServletRequest req = new MockHttpServletRequest();
-        req.addHeader("X-Forwarded-For", "203.0.113.5, 10.0.0.1");
+        req.addHeader("X-Forwarded-For", "6.6.6.6, 203.0.113.5");
         req.setRemoteAddr("10.0.0.99");
 
         service.logSecurityEvent(AuditEventType.MFA_VERIFICATION_SUCCESS, "alice", "MFA off", req);
@@ -226,7 +232,7 @@ class AuditLogServiceTest {
     }
 
     @Test
-    void logSecurityEvent_xRealIp_usedWhenNoForwardedFor() {
+    void logSecurityEvent_xRealIp_isIgnoredAsSpoofable() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.addHeader("X-Real-IP", "198.51.100.7");
         req.setRemoteAddr("10.0.0.99");
@@ -235,7 +241,7 @@ class AuditLogServiceTest {
 
         ArgumentCaptor<AuditEvent> cap = ArgumentCaptor.forClass(AuditEvent.class);
         verify(repo).save(cap.capture());
-        assertThat(cap.getValue().getIpAddress()).isEqualTo("198.51.100.7");
+        assertThat(cap.getValue().getIpAddress()).isEqualTo("10.0.0.99");
     }
 
     @Test
@@ -317,6 +323,8 @@ class AuditLogServiceTest {
         // resolve it to null. The logger must still persist events.
         AuditLogService noSiem = new AuditLogService(repo, config, mapper, null);
         ReflectionTestUtils.setField(noSiem, "self", noSiem);
+        ReflectionTestUtils.setField(noSiem, "clientIpResolver",
+                new gov.nist.oscal.tools.api.util.ClientIpResolver(1));
 
         noSiem.logEvent(AuditEventType.AUTH_LOGIN_SUCCESS, "alice", "SUCCESS");
         verify(repo).save(any(AuditEvent.class));

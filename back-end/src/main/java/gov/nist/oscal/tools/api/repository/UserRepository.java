@@ -17,9 +17,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    /**
+     * @deprecated Emails are NOT unique across users (multiple accounts may share
+     * one email — see AuthService.register). This throws
+     * IncorrectResultSizeDataAccessException when duplicates exist. Use
+     * {@link #findAllByEmailIgnoreCase(String)} and handle 0/1/many explicitly.
+     */
+    @Deprecated
     Optional<User> findByEmailIgnoreCase(String email);
 
+    /** All accounts sharing an email (emails are not unique). */
+    List<User> findAllByEmailIgnoreCase(String email);
+
     boolean existsByUsername(String username);
+
+    /** Case-insensitive availability check — "Iorga" and "iorga" are the same identity. */
+    boolean existsByUsernameIgnoreCase(String username);
+
+    /** Case-insensitive lookup for login fallback; may match several legacy accounts. */
+    List<User> findAllByUsernameIgnoreCase(String username);
 
     boolean existsByEmail(String email);
 

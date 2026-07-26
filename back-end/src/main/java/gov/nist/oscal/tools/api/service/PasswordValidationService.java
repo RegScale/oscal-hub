@@ -45,6 +45,16 @@ public class PasswordValidationService {
 
     private final AccountSecurityConfig config;
 
+    /**
+     * Admin-editable policy (security_policy table) is the authority for
+     * length bounds; the env-based {@link AccountSecurityConfig} is the
+     * fallback when the DB policy can't be loaded, and remains the authority
+     * for the character-class toggles. Lazy to avoid an init cycle.
+     */
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private SecurityPolicyService securityPolicyService;
+
     // Regular expression patterns for password validation
     private static final Pattern UPPERCASE_PATTERN = Pattern.compile("[A-Z]");
     private static final Pattern LOWERCASE_PATTERN = Pattern.compile("[a-z]");
@@ -100,13 +110,15 @@ public class PasswordValidationService {
 
         List<String> errors = new ArrayList<>();
 
-        // Length validation
-        if (password.length() < config.getPasswordMinLength()) {
-            errors.add("Password must be at least " + config.getPasswordMinLength() + " characters long");
+        // Length validation — bounds come from the admin-editable security policy
+        int minLength = getEffectiveMinLength();
+        int maxLength = getEffectiveMaxLength();
+        if (password.length() < minLength) {
+            errors.add("Password must be at least " + minLength + " characters long");
         }
 
-        if (password.length() > config.getPasswordMaxLength()) {
-            errors.add("Password must not exceed " + config.getPasswordMaxLength() + " characters");
+        if (password.length() > maxLength) {
+            errors.add("Password must not exceed " + maxLength + " characters");
         }
 
         // Character complexity validation
@@ -256,11 +268,56 @@ public class PasswordValidationService {
      *
      * @return Human-readable password requirements
      */
+    /**
+     * Effective minimum length: the admin-editable DB policy when available,
+     * else the env-config default. Before this existed, the Security Policy
+     * screen's password-length settings were read by nothing — enforcement
+     * silently used only the env config.
+     */
+    public int getEffectiveMinLength() {
+        try {
+            return securityPolicyService.getPasswordMinLength();
+        } catch (Exception e) {
+            logger.warn("Could not load DB password policy, using config default: {}", e.getMessage());
+            return config.getPasswordMinLength();
+        }
+    }
+
+    /** Effective maximum length; same source rules as {@link #getEffectiveMinLength()}. */
+    public int getEffectiveMaxLength() {
+        try {
+            return securityPolicyService.getPasswordMaxLength();
+        } catch (Exception e) {
+            return config.getPasswordMaxLength();
+        }
+    }
+
+    /**
+     * Machine-readable policy for clients (served by GET /api/auth/password-policy)
+     * so the frontend renders the same rules the backend enforces instead of
+     * maintaining a hand-synced mirror.
+     */
+    public java.util.Map<String, Object> getPolicyDescriptor() {
+        java.util.Map<String, Object> policy = new java.util.LinkedHashMap<>();
+        policy.put("minLength", getEffectiveMinLength());
+        policy.put("maxLength", getEffectiveMaxLength());
+        policy.put("requireUppercase", config.isPasswordRequireUppercase());
+        policy.put("requireLowercase", config.isPasswordRequireLowercase());
+        policy.put("requireDigit", config.isPasswordRequireDigit());
+        policy.put("requireSpecial", config.isPasswordRequireSpecial());
+        policy.put("specialCharacters", "!@#$%^&*()_+-=[]{}|;:,.<>?");
+        policy.put("preventUsernameInPassword", config.isPasswordPreventUsernameInPassword());
+        policy.put("noSequentialCharacters", true);
+        policy.put("noRepeatedCharacters", true);
+        policy.put("checkCommonPasswords", config.isPasswordCheckCommonPasswords());
+        return policy;
+    }
+
     public String getPasswordRequirements() {
         List<String> requirements = new ArrayList<>();
 
-        requirements.add("Password must be between " + config.getPasswordMinLength() +
-                        " and " + config.getPasswordMaxLength() + " characters");
+        requirements.add("Password must be between " + getEffectiveMinLength() +
+                        " and " + getEffectiveMaxLength() + " characters");
 
         if (config.isPasswordRequireUppercase()) {
             requirements.add("At least one uppercase letter");

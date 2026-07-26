@@ -26,12 +26,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,6 +83,18 @@ class AuthServiceTest {
     @Mock
     private OrganizationMembershipRepository membershipRepository;
 
+    @Mock
+    private SecurityPolicyService securityPolicyService;
+
+    @Mock
+    private gov.nist.oscal.tools.api.util.ClientIpResolver clientIpResolver;
+
+    @Mock
+    private gov.nist.oscal.tools.api.config.AccountSecurityConfig accountSecurityConfig;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private AuthService authService;
 
@@ -101,6 +115,13 @@ class AuthServiceTest {
                 .password("encodedPassword")
                 .authorities("USER")
                 .build();
+
+        // Realistic lockout policy defaults for the DB-backed lockout logic
+        when(accountSecurityConfig.isLockoutEnabled()).thenReturn(true);
+        when(accountSecurityConfig.getLockoutMaxAttempts()).thenReturn(5);
+        when(accountSecurityConfig.getLockoutDurationSeconds()).thenReturn(900L);
+        when(accountSecurityConfig.getLockoutWindowSeconds()).thenReturn(600L);
+        when(clientIpResolver.resolveCurrent()).thenReturn("203.0.113.10");
     }
 
     // ========== REGISTER TESTS ==========
@@ -113,10 +134,10 @@ class AuthServiceTest {
         request.setEmail("new@example.com");
         request.setPassword("ValidPassword123!");
 
-        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+        when(userRepository.existsByUsernameIgnoreCase("newuser")).thenReturn(false);
         // Note: existsByEmail is NOT called in AuthService.register() - only username is checked
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(1L);
             return user;
@@ -138,7 +159,7 @@ class AuthServiceTest {
         assertEquals("jwt-token-123", response.getToken());
         assertEquals(1L, response.getUserId());
 
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).saveAndFlush(any(User.class));
         verify(passwordEncoder).encode("ValidPassword123!");
     }
 
@@ -150,7 +171,7 @@ class AuthServiceTest {
         request.setEmail("new@example.com");
         request.setPassword("ValidPassword123!");
 
-        when(userRepository.existsByUsername("existinguser")).thenReturn(true);
+        when(userRepository.existsByUsernameIgnoreCase("existinguser")).thenReturn(true);
 
         // When & Then
         UsernameAlreadyExistsException exception = assertThrows(UsernameAlreadyExistsException.class, () -> {
@@ -158,7 +179,7 @@ class AuthServiceTest {
         });
 
         assertEquals("Username already exists", exception.getMessage());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -173,9 +194,9 @@ class AuthServiceTest {
         request.setEmail("existing@example.com");
         request.setPassword("ValidPassword123!");
 
-        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+        when(userRepository.existsByUsernameIgnoreCase("newuser")).thenReturn(false);
         // Even if existsByEmail were stubbed to return true, register() must not consult it.
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             u.setId(99L);
             return u;
@@ -186,8 +207,77 @@ class AuthServiceTest {
         AuthResponse response = authService.register(request);
 
         assertNotNull(response);
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).saveAndFlush(any(User.class));
         verify(userRepository, never()).existsByEmail(anyString());
+    }
+
+    @Test
+    void testRegister_trimsUsernameAndEmail() {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("  newuser  ");
+        request.setEmail("  new@example.com  ");
+        request.setPassword("ValidPassword123!");
+
+        when(userRepository.existsByUsernameIgnoreCase("newuser")).thenReturn(false);
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(7L);
+            return u;
+        });
+        when(userDetailsService.loadUserByUsername("newuser")).thenReturn(mockUserDetails);
+        when(jwtUtil.generateToken(any(UserDetails.class))).thenReturn("token");
+
+        AuthResponse response = authService.register(request);
+
+        assertEquals("newuser", response.getUsername());
+        assertEquals("new@example.com", response.getEmail());
+    }
+
+    @Test
+    void testRegister_mfaGloballyRequired_returnsMfaSetupInsteadOfSession() {
+        // The first session must not bypass a globally required MFA setup.
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setEmail("new@example.com");
+        request.setPassword("ValidPassword123!");
+
+        when(userRepository.existsByUsernameIgnoreCase("newuser")).thenReturn(false);
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(5L);
+            return u;
+        });
+        when(securityPolicyService.isMfaRequired()).thenReturn(true);
+        when(jwtUtil.generateMfaSetupToken("newuser", 5L)).thenReturn("mfa-setup-token");
+
+        AuthResponse response = authService.register(request);
+
+        assertEquals(Boolean.TRUE, response.getMfaSetupRequired());
+        assertEquals("mfa-setup-token", response.getMfaToken());
+        assertNull(response.getToken(), "no session token until MFA setup completes");
+        verify(jwtUtil, never()).generateToken(any(UserDetails.class));
+    }
+
+    @Test
+    void testRegister_usernameRaceAtFlush_mapsToUsernameAlreadyExists() {
+        // Two concurrent registrations can both pass the existsByUsername
+        // pre-check; the loser hits the DB unique constraint at flush. That
+        // must surface as the same 409-mapped UsernameAlreadyExistsException,
+        // not a generic conflict.
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("raceduser");
+        request.setEmail("race@example.com");
+        request.setPassword("ValidPassword123!");
+
+        when(userRepository.existsByUsernameIgnoreCase("raceduser")).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+        doNothing().when(passwordValidationService).validatePassword(anyString(), anyString());
+
+        UsernameAlreadyExistsException exception = assertThrows(UsernameAlreadyExistsException.class,
+                () -> authService.register(request));
+        assertEquals("Username already exists", exception.getMessage());
     }
 
     @Test
@@ -269,6 +359,66 @@ class AuthServiceTest {
         assertThrows(RuntimeException.class, () -> {
             authService.login(request);
         });
+    }
+
+    @Test
+    void testLogin_dbLockedAccount_rejectedEvenWithFreshInMemoryState() {
+        // The DB lockout must hold on an instance that never saw the failures
+        // (Cloud Run scale-out / restart wipes the in-memory caches).
+        AuthRequest request = new AuthRequest();
+        request.setUsername("testuser");
+        request.setPassword("password123");
+
+        testUser.setAccountLockedUntil(LocalDateTime.now().plusMinutes(10));
+        when(loginAttemptService.isAccountLocked("testuser")).thenReturn(false); // fresh instance
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(request));
+        assertTrue(ex.getMessage().contains("temporarily locked"));
+        verify(authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void testLogin_reachingMaxFailuresSetsDbLock() {
+        AuthRequest request = new AuthRequest();
+        request.setUsername("testuser");
+        request.setPassword("wrongpassword");
+
+        testUser.setFailedLoginAttempts(4); // one away from the max of 5
+        testUser.setLastFailedLogin(LocalDateTime.now().minusSeconds(30));
+        when(loginAttemptService.isAccountLocked("testuser")).thenReturn(false);
+        when(loginAttemptService.isIpLocked(anyString())).thenReturn(false);
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("bad"));
+
+        assertThrows(RuntimeException.class, () -> authService.login(request));
+
+        assertEquals(5, testUser.getFailedLoginAttempts());
+        assertNotNull(testUser.getAccountLockedUntil(), "5th failure must set the DB lock");
+        verify(auditLogService).logAccountLockout("testuser", 1L, 5);
+    }
+
+    @Test
+    void testLogin_staleFailureWindowResetsCounter() {
+        // Failures older than the sliding window must not accumulate forever —
+        // the DB counter has no TTL, so a mistake months later shouldn't lock.
+        AuthRequest request = new AuthRequest();
+        request.setUsername("testuser");
+        request.setPassword("wrongpassword");
+
+        testUser.setFailedLoginAttempts(4);
+        testUser.setLastFailedLogin(LocalDateTime.now().minusDays(30)); // far outside window
+        when(loginAttemptService.isAccountLocked("testuser")).thenReturn(false);
+        when(loginAttemptService.isIpLocked(anyString())).thenReturn(false);
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("bad"));
+
+        assertThrows(RuntimeException.class, () -> authService.login(request));
+
+        assertEquals(1, testUser.getFailedLoginAttempts(), "stale window restarts the count");
+        assertNull(testUser.getAccountLockedUntil());
     }
 
     // ========== GET CURRENT USER TESTS ==========

@@ -61,6 +61,12 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockitoBean
+    private gov.nist.oscal.tools.api.service.PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private gov.nist.oscal.tools.api.service.PasswordValidationService passwordValidationService;
+
+    @MockitoBean
     private JwtUtil jwtUtil;
 
     @MockitoBean
@@ -123,6 +129,102 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("jwt-token-123"));
 
         verify(authService, times(1)).register(any(RegisterRequest.class));
+    }
+
+    /**
+     * Password-policy rejections surface as IllegalArgumentException and must
+     * reach the client as 400 with the human-readable reason in `message`.
+     * The frontend shows `message` to the user; when this contract broke,
+     * users saw a bare "Bad Request" with no explanation of what to fix
+     * (observed in production logs: registration attempts for 'iorga' failed
+     * 3x on 2026-07-23 and the user gave up).
+     */
+    @Test
+    void testRegister_weakPassword_returnsReasonInMessage() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setPassword("weakpassword1!");
+        request.setEmail("newuser@example.com");
+
+        when(authService.register(any(RegisterRequest.class)))
+                .thenThrow(new IllegalArgumentException(
+                        "Password must contain at least one uppercase letter"));
+
+        mockMvc.perform(post("/api/auth/register")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value(containsString("uppercase letter")));
+    }
+
+    @Test
+    void testPasswordPolicy_isPublicAndReturnsRules() throws Exception {
+        when(passwordValidationService.getPolicyDescriptor()).thenReturn(Map.of(
+                "minLength", 10,
+                "maxLength", 128,
+                "requireUppercase", true));
+
+        mockMvc.perform(get("/api/auth/password-policy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minLength").value(10))
+                .andExpect(jsonPath("$.requireUppercase").value(true));
+    }
+
+    /**
+     * Bean-validation failures must carry a human-readable `message` — Spring's
+     * default rendering omits it, leaving the frontend with only "Bad Request"
+     * (the unreadable-error failure mode). The prod canary asserts this contract.
+     */
+    @Test
+    void testRegister_beanValidationFailure_includesMessageField() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\": \"u\", \"email\": \"not-an-email\", \"password\": \"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    void testForgotPassword_alwaysReturns200_evenWhenServiceFails() throws Exception {
+        // Anti-enumeration contract: identical response whether or not the
+        // identifier matched — even if the service blows up internally.
+        doThrow(new RuntimeException("db down")).when(passwordResetService).requestReset(anyString());
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usernameOrEmail\": \"whoever\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", containsString("If an account matches")));
+    }
+
+    @Test
+    void testResetPassword_invalidToken_returns400WithMessage() throws Exception {
+        doThrow(new IllegalArgumentException(
+                "This password reset link is invalid or has expired. Please request a new one."))
+                .when(passwordResetService).resetPassword(anyString(), anyString());
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\": \"bogus\", \"newPassword\": \"BrandNew!Passw0rd\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("invalid or has expired")));
+    }
+
+    @Test
+    void testResetPassword_success_returns200() throws Exception {
+        mockMvc.perform(post("/api/auth/reset-password")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\": \"good-token\", \"newPassword\": \"BrandNew!Passw0rd\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", containsString("has been reset")));
+
+        verify(passwordResetService).resetPassword("good-token", "BrandNew!Passw0rd");
     }
 
     @Test

@@ -44,6 +44,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private gov.nist.oscal.tools.api.util.ClientIpResolver clientIpResolver;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -68,7 +71,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             limitType = "login";
             remainingRequests = rateLimitService.getLoginRemainingAttempts(ipAddress);
             resetTime = rateLimitService.getLoginResetTime(ipAddress);
-        } else if (requestPath.endsWith("/api/auth/register")) {
+        } else if (requestPath.endsWith("/api/auth/register")
+                || requestPath.endsWith("/api/auth/forgot-password")) {
+            // forgot-password shares the registration bucket: both are unauthenticated,
+            // email-sending endpoints that need per-IP abuse protection.
             allowed = rateLimitService.isRegistrationAllowed(ipAddress);
             limitType = "registration";
             remainingRequests = rateLimitConfig.getRegistration().getAttempts();
@@ -110,22 +116,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extract client IP address from request
-     * Handles X-Forwarded-For header for proxy/load balancer scenarios
+     * Extract client IP address from request. Delegates to the shared resolver:
+     * the rightmost trusted X-Forwarded-For entry, never a client-supplied one —
+     * otherwise spoofed headers rotate the per-IP rate buckets at will.
      */
     private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // X-Forwarded-For can contain multiple IPs, take the first one
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 
     /**

@@ -18,6 +18,9 @@ public interface EmailService {
     void sendInvitation(Invitation invitation, User inviter, Organization org);
     void sendPasswordReset(User user, String tempPassword, User adminWhoReset);
 
+    /** Self-serve forgot-password: emails a single-use reset link valid for ttlMinutes. */
+    void sendPasswordResetLink(User user, String resetUrl, int ttlMinutes);
+
     // Ticketing system notifications
     void sendTicketCreatedToAdmin(Ticket ticket);
     void sendTicketCreatedToReporter(Ticket ticket);

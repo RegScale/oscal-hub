@@ -187,7 +187,9 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+        // GlobalErrorAdvice puts the human-readable reason in `message` and a
+        // generic status label in `error` — prefer the reason.
+        throw new Error(error.message || error.error || 'Login failed');
       }
 
       const authResponse: AuthResponse = await response.json();
@@ -249,13 +251,22 @@ class ApiClient {
             throw err;
           }
           const error = data;
-          throw new Error(error.error || 'Registration failed');
+          throw new Error(error.message || error.error || 'Registration failed');
         }
+        // GlobalErrorAdvice returns {"error": "Bad Request", "message": "<real reason>"}
+        // for validation failures (e.g. password complexity). Reading only `error`
+        // showed users a bare "Bad Request" with no explanation.
         const error = await response.json();
-        throw new Error(error.error || 'Registration failed');
+        throw new Error(error.message || error.error || 'Registration failed');
       }
 
       const authResponse: AuthResponse = await response.json();
+
+      // MFA-gated registration returns an mfaToken instead of a session token —
+      // don't store anything until setup completes (mirrors login()).
+      if (authResponse.mfaSetupRequired || authResponse.mfaRequired || !authResponse.token) {
+        return authResponse;
+      }
 
       // Store token in localStorage
       localStorage.setItem('token', authResponse.token ?? '');
@@ -278,6 +289,58 @@ class ApiClient {
       console.error('Registration failed:', error);
       throw error;
     }
+  }
+
+  /** Fetch the live password policy the server enforces (public endpoint). */
+  async fetchPasswordPolicy(): Promise<import('./password-policy').ServerPasswordPolicy> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/password-policy`,
+      { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+      5000
+    );
+    if (!response.ok) {
+      throw new Error('Failed to load password policy');
+    }
+    return response.json();
+  }
+
+  /**
+   * Request a password-reset link. The backend always returns 200 with the
+   * same message whether or not the identifier matched (no user enumeration).
+   */
+  async forgotPassword(usernameOrEmail: string): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/forgot-password`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernameOrEmail }),
+      },
+      10000
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((body as any).message || (body as any).error || 'Request failed');
+    }
+    return body as { message: string };
+  }
+
+  /** Consume a reset token from the emailed link and set a new password. */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/reset-password`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      },
+      10000
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((body as any).message || (body as any).error || 'Password reset failed');
+    }
+    return body as { message: string };
   }
 
   /**
@@ -5548,7 +5611,9 @@ class ApiClient {
       `${API_BASE_URL}/invitations/${encodeURIComponent(token)}/accept`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Send the session token when signed in: existing accounts must accept
+        // while authenticated (the invitation binds to the signed-in account).
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(data ?? {}),
       },
       10000
@@ -5603,6 +5668,19 @@ class ApiClient {
       console.error('Failed to create invitation:', error);
       throw error;
     }
+  }
+
+  async resendInvitation(id: number): Promise<unknown> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/org-admin/invitations/${id}/resend`,
+      { method: 'POST', headers: this.getAuthHeaders() },
+      10000
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((body as any).message || (body as any).error || 'Failed to resend invitation');
+    }
+    return body;
   }
 
   async revokeInvitation(id: number): Promise<void> {

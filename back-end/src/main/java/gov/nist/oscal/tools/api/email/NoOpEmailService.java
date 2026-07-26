@@ -28,6 +28,7 @@ public class NoOpEmailService implements EmailService {
     @Override public void sendAccessRequestRejected(UserAccessRequest r, User rejector, String reason) { log("access-request-rejected", r.getEmail()); }
     @Override public void sendInvitation(Invitation inv, User inviter, Organization org) { log("invitation", inv.getEmail()); }
     @Override public void sendPasswordReset(User user, String tempPassword, User adminWhoReset) { log("password-reset", user.getEmail()); }
+    @Override public void sendPasswordResetLink(User user, String resetUrl, int ttlMinutes) { log("password-reset-link", user.getEmail()); }
 
     @Override
     public void sendTicketCreatedToAdmin(Ticket ticket) {

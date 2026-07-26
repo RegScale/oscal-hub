@@ -1,6 +1,5 @@
 package gov.nist.oscal.tools.api.service;
 
-import gov.nist.oscal.tools.api.email.EmailService;
 import gov.nist.oscal.tools.api.entity.Organization;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership;
 import gov.nist.oscal.tools.api.entity.OrganizationMembership.MembershipStatus;
@@ -9,6 +8,7 @@ import gov.nist.oscal.tools.api.entity.User;
 import gov.nist.oscal.tools.api.entity.UserAccessRequest;
 import gov.nist.oscal.tools.api.exception.OrganizationNameInUseException;
 import gov.nist.oscal.tools.api.exception.UsernameAlreadyExistsException;
+import org.springframework.dao.DataIntegrityViolationException;
 import gov.nist.oscal.tools.api.model.AuditEventType;
 import gov.nist.oscal.tools.api.model.AuthRequest;
 import gov.nist.oscal.tools.api.model.AuthResponse;
@@ -83,9 +83,6 @@ public class AuthService {
     @org.springframework.context.annotation.Lazy
     private SecurityPolicyService securityPolicyService;
 
-    @Autowired
-    private EmailService emailService;
-
     /**
      * Optional: present only under the {@code dev} Spring profile (see
      * {@link MfaDevBypass}). Null on staging / prod / gcp / default profiles
@@ -98,13 +95,31 @@ public class AuthService {
     @org.springframework.context.annotation.Lazy
     private OrganizationService organizationService;
 
+    @Autowired
+    private gov.nist.oscal.tools.api.util.ClientIpResolver clientIpResolver;
+
+    @Autowired
+    private gov.nist.oscal.tools.api.config.AccountSecurityConfig accountSecurityConfig;
+
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validate password complexity. IllegalArgumentException propagates to GlobalErrorAdvice.
-        passwordValidationService.validatePassword(request.getPassword(), request.getUsername());
+        // Normalize identity fields: stray whitespace ("iorga ") and case-only
+        // variants ("Iorga" vs "iorga") create confusing duplicate identities and
+        // failed logins, since login lookup is exact-match.
+        String username = request.getUsername() == null ? null : request.getUsername().trim();
+        String emailAddress = request.getEmail() == null ? null : request.getEmail().trim();
+        if (username == null || username.isEmpty()) {
+            throw new IllegalArgumentException("Username is required");
+        }
 
-        // Check if username already exists
-        if (userRepository.existsByUsername(request.getUsername())) {
+        // Validate password complexity. IllegalArgumentException propagates to GlobalErrorAdvice.
+        passwordValidationService.validatePassword(request.getPassword(), username);
+
+        // Case-insensitive: "Iorga" must not be creatable alongside "iorga"
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new UsernameAlreadyExistsException("Username already exists");
         }
 
@@ -115,15 +130,22 @@ public class AuthService {
 
         // Create new user
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
+        user.setUsername(username);
+        user.setEmail(emailAddress);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEnabled(true);
         user.setPasswordChangedAt(LocalDateTime.now());
         user.setFailedLoginAttempts(0);
 
-        // Save user
-        user = userRepository.save(user);
+        // Save and flush so a concurrent registration that slipped past the
+        // existsByUsername pre-check surfaces HERE as a constraint violation we can
+        // translate into the same 409 the pre-check produces — instead of failing at
+        // commit and reaching the client as a generic conflict.
+        try {
+            user = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new UsernameAlreadyExistsException("Username already exists");
+        }
 
         logger.info("New user registered: {} (ID: {})", user.getUsername(), user.getId());
 
@@ -139,11 +161,26 @@ public class AuthService {
                 user.getUsername(), org.getName(), org.getId());
         }
 
-        // Send welcome email (non-fatal if it fails)
-        try {
-            emailService.sendWelcome(user);
-        } catch (Exception e) {
-            logger.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        // Welcome email goes out after this transaction commits, async with retry
+        // (TransactionalEmailListener) — SendGrid latency no longer extends the
+        // registration transaction.
+        eventPublisher.publishEvent(new gov.nist.oscal.tools.api.email.EmailEvents.WelcomeEmail(user.getId()));
+
+        // Enforce the global MFA policy at registration, mirroring login.
+        // Without this, the first session bypassed a required MFA setup and the
+        // requirement only kicked in on the next login.
+        if (mfaDevBypass == null || !mfaDevBypass.isActive()) {
+            boolean mfaGloballyRequired = false;
+            try {
+                mfaGloballyRequired = securityPolicyService.isMfaRequired();
+            } catch (Exception e) {
+                logger.warn("Could not check MFA policy at registration, defaulting to not required: {}", e.getMessage());
+            }
+            if (mfaGloballyRequired) {
+                String mfaToken = jwtUtil.generateMfaSetupToken(user.getUsername(), user.getId());
+                logger.info("MFA setup required for newly registered user: {} (global policy)", user.getUsername());
+                return AuthResponse.mfaSetupRequired(mfaToken, user);
+            }
         }
 
         // Generate token
@@ -158,13 +195,29 @@ public class AuthService {
         String ipAddress = getClientIpAddress();
         String username = request.getUsername();
 
-        // Check if account is locked
+        // Per-instance fast path (in-memory). NOT authoritative: Cloud Run runs
+        // multiple instances and restarts wipe this state.
         if (loginAttemptService.isAccountLocked(username)) {
             long remainingTime = loginAttemptService.getRemainingLockoutTime(username);
             logger.warn("Login attempt for locked account: {} from IP: {}", username, ipAddress);
             throw new RuntimeException(
                 "Account is temporarily locked due to multiple failed login attempts. " +
                 "Please try again in " + remainingTime + " seconds."
+            );
+        }
+
+        // Authoritative DB-backed lockout: shared across instances, survives
+        // restarts. Previously account_locked_until was written but never read
+        // at login, so the effective lockout was whatever one instance remembered.
+        User lockCheck = resolveUserForLogin(username);
+        if (lockCheck != null && lockCheck.getAccountLockedUntil() != null
+                && lockCheck.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
+            long remainingTime = java.time.Duration
+                .between(LocalDateTime.now(), lockCheck.getAccountLockedUntil()).getSeconds();
+            logger.warn("Login attempt for DB-locked account: {} from IP: {}", username, ipAddress);
+            throw new RuntimeException(
+                "Account is temporarily locked due to multiple failed login attempts. " +
+                "Please try again in " + Math.max(1, remainingTime) + " seconds."
             );
         }
 
@@ -185,8 +238,10 @@ public class AuthService {
             // Load user details
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-            // Update user on successful login
-            User user = userRepository.findByUsername(username)
+            // Update user on successful login. Look up by the CANONICAL username
+            // from the authenticated principal — the typed form may differ in case
+            // (CustomUserDetailsService accepts a unique case-insensitive match).
+            User user = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             user.setLastLogin(LocalDateTime.now());
@@ -245,32 +300,49 @@ public class AuthService {
         } catch (AuthenticationException e) {
             logger.error("Authentication failed for user {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
 
-            // Record failed login attempt
+            // Record failed login attempt (in-memory IP tracking + fast path)
             loginAttemptService.recordFailedLogin(username, ipAddress);
 
-            // Update user failed login tracking in database
-            userRepository.findByUsername(username).ifPresent(user -> {
-                int newFailedAttempts = (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1;
-                user.setFailedLoginAttempts(newFailedAttempts);
-                user.setLastFailedLogin(LocalDateTime.now());
-                user.setLastFailedLoginIp(ipAddress);
+            // DB-backed failure tracking: the counter in `users` is shared by all
+            // instances, so the lockout decision is made HERE from the DB counter,
+            // not from per-instance memory.
+            int remainingAttempts = accountSecurityConfig.getLockoutMaxAttempts();
+            User failedUser = resolveUserForLogin(username);
+            if (failedUser != null) {
+                int priorAttempts = failedUser.getFailedLoginAttempts() != null
+                        ? failedUser.getFailedLoginAttempts() : 0;
 
-                // Check if account should be locked
-                if (loginAttemptService.isAccountLocked(username)) {
-                    user.setAccountLockedUntil(
-                        LocalDateTime.now().plusSeconds(
-                            loginAttemptService.getRemainingLockoutTime(username)
-                        )
-                    );
-                    // Log account lockout event
-                    auditLogService.logAccountLockout(username, user.getId(), newFailedAttempts);
+                // Start a fresh count when a previous lockout has expired, or when
+                // the last failure is older than the sliding window — the DB counter
+                // has no TTL, so without this, stale failures accumulate forever and
+                // a single mistake months later would re-lock the account.
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime windowStart = now.minusSeconds(accountSecurityConfig.getLockoutWindowSeconds());
+                boolean expiredLock = failedUser.getAccountLockedUntil() != null
+                        && !failedUser.getAccountLockedUntil().isAfter(now);
+                boolean staleWindow = failedUser.getLastFailedLogin() != null
+                        && failedUser.getLastFailedLogin().isBefore(windowStart);
+                if (expiredLock || staleWindow) {
+                    priorAttempts = 0;
+                    failedUser.setAccountLockedUntil(null);
                 }
 
-                userRepository.save(user);
-            });
+                int newFailedAttempts = priorAttempts + 1;
+                failedUser.setFailedLoginAttempts(newFailedAttempts);
+                failedUser.setLastFailedLogin(now);
+                failedUser.setLastFailedLoginIp(ipAddress);
 
-            // Get remaining attempts for user feedback
-            int remainingAttempts = loginAttemptService.getRemainingAttempts(username);
+                if (accountSecurityConfig.isLockoutEnabled()
+                        && newFailedAttempts >= accountSecurityConfig.getLockoutMaxAttempts()) {
+                    failedUser.setAccountLockedUntil(
+                        now.plusSeconds(accountSecurityConfig.getLockoutDurationSeconds()));
+                    auditLogService.logAccountLockout(username, failedUser.getId(), newFailedAttempts);
+                }
+
+                userRepository.save(failedUser);
+                remainingAttempts = Math.max(0,
+                    accountSecurityConfig.getLockoutMaxAttempts() - newFailedAttempts);
+            }
 
             logger.warn("Failed login attempt for user: {} from IP: {} (remaining attempts: {})",
                 username, ipAddress, remainingAttempts);
@@ -398,29 +470,23 @@ public class AuthService {
      * @return Client IP address, or "unknown" if not available
      */
     private String getClientIpAddress() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null) {
-            return "unknown";
-        }
+        return clientIpResolver.resolveCurrent();
+    }
 
-        HttpServletRequest request = attributes.getRequest();
-
-        // Check X-Forwarded-For header (for proxied requests)
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // X-Forwarded-For can contain multiple IPs, take the first one
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        // Check X-Real-IP header (used by some proxies)
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        // Fall back to remote address
-        String remoteAddr = request.getRemoteAddr();
-        return remoteAddr != null ? remoteAddr : "unknown";
+    /**
+     * Resolve the account a login attempt refers to: exact username first, then
+     * a UNIQUE case-insensitive match (mirrors CustomUserDetailsService so the
+     * lockout bookkeeping tracks the same account the authentication uses).
+     */
+    private User resolveUserForLogin(String username) {
+        return userRepository.findByUsername(username)
+                .or(() -> {
+                    var matches = userRepository.findAllByUsernameIgnoreCase(username);
+                    return matches.size() == 1
+                            ? java.util.Optional.of(matches.get(0))
+                            : java.util.Optional.<User>empty();
+                })
+                .orElse(null);
     }
 
     /**
@@ -682,14 +748,15 @@ public class AuthService {
             throw new RuntimeException("An access request with this email already exists for this organization");
         }
 
-        // Create access request (user will be null for new users who haven't registered yet)
+        // Create access request (user will be null for new users who haven't registered yet).
+        // Trim identity fields — approval may create an account from them verbatim.
         UserAccessRequest accessRequest = new UserAccessRequest();
         accessRequest.setUser(null);
         accessRequest.setOrganization(organization);
-        accessRequest.setEmail(request.getEmail());
+        accessRequest.setEmail(request.getEmail() == null ? null : request.getEmail().trim());
         accessRequest.setFirstName(request.getFirstName());
         accessRequest.setLastName(request.getLastName());
-        accessRequest.setUsername(request.getUsername());
+        accessRequest.setUsername(request.getUsername() == null ? null : request.getUsername().trim());
         accessRequest.setMessage(request.getMessage());
         accessRequest.setStatus(UserAccessRequest.RequestStatus.PENDING);
         accessRequest.setRequestDate(LocalDateTime.now());
@@ -699,20 +766,9 @@ public class AuthService {
         logger.info("Access request created for {} to organization {} (ID: {})",
                 request.getEmail(), organization.getName(), organization.getId());
 
-        try {
-            emailService.sendAccessRequestAcknowledged(savedRequest);
-            List<OrganizationMembership> adminMemberships = membershipRepository
-                    .findByOrganizationIdAndRoleAndStatus(
-                            savedRequest.getOrganization().getId(),
-                            OrganizationRole.ORG_ADMIN,
-                            MembershipStatus.ACTIVE);
-            List<User> admins = adminMemberships.stream()
-                    .map(OrganizationMembership::getUser)
-                    .collect(Collectors.toList());
-            emailService.sendAccessRequestPendingForAdmins(savedRequest, admins);
-        } catch (Exception e) {
-            logger.warn("Failed to send access-request emails for request {}: {}",
-                    savedRequest.getId(), e.getMessage());
-        }
+        // Acknowledgment + admin notifications go out after commit, async with
+        // retry (TransactionalEmailListener), which also loads the org admins.
+        eventPublisher.publishEvent(
+                new gov.nist.oscal.tools.api.email.EmailEvents.AccessRequestSubmittedEmails(savedRequest.getId()));
     }
 }
