@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Resources */}
           <div>
-            <h3 className="font-semibold mb-4">Resources</h3>
+            <h2 className="font-semibold mb-4 text-base">Resources</h2>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/guide" className="hover:text-foreground transition-colors inline-flex items-center">
@@ -64,7 +64,7 @@ export function Footer() {
 
           {/* Tools */}
           <div>
-            <h3 className="font-semibold mb-4">Tools</h3>
+            <h2 className="font-semibold mb-4 text-base">Tools</h2>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/library" className="hover:text-foreground transition-colors">
@@ -91,7 +91,7 @@ export function Footer() {
 
           {/* About */}
           <div>
-            <h3 className="font-semibold mb-4">About</h3>
+            <h2 className="font-semibold mb-4 text-base">About</h2>
             <p className="text-sm text-muted-foreground mb-4">
               OSCAL Hub provides a modern, user-friendly interface for working with OSCAL documents,
               making security compliance documentation more accessible.
@@ -103,7 +103,7 @@ export function Footer() {
                   href="https://www.regscale.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline inline-flex items-center"
+                  className="text-primary underline underline-offset-4 hover:text-primary/80 inline-flex items-center"
                 >
                   RegScale
                   <ExternalLink className="h-3 w-3 ml-1" />
@@ -121,7 +121,7 @@ export function Footer() {
               href="https://www.regscale.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-primary underline underline-offset-4 hover:text-primary/80"
             >
               RegScale
             </a>
@@ -133,7 +133,7 @@ export function Footer() {
               href="https://www.linkedin.com/in/travishowerton/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline inline-flex items-center"
+              className="text-primary underline underline-offset-4 hover:text-primary/80 inline-flex items-center"
             >
               Travis Howerton
               <ExternalLink className="h-3 w-3 ml-1" />
@@ -141,7 +141,7 @@ export function Footer() {
           </p>
           <p className="mt-2">
             Licensed under the{' '}
-            <Link href="/license" className="text-primary hover:underline">
+            <Link href="/license" className="text-primary underline underline-offset-4 hover:text-primary/80">
               MIT Open Source License
             </Link>
             {' '}- Free to use, modify, and distribute.

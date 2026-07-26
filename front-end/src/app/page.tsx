@@ -294,6 +294,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-12 px-4">
+        {/* Screen-reader page title: the visual design leads with the cards
+            grid, but every page needs exactly one h1 (axe page-has-heading-one)
+            and it must precede the h2/h3s below (heading-order). */}
+        <h1 className="sr-only">OSCAL Hub Dashboard</h1>
 
         {/* Quick Actions Grid */}
         <nav aria-label="Main operations">
