@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
 import { isPasswordValid } from '@/lib/password-policy';
 
@@ -102,7 +102,7 @@ function AcceptInviteContent() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm">{invite.inviterName} invited <strong>{invite.email}</strong>.</p>
-          {submitError && <Alert variant="destructive"><p className="text-sm">{submitError}</p></Alert>}
+          {submitError && <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>}
 
           {isAuthenticated ? (
             <>

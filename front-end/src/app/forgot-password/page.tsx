@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState('');
@@ -49,11 +49,11 @@ export default function ForgotPasswordPage() {
             {submitted ? (
               <div className="space-y-4">
                 <Alert>
-                  <p className="text-sm">
+                  <AlertDescription>
                     If an account matches <strong>{identifier.trim()}</strong>, a password reset
                     link is on its way. The link is valid for 60 minutes — check your spam folder
                     if you don&apos;t see it soon.
-                  </p>
+                  </AlertDescription>
                 </Alert>
                 <div className="text-center text-sm">
                   <Link href="/login" className="text-primary hover:underline">
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                   <Alert variant="destructive">
-                    <p className="text-sm">{error}</p>
+                    <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
                 <div className="space-y-2">

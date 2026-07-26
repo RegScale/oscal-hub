@@ -6,7 +6,7 @@
 # =============================================================================
 # Stage 1: Build Backend (Spring Boot with Maven) - OPTIMIZED
 # =============================================================================
-FROM maven:3-eclipse-temurin-25 AS backend-builder
+FROM maven:3-eclipse-temurin-26 AS backend-builder
 
 WORKDIR /build
 
@@ -45,7 +45,7 @@ RUN mvn package -DskipTests -B -q
 # =============================================================================
 # Stage 2: Build Frontend Dependencies - OPTIMIZED
 # =============================================================================
-FROM node:25-alpine AS frontend-deps
+FROM node:26-alpine AS frontend-deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -59,7 +59,7 @@ RUN npm ci --legacy-peer-deps --prefer-offline && \
 # =============================================================================
 # Stage 3: Build Frontend (Next.js)
 # =============================================================================
-FROM node:25-alpine AS frontend-builder
+FROM node:26-alpine AS frontend-builder
 WORKDIR /app
 
 # Copy dependencies from deps stage

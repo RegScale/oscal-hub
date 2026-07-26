@@ -85,7 +85,8 @@ Once started, access:
 
 ### First-Time Login
 
-On first startup, a default admin account is automatically created:
+When the application starts against a **completely empty database**, a default
+admin account is automatically created:
 
 - **Username**: `admin`
 - **Password**: `password`
@@ -93,7 +94,25 @@ On first startup, a default admin account is automatically created:
 
 **⚠️ IMPORTANT**: Change the admin password immediately after first login!
 
-You can also register a new user account at http://localhost:3000/register
+> **`admin` / `password` not working?** The admin account is seeded **only
+> when the database contains no users at all** — it is never (re)created or
+> reset on a database that already has data. If your local PostgreSQL volume
+> was created by an earlier run (including versions that predate automatic
+> admin seeding), no `admin` user with this password exists. To start fresh
+> (⚠️ this deletes all local dev data):
+>
+> ```bash
+> ./stop.sh
+> docker compose -f docker-compose-postgres.yml down -v
+> ./dev.sh
+> ```
+>
+> The backend logs confirm seeding on startup — look for
+> `Database is empty. Creating default admin user and organization...`
+> followed by the credentials.
+
+You can also register a new account from the sign-in page
+(http://localhost:3010/login in development, port 3000 in production builds).
 
 ### Stopping the Servers
 
@@ -459,7 +478,9 @@ Common issues:
 - Clear browser localStorage and re-login
 - Check JWT token hasn't expired (default: 24 hours)
 - Verify backend is running and accessible
-- Check default admin credentials: username `admin`, password `password`
+- Default admin credentials (username `admin`, password `password`) only exist
+  if the database was **empty** on first startup — see [First-Time Login](#first-time-login)
+  for how to verify seeding ran and how to reset a stale dev database
 
 ### Cloud Storage issues
 
