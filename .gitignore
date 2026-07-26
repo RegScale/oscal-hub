@@ -48,3 +48,4 @@ back-end/sbom-*.json
 
 # Git worktrees
 .worktrees/
+node_modules/
