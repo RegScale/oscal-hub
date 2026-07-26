@@ -39,6 +39,7 @@ public class InvitationService {
     @Autowired private EmailService emailService;
     @Autowired private AuditLogService auditLogService;
     @Autowired private PasswordValidationService passwordValidationService;
+    @Autowired private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Invitation createInvitation(Long orgId, String email, Invitation.Role role, User inviter) {
@@ -170,6 +171,10 @@ public class InvitationService {
             u.setPasswordChangedAt(LocalDateTime.now());
             u.setFailedLoginAttempts(0);
             user = userRepo.save(u);
+            // New account created via invitation — register in the marketing CRM
+            // after commit (CrmSyncListener). Consent disclosed on the accept form.
+            eventPublisher.publishEvent(new gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered(
+                user.getId(), "invitation"));
         }
 
         // Add membership, or repair an inactive one. An admin re-inviting a

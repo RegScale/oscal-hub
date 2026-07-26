@@ -109,6 +109,34 @@ class AuthServiceRegisterWithOrgTest {
     }
 
     @Test
+    void registerPublishesCrmEventsForContactAndOrganization() {
+        // Marketing-CRM sync (HubSpot) happens after commit via CrmSyncListener;
+        // registration must publish one contact event and, when an org was
+        // created, one organization event.
+        long suffix = System.nanoTime();
+        RegisterRequest r = new RegisterRequest();
+        r.setUsername("crm-" + suffix);
+        r.setEmail("crm-" + suffix + "@example.com");
+        r.setPassword("CorrectH0rse!Batt");
+        r.setOrganizationName("CrmOrg " + suffix);
+
+        AuthResponse resp = authService.register(r);
+
+        List<gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered> contacts =
+            applicationEvents.stream(gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered.class)
+                .collect(Collectors.toList());
+        assertEquals(1, contacts.size());
+        assertEquals(resp.getUserId(), contacts.get(0).userId());
+        assertEquals("self_serve_registration", contacts.get(0).source());
+
+        List<gov.nist.oscal.tools.api.crm.CrmEvents.OrganizationSignedUp> orgs =
+            applicationEvents.stream(gov.nist.oscal.tools.api.crm.CrmEvents.OrganizationSignedUp.class)
+                .collect(Collectors.toList());
+        assertEquals(1, orgs.size());
+        assertEquals(resp.getUserId(), orgs.get(0).ownerUserId());
+    }
+
+    @Test
     void registerPublishesWelcomeEmailEvent() {
         // The welcome email is sent AFTER COMMIT by TransactionalEmailListener;
         // in a rolled-back test transaction the listener never fires, so assert

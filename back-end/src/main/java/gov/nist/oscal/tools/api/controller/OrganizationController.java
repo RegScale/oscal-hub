@@ -385,8 +385,19 @@ public class OrganizationController {
     @GetMapping("/organizations")
     public ResponseEntity<List<OrganizationResponse>> getAllOrganizations() {
         List<Organization> organizations = organizationService.getAllOrganizations();
+
+        // One GROUP BY query for every org's ACTIVE member count — no N+1.
+        Map<Long, Integer> activeMemberCounts = organizationMembershipRepository
+                .countMembersByOrganizationAndStatus(OrganizationMembership.MembershipStatus.ACTIVE)
+                .stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Long) row[1]).intValue()));
+
         List<OrganizationResponse> response = organizations.stream()
-                .map(OrganizationResponse::new)
+                .map(org -> {
+                    OrganizationResponse r = new OrganizationResponse(org);
+                    r.setMemberCount(activeMemberCounts.getOrDefault(org.getId(), 0));
+                    return r;
+                })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }

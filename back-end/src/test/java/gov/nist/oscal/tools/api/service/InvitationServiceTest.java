@@ -31,8 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
+@org.springframework.test.context.event.RecordApplicationEvents
 class InvitationServiceTest {
 
+    @Autowired org.springframework.test.context.event.ApplicationEvents applicationEvents;
     @Autowired InvitationService service;
     @Autowired InvitationRepository invRepo;
     @Autowired UserRepository userRepo;
@@ -219,6 +221,42 @@ class InvitationServiceTest {
             () -> service.acceptInvitation(inv.getToken(), null, null, member));
         assertTrue(ex.getMessage().contains("locked"));
         assertEquals(Invitation.Status.PENDING, invRepo.findById(inv.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void acceptCreatingNewUserPublishesCrmContactEvent() {
+        Organization org = makeOrg();
+        User admin = makeUser("admin");
+        Invitation inv = service.createInvitation(org.getId(),
+            "crm-inv-" + System.nanoTime() + "@example.com", Invitation.Role.USER, admin);
+
+        User accepted = service.acceptInvitation(inv.getToken(),
+            "crm-user-" + System.nanoTime(), "CorrectH0rse!Batt", null);
+
+        var events = applicationEvents
+            .stream(gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered.class)
+            .filter(e -> e.userId().equals(accepted.getId()))
+            .toList();
+        assertEquals(1, events.size());
+        assertEquals("invitation", events.get(0).source());
+    }
+
+    @Test
+    void signedInAcceptDoesNotPublishCrmContactEvent() {
+        // Existing accounts are already in the marketing DB (or opted out) —
+        // only NEW account creation registers a contact.
+        Organization org = makeOrg();
+        User admin = makeUser("admin");
+        User member = makeUser("existing");
+        Invitation inv = service.createInvitation(org.getId(), member.getEmail(),
+            Invitation.Role.USER, admin);
+
+        service.acceptInvitation(inv.getToken(), null, null, member);
+
+        assertEquals(0, applicationEvents
+            .stream(gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered.class)
+            .filter(e -> e.userId().equals(member.getId()))
+            .count());
     }
 
     // ------------------------------------------------------------------

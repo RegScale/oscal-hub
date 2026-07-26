@@ -195,6 +195,8 @@ module "oscal_app" {
       DB_PASSWORD            = random_password.db_password.result
       JWT_SECRET             = random_password.jwt_secret.result
       GCS_BUCKET_BUILD       = module.storage.build_bucket_name
+      # Marketing CRM sync (empty key = no-op)
+      HUBSPOT_SERVICE_KEY = var.hubspot_service_key
       BACKEND_PORT           = "8081"
 
       # Swagger UI is reachable in prod via the /api-docs auth gate at the

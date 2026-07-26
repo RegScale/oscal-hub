@@ -37,6 +37,9 @@ public class UserAccessRequestService {
     private UserAccessRequestRepository accessRequestRepository;
 
     @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Autowired
     private OrganizationRepository organizationRepository;
 
     @Autowired
@@ -312,6 +315,11 @@ public class UserAccessRequestService {
 
         user = userRepository.save(user);
         logger.info("Created new user: {} with ID: {}", user.getUsername(), user.getId());
+
+        // New account created via access-request approval — register in the
+        // marketing CRM after commit (CrmSyncListener).
+        eventPublisher.publishEvent(new gov.nist.oscal.tools.api.crm.CrmEvents.ContactRegistered(
+                user.getId(), "access_request_approval"));
 
         try {
             emailService.sendPasswordReset(user, tempPassword, approver);
