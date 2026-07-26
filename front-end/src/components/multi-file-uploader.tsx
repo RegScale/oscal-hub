@@ -133,7 +133,7 @@ export function MultiFileUploader({
               : 'border-border hover:border-primary/50 hover:bg-primary/5'
           }`}
         >
-          <input {...getInputProps()} />
+          <input {...getInputProps({ 'aria-label': 'Upload OSCAL documents' })} />
           <div className="flex flex-col items-center justify-center gap-3 text-center">
             <div className="p-3 rounded-full bg-primary/10">
               <Upload className="h-6 w-6 text-primary" />

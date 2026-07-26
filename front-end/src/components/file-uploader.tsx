@@ -88,7 +88,7 @@ export function FileUploader({
           : 'border-border hover:border-primary/50 hover:bg-primary/5'
       }`}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps({ 'aria-label': 'Upload OSCAL document' })} />
       <div className="flex flex-col items-center justify-center gap-4 text-center">
         <div className="p-4 rounded-full bg-primary/10">
           <Upload className="h-8 w-8 text-primary" />

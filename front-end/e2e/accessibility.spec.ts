@@ -44,19 +44,11 @@ test.describe('Authentication Verification', () => {
   });
 });
 
-// Rules excluded - tracked in issue #19 for proper accessibility remediation:
-// - link-in-text-block: User rejected underlines on links. Color contrast (4.5:1) is used instead.
-// - heading-order: Dashboard uses h3 cards directly under h1 for visual hierarchy
-// - page-has-heading-one: Some authenticated pages need h1 headings added
-// - label: Form elements in third-party components need labels
-// - button-name: Some icon buttons need aria-labels
-const AXE_EXCLUDED_RULES = [
-  'link-in-text-block',
-  'heading-order',
-  'page-has-heading-one',
-  'label',
-  'button-name',
-];
+// No excluded rules — the exclusions added while fixing E2E in PR #16 were
+// remediated in issue #19 (headings, labels, button names, link
+// distinguishability). Keep this list empty; add entries only with an issue
+// reference and a removal plan.
+const AXE_EXCLUDED_RULES: string[] = [];
 
 test.describe('Accessibility Tests', () => {
   test('Dashboard page should not have any automatically detectable accessibility issues', async ({
@@ -135,6 +127,7 @@ test.describe('Accessibility Tests', () => {
 test.describe('Keyboard Navigation Tests', () => {
   test('Should be able to navigate the dashboard using only keyboard', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     // Press Tab to activate skip link
     await page.keyboard.press('Tab');
@@ -149,12 +142,15 @@ test.describe('Keyboard Navigation Tests', () => {
     const libraryCard = page.getByRole('link', { name: /navigate to library/i });
     await expect(libraryCard).toBeFocused();
 
-    // Tab through to the Validate card (Library, Build, Authorizations, Visualize, Validate)
-    await page.keyboard.press('Tab'); // Build
-    await page.keyboard.press('Tab'); // Authorizations
-    await page.keyboard.press('Tab'); // Visualize
-    await page.keyboard.press('Tab'); // Validate
+    // Tab until the Validate card gains focus. Bounded loop instead of a
+    // hardcoded press count so the test doesn't break when the card grid
+    // order changes — what matters is keyboard reachability.
     const validateCard = page.getByRole('link', { name: /navigate to validate/i });
+    let reached = false;
+    for (let i = 0; i < 15 && !reached; i++) {
+      reached = await validateCard.evaluate((el) => el === document.activeElement);
+      if (!reached) await page.keyboard.press('Tab');
+    }
     await expect(validateCard).toBeFocused();
 
     // Press Enter to activate
@@ -191,10 +187,23 @@ test.describe('Screen Reader Tests', () => {
     page,
   }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     const images = await page.locator('img, svg').all();
 
     for (const image of images) {
+      // Skip Next.js dev-overlay internals (nextjs-portal) — dev-mode only,
+      // not part of the shipped app. The overlay lives in a shadow root, so
+      // walk shadow hosts rather than using closest().
+      const imgInDevOverlay = await image.evaluate((el) => {
+        let root = el.getRootNode();
+        while (root instanceof ShadowRoot) {
+          if (root.host.tagName === 'NEXTJS-PORTAL') return true;
+          root = root.host.getRootNode();
+        }
+        return false;
+      });
+      if (imgInDevOverlay) continue;
       const tagName = await image.evaluate((el) => el.tagName);
       const hasAlt = await image.getAttribute('alt');
       const hasAriaHidden = await image.getAttribute('aria-hidden');
@@ -215,10 +224,22 @@ test.describe('Screen Reader Tests', () => {
 
   test('All buttons should have accessible names', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     const buttons = await page.locator('button').all();
 
     for (const button of buttons) {
+      // Skip Next.js dev-overlay internals (nextjs-portal) — dev-mode only.
+      // Overlay content is inside a shadow root, so walk shadow hosts.
+      const btnInDevOverlay = await button.evaluate((el) => {
+        let root = el.getRootNode();
+        while (root instanceof ShadowRoot) {
+          if (root.host.tagName === 'NEXTJS-PORTAL') return true;
+          root = root.host.getRootNode();
+        }
+        return false;
+      });
+      if (btnInDevOverlay) continue;
       const accessibleName =
         (await button.getAttribute('aria-label')) ||
         (await button.textContent()) ||
