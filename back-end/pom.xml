@@ -491,6 +491,11 @@
                     <systemPropertyVariables>
                         <spring.profiles.active>test</spring.profiles.active>
                     </systemPropertyVariables>
+                    <!-- Attach Mockito as a proper Java agent (JEP 451: dynamic
+                         agent self-attach will be disallowed by default in future
+                         JDKs). @{argLine} preserves the JaCoCo prepare-agent flags.
+                         mockito.version is managed by the Spring Boot parent. -->
+                    <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
                 </configuration>
             </plugin>
             <plugin>
