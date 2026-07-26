@@ -84,7 +84,7 @@ RUN npm run build
 # =============================================================================
 # Stage: Fetch OpenTelemetry Java agent (pinned version)
 # =============================================================================
-FROM curlimages/curl:8.10.1 AS otel-agent
+FROM curlimages/curl:8.21.0 AS otel-agent
 ARG OTEL_AGENT_VERSION=2.27.0
 RUN curl -fsSL -o /tmp/opentelemetry-javaagent.jar \
     "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar"
@@ -115,7 +115,12 @@ RUN apt-get update && \
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    # The runtime only executes the Next.js standalone server (node server.js);
+    # the npm CLI is never used, and its bundled deps (tar, undici,
+    # brace-expansion) keep tripping image scans. Remove it outright.
+    rm -rf /usr/lib/node_modules/npm /usr/lib/node_modules/corepack \
+           /usr/bin/npm /usr/bin/npx /usr/bin/corepack
 
 # Create non-root user and setup directories (COMBINED for fewer layers)
 RUN groupadd -g 10001 oscalgroup && \

@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <version>4.0.7</version>
         <relativePath/>
     </parent>
 
@@ -37,15 +37,21 @@
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.4</log4j2.version>
-        <!-- Netty 4.2.13.Final closes 5 high-severity advisories present in 4.2.12.Final
-             (HTTP/3 QPACK unbounded alloc, HttpClientCodec desync, DNS Codec input
-              validation bypass, Lz4FrameDecoder resource exhaustion, epoll DoS).
-             Spring Boot 4.0.6's BOM still pins 4.2.12.Final. Remove this override
-             once a Spring Boot patch release picks up the fix. -->
-        <netty.version>4.2.13.Final</netty.version>
-        <!-- PostgreSQL JDBC 42.7.11 fixes GHSA-98qh-xjc8-98pq (unbounded PBKDF2
-             iterations in SCRAM auth → CPU exhaustion DoS). -->
-        <postgresql.version>42.7.11</postgresql.version>
+        <!-- Netty 4.2.16.Final closes the advisory batch flagged by Grype against
+             4.2.13.Final (QUIC/HTTP3 codec, compression, handler, resolver-dns).
+             Remove this override once a Spring Boot patch picks it up. -->
+        <netty.version>4.2.16.Final</netty.version>
+        <!-- PostgreSQL JDBC 42.7.12 fixes GHSA-j92g-9f8w-j867. -->
+        <postgresql.version>42.7.12</postgresql.version>
+        <!-- Jackson 2.21.5 fixes GHSA-j3rv-43j4-c7qm (databind); 2.21.4 (the
+             Boot 4.0.7 default) only covers GHSA-rmj7-2vxq-3g9f/GHSA-r7wm-3cxj-wff9.
+             The 2.x line is present via spring-boot-jackson2. -->
+        <jackson-2-bom.version>2.21.5</jackson-2-bom.version>
+        <!-- tools.jackson (Jackson 3) latest patch line. -->
+        <jackson-bom.version>3.1.5</jackson-bom.version>
+        <!-- Tomcat 11.0.22+ fixes GHSA-r29c-68gh-xp6x (critical), GHSA-h6fc-48rj-7qqh,
+             GHSA-gx5v-xp9w-j4cg, GHSA-fv25-8xcx-gqjc; 11.0.24 is current. -->
+        <tomcat.version>11.0.24</tomcat.version>
         <!-- Bouncy Castle 1.84 fixes GHSA-p93r-85wp-75v3 (covert timing channel
              in bcprov-jdk18on 1.83). Pulled transitively by signing/JWT libs. -->
         <bouncycastle.version>1.84</bouncycastle.version>
@@ -55,7 +61,7 @@
         <azure-sdk-bom.version>1.3.6</azure-sdk-bom.version>
         <aws-sdk-bom.version>2.44.0</aws-sdk-bom.version>
         <google-cloud-bom.version>26.80.0</google-cloud-bom.version>
-        <opentelemetry-bom.version>1.61.0</opentelemetry-bom.version>
+        <opentelemetry-bom.version>1.62.0</opentelemetry-bom.version>
 
         <!-- Other dependency versions -->
         <anthropic-java.version>2.27.0</anthropic-java.version>
@@ -63,7 +69,7 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <jjwt.version>0.13.0</jjwt.version>
         <postgres-socket-factory.version>1.28.3</postgres-socket-factory.version>
-        <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
         <tika.version>3.3.0</tika.version>
     </properties>
 
@@ -469,7 +475,7 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.2.5</version>
+            <version>5.5.1</version>
         </dependency>
     </dependencies>
 
