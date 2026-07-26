@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
 import { isPasswordValid } from '@/lib/password-policy';
 import Link from 'next/link';
@@ -107,7 +107,10 @@ function LoginPageContent() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
-                  <p className="text-sm">{error}</p>
+                  {/* Alert is a grid with a zero-width first column for the icon slot;
+                      content must go through AlertDescription (col-start-2) or it
+                      collapses to one word per line. */}
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 

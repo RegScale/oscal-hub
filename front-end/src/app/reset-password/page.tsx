@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PasswordRequirements, usePasswordPolicy } from '@/components/password-requirements';
 import { isPasswordValid } from '@/lib/password-policy';
 
@@ -73,10 +73,10 @@ function ResetPasswordContent() {
             {!token ? (
               <div className="space-y-4">
                 <Alert variant="destructive">
-                  <p className="text-sm">
+                  <AlertDescription>
                     This reset link is missing its token. Please use the link from your email, or
                     request a new one.
-                  </p>
+                  </AlertDescription>
                 </Alert>
                 <div className="text-center text-sm">
                   <Link href="/forgot-password" className="text-primary hover:underline">
@@ -87,9 +87,9 @@ function ResetPasswordContent() {
             ) : done ? (
               <div className="space-y-4">
                 <Alert>
-                  <p className="text-sm">
+                  <AlertDescription>
                     Your password has been reset. You can now sign in with your new password.
-                  </p>
+                  </AlertDescription>
                 </Alert>
                 <div className="text-center text-sm">
                   <Link href="/login" className="text-primary hover:underline">
@@ -101,7 +101,7 @@ function ResetPasswordContent() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                   <Alert variant="destructive">
-                    <p className="text-sm">{error}</p>
+                    <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
                 <div className="space-y-2">
