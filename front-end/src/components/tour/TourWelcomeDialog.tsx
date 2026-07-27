@@ -36,11 +36,18 @@ export function TourWelcomeDialog() {
     if (!user || activeTour) return;
     const tour = getTour(GET_STARTED_TOUR_ID);
     if (!tour || !tour.eligible(user)) return;
-    if (tour.minViewportWidth && window.innerWidth < tour.minViewportWidth) return;
-    if (wasDeferredThisSession()) return;
-    if (!shouldShowWelcomePrompt(loadTourState(user.userId), GET_STARTED_TOUR_ID)) return;
-    // Deferred so the prompt opens after the dashboard's commit, not during it.
-    const timer = window.setTimeout(() => setOpen(true), 0);
+    // The remaining gates run inside the timer: viewport width isn't reliable
+    // at effect time (embedded browsers can report 0 before layout settles),
+    // and deferring also lets the dashboard paint before the prompt appears.
+    const timer = window.setTimeout(() => {
+      // A width of 0 means "layout not measurable" (embedded/hidden contexts),
+      // not "narrow viewport" — only a positive sub-minimum width suppresses.
+      const width = window.innerWidth;
+      if (tour.minViewportWidth && width > 0 && width < tour.minViewportWidth) return;
+      if (wasDeferredThisSession()) return;
+      if (!shouldShowWelcomePrompt(loadTourState(user.userId), GET_STARTED_TOUR_ID)) return;
+      setOpen(true);
+    }, 250);
     return () => window.clearTimeout(timer);
   }, [user, activeTour]);
 

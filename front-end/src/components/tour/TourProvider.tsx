@@ -97,7 +97,10 @@ export function TourProvider({
     (tourId: string) => {
       const tour = tours.find((t) => t.id === tourId);
       if (!tour || !tour.eligible(user)) return;
-      if (tour.minViewportWidth && window.innerWidth < tour.minViewportWidth) return;
+      // Width 0 = unmeasurable (embedded/hidden contexts), not narrow: only a
+      // positive sub-minimum width blocks the start.
+      const width = window.innerWidth;
+      if (tour.minViewportWidth && width > 0 && width < tour.minViewportWidth) return;
       previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       directionRef.current = 1;
       if (pathname !== tour.startRoute) {
