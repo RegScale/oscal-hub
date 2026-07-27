@@ -54,7 +54,7 @@
         <tomcat.version>11.0.24</tomcat.version>
         <!-- Bouncy Castle 1.84 fixes GHSA-p93r-85wp-75v3 (covert timing channel
              in bcprov-jdk18on 1.83). Pulled transitively by signing/JWT libs. -->
-        <bouncycastle.version>1.84</bouncycastle.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
         <protobuf-java.version>4.34.1</protobuf-java.version>
 
         <!-- Cloud SDK BOM versions -->
