@@ -434,7 +434,7 @@
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-micrometer-1.5</artifactId>
-            <version>2.27.0-alpha</version>
+            <version>2.30.0-alpha</version>
         </dependency>
 
         <!-- JSON Logback encoder for Cloud Logging structured output -->
