@@ -6,6 +6,7 @@ import { QueryProvider } from "@/lib/query-client";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/ui/sonner";
+import { TourProvider } from "@/components/tour/TourProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,18 +35,20 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <a
-              href="#main-content"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              Skip to main content
-            </a>
-            <Navigation />
-            <main id="main-content">
-              {children}
-            </main>
-            <Footer />
-            <Toaster />
+            <TourProvider>
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                Skip to main content
+              </a>
+              <Navigation />
+              <main id="main-content">
+                {children}
+              </main>
+              <Footer />
+              <Toaster />
+            </TourProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

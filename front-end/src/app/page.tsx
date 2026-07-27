@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield, FileText, Building2, Search } from 'lucide-react';
+import { FileCheck, ArrowRightLeft, GitMerge, Folders, Clock, BookOpen, Compass, ExternalLink, ShieldCheck, Library, BarChart3, Terminal, Hammer, Zap, Users, RefreshCw, Shield, FileText, Building2, Search } from 'lucide-react';
+import { TourWelcomeDialog } from '@/components/tour/TourWelcomeDialog';
+import { useTour } from '@/components/tour/TourProvider';
+import { GET_STARTED_TOUR_ID } from '@/lib/tours/registry';
 import { Hero } from '@/components/Hero';
 import { EmptyState } from '@/components/empty-state';
 import { useAuth } from '@/contexts/AuthContext';
@@ -82,6 +85,7 @@ function CreateOrgModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 export default function Dashboard() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { startTour } = useTour();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [hasOrgAccess, setHasOrgAccess] = useState(false);
@@ -293,6 +297,7 @@ export default function Dashboard() {
   // Show dashboard for authenticated users
   return (
     <div className="min-h-screen bg-background">
+      <TourWelcomeDialog />
       <div className="container mx-auto py-12 px-4">
         {/* Screen-reader page title: the visual design leads with the cards
             grid, but every page needs exactly one h1 (axe page-has-heading-one)
@@ -302,7 +307,7 @@ export default function Dashboard() {
         {/* Quick Actions Grid */}
         <nav aria-label="Main operations">
           <h2 className="sr-only">Available Operations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+          <div data-tour="dashboard-tiles" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             <Link
               href="/library"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
@@ -540,6 +545,16 @@ export default function Dashboard() {
                 Welcome to OSCAL Hub! This tool provides a modern, visual interface for working with OSCAL documents.
               </p>
               <div className="pt-2 space-y-2">
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => startTour(GET_STARTED_TOUR_ID)}
+                    className="hidden sm:inline-flex text-primary hover:underline font-medium items-center"
+                  >
+                    Take the interactive tour
+                    <Compass className="h-4 w-4 ml-2" aria-hidden="true" />
+                  </button>
+                </div>
                 <div>
                   <Link
                     href="/guide"

@@ -36,6 +36,12 @@ setup('authenticate', async ({ page }) => {
     // Set a mock JWT token (doesn't need to be valid for frontend-only tests)
     localStorage.setItem('token', 'mock-e2e-test-token-12345');
     localStorage.setItem('user', JSON.stringify(user));
+    // Mark the tour welcome prompt as seen so it doesn't overlay unrelated
+    // specs; tours.spec.ts removes this key to test the prompt itself.
+    localStorage.setItem(
+      `oscal-hub.tours.v1.${user.userId}`,
+      JSON.stringify({ welcomePrompt: { seen: true, deferrals: 0 }, tours: {} }),
+    );
   }, mockUser);
 
   // Save the authenticated state

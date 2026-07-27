@@ -33,6 +33,22 @@ vi.mock('@/lib/api-client', () => ({
   },
 }));
 
+// Dashboard now consumes the tour system (mounted app-wide in layout.tsx);
+// stub it out so these tests stay focused on org-onboarding behavior.
+vi.mock('@/components/tour/TourProvider', () => ({
+  useTour: () => ({
+    startTour: vi.fn(),
+    activeTour: null,
+    stepIndex: 0,
+    endTour: vi.fn(),
+    next: vi.fn(),
+    back: vi.fn(),
+  }),
+}));
+vi.mock('@/components/tour/TourWelcomeDialog', () => ({
+  TourWelcomeDialog: () => null,
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
