@@ -38,9 +38,10 @@ export function TourWelcomeDialog() {
     if (!tour || !tour.eligible(user)) return;
     if (tour.minViewportWidth && window.innerWidth < tour.minViewportWidth) return;
     if (wasDeferredThisSession()) return;
-    if (shouldShowWelcomePrompt(loadTourState(user.userId), GET_STARTED_TOUR_ID)) {
-      setOpen(true);
-    }
+    if (!shouldShowWelcomePrompt(loadTourState(user.userId), GET_STARTED_TOUR_ID)) return;
+    // Deferred so the prompt opens after the dashboard's commit, not during it.
+    const timer = window.setTimeout(() => setOpen(true), 0);
+    return () => window.clearTimeout(timer);
   }, [user, activeTour]);
 
   // Unmount entirely when closed: Radix keeps a data-state="closed" dialog in

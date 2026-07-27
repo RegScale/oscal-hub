@@ -1,7 +1,7 @@
 # Guided Tours & Onboarding Plan
 
 **Date:** 2026-07-27
-**Status:** APPROVED direction — custom engine (Option A) confirmed 2026-07-27; detailed implementation plan next
+**Status:** Phase 1 implemented (engine + Get Started tour) — see `docs/ONBOARDING-TOURS-PHASE1-PLAN.md`. Phases 2–4 pending.
 **Author:** Claude (with Travis Howerton)
 
 ## Problem

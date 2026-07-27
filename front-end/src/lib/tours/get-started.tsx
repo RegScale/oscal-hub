@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { TourDefinition } from './types';
 
 /**
@@ -112,15 +113,15 @@ export const getStartedTour: TourDefinition = {
           <p>That&apos;s the lay of the land. Good next steps:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              <a href="/catalog" className="text-primary underline">
+              <Link href="/catalog" className="text-primary underline">
                 Browse the public catalog
-              </a>{' '}
+              </Link>{' '}
               for an example document.
             </li>
             <li>
-              <a href="/guide/getting-started/overview" className="text-primary underline">
+              <Link href="/guide/getting-started/overview" className="text-primary underline">
                 Read the getting-started guide
-              </a>{' '}
+              </Link>{' '}
               for a deeper walkthrough.
             </li>
           </ul>

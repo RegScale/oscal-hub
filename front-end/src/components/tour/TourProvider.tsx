@@ -38,6 +38,12 @@ interface TourProviderProps {
   targetTimeoutMs?: number;
 }
 
+/** Target element resolved for a specific tour step, keyed to detect staleness. */
+interface ResolvedTarget {
+  key: string;
+  el: HTMLElement;
+}
+
 export function TourProvider({
   children,
   tours = TOURS,
@@ -49,9 +55,8 @@ export function TourProvider({
 
   const [activeTour, setActiveTour] = useState<TourDefinition | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
-  const [targetEl, setTargetEl] = useState<HTMLElement | null>(null);
-  const [resolving, setResolving] = useState(false);
-  const [announcement, setAnnouncement] = useState('');
+  const [resolved, setResolved] = useState<ResolvedTarget | null>(null);
+  const [endMessage, setEndMessage] = useState('');
   // Repaint trigger so the spotlight/popover track resize and scroll.
   const [, setRepaintTick] = useState(0);
 
@@ -60,6 +65,13 @@ export function TourProvider({
   // watcher doesn't mistake our own navigation for the user leaving.
   const awaitingRouteRef = useRef<string | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const step = activeTour ? activeTour.steps[stepIndex] : null;
+  const stepKey = activeTour ? `${activeTour.id}:${stepIndex}` : null;
+  // Derived rather than stored: a resolved entry only counts for the step it
+  // was resolved for, so stale targets from earlier steps are ignored.
+  const targetEl = step?.target && resolved?.key === stepKey ? resolved.el : null;
+  const resolving = Boolean(step?.target) && targetEl === null;
 
   const endTour = useCallback(
     (reason: 'completed' | 'dismissed') => {
@@ -71,13 +83,12 @@ export function TourProvider({
           markTourDismissed(user.userId, activeTour.id, activeTour.version, stepIndex);
         }
       }
-      setAnnouncement(reason === 'completed' ? 'Tour completed.' : 'Tour closed.');
+      setEndMessage(reason === 'completed' ? 'Tour completed.' : 'Tour closed.');
       previousFocusRef.current?.focus?.();
       previousFocusRef.current = null;
       setActiveTour(null);
       setStepIndex(0);
-      setTargetEl(null);
-      setResolving(false);
+      setResolved(null);
     },
     [activeTour, user, stepIndex],
   );
@@ -95,6 +106,7 @@ export function TourProvider({
       } else {
         awaitingRouteRef.current = null;
       }
+      setEndMessage('');
       setStepIndex(0);
       setActiveTour(tour);
     },
@@ -124,52 +136,40 @@ export function TourProvider({
   const back = useCallback(() => goTo(stepIndex - 1, -1), [goTo, stepIndex]);
 
   // Resolve the current step's target element. Targets can mount a tick after
-  // navigation, so poll briefly before declaring the step missing.
+  // navigation, so poll briefly before declaring the step missing. All state
+  // writes happen inside timer callbacks, never synchronously in the effect.
   useEffect(() => {
-    if (!activeTour) return;
-    const step = activeTour.steps[stepIndex];
-    if (!step.target) {
-      setTargetEl(null);
-      setResolving(false);
-      return;
-    }
+    if (!activeTour || !stepKey) return;
+    const currentStep = activeTour.steps[stepIndex];
+    if (!currentStep.target) return;
     let cancelled = false;
     let elapsed = 0;
-    setResolving(true);
-    setTargetEl(null);
+    let timer: number;
     const tick = () => {
       if (cancelled) return;
-      const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+      const el = document.querySelector<HTMLElement>(`[data-tour="${currentStep.target}"]`);
       if (el) {
         el.scrollIntoView?.({ block: 'center', behavior: 'auto' });
-        setTargetEl(el);
-        setResolving(false);
+        setResolved({ key: stepKey, el });
         return;
       }
       elapsed += TARGET_POLL_INTERVAL_MS;
       if (elapsed >= targetTimeoutMs) {
-        setResolving(false);
-        if (step.skipIfMissing !== false) {
+        if (currentStep.skipIfMissing !== false) {
           goTo(stepIndex + directionRef.current, directionRef.current);
         } else {
           endTour('dismissed');
         }
         return;
       }
-      window.setTimeout(tick, TARGET_POLL_INTERVAL_MS);
+      timer = window.setTimeout(tick, TARGET_POLL_INTERVAL_MS);
     };
-    tick();
+    timer = window.setTimeout(tick, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [activeTour, stepIndex, targetTimeoutMs, goTo, endTour]);
-
-  // Announce each step for screen readers.
-  useEffect(() => {
-    if (!activeTour) return;
-    const step = activeTour.steps[stepIndex];
-    setAnnouncement(`Step ${stepIndex + 1} of ${activeTour.steps.length}: ${step.title}`);
-  }, [activeTour, stepIndex]);
+  }, [activeTour, stepIndex, stepKey, targetTimeoutMs, goTo, endTour]);
 
   // Esc exits from anywhere.
   useEffect(() => {
@@ -183,6 +183,7 @@ export function TourProvider({
 
   // A route change the tour didn't initiate ends it. On the final step the
   // finish-screen CTAs are links, so leaving then counts as completion.
+  // Deferred so the tour teardown doesn't run inside the render commit.
   useEffect(() => {
     if (!activeTour) return;
     if (awaitingRouteRef.current) {
@@ -190,7 +191,9 @@ export function TourProvider({
       return;
     }
     if (pathname !== activeTour.startRoute) {
-      endTour(stepIndex === activeTour.steps.length - 1 ? 'completed' : 'dismissed');
+      const isLast = stepIndex === activeTour.steps.length - 1;
+      const timer = window.setTimeout(() => endTour(isLast ? 'completed' : 'dismissed'), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [pathname, activeTour, stepIndex, endTour]);
 
@@ -206,8 +209,12 @@ export function TourProvider({
     };
   }, [activeTour, targetEl]);
 
-  const step = activeTour ? activeTour.steps[stepIndex] : null;
-  const targetRect = step?.target && targetEl ? targetEl.getBoundingClientRect() : null;
+  const targetRect = targetEl ? targetEl.getBoundingClientRect() : null;
+
+  // Derived step announcement while touring; end message after it closes.
+  // The aria-live region announces each change without any effect involved.
+  const liveMessage =
+    activeTour && step ? `Step ${stepIndex + 1} of ${activeTour.steps.length}: ${step.title}` : endMessage;
 
   const overlay =
     activeTour && step && !resolving
@@ -232,7 +239,7 @@ export function TourProvider({
     <TourContext.Provider value={{ activeTour, stepIndex, startTour, endTour, next, back }}>
       {children}
       <div aria-live="polite" className="sr-only">
-        {announcement}
+        {liveMessage}
       </div>
       {overlay}
     </TourContext.Provider>
