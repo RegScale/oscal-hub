@@ -100,7 +100,7 @@ jobs:
           mvn -B -DskipTests dependency:resolve dependency:resolve-plugins
 
       - name: Cache OWASP Dependency-Check NVD data
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: owasp-dc-nvd-${{ runner.os }}-${{ github.run_id }}
