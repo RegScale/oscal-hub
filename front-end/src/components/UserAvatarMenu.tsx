@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bug, Cog, Inbox, LogOut, Settings, UserCog } from 'lucide-react';
+import { Bug, Cog, Compass, Inbox, LogOut, Settings, UserCog } from 'lucide-react';
+import { TourMenu } from '@/components/tour/TourMenu';
 import type { User } from '@/types/auth';
 
 function getInitials(user: User): string {
@@ -18,6 +19,7 @@ function getInitials(user: User): string {
 export function UserAvatarMenu() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [toursOpen, setToursOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
 
@@ -34,6 +36,7 @@ export function UserAvatarMenu() {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
@@ -78,6 +81,19 @@ export function UserAvatarMenu() {
             <Inbox className="h-4 w-4" />
             My Tickets
           </Link>
+          {!isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setToursOpen(true);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Compass className="h-4 w-4" />
+              Guided Tours
+            </button>
+          )}
           {!isSuperAdmin && isOrgAdmin && (
             <Link
               href="/org-admin"
@@ -112,5 +128,7 @@ export function UserAvatarMenu() {
         </div>
       </PopoverContent>
     </Popover>
+    <TourMenu open={toursOpen} onOpenChange={setToursOpen} />
+    </>
   );
 }
