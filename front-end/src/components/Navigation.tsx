@@ -93,6 +93,7 @@ export function Navigation() {
             {!(mounted && isSuperAdmin()) && (
               <Link
                 href="/catalog"
+                data-tour="nav-browse"
                 className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Library className="h-4 w-4" />
@@ -103,6 +104,7 @@ export function Navigation() {
             {!(mounted && isSuperAdmin()) && (
               <Link
                 href="/guide"
+                data-tour="nav-docs"
                 className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
@@ -128,6 +130,7 @@ export function Navigation() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
+                    data-tour="nav-actions"
                     className="hidden sm:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Actions
@@ -160,8 +163,14 @@ export function Navigation() {
           <div className="flex items-center space-x-4">
             {mounted && isAuthenticated && user ? (
               <>
-                {!isSuperAdmin() && <OrganizationSwitcher />}
-                <UserAvatarMenu />
+                {!isSuperAdmin() && (
+                  <span data-tour="nav-org-switcher">
+                    <OrganizationSwitcher />
+                  </span>
+                )}
+                <span data-tour="nav-avatar">
+                  <UserAvatarMenu />
+                </span>
               </>
             ) : mounted ? (
               <Link href="/login">

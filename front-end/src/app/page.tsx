@@ -302,7 +302,7 @@ export default function Dashboard() {
         {/* Quick Actions Grid */}
         <nav aria-label="Main operations">
           <h2 className="sr-only">Available Operations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+          <div data-tour="dashboard-tiles" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             <Link
               href="/library"
               className="block group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
