@@ -24,7 +24,9 @@ export function TourMenu({ open, onOpenChange }: TourMenuProps) {
   const { user } = useAuth();
   const { startTour } = useTour();
 
-  if (!user) return null;
+  // Unmount when closed so no stale closed-state dialog lingers under the
+  // tour overlay (see TourWelcomeDialog for the same pattern).
+  if (!user || !open) return null;
 
   const state = loadTourState(user.userId);
   const available = TOURS.filter((tour) => tour.eligible(user));

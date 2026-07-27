@@ -43,7 +43,10 @@ export function TourWelcomeDialog() {
     }
   }, [user, activeTour]);
 
-  if (!user) return null;
+  // Unmount entirely when closed: Radix keeps a data-state="closed" dialog in
+  // the DOM while its exit animation settles, which leaves a stale role=dialog
+  // behind the tour overlay.
+  if (!user || !open) return null;
 
   const handleStart = () => {
     dismissWelcomePrompt(user.userId);
