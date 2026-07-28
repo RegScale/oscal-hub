@@ -1,15 +1,16 @@
 package gov.nist.oscal.tools.api.service.conmon;
 
 import gov.nist.oscal.tools.api.entity.ConMonSourceFormat;
-import gov.nist.secauto.metaschema.core.datatype.markup.MarkupLine;
-import gov.nist.secauto.metaschema.core.datatype.markup.MarkupMultiline;
-import gov.nist.secauto.metaschema.databind.io.Format;
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
-import gov.nist.secauto.oscal.lib.model.Metadata;
-import gov.nist.secauto.oscal.lib.model.PlanOfActionAndMilestones;
-import gov.nist.secauto.oscal.lib.model.PoamItem;
-import gov.nist.secauto.oscal.lib.model.Property;
-import gov.nist.secauto.oscal.lib.model.Risk;
+import dev.metaschema.core.datatype.markup.MarkupLine;
+import dev.metaschema.core.datatype.markup.MarkupMultiline;
+import dev.metaschema.databind.io.Format;
+import dev.metaschema.oscal.lib.OscalBindingContext;
+import dev.metaschema.oscal.lib.model.AssociatedRisk;
+import dev.metaschema.oscal.lib.model.Metadata;
+import dev.metaschema.oscal.lib.model.PlanOfActionAndMilestones;
+import dev.metaschema.oscal.lib.model.PoamItem;
+import dev.metaschema.oscal.lib.model.Property;
+import dev.metaschema.oscal.lib.model.Risk;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -117,9 +118,9 @@ public class OscalPoamParser {
 
         // If no direct status prop, roll up the linked risks' statuses.
         List<String> linkedStatuses = new ArrayList<>();
-        List<PoamItem.AssociatedRisk> relatedRisks = item.getRelatedRisks();
+        List<AssociatedRisk> relatedRisks = item.getRelatedRisks();
         if (relatedRisks != null) {
-            for (PoamItem.AssociatedRisk ar : relatedRisks) {
+            for (AssociatedRisk ar : relatedRisks) {
                 if (ar.getRiskUuid() != null) {
                     String s = riskStatusByUuid.get(ar.getRiskUuid().toString());
                     if (s != null) linkedStatuses.add(s);

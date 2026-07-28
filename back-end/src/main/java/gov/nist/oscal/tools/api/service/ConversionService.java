@@ -4,11 +4,11 @@ import gov.nist.oscal.tools.api.model.ConversionRequest;
 import gov.nist.oscal.tools.api.model.ConversionResult;
 import gov.nist.oscal.tools.api.model.OscalFormat;
 import gov.nist.oscal.tools.api.model.OscalModelType;
-import gov.nist.secauto.metaschema.core.model.IBoundObject;
-import gov.nist.secauto.metaschema.databind.io.IDeserializer;
-import gov.nist.secauto.metaschema.databind.io.ISerializer;
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
-import gov.nist.secauto.oscal.lib.model.*;
+import dev.metaschema.core.model.IBoundObject;
+import dev.metaschema.databind.io.IDeserializer;
+import dev.metaschema.databind.io.ISerializer;
+import dev.metaschema.oscal.lib.OscalBindingContext;
+import dev.metaschema.oscal.lib.model.*;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.stereotype.Service;
 
@@ -140,7 +140,7 @@ public class ConversionService {
     }
 
     private IDeserializer<?> getDeserializer(OscalModelType modelType, OscalFormat format) {
-        gov.nist.secauto.metaschema.databind.io.Format metaschemaFormat = convertFormat(format);
+        dev.metaschema.databind.io.Format metaschemaFormat = convertFormat(format);
 
         switch (modelType) {
             case CATALOG:
@@ -163,7 +163,7 @@ public class ConversionService {
     }
 
     private ISerializer<?> getSerializer(OscalModelType modelType, OscalFormat format) {
-        gov.nist.secauto.metaschema.databind.io.Format metaschemaFormat = convertFormat(format);
+        dev.metaschema.databind.io.Format metaschemaFormat = convertFormat(format);
 
         switch (modelType) {
             case CATALOG:
@@ -185,14 +185,14 @@ public class ConversionService {
         }
     }
 
-    private gov.nist.secauto.metaschema.databind.io.Format convertFormat(OscalFormat format) {
+    private dev.metaschema.databind.io.Format convertFormat(OscalFormat format) {
         switch (format) {
             case JSON:
-                return gov.nist.secauto.metaschema.databind.io.Format.JSON;
+                return dev.metaschema.databind.io.Format.JSON;
             case XML:
-                return gov.nist.secauto.metaschema.databind.io.Format.XML;
+                return dev.metaschema.databind.io.Format.XML;
             case YAML:
-                return gov.nist.secauto.metaschema.databind.io.Format.YAML;
+                return dev.metaschema.databind.io.Format.YAML;
             default:
                 throw new IllegalArgumentException("Unsupported format: " + format);
         }

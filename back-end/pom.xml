@@ -33,7 +33,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- OSCAL dependencies versions -->
-        <liboscal-java.version>6.0.0</liboscal-java.version>
+        <liboscal-java.version>7.2.0</liboscal-java.version>
 
         <!-- Override Spring Boot managed dependency versions for security fixes -->
         <log4j2.version>2.25.4</log4j2.version>
@@ -133,7 +133,7 @@
             </dependency>
 
             <!--
-              jsoup 1.22.1 (transitive via metaschema-databind 3.0.0.M1) hangs
+              jsoup 1.22.1 (transitive via metaschema-databind) hangs
               indefinitely on Java 25 inside NodeTraversor.traverse when the
               head() callback mutates the tree — regression introduced in 1.21.2
               and fixed in 1.22.2. Metaschema's whitespace normalization in

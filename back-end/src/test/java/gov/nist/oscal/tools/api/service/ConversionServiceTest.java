@@ -436,6 +436,11 @@ class ConversionServiceTest {
             "    <oscal-version>1.0.4</oscal-version>\n" +
             "  </metadata>\n" +
             "  <import-ssp href=\"ssp.xml\"/>\n" +
+            "  <reviewed-controls>\n" +
+            "    <control-selection>\n" +
+            "      <include-all/>\n" +
+            "    </control-selection>\n" +
+            "  </reviewed-controls>\n" +
             "</assessment-plan>";
 
         ConversionRequest request = new ConversionRequest();
