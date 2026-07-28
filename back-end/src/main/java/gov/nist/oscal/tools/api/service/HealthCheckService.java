@@ -8,7 +8,7 @@ import gov.nist.oscal.tools.api.model.health.DetailedHealthResponse.EnvironmentI
 import gov.nist.oscal.tools.api.model.health.DetailedHealthResponse.SystemInfo;
 import gov.nist.oscal.tools.api.model.health.SimpleHealthResponse;
 
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
+import dev.metaschema.oscal.lib.OscalBindingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

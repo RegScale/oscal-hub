@@ -621,7 +621,7 @@ All OSCAL operations use `OscalBindingContext.instance()` for:
 
 ### Key Dependencies
 
-- **liboscal-java** (v6.0.0): OSCAL model classes, profile resolution, and metaschema binding (groupId: `dev.metaschema.oscal`)
+- **liboscal-java** (v7.2.0): OSCAL model classes, profile resolution, and metaschema binding (groupId: `dev.metaschema.oscal`)
 - **Spring Boot** (v3.5.9): Web framework and dependency management
 - **Apache Commons CLI**: Command-line option parsing
 - **Log4j2**: Logging framework

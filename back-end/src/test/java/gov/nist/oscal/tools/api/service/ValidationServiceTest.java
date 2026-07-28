@@ -3,7 +3,7 @@ package gov.nist.oscal.tools.api.service;
 import gov.nist.oscal.tools.api.entity.OperationHistory;
 import gov.nist.oscal.tools.api.model.*;
 import gov.nist.oscal.tools.api.repository.UserRepository;
-import gov.nist.secauto.oscal.lib.OscalBindingContext;
+import dev.metaschema.oscal.lib.OscalBindingContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -365,6 +365,11 @@ class ValidationServiceTest {
             "    <oscal-version>1.0.4</oscal-version>\n" +
             "  </metadata>\n" +
             "  <import-ssp href=\"ssp.xml\"/>\n" +
+            "  <reviewed-controls>\n" +
+            "    <control-selection>\n" +
+            "      <include-all/>\n" +
+            "    </control-selection>\n" +
+            "  </reviewed-controls>\n" +
             "</assessment-plan>";
 
         ValidationRequest request = new ValidationRequest();
