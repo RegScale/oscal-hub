@@ -55,7 +55,7 @@
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "react-window": "^1.8.11",
-    "recharts": "^3.8.1",
+    "recharts": "^3.10.1",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-slug": "^6.0.0",
     "remark-frontmatter": "^5.0.0",
