@@ -106,26 +106,39 @@ export function LeaderboardContent() {
   const { user } = useAuth();
   const [timeWindow, setTimeWindow] = useState<LeaderboardWindow>('all');
   const [data, setData] = useState<LeaderboardResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by the Retry button to re-run the fetch effect after a failure.
+  const [retryToken, setRetryToken] = useState(0);
 
-  const load = useCallback(async (w: LeaderboardWindow) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.getLeaderboard(w);
-      setData(response);
-    } catch (e) {
-      console.error('Failed to load leaderboard:', e);
-      setError(e instanceof Error ? e.message : 'Failed to load leaderboard');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Loading is derived: no error and no data yet for the selected window.
+  // Keeps the fetch effect free of synchronous setState (lint: react-hooks).
+  const isLoading = !error && (data === null || data.window !== timeWindow);
 
   useEffect(() => {
-    load(timeWindow);
-  }, [timeWindow, load]);
+    let cancelled = false;
+    apiClient
+      .getLeaderboard(timeWindow)
+      .then((response) => {
+        if (!cancelled) {
+          setData(response);
+          setError(null);
+        }
+      })
+      .catch((e: unknown) => {
+        console.error('Failed to load leaderboard:', e);
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'Failed to load leaderboard');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [timeWindow, retryToken]);
+
+  const retry = useCallback(() => {
+    setError(null);
+    setRetryToken((token) => token + 1);
+  }, []);
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8" data-tour="leaderboard-page">
@@ -151,7 +164,7 @@ export function LeaderboardContent() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10">
             <p className="text-sm text-muted-foreground">{error}</p>
-            <Button variant="outline" onClick={() => load(timeWindow)}>
+            <Button variant="outline" onClick={retry}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Try again
             </Button>
