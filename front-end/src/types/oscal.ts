@@ -1216,3 +1216,26 @@ export interface ArtifactComment {
   replies: ArtifactComment[];
   replyCount: number;
 }
+
+// Leaderboard Types (matches backend LeaderboardResponse/LeaderboardEntry)
+export type LeaderboardWindow = '30d' | 'all';
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  displayName: string;
+  score: number;
+  /**
+   * Only present on the "most active" board: activity source
+   * (operations, libraryPublishes, artifacts, documents, authorizations)
+   * to count. Zero-count sources are omitted.
+   */
+  breakdown?: Record<string, number> | null;
+}
+
+export interface LeaderboardResponse {
+  window: LeaderboardWindow;
+  generatedAt: string; // ISO 8601 date string
+  mostActive: LeaderboardEntry[];
+  topContributors: LeaderboardEntry[];
+}

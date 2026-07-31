@@ -19,6 +19,14 @@ public interface ArtifactRepository extends JpaRepository<Artifact, Long> {
 
     Optional<Artifact> findByArtifactId(String artifactId);
 
+    /**
+     * Leaderboard: artifacts created per user since the cutoff.
+     * Rows are [userId, count]. Pass epoch for all-time.
+     */
+    @Query("SELECT a.createdBy.id, COUNT(a) FROM Artifact a "
+            + "WHERE a.createdAt >= :cutoff GROUP BY a.createdBy.id")
+    List<Object[]> countCreatedPerUserSince(@Param("cutoff") java.time.LocalDateTime cutoff);
+
     // Find artifact by ID with tags eagerly loaded (for single artifact fetches)
     @Query("SELECT a FROM Artifact a LEFT JOIN FETCH a.tags WHERE a.artifactId = :artifactId")
     Optional<Artifact> findByArtifactIdWithTags(@Param("artifactId") String artifactId);

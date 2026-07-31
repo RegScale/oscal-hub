@@ -18,6 +18,17 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> 
     Optional<LibraryItem> findByItemId(String itemId);
 
     /**
+     * Leaderboard: items shared into the library (non-PRIVATE) per creator
+     * since the cutoff. Uses publishedAt when set, else createdAt.
+     * Rows are [userId, count]. Pass epoch for all-time.
+     */
+    @Query("SELECT li.createdBy.id, COUNT(li) FROM LibraryItem li "
+            + "WHERE li.visibility <> gov.nist.oscal.tools.api.entity.Visibility.PRIVATE "
+            + "AND COALESCE(li.publishedAt, li.createdAt) >= :cutoff "
+            + "GROUP BY li.createdBy.id")
+    List<Object[]> countSharedItemsPerUserSince(@Param("cutoff") java.time.LocalDateTime cutoff);
+
+    /**
      * Looks up a library item by its creator and the builder source it was saved from.
      * Used by LibraryIngestService to decide between create-new vs append-version.
      */
