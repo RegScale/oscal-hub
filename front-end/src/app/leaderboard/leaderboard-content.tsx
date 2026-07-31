@@ -10,19 +10,23 @@ import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LeaderboardEntry, LeaderboardResponse, LeaderboardWindow } from '@/types/oscal';
 
-const BREAKDOWN_LABELS: Record<string, string> = {
-  operations: 'operations',
-  libraryPublishes: 'library publishes',
-  artifacts: 'artifacts',
-  documents: 'documents',
-  authorizations: 'authorizations',
+const BREAKDOWN_LABELS: Record<string, [singular: string, plural: string]> = {
+  operations: ['operation', 'operations'],
+  libraryPublishes: ['library publish', 'library publishes'],
+  artifacts: ['artifact', 'artifacts'],
+  documents: ['document', 'documents'],
+  authorizations: ['authorization', 'authorizations'],
 };
 
 function breakdownText(breakdown?: Record<string, number> | null): string | null {
   if (!breakdown) return null;
   const parts = Object.entries(breakdown)
     .filter(([, count]) => count > 0)
-    .map(([source, count]) => `${count} ${BREAKDOWN_LABELS[source] ?? source}`);
+    .map(([source, count]) => {
+      const labels = BREAKDOWN_LABELS[source];
+      const label = labels ? labels[count === 1 ? 0 : 1] : source;
+      return `${count} ${label}`;
+    });
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

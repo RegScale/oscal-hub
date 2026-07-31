@@ -33,7 +33,7 @@ function makeResponse(overrides: Partial<LeaderboardResponse> = {}): Leaderboard
       },
       { rank: 2, username: 'carol', displayName: 'Carol Cruz', score: 17, breakdown: { operations: 17 } },
       { rank: 3, username: 'bob', displayName: 'Bob Brown', score: 9, breakdown: { operations: 9 } },
-      { rank: 4, username: 'dave', displayName: 'Dave Diaz', score: 3, breakdown: { operations: 3 } },
+      { rank: 4, username: 'dave', displayName: 'Dave Diaz', score: 1, breakdown: { artifacts: 1 } },
     ],
     topContributors: [
       { rank: 1, username: 'bob', displayName: 'Bob Brown', score: 7 },
@@ -89,6 +89,8 @@ describe('LeaderboardContent', () => {
     await waitFor(() => expect(screen.getByText('Alice Ames')).toBeInTheDocument());
 
     expect(screen.getByText('40 operations · 2 library publishes')).toBeInTheDocument();
+    // Singular counts drop the plural suffix.
+    expect(screen.getByText('1 artifact')).toBeInTheDocument();
   });
 
   it('refetches with the 30-day window when the tab changes', async () => {
