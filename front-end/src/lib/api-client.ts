@@ -77,6 +77,8 @@ import type {
   ConMonSnapshotSummary,
   ConMonReconciliationDetail,
   ConMonAnalytics,
+  LeaderboardResponse,
+  LeaderboardWindow,
 } from '@/types/oscal';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
 import type {
@@ -921,6 +923,27 @@ class ApiClient {
         successRate: 0,
       };
     }
+  }
+
+  /**
+   * Get the global leaderboards (most active users + top contributors).
+   * Throws on failure so callers can render an error state with retry.
+   */
+  async getLeaderboard(window: LeaderboardWindow = 'all'): Promise<LeaderboardResponse> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/leaderboard?window=${window}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get leaderboard: ${await this.readErrorMessage(response)}`);
+    }
+
+    return await response.json();
   }
 
   /**
