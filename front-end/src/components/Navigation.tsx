@@ -9,7 +9,7 @@ import {
   Library, ChevronDown,
   FileText, Hammer, ShieldCheck, BarChart3, FileCheck,
   ArrowRightLeft, Folders, Clock, GitMerge,
-  BookOpen, Code2,
+  BookOpen, Code2, Trophy,
 } from 'lucide-react';
 
 // Authenticated wrapper that gates the public SpringDoc UI behind a login
@@ -122,6 +122,17 @@ export function Navigation() {
                 <Code2 className="h-4 w-4" />
                 APIs
               </a>
+            )}
+            {/* Leaderboard — authenticated non-admin users only. */}
+            {mounted && isAuthenticated && !isSuperAdmin() && (
+              <Link
+                href="/leaderboard"
+                data-tour="nav-leaderboard"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Trophy className="h-4 w-4" />
+                Leaderboard
+              </Link>
             )}
             {/* Actions — every authenticated non-admin user. Super admins
                 only see the back-end admin panel via the logo + avatar menu. */}
