@@ -71,4 +71,13 @@ public interface HistoryRepository extends JpaRepository<OperationHistory, Long>
      */
     @Query("SELECT h.format, COUNT(h) FROM OperationHistory h WHERE h.format IS NOT NULL GROUP BY h.format ORDER BY COUNT(h) DESC")
     List<Object[]> countByFormat();
+
+    /**
+     * Leaderboard: operations per user since the cutoff.
+     * Rows are [userId, count]. Pass epoch for all-time.
+     */
+    @Query("SELECT h.user.id, COUNT(h) FROM OperationHistory h "
+            + "WHERE h.user IS NOT NULL AND h.timestamp >= :cutoff "
+            + "GROUP BY h.user.id")
+    List<Object[]> countOperationsPerUserSince(@Param("cutoff") LocalDateTime cutoff);
 }

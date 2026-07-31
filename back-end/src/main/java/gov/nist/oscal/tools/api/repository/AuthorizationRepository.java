@@ -19,6 +19,14 @@ public interface AuthorizationRepository extends JpaRepository<Authorization, Lo
 
     List<Authorization> findByAuthorizedBy(User user);
 
+    /**
+     * Leaderboard: authorizations created per user since the cutoff.
+     * Rows are [userId, count]. Pass epoch for all-time.
+     */
+    @Query("SELECT a.authorizedBy.id, COUNT(a) FROM Authorization a "
+            + "WHERE a.createdAt >= :cutoff GROUP BY a.authorizedBy.id")
+    List<Object[]> countCreatedPerUserSince(@Param("cutoff") java.time.LocalDateTime cutoff);
+
     List<Authorization> findBySspItemId(String sspItemId);
 
     List<Authorization> findByTemplate(AuthorizationTemplate template);

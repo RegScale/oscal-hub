@@ -16,6 +16,14 @@ public interface OscalDocumentRepository extends JpaRepository<OscalDocument, Lo
 
     Optional<OscalDocument> findByOscalUuid(String oscalUuid);
 
+    /**
+     * Leaderboard: documents created per user since the cutoff.
+     * Rows are [userId, count]. Pass epoch for all-time.
+     */
+    @Query("SELECT d.createdBy.id, COUNT(d) FROM OscalDocument d "
+            + "WHERE d.createdAt >= :cutoff GROUP BY d.createdBy.id")
+    List<Object[]> countCreatedPerUserSince(@Param("cutoff") java.time.LocalDateTime cutoff);
+
     @Query("SELECT d FROM OscalDocument d WHERE d.createdBy = :user AND d.modelType = :modelType ORDER BY d.createdAt DESC")
     List<OscalDocument> findByUserAndType(@Param("user") User user, @Param("modelType") OscalModelType modelType);
 
