@@ -252,7 +252,7 @@ class ConditionOfApprovalResponseTest {
         when(condition.getAuthorization()).thenReturn(authorization);
         when(condition.getCondition()).thenReturn("Implement continuous monitoring solution");
         when(condition.getConditionType()).thenReturn(ConditionOfApproval.ConditionType.MANDATORY);
-        when(condition.getDueDate()).thenReturn(LocalDate.of(2026, 8, 1));
+        when(condition.getDueDate()).thenReturn(LocalDate.now().plusYears(1));
         when(condition.getCreatedAt()).thenReturn(LocalDateTime.of(2025, 1, 15, 10, 30));
         when(condition.getUpdatedAt()).thenReturn(LocalDateTime.of(2025, 1, 20, 11, 45));
 
