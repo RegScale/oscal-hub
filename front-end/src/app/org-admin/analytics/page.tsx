@@ -180,7 +180,7 @@ export default function OrgAdminAnalyticsPage() {
                     <YAxis stroke="#9CA3AF" fontSize={12} />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                      labelFormatter={(label) => new Date(label as string).toLocaleDateString()}
                     />
                     <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                   </BarChart>
