@@ -58,7 +58,7 @@
         <protobuf-java.version>4.34.1</protobuf-java.version>
 
         <!-- Cloud SDK BOM versions -->
-        <azure-sdk-bom.version>1.3.6</azure-sdk-bom.version>
+        <azure-sdk-bom.version>1.3.8</azure-sdk-bom.version>
         <aws-sdk-bom.version>2.44.0</aws-sdk-bom.version>
         <google-cloud-bom.version>26.85.1</google-cloud-bom.version>
         <opentelemetry-bom.version>1.64.0</opentelemetry-bom.version>
