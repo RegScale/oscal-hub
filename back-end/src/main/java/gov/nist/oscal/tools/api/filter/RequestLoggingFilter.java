@@ -204,6 +204,18 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         if (uri.contains("/auth/logout")) {
             return AuditEventType.AUTH_LOGOUT;
         }
+        // Matches both /auth/service-account-token (POST, create) and
+        // /auth/service-account-tokens/{id} (DELETE, revoke) — the plural path
+        // contains the singular as a prefix. GET listing falls through
+        // deliberately: reading your own token list is not a privileged event.
+        if (uri.contains("/auth/service-account-token")) {
+            if ("DELETE".equals(method)) {
+                return AuditEventType.AUTH_SERVICE_TOKEN_REVOKED;
+            }
+            if ("POST".equals(method)) {
+                return AuditEventType.AUTH_SERVICE_TOKEN_GENERATED;
+            }
+        }
 
         // File operations
         if (uri.contains("/files") || uri.contains("/upload")) {

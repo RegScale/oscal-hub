@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.security;
 
+import gov.nist.oscal.tools.api.entity.ServiceAccountToken;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,6 +9,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -140,9 +142,33 @@ class JwtUtilTest {
         });
     }
 
+    private ServiceAccountToken serviceTokenRecord(String username, String tokenName, int expirationDays) {
+        gov.nist.oscal.tools.api.entity.User owner = new gov.nist.oscal.tools.api.entity.User();
+        owner.setId(7L);
+        owner.setUsername(username);
+
+        ServiceAccountToken record = new ServiceAccountToken();
+        record.setUser(owner);
+        record.setTokenName(tokenName);
+        record.setJti("11111111-2222-3333-4444-555555555555");
+        record.setGlobalRole("SUPER_ADMIN");
+        record.setOrgRole("ORG_ADMIN");
+        record.setOrganizationId(42L);
+        record.setExpiresAt(LocalDateTime.now().plusDays(expirationDays));
+        return record;
+    }
+
+    private ServiceAccountToken serviceTokenRecord(String tokenName, int expirationDays) {
+        return serviceTokenRecord("serviceuser", tokenName, expirationDays);
+    }
+
+    private ServiceAccountToken serviceTokenRecord() {
+        return serviceTokenRecord("API Token", 30);
+    }
+
     @Test
     void testGenerateServiceAccountToken() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "API Token", 30);
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord());
 
         assertNotNull(token);
         assertFalse(token.isEmpty());
@@ -150,7 +176,7 @@ class JwtUtilTest {
 
     @Test
     void testGenerateServiceAccountTokenExtractUsername() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "API Token", 30);
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord());
 
         String username = jwtUtil.extractUsername(token);
 
@@ -159,62 +185,98 @@ class JwtUtilTest {
 
     @Test
     void testGenerateServiceAccountTokenExtractClaims() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "My API Token", 30);
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord("My API Token", 30));
 
         String tokenName = jwtUtil.extractClaim(token, claims -> (String) claims.get("tokenName"));
-        String tokenType = jwtUtil.extractClaim(token, claims -> (String) claims.get("tokenType"));
 
         assertEquals("My API Token", tokenName);
-        assertEquals("service-account", tokenType);
+        assertEquals("service-account", jwtUtil.extractTokenType(token));
+    }
+
+    /**
+     * The whole point of the snapshot model: a token minted by a privileged
+     * user must carry that privilege. Without these claims the filter's
+     * claim-to-authority code grants nothing and the token acts as ROLE_USER.
+     */
+    @Test
+    void testServiceAccountTokenCarriesIssuerPermissions() {
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord());
+
+        assertEquals("SUPER_ADMIN", jwtUtil.extractGlobalRole(token));
+        assertEquals("ORG_ADMIN", jwtUtil.extractOrganizationRole(token));
+        assertEquals(42L, jwtUtil.extractOrganizationId(token));
+        assertEquals(7L, jwtUtil.extractUserId(token));
+    }
+
+    @Test
+    void testServiceAccountTokenCarriesJti() {
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord());
+
+        assertEquals("11111111-2222-3333-4444-555555555555", jwtUtil.extractJti(token));
+    }
+
+    /** Session tokens have no jti; the filter relies on this to leave them alone. */
+    @Test
+    void testSessionTokenHasNoTokenTypeOrJti() {
+        String token = jwtUtil.generateToken(userDetails);
+
+        assertNull(jwtUtil.extractTokenType(token));
+        assertNull(jwtUtil.extractJti(token));
+    }
+
+    /**
+     * The JWT's exp must match the row's expires_at exactly — they are the same
+     * deadline expressed twice, and a drift between them would let a token
+     * outlive (or die before) the record used to display and revoke it.
+     * <p>
+     * Asserted against the record rather than against millisecond arithmetic:
+     * expiry is now calendar-based ({@code plusDays}), so a span crossing a DST
+     * boundary is deliberately not 24h * n milliseconds.
+     * </p>
+     */
+    private void assertTokenExpiryMatchesRecord(ServiceAccountToken record) {
+        String token = jwtUtil.generateServiceAccountToken(record);
+
+        Date expiration = jwtUtil.extractExpiration(token);
+        Date expected = Date.from(
+                record.getExpiresAt().atZone(java.time.ZoneId.systemDefault()).toInstant());
+
+        // JWT exp has one-second resolution, so allow sub-second truncation.
+        assertTrue(Math.abs(expiration.getTime() - expected.getTime()) < 1000,
+                "JWT exp " + expiration + " should match record expiresAt " + expected);
     }
 
     @Test
     void testGenerateServiceAccountTokenExpiration() {
-        int expirationDays = 7;
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "API Token", expirationDays);
-
-        Date expiration = jwtUtil.extractExpiration(token);
-        Date now = new Date();
-
-        // Calculate expected expiration (approximately)
-        long expectedExpirationTime = now.getTime() + (expirationDays * 24L * 60 * 60 * 1000);
-        long actualExpirationTime = expiration.getTime();
-
-        // Allow 10 second tolerance for test execution time
-        assertTrue(Math.abs(actualExpirationTime - expectedExpirationTime) < 10000);
+        assertTokenExpiryMatchesRecord(serviceTokenRecord("API Token", 7));
     }
 
     @Test
     void testGenerateServiceAccountTokenWith1DayExpiration() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "Short-lived Token", 1);
-
-        Date expiration = jwtUtil.extractExpiration(token);
-        Date now = new Date();
-
-        // Should expire in approximately 1 day
-        long expectedExpirationTime = now.getTime() + (1 * 24L * 60 * 60 * 1000);
-        long actualExpirationTime = expiration.getTime();
-
-        assertTrue(Math.abs(actualExpirationTime - expectedExpirationTime) < 10000);
+        assertTokenExpiryMatchesRecord(serviceTokenRecord("Short-lived Token", 1));
     }
 
     @Test
     void testGenerateServiceAccountTokenWith90DaysExpiration() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "Long-lived Token", 90);
+        assertTokenExpiryMatchesRecord(serviceTokenRecord("Long-lived Token", 90));
+    }
 
+    /** 90 calendar days, not 90 * 24h — the two differ across a DST boundary. */
+    @Test
+    void testServiceAccountTokenExpiresAfterTheRequestedNumberOfCalendarDays() {
+        ServiceAccountToken record = serviceTokenRecord("Long-lived Token", 90);
+        String token = jwtUtil.generateServiceAccountToken(record);
+
+        Date issuedAt = jwtUtil.extractClaim(token, Claims::getIssuedAt);
         Date expiration = jwtUtil.extractExpiration(token);
-        Date now = new Date();
 
-        // Should expire in approximately 90 days
-        long expectedExpirationTime = now.getTime() + (90 * 24L * 60 * 60 * 1000);
-        long actualExpirationTime = expiration.getTime();
-
-        assertTrue(Math.abs(actualExpirationTime - expectedExpirationTime) < 10000);
+        long days = java.time.Duration.between(issuedAt.toInstant(), expiration.toInstant()).toDays();
+        assertTrue(days >= 89 && days <= 90, "expected ~90 calendar days, got " + days);
     }
 
     @Test
     void testGenerateServiceAccountTokenIssuedAtIsNow() {
-        String token = jwtUtil.generateServiceAccountToken("serviceuser", "API Token", 30);
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord());
 
         Date issuedAt = jwtUtil.extractClaim(token, Claims::getIssuedAt);
         Date now = new Date();
@@ -267,7 +329,8 @@ class JwtUtilTest {
     @Test
     void testServiceAccountTokenVsRegularToken() {
         String regularToken = jwtUtil.generateToken(userDetails);
-        String serviceToken = jwtUtil.generateServiceAccountToken("testuser", "API Token", 30);
+        String serviceToken = jwtUtil.generateServiceAccountToken(
+                serviceTokenRecord("testuser", "API Token", 30));
 
         // Both should have same username
         assertEquals("testuser", jwtUtil.extractUsername(regularToken));
@@ -521,7 +584,7 @@ class JwtUtilTest {
         // an expired setup-shaped token returns false. Use ServiceAccount with
         // negative days to produce an expired token, then use reflection to
         // patch the tokenType.
-        String token = jwtUtil.generateServiceAccountToken("alice", "x", 0);
+        String token = jwtUtil.generateServiceAccountToken(serviceTokenRecord("alice", "x", -1));
         // Token already created with mfa-setup-like flow; even though the
         // tokenType is "service-account", we still exercise the catch path
         // by feeding a clearly-expired token to isMfaSetupToken.

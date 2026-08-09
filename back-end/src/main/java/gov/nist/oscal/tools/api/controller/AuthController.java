@@ -44,6 +44,15 @@ public class AuthController {
     private AuthService authService;
 
     @Autowired
+    private gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository serviceAccountTokenRepository;
+
+    @Autowired
+    private gov.nist.oscal.tools.api.repository.UserRepository userRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${app.service-tokens.max-expiration-days:3650}")
+    private int maxServiceTokenExpirationDays;
+
+    @Autowired
     private gov.nist.oscal.tools.api.service.PasswordResetService passwordResetService;
 
     @Autowired
@@ -434,7 +443,7 @@ public class AuthController {
 
     @Operation(
         summary = "Generate Service Account Token",
-        description = "Generate a service account JWT token with custom name and expiration. This token is not stored and must be saved by the user."
+        description = "Generate a service account JWT token. The token value is shown once and cannot be retrieved later; the token can be listed and revoked afterwards."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Token generated successfully"),
@@ -451,34 +460,45 @@ public class AuthController {
             return ResponseEntity.status(401).body(error);
         }
 
+        if (request.getExpirationDays() > maxServiceTokenExpirationDays) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Expiration must not exceed " + maxServiceTokenExpirationDays + " days");
+            return ResponseEntity.badRequest().body(error);
+        }
+
         try {
             String username = authentication.getName();
 
-            // Calculate expiration date
-            java.util.Date expirationDate = authService.generateServiceAccountToken(
-                    username,
-                    request.getTokenName(),
-                    request.getExpirationDays()
-            );
+            // Snapshot the caller's current permissions into the token. Read from
+            // their session JWT, which is the same source the org-switch flow uses.
+            String globalRole = null;
+            String orgRole = null;
+            Long organizationId = null;
+            String currentToken = currentBearerToken();
+            if (currentToken != null) {
+                try {
+                    globalRole = jwtUtil.extractGlobalRole(currentToken);
+                    orgRole = jwtUtil.extractOrganizationRole(currentToken);
+                    organizationId = jwtUtil.extractOrganizationId(currentToken);
+                } catch (RuntimeException ignored) {
+                    // Older token without these claims — mint with no elevated grant.
+                }
+            }
 
-            // Generate the token using JwtUtil
-            String token = jwtUtil.generateServiceAccountToken(
-                    username,
-                    request.getTokenName(),
-                    request.getExpirationDays()
-            );
+            gov.nist.oscal.tools.api.entity.ServiceAccountToken record =
+                    authService.createServiceAccountToken(username, request.getTokenName(),
+                            request.getExpirationDays(), globalRole, orgRole, organizationId);
 
-            // Format the expiration date
+            String token = jwtUtil.generateServiceAccountToken(record);
+
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-            String expiresAt = dateFormat.format(expirationDate);
+            String expiresAt = dateFormat.format(java.util.Date.from(
+                    record.getExpiresAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
 
             ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
-                    token,
-                    request.getTokenName(),
-                    username,
-                    expiresAt,
-                    request.getExpirationDays()
-            );
+                    record.getId(), token, record.getTokenName(), username,
+                    expiresAt, request.getExpirationDays(),
+                    record.getGlobalRole(), record.getOrgRole());
 
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
@@ -486,6 +506,85 @@ public class AuthController {
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    @Operation(
+        summary = "List service account tokens",
+        description = "List the calling user's service account tokens. Token values are never returned."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tokens listed"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @GetMapping("/service-account-tokens")
+    public ResponseEntity<?> listServiceAccountTokens() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        return userRepository.findByUsername(authentication.getName())
+                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(
+                        serviceAccountTokenRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                                .stream()
+                                .map(gov.nist.oscal.tools.api.model.ServiceAccountTokenSummary::from)
+                                .toList()))
+                .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    @Operation(
+        summary = "Revoke a service account token",
+        description = "Revoke one of the calling user's service account tokens. Idempotent."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Token revoked"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "404", description = "No such token for this user")
+    })
+    @DeleteMapping("/service-account-tokens/{id}")
+    public ResponseEntity<?> revokeServiceAccountToken(@PathVariable Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() ||
+            authentication.getPrincipal().equals("anonymousUser")) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        String username = authentication.getName();
+        var user = userRepository.findByUsername(username);
+        if (user.isEmpty()) {
+            return ResponseEntity.status(401).build();
+        }
+
+        // Scoped by owner, and absent-or-not-yours are the same 404 so this
+        // endpoint cannot be used to discover other users' token ids.
+        var found = serviceAccountTokenRepository.findByIdAndUserId(id, user.get().getId());
+        if (found.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        gov.nist.oscal.tools.api.entity.ServiceAccountToken record = found.get();
+        if (record.getRevokedAt() == null) {
+            record.setRevokedAt(java.time.LocalDateTime.now());
+            record.setRevokedBy(username);
+            serviceAccountTokenRepository.save(record);
+            logger.info("Service account token {} revoked by {}", id, username);
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /** The raw bearer token on the current request, or null if absent. */
+    private String currentBearerToken() {
+        var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (attrs == null) return null;
+        String header = attrs.getRequest().getHeader("Authorization");
+        return (header != null && header.startsWith("Bearer ")) ? header.substring(7) : null;
     }
 
     // ========================================================================

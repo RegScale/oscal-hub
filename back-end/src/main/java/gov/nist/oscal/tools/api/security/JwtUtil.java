@@ -1,5 +1,6 @@
 package gov.nist.oscal.tools.api.security;
 
+import gov.nist.oscal.tools.api.entity.ServiceAccountToken;
 import gov.nist.oscal.tools.api.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -101,6 +103,16 @@ public class JwtUtil {
 
     public Long extractOrganizationId(String token) {
         return extractClaim(token, claims -> claims.get("organizationId", Long.class));
+    }
+
+    /** The {@code jti} claim — present only on service account tokens. */
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
+    }
+
+    /** {@code "service-account"} for service tokens, null for session tokens. */
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("tokenType", String.class));
     }
 
     public String extractOrganizationRole(String token) {
@@ -330,26 +342,38 @@ public class JwtUtil {
     }
 
     /**
-     * Generate a service account token with custom expiration and token name
-     * @param username The username for the token
-     * @param tokenName The name/description of the service account token
-     * @param expirationDays Number of days until the token expires
+     * Mint a service account token for a persisted {@link ServiceAccountToken}.
+     * <p>
+     * Permissions are snapshotted here: the role claims are copied from the
+     * record and stay fixed for the token's life. {@code JwtAuthenticationFilter}
+     * turns them into authorities with no service-token-specific code — it reads
+     * the same claims it reads for session tokens.
+     * </p>
+     * <p>
+     * The {@code jti} makes the token revocable; a token without one cannot be
+     * matched to a row and is refused.
+     * </p>
+     *
+     * @param record the persisted token row supplying identity, grant, and expiry
      * @return JWT token string
      */
-    public String generateServiceAccountToken(String username, String tokenName, int expirationDays) {
+    public String generateServiceAccountToken(ServiceAccountToken record) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("tokenName", tokenName);
+        claims.put("tokenName", record.getTokenName());
         claims.put("tokenType", "service-account");
+        claims.put("userId", record.getUser().getId());
+        claims.put("globalRole", record.getGlobalRole());
+        claims.put("orgRole", record.getOrgRole());
+        claims.put("organizationId", record.getOrganizationId());
 
-        Date now = new Date();
-        // Convert days to milliseconds: days * 24 * 60 * 60 * 1000
-        long expirationMillis = (long) expirationDays * 24 * 60 * 60 * 1000;
-        Date expirationDate = new Date(now.getTime() + expirationMillis);
+        Date expirationDate = Date.from(
+                record.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant());
 
         return Jwts.builder()
                 .claims(claims)
-                .subject(username)
-                .issuedAt(now)
+                .id(record.getJti())
+                .subject(record.getUser().getUsername())
+                .issuedAt(new Date())
                 .expiration(expirationDate)
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();

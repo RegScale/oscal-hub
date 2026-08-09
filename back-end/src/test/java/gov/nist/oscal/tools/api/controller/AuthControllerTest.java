@@ -61,6 +61,12 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockitoBean
+    private gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository serviceAccountTokenRepository;
+
+    @MockitoBean
+    private gov.nist.oscal.tools.api.repository.UserRepository userRepository;
+
+    @MockitoBean
     private gov.nist.oscal.tools.api.service.PasswordResetService passwordResetService;
 
     @MockitoBean
@@ -553,11 +559,11 @@ class AuthControllerTest {
         request.setTokenName("CI/CD Token");
         request.setExpirationDays(90);
 
-        Date expirationDate = new Date(System.currentTimeMillis() + 90L * 24 * 60 * 60 * 1000);
-
-        when(authService.generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90)))
-                .thenReturn(expirationDate);
-        when(jwtUtil.generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90)))
+        when(authService.createServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90),
+                any(), any(), any()))
+                .thenReturn(serviceTokenRecord("testuser", "CI/CD Token", 90));
+        when(jwtUtil.generateServiceAccountToken(
+                any(gov.nist.oscal.tools.api.entity.ServiceAccountToken.class)))
                 .thenReturn("service-account-token-789");
 
         // When & Then
@@ -571,8 +577,28 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.username").value("testuser"))
                 .andExpect(jsonPath("$.expirationDays").value(90));
 
-        verify(authService, times(1)).generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90));
-        verify(jwtUtil, times(1)).generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90));
+        verify(authService, times(1)).createServiceAccountToken(eq("testuser"), eq("CI/CD Token"),
+                eq(90), any(), any(), any());
+        verify(jwtUtil, times(1)).generateServiceAccountToken(
+                any(gov.nist.oscal.tools.api.entity.ServiceAccountToken.class));
+    }
+
+    /** Builds a persisted-token stand-in for the mocked AuthService to return. */
+    private gov.nist.oscal.tools.api.entity.ServiceAccountToken serviceTokenRecord(
+            String username, String tokenName, int expirationDays) {
+        gov.nist.oscal.tools.api.entity.User owner = new gov.nist.oscal.tools.api.entity.User();
+        owner.setId(1L);
+        owner.setUsername(username);
+
+        gov.nist.oscal.tools.api.entity.ServiceAccountToken record =
+                new gov.nist.oscal.tools.api.entity.ServiceAccountToken();
+        record.setId(11L);
+        record.setUser(owner);
+        record.setTokenName(tokenName);
+        record.setJti("11111111-2222-3333-4444-555555555555");
+        record.setExpiresAt(java.time.LocalDateTime.now().plusDays(expirationDays));
+        record.setCreatedAt(java.time.LocalDateTime.now());
+        return record;
     }
 
     @Test
@@ -590,8 +616,10 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Not authenticated"));
 
-        verify(authService, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
-        verify(jwtUtil, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
+        verify(authService, never()).createServiceAccountToken(anyString(), anyString(), anyInt(),
+                any(), any(), any());
+        verify(jwtUtil, never()).generateServiceAccountToken(
+                any(gov.nist.oscal.tools.api.entity.ServiceAccountToken.class));
     }
 
     @Test
@@ -712,7 +740,8 @@ class AuthControllerTest {
         request.setTokenName("CI/CD Token");
         request.setExpirationDays(90);
 
-        when(authService.generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90)))
+        when(authService.createServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90),
+                any(), any(), any()))
                 .thenThrow(new RuntimeException("Invalid expiration days"));
 
         // When & Then
@@ -723,7 +752,9 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invalid expiration days"));
 
-        verify(authService, times(1)).generateServiceAccountToken(eq("testuser"), eq("CI/CD Token"), eq(90));
-        verify(jwtUtil, never()).generateServiceAccountToken(anyString(), anyString(), anyInt());
+        verify(authService, times(1)).createServiceAccountToken(eq("testuser"), eq("CI/CD Token"),
+                eq(90), any(), any(), any());
+        verify(jwtUtil, never()).generateServiceAccountToken(
+                any(gov.nist.oscal.tools.api.entity.ServiceAccountToken.class));
     }
 }

@@ -85,6 +85,13 @@ public enum AuditEventType {
     AUTH_SERVICE_TOKEN_GENERATED("Authentication", "Service account token generated", "MEDIUM"),
 
     /**
+     * Service account token revoked
+     * <p>Risk Level: MEDIUM (privileged operation)</p>
+     * <p>Retention: LONG (security monitoring)</p>
+     */
+    AUTH_SERVICE_TOKEN_REVOKED("Authentication", "Service account token revoked", "MEDIUM"),
+
+    /**
      * User selected organization after initial authentication
      * <p>Risk Level: LOW</p>
      * <p>Retention: MEDIUM (audit trail)</p>

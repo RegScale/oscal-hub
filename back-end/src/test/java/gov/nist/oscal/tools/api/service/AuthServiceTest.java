@@ -54,6 +54,9 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository serviceAccountTokenRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -617,49 +620,77 @@ class AuthServiceTest {
     // ========== SERVICE ACCOUNT TOKEN TESTS ==========
 
     @Test
-    void testGenerateServiceAccountToken_validUser_returnsExpirationDate() {
+    void testCreateServiceAccountToken_validUser_persistsRecordWithExpiry() {
         // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(serviceAccountTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         // When
-        Date expirationDate = authService.generateServiceAccountToken("testuser", "CI/CD Token", 90);
+        gov.nist.oscal.tools.api.entity.ServiceAccountToken record =
+                authService.createServiceAccountToken("testuser", "CI/CD Token", 90,
+                        "SUPER_ADMIN", "ORG_ADMIN", 42L);
 
         // Then
-        assertNotNull(expirationDate);
-        assertTrue(expirationDate.after(new Date()));
+        assertNotNull(record);
+        assertEquals(testUser, record.getUser());
+        assertEquals("CI/CD Token", record.getTokenName());
+        assertNotNull(record.getJti());
+        assertTrue(record.getExpiresAt().isAfter(java.time.LocalDateTime.now()));
+        verify(serviceAccountTokenRepository).save(record);
+    }
 
-        // Verify it's approximately 90 days in the future (allow 1 second variance)
-        long expectedExpiration = System.currentTimeMillis() + (90L * 24 * 60 * 60 * 1000);
-        long actualExpiration = expirationDate.getTime();
-        assertTrue(Math.abs(expectedExpiration - actualExpiration) < 1000);
+    /** The permission snapshot is the whole point — it must survive onto the row. */
+    @Test
+    void testCreateServiceAccountToken_snapshotsIssuerPermissions() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(serviceAccountTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        gov.nist.oscal.tools.api.entity.ServiceAccountToken record =
+                authService.createServiceAccountToken("testuser", "Token", 30,
+                        "SUPER_ADMIN", "ORG_ADMIN", 42L);
+
+        assertEquals("SUPER_ADMIN", record.getGlobalRole());
+        assertEquals("ORG_ADMIN", record.getOrgRole());
+        assertEquals(42L, record.getOrganizationId());
+    }
+
+    /** Each mint gets a distinct jti, or revocation would kill unrelated tokens. */
+    @Test
+    void testCreateServiceAccountToken_generatesDistinctJtiPerToken() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(serviceAccountTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        String first = authService.createServiceAccountToken("testuser", "A", 30, null, null, null).getJti();
+        String second = authService.createServiceAccountToken("testuser", "B", 30, null, null, null).getJti();
+
+        assertNotEquals(first, second);
     }
 
     @Test
-    void testGenerateServiceAccountToken_userNotFound_throwsException() {
+    void testCreateServiceAccountToken_userNotFound_throwsException() {
         // Given
         when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(RuntimeException.class, () -> {
-            authService.generateServiceAccountToken("nonexistent", "Token", 30);
+            authService.createServiceAccountToken("nonexistent", "Token", 30, null, null, null);
         });
     }
 
     @Test
-    void testGenerateServiceAccountToken_differentExpirationDays_calculatesCorrectly() {
+    void testCreateServiceAccountToken_differentExpirationDays_calculatesCorrectly() {
         // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(serviceAccountTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         // When
-        Date expiration30 = authService.generateServiceAccountToken("testuser", "Token", 30);
-        Date expiration365 = authService.generateServiceAccountToken("testuser", "Token", 365);
+        var expiration30 = authService.createServiceAccountToken("testuser", "Token", 30,
+                null, null, null).getExpiresAt();
+        var expiration365 = authService.createServiceAccountToken("testuser", "Token", 365,
+                null, null, null).getExpiresAt();
 
         // Then
-        assertTrue(expiration365.after(expiration30));
-
-        // Verify the difference is approximately 335 days
-        long diff = expiration365.getTime() - expiration30.getTime();
-        long expected = 335L * 24 * 60 * 60 * 1000; // 335 days in milliseconds
-        assertTrue(Math.abs(diff - expected) < 1000); // Allow 1 second variance
+        assertTrue(expiration365.isAfter(expiration30));
+        assertEquals(335, java.time.temporal.ChronoUnit.DAYS.between(expiration30, expiration365));
     }
 }
