@@ -260,9 +260,9 @@ prod to identify who is affected, and put the break in the release notes.
 - Admin cross-user token browser.
 - Auto-revoke on role downgrade or organization removal.
 
-## Related bug found during design (confirmed, out of scope)
+## Related bug found during design (FIXED in 98dcbb9, before this work)
 
-**Archiving a user does not lock them out.**
+**Archiving a user did not lock them out.**
 
 `JwtUtil.validateToken()` (line 214) is:
 
@@ -280,10 +280,10 @@ Consequence: a SUPER_ADMIN archives a user, the API reports "They can no
 longer log in" — true, they cannot obtain a *new* token — but the session
 token already in their browser keeps working until it expires, up to 24 hours.
 
-This is a live authentication bug that predates this feature. The fix is a
-one-line `isEnabled()` check in the filter, but it is a behavior change on the
-main authentication path for every user, so it does not belong in this
-feature's diff. Tracked and fixed separately.
+This authentication bug predated this feature, so it was fixed separately in
+commit `98dcbb9` before implementation starts — `validateToken` now also
+requires `userDetails.isEnabled()`. Full backend suite passed at 3278 tests.
 
-Note that the auto-revoke in this design closes the equivalent hole for
-service account tokens only — it does not fix session tokens.
+This feature therefore builds on a filter that already rejects archived
+accounts. The auto-revoke below is still required: it covers the case where a
+token must die while the account stays active.
