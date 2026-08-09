@@ -1,5 +1,7 @@
 package gov.nist.oscal.tools.api.security;
 
+import gov.nist.oscal.tools.api.entity.ServiceAccountToken;
+import gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -20,8 +22,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Optional;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -30,6 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private ServiceAccountTokenRepository serviceAccountTokenRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -74,6 +81,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
             if (jwtUtil.validateToken(jwt, userDetails)) {
+                String rejection = serviceTokenRejection(jwt);
+                if (rejection != null) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"" + rejection + "\"}");
+                    return;
+                }
+
                 // Extract globalRole and orgRole from JWT token and add to authorities
                 Collection<GrantedAuthority> authorities = new ArrayList<>(userDetails.getAuthorities());
 
@@ -116,6 +131,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try (Scope scope = baggage.makeCurrent()) {
             chain.doFilter(request, response);
+        }
+    }
+
+    /**
+     * Revocation gate for service account tokens. Returns null when the request
+     * may proceed, or a message explaining the refusal.
+     * <p>
+     * Session tokens carry no {@code tokenType} claim and pass straight through;
+     * only service tokens are looked up. The messages distinguish revoked from
+     * unknown from legacy because the caller already holds the credential — the
+     * distinction leaks nothing and is what makes a failing pipeline diagnosable.
+     * </p>
+     */
+    private String serviceTokenRejection(String jwt) {
+        if (!"service-account".equals(jwtUtil.extractTokenType(jwt))) {
+            return null;
+        }
+
+        String jti = jwtUtil.extractJti(jwt);
+        if (jti == null || jti.isBlank()) {
+            logger.warn("Rejected a service account token issued before revocation support (no jti)");
+            return "This service account token predates revocation support. "
+                 + "Generate a replacement from your Profile page.";
+        }
+
+        Optional<ServiceAccountToken> found = serviceAccountTokenRepository.findByJti(jti);
+        if (found.isEmpty()) {
+            logger.warn("Rejected a service account token with an unrecognized jti: " + jti);
+            return "Service account token not recognized.";
+        }
+
+        ServiceAccountToken record = found.get();
+        if (record.getRevokedAt() != null) {
+            logger.warn("Rejected a revoked service account token: " + jti);
+            return "This service account token has been revoked.";
+        }
+
+        touchLastUsed(record);
+        return null;
+    }
+
+    /**
+     * Record use, at most once an hour per token. An unthrottled write here
+     * would put a database UPDATE on every authenticated API request.
+     */
+    private void touchLastUsed(ServiceAccountToken record) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastUsed = record.getLastUsedAt();
+        if (lastUsed == null || lastUsed.isBefore(now.minusHours(1))) {
+            serviceAccountTokenRepository.touchLastUsed(record.getId(), now);
         }
     }
 }
