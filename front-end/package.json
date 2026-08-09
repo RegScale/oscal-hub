@@ -45,7 +45,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^4.3.1",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
     "next": "^16.2.4",
