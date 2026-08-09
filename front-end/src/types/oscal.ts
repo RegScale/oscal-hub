@@ -361,11 +361,32 @@ export interface ServiceAccountTokenRequest {
 }
 
 export interface ServiceAccountTokenResponse {
+  id: number;
   token: string;
   tokenName: string;
   username: string;
   expiresAt: string; // ISO 8601 date string
   expirationDays: number;
+  /** Permissions snapshotted into the token at issuance. */
+  globalRole: string | null;
+  orgRole: string | null;
+}
+
+/**
+ * Listing view of a service account token. Has no `token` field by design —
+ * the value is shown once at creation and is never retrievable.
+ */
+export interface ServiceAccountTokenSummary {
+  id: number;
+  tokenName: string;
+  globalRole: string | null;
+  orgRole: string | null;
+  organizationId: number | null;
+  createdAt: string;
+  expiresAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 }
 
 // SSP Visualization Types
