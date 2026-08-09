@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Key, Copy, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
-import type { ServiceAccountTokenResponse } from '@/types/oscal';
+import type { ServiceAccountTokenResponse, ServiceAccountTokenSummary } from '@/types/oscal';
 
 export function ServiceAccountTokenGenerator() {
   const [tokenName, setTokenName] = useState('');
@@ -17,6 +17,38 @@ export function ServiceAccountTokenGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<ServiceAccountTokenResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tokens, setTokens] = useState<ServiceAccountTokenSummary[]>([]);
+  const [pendingRevoke, setPendingRevoke] = useState<ServiceAccountTokenSummary | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+
+  const loadTokens = useCallback(async () => {
+    try {
+      setTokens(await apiClient.listServiceAccountTokens());
+    } catch (error) {
+      console.error('Failed to load tokens:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTokens();
+  }, [loadTokens]);
+
+  const handleRevoke = async () => {
+    if (!pendingRevoke) return;
+
+    setIsRevoking(true);
+    try {
+      await apiClient.revokeServiceAccountToken(pendingRevoke.id);
+      toast.success(`Revoked "${pendingRevoke.tokenName}"`);
+      setPendingRevoke(null);
+      await loadTokens();
+    } catch (error) {
+      console.error('Failed to revoke token:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke token');
+    } finally {
+      setIsRevoking(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!tokenName || expirationDays < 1) {
@@ -35,6 +67,7 @@ export function ServiceAccountTokenGenerator() {
 
       setGeneratedToken(response);
       toast.success('Service account token generated successfully!');
+      await loadTokens();
     } catch (error: unknown) {
       console.error('Failed to generate token:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to generate service account token');
@@ -82,8 +115,10 @@ export function ServiceAccountTokenGenerator() {
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="text-sm">
-                Service account tokens provide full API access. Treat them like passwords.
-                Tokens are not stored and cannot be retrieved after generation.
+                Service account tokens act with your current permissions and can be
+                revoked below. Treat them like passwords. The token value is shown
+                once and cannot be retrieved afterwards, though you can always see
+                and revoke the token here.
               </AlertDescription>
             </Alert>
 
@@ -155,6 +190,15 @@ export function ServiceAccountTokenGenerator() {
               </div>
 
               <div className="space-y-2">
+                <Label>Permissions</Label>
+                <p className="text-sm text-muted-foreground">
+                  This token acts as{' '}
+                  <span className="font-medium">{generatedToken.globalRole ?? 'USER'}</span>
+                  {generatedToken.orgRole ? ` / ${generatedToken.orgRole}` : ''}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Expires</Label>
                 <p className="text-sm text-muted-foreground">
                   {new Date(generatedToken.expiresAt).toLocaleDateString(undefined, {
@@ -220,6 +264,74 @@ export function ServiceAccountTokenGenerator() {
               </div>
             </div>
           </>
+        )}
+
+        <div className="space-y-3 pt-2 border-t">
+          <Label>Your Tokens</Label>
+          {tokens.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You have not generated any service account tokens yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-4">Name</th>
+                    <th className="py-2 pr-4">Permissions</th>
+                    <th className="py-2 pr-4">Created</th>
+                    <th className="py-2 pr-4">Last used</th>
+                    <th className="py-2 pr-4">Expires</th>
+                    <th className="py-2 pr-4">Status</th>
+                    <th className="py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {tokens.map((t) => (
+                    <tr key={t.id} className="border-t">
+                      <td className="py-2 pr-4 font-medium">{t.tokenName}</td>
+                      <td className="py-2 pr-4">
+                        {t.globalRole ?? 'USER'}{t.orgRole ? ` / ${t.orgRole}` : ''}
+                      </td>
+                      <td className="py-2 pr-4">{new Date(t.createdAt).toLocaleDateString()}</td>
+                      <td className="py-2 pr-4">
+                        {t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleDateString() : 'Never'}
+                      </td>
+                      <td className="py-2 pr-4">{new Date(t.expiresAt).toLocaleDateString()}</td>
+                      <td className="py-2 pr-4">{t.status}</td>
+                      <td className="py-2">
+                        {t.status === 'ACTIVE' && (
+                          <Button size="sm" variant="outline" onClick={() => setPendingRevoke(t)}>
+                            Revoke
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {pendingRevoke && (
+          <Alert className="border-destructive/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                Revoke <span className="font-medium">{pendingRevoke.tokenName}</span>? Any
+                integration using it will start failing immediately. This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
+                  {isRevoking ? 'Revoking...' : 'Confirm'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPendingRevoke(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>

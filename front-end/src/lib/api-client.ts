@@ -31,6 +31,7 @@ import type {
   CommentRequest,
   ServiceAccountTokenRequest,
   ServiceAccountTokenResponse,
+  ServiceAccountTokenSummary,
   SspVisualizationData,
   ProfileVisualizationData,
   SarVisualizationData,
@@ -2142,6 +2143,43 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to generate service account token:', error);
       throw error;
+    }
+  }
+
+  /**
+   * List the current user's service account tokens. Token values are never
+   * returned — only metadata.
+   */
+  async listServiceAccountTokens(): Promise<ServiceAccountTokenSummary[]> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/service-account-tokens`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to load service account tokens');
+    }
+
+    return response.json();
+  }
+
+  /** Revoke a service account token. Idempotent. */
+  async revokeServiceAccountToken(id: number): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      `${API_BASE_URL}/auth/service-account-tokens/${id}`,
+      {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to revoke service account token');
     }
   }
 

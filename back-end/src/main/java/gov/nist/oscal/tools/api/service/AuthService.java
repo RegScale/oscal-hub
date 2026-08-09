@@ -77,6 +77,9 @@ public class AuthService {
     private OrganizationRepository organizationRepository;
 
     @Autowired
+    private gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository serviceAccountTokenRepository;
+
+    @Autowired
     private UserAccessRequestRepository accessRequestRepository;
 
     @Autowired
@@ -455,17 +458,30 @@ public class AuthService {
      * @param expirationDays Number of days until the token expires
      * @return Date when the token expires
      */
-    public java.util.Date generateServiceAccountToken(String username, String tokenName, int expirationDays) {
-        // Validate user exists
-        userRepository.findByUsername(username)
+    /**
+     * Persist a service account token record. The JWT itself is minted by the
+     * caller from the returned entity — this method owns the row (and therefore
+     * the jti and the permission snapshot), not the token string.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public gov.nist.oscal.tools.api.entity.ServiceAccountToken createServiceAccountToken(
+            String username, String tokenName, int expirationDays,
+            String globalRole, String orgRole, Long organizationId) {
+
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Calculate expiration date
-        java.util.Date now = new java.util.Date();
-        long expirationMillis = (long) expirationDays * 24 * 60 * 60 * 1000;
-        java.util.Date expirationDate = new java.util.Date(now.getTime() + expirationMillis);
+        gov.nist.oscal.tools.api.entity.ServiceAccountToken record =
+                new gov.nist.oscal.tools.api.entity.ServiceAccountToken();
+        record.setUser(user);
+        record.setTokenName(tokenName);
+        record.setJti(java.util.UUID.randomUUID().toString());
+        record.setGlobalRole(globalRole);
+        record.setOrgRole(orgRole);
+        record.setOrganizationId(organizationId);
+        record.setExpiresAt(java.time.LocalDateTime.now().plusDays(expirationDays));
 
-        return expirationDate;
+        return serviceAccountTokenRepository.save(record);
     }
 
     /**

@@ -27,7 +27,7 @@ class ServiceAccountTokenResponseTest {
         Integer expirationDays = 365;
 
         ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
-                token, tokenName, username, expiresAt, expirationDays
+                1L, token, tokenName, username, expiresAt, expirationDays, null, null
         );
 
         assertNotNull(response);
@@ -104,7 +104,7 @@ class ServiceAccountTokenResponseTest {
 
     @Test
     void testWithEmptyStrings() {
-        ServiceAccountTokenResponse response = new ServiceAccountTokenResponse("", "", "", "", 0);
+        ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(0L, "", "", "", "", 0, "", "");
 
         assertEquals("", response.getToken());
         assertEquals("", response.getTokenName());
@@ -115,7 +115,8 @@ class ServiceAccountTokenResponseTest {
 
     @Test
     void testWithNullConstructorValues() {
-        ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(null, null, null, null, null);
+        ServiceAccountTokenResponse response =
+                new ServiceAccountTokenResponse(null, null, null, null, null, null, null, null);
 
         assertNull(response.getToken());
         assertNull(response.getTokenName());
@@ -127,7 +128,7 @@ class ServiceAccountTokenResponseTest {
     @Test
     void testSetAllFieldsToNull() {
         ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
-                "token", "name", "user", "2025-12-31", 365
+                1L, "token", "name", "user", "2025-12-31", 365, null, null
         );
 
         response.setToken(null);
@@ -146,7 +147,7 @@ class ServiceAccountTokenResponseTest {
     @Test
     void testModifyAllFields() {
         ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
-                "old-token", "old-name", "old-user", "2025-01-01", 30
+                1L, "old-token", "old-name", "old-user", "2025-01-01", 30, null, null
         );
 
         response.setToken("new-token");
@@ -200,11 +201,14 @@ class ServiceAccountTokenResponseTest {
     void testCompleteTokenCreationScenario() {
         // Simulate complete token creation for service account
         ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
+                1L,
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzZXJ2aWNlLWFjY291bnQifQ",
                 "github-actions-token",
                 "service-account-github",
                 "2025-12-31T23:59:59Z",
-                365
+                365,
+                "SUPER_ADMIN",
+                null
         );
 
         assertNotNull(response);
@@ -219,11 +223,14 @@ class ServiceAccountTokenResponseTest {
     void testTokenRenewalScenario() {
         // Simulate token renewal with updated expiration
         ServiceAccountTokenResponse response = new ServiceAccountTokenResponse(
+                1L,
                 "original-token",
                 "api-token",
                 "service-user",
                 "2025-06-30T00:00:00",
-                180
+                180,
+                null,
+                null
         );
 
         // Renew token with new expiration

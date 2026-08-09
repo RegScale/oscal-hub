@@ -66,6 +66,9 @@ public class OrganizationController {
     private UserRepository userRepository;
 
     @Autowired
+    private gov.nist.oscal.tools.api.repository.ServiceAccountTokenRepository serviceAccountTokenRepository;
+
+    @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -139,6 +142,17 @@ public class OrganizationController {
                     .orElseThrow(() -> new RuntimeException("User not found: " + userId));
             user.setEnabled(false);
             userRepository.save(user);
+
+            // Archiving ends the account's sessions (JwtUtil.validateToken checks
+            // isEnabled), but service account tokens are separate credentials that
+            // would otherwise stay live for their full multi-year lifetime.
+            int revoked = serviceAccountTokenRepository.revokeAllForUser(
+                    userId, java.time.LocalDateTime.now(), "system:archive");
+            if (revoked > 0) {
+                logger.info("Archived user {} — revoked {} service account token(s)",
+                        user.getUsername(), revoked);
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "User archived. They can no longer log in.");
             response.put("username", user.getUsername());
