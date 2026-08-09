@@ -1,7 +1,7 @@
 ---
 title: API Automation Guide
 description: Learn how to automate OSCAL operations using the REST API with Python, Bash, curl, and TypeScript.
-lastUpdated: 2026-05-04
+lastUpdated: 2026-08-09
 ---
 
 # API Automation Guide
@@ -87,6 +87,12 @@ Authorization: Bearer YOUR_TOKEN_HERE
 
 <Callout type="warn">
 **Security Best Practices:** Store tokens in environment variables or secure vaults. Never commit tokens to version control. Use different tokens for different environments. Rotate tokens regularly and revoke them immediately if compromised.
+</Callout>
+
+<Callout type="warn">
+Tokens generated before August 2026 are no longer accepted and must be
+regenerated. A token carries the permissions its creator held at the moment of
+creation, and keeps them until the token is revoked or expires.
 </Callout>
 
 ---
