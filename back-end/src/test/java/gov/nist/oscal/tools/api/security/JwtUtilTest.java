@@ -105,6 +105,28 @@ class JwtUtilTest {
         assertFalse(isValid);
     }
 
+    /**
+     * An archived (disabled) account must not keep working off a token it was
+     * issued before the archive. Without an isEnabled() check in validateToken,
+     * a SUPER_ADMIN can archive a user and that user's browser session keeps
+     * full access until the token expires — up to 24 hours later.
+     */
+    @Test
+    void testValidateTokenRejectsDisabledUser() {
+        String token = jwtUtil.generateToken(userDetails);
+
+        UserDetails archivedUser = User.builder()
+            .username("testuser")
+            .password("password")
+            .authorities(new ArrayList<>())
+            .disabled(true)
+            .build();
+
+        Boolean isValid = jwtUtil.validateToken(token, archivedUser);
+
+        assertFalse(isValid);
+    }
+
     @Test
     void testValidateTokenWithExpiredToken() {
         // Set expiration to -1000 milliseconds (already expired)

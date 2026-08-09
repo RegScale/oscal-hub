@@ -211,9 +211,17 @@ public class JwtUtil {
                 .compact();
     }
 
+    /**
+     * A token is valid only while the account behind it is still usable. The
+     * {@code isEnabled()} check is what makes archiving a user take effect
+     * immediately — without it an archived account keeps full access from the
+     * token already in its browser until that token expires.
+     */
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (username.equals(userDetails.getUsername())
+                && userDetails.isEnabled()
+                && !isTokenExpired(token));
     }
 
     // ========================================
