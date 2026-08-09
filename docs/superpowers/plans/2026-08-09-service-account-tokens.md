@@ -1937,6 +1937,37 @@ git commit -m "docs: service account token permissions, revocation, and legacy t
 
 - [ ] Put the legacy-token break in the release notes. Every currently-integrated client stops working on deploy and must mint a replacement.
 
+---
+
+## Execution notes (what the plan got wrong)
+
+Recorded after implementation, for anyone re-reading this plan.
+
+1. **Tasks 2, 3, and 5 could not be verified separately** and were committed
+   together (`62b9299`). Changing `generateServiceAccountToken`'s signature
+   breaks `AuthController` compilation, so *no* test in the module runs until
+   task 3 rewires it — task 2's "run only `-Dtest=JwtUtilTest`" step is
+   impossible. The controller test file also spans tasks 3 and 5.
+2. **Three test files beyond `JwtUtilTest` depended on the old signatures** and
+   the plan did not mention them: `AuthControllerTest` (also needed
+   `@MockitoBean` for the two new repositories, or the context fails to load),
+   `AuthServiceTest`, and `ServiceAccountTokenResponseTest`.
+3. **The frontend uses vitest, not jest**, and colocates tests next to the
+   component rather than in `front-end/__tests__/`. The test went to
+   `src/components/ServiceAccountTokenGenerator.test.tsx`.
+4. **Expiry semantics changed** from millisecond arithmetic to calendar days
+   (`plusDays`). The pre-existing `JwtUtil` expiration tests asserted
+   `now + n*24h`, which fails across a DST boundary at n=90. They now assert
+   the JWT `exp` matches the record's `expires_at`, plus one test for the
+   calendar-day span.
+5. **`OrganizationController.archiveUser` returns a `ResponseEntity`**, so the
+   archive test calls it directly with `@InjectMocks` rather than through
+   MockMvc.
+
+Verified against a live dev stack: Flyway applied V1.18 (1.17 → 1.18),
+Hibernate `validate` passed, backend booted in 9.2s, the table matches the
+entity, and both new endpoints return 401 unauthenticated rather than 404.
+
 - [ ] After deploying, confirm auditing works end-to-end — generate a token and revoke it, then check the events landed:
 
 ```bash
