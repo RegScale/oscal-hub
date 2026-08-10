@@ -178,3 +178,82 @@ judgment already documented for the service-token gate in
 Implementation is complete when the three observed production failures each
 return a distinct `code`, the full backend test suite passes, and a request to
 `/api/health` with no `Authorization` header still returns 200.
+
+## Execution results (2026-08-10, Task 6 live verification)
+
+Verified against a locally running stack (`./dev.sh`: PostgreSQL via Docker,
+backend on 8090, frontend on 3010; Postgres container had 6 days of prior
+uptime and 9 pre-existing users).
+
+### Public endpoint regression check (most important)
+
+```
+$ curl -s -o /dev/null -w 'health=%{http_code}\n' http://localhost:8090/api/health
+health=200
+$ curl -s http://localhost:8090/api/health
+{"status":"UP","timestamp":"2026-08-10T14:58:30.224122Z","version":"1.0.0-SNAPSHOT"}
+```
+
+No regression: the public health endpoint is unaffected by the auth-filter changes.
+
+### The three failure cases
+
+```
+--- missing header
+$ curl -s -i http://localhost:8090/api/validate -X POST -H 'Content-Type: application/json' -d '{"content":"{}","format":"JSON"}'
+HTTP/1.1 401
+WWW-Authenticate: Bearer
+Content-Type: application/json;charset=ISO-8859-1
+{"error":"Unauthorized","message":"No Authorization header was provided. Send 'Authorization: Bearer <token>'.","code":"missing_credentials"}
+
+--- wrong scheme
+$ curl -s -i http://localhost:8090/api/validate -X POST -H 'Authorization: Token abc' -H 'Content-Type: application/json' -d '{"content":"{}","format":"JSON"}'
+HTTP/1.1 401
+WWW-Authenticate: Bearer error="invalid_token", error_description="Authorization header must use the Bearer scheme, as in 'Authorization: Bearer <token>'."
+Content-Type: application/json;charset=ISO-8859-1
+{"error":"Unauthorized","message":"Authorization header must use the Bearer scheme, as in 'Authorization: Bearer <token>'.","code":"unsupported_auth_scheme"}
+
+--- malformed (the production case: zero dots)
+$ curl -s -i http://localhost:8090/api/validate -X POST -H 'Authorization: Bearer notajwt' -H 'Content-Type: application/json' -d '{"content":"{}","format":"JSON"}'
+HTTP/1.1 401
+WWW-Authenticate: Bearer error="invalid_token", error_description="The credential is not a well-formed JWT. Check that the whole token value was sent, and that it was not truncated or left encrypted."
+Content-Type: application/json;charset=ISO-8859-1
+{"error":"Unauthorized","message":"The credential is not a well-formed JWT. Check that the whole token value was sent, and that it was not truncated or left encrypted.","code":"malformed_token"}
+```
+
+All three match expectations exactly: `missing_credentials`, `unsupported_auth_scheme`,
+`malformed_token`, each with `"error":"Unauthorized"` and a `WWW-Authenticate` header
+per RFC 6750.
+
+### Server-log correlation
+
+The backend log shows the `[code=...]` suffix on the `WARN` lines for the two
+branches that warn (the missing-header branch logs at `DEBUG`, by design, since
+an absent header is the ordinary anonymous-request path rather than an anomaly):
+
+```
+2026-08-10T10:58:55.284-04:00 DEBUG ... JwtAuthenticationFilter : No Authorization header present for request to /api/validate
+2026-08-10T10:58:55.325-04:00  WARN ... JwtAuthenticationFilter : Authorization header with unsupported scheme for request to /api/validate [code=unsupported_auth_scheme]
+2026-08-10T10:58:55.423-04:00  WARN ... JwtAuthenticationFilter : Malformed JWT token for request to /api/validate: Invalid compact JWT string: Compact JWSs must contain exactly 2 period characters, and compact JWEs must contain exactly 4.  Found: 0 [code=malformed_token]
+```
+
+The `code` value in each log line matches the `code` the client received in
+the JSON body for the same request, confirming the operator-facing log and the
+client-facing response correlate.
+
+### Step 4 (valid-token success path): not performed
+
+Step 4 requires logging into the UI and generating a service account token
+interactively, which this verification could not do. The repo's own dev seed
+mechanism (`back-end/src/main/java/gov/nist/oscal/tools/api/config/DatabaseInitializer.java`,
+mirrored in the historical `V1.7__add_multi_tenant_organization_system.sql`
+comment) documents a default `admin` / `password` account created only when
+the `users` table is empty. The running dev database already had 9 users
+(6-day-old container), so that seed did not fire this session; a login attempt
+with `admin` / `password` returned `401 {"error":"Invalid username or
+password"}`. No account was created and no passwords were guessed, per the
+task's constraints. This step is therefore skipped for live-HTTP evidence.
+The success path is covered by automated tests instead:
+`successfulAuthentication_recordsNoFailure` and
+`liveServiceTokenAuthenticatesAndRecordsUse` in the backend suite (see Task 6
+report for exact locations).
