@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Optional;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -56,15 +57,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     logger.debug("JWT token validated for user: " + username);
                 }
             } catch (ExpiredJwtException e) {
-                logger.warn("JWT token has expired for request to " + request.getRequestURI() + ": " + e.getMessage());
+                logger.warn("JWT token has expired for request to " + request.getRequestURI() + ": " + e.getMessage()
+                        + " [code=token_expired]");
+                Date expiry = e.getClaims() == null ? null : e.getClaims().getExpiration();
+                record(request, AuthFailure.tokenExpired(expiry));
             } catch (SignatureException e) {
-                logger.warn("JWT signature validation failed for request to " + request.getRequestURI() + ": " + e.getMessage() + " - This may indicate the server was restarted with a different JWT secret");
+                logger.warn("JWT signature validation failed for request to " + request.getRequestURI() + ": " + e.getMessage() + " - This may indicate the server was restarted with a different JWT secret [code=invalid_signature]");
+                record(request, AuthFailure.invalidSignature());
             } catch (MalformedJwtException e) {
-                logger.warn("Malformed JWT token for request to " + request.getRequestURI() + ": " + e.getMessage());
+                logger.warn("Malformed JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
+                        + " [code=malformed_token]");
+                record(request, AuthFailure.malformedToken());
             } catch (Exception e) {
                 // Invalid token - continue without authentication
-                logger.warn("Invalid JWT token for request to " + request.getRequestURI() + ": " + e.getMessage());
+                logger.warn("Invalid JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
+                        + " [code=invalid_token]");
+                record(request, AuthFailure.invalidToken());
             }
+        } else if (authorizationHeader != null) {
+            // Header present but not a Bearer credential. This branch used to be
+            // silent, which made an integration sending the wrong scheme
+            // indistinguishable from one sending nothing at all.
+            logger.warn("Authorization header with unsupported scheme for request to "
+                    + request.getRequestURI() + " [code=unsupported_auth_scheme]");
+            record(request, AuthFailure.unsupportedScheme());
         } else {
             // Log when Authorization header is missing for protected endpoints
             String uri = request.getRequestURI();
@@ -73,6 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     logger.debug("No Authorization header present for request to " + uri);
                 }
             }
+            record(request, AuthFailure.missingCredentials());
         }
 
         // Validate token and set authentication
@@ -126,12 +143,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     builder.put("user.role.org", orgRole);
                 }
                 baggage = builder.build();
+            } else {
+                logger.warn("JWT token failed validation for request to " + request.getRequestURI()
+                        + " [code=invalid_token]");
+                record(request, AuthFailure.invalidToken());
             }
         }
 
         try (Scope scope = baggage.makeCurrent()) {
             chain.doFilter(request, response);
         }
+    }
+
+    /**
+     * Record why authentication failed, for {@code SecurityConfig}'s entry point
+     * to render if Spring Security goes on to reject the request.
+     * <p>
+     * Recording rather than responding is deliberate. Public endpoints
+     * ({@code /api/health}, {@code /api/auth/login}) legitimately arrive with no
+     * credential, so this filter cannot know a failure is fatal — only the
+     * authorization rules do. Writing a 401 here would break them.
+     * </p>
+     */
+    private void record(HttpServletRequest request, AuthFailure failure) {
+        request.setAttribute(AuthFailure.REQUEST_ATTRIBUTE, failure);
     }
 
     /**
