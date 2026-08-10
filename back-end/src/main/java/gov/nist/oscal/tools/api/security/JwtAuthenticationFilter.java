@@ -102,7 +102,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else {
             // Log when Authorization header is missing for protected endpoints
             String uri = request.getRequestURI();
-            if (isRoutineUnauthenticatedPath(uri)) {
+            if (!isRoutineUnauthenticatedPath(uri)) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("No Authorization header present for request to " + uri);
                 }
