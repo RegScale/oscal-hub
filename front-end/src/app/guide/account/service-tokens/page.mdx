@@ -137,8 +137,21 @@ To revoke a service account token that is no longer needed or that may have been
 3. Click **Revoke** on the token and confirm.
 
 The token stops working immediately — the next request using it receives a
-`401 Unauthorized`. Revoking is idempotent and cannot be undone; issue a new
-token if you need to restore access.
+`401 Unauthorized` with `code: "service_token_revoked"`. Revoking is
+idempotent and cannot be undone; issue a new token if you need to restore
+access.
+
+<Callout type="info">
+A revoked token is one of three ways a service account token can be rejected
+after it has otherwise parsed and validated successfully — the response
+`code` tells you which: `service_token_revoked` (revoked, as above),
+`service_token_unknown` (the token's identifier isn't recognized, for example
+because it was deleted or belongs to a different deployment), or
+`service_token_legacy` (the token predates revocation support — see
+[Tokens issued before August 2026](#tokens-issued-before-august-2026) below).
+See the [API Automation Guide](/guide/reference/api-automation#diagnosing-a-401)
+for the full list of authentication error codes.
+</Callout>
 
 Tokens are also revoked automatically when the account that issued them is
 archived. Reinstating an archived account does not restore its revoked tokens.
@@ -162,8 +175,9 @@ Following these practices reduces the risk of token compromise:
 
 Service account tokens created before revocation support was added cannot be
 identified or revoked, so they are no longer accepted. A request using one
-receives a `401` explaining that the token predates revocation support.
-Generate a replacement from your Profile page.
+receives a `401` with `code: "service_token_legacy"`, explaining that the
+token predates revocation support. Generate a replacement from your Profile
+page.
 
 ---
 

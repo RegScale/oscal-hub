@@ -3,6 +3,8 @@ package gov.nist.oscal.tools.api.config;
 import gov.nist.oscal.tools.api.filter.RateLimitFilter;
 import gov.nist.oscal.tools.api.filter.RequestLoggingFilter;
 import gov.nist.oscal.tools.api.filter.SecurityHeadersFilter;
+import gov.nist.oscal.tools.api.security.AuthFailure;
+import gov.nist.oscal.tools.api.security.AuthFailureRenderer;
 import gov.nist.oscal.tools.api.security.JwtAuthenticationFilter;
 import gov.nist.oscal.tools.api.service.AuditLogService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +25,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
-import org.springframework.http.MediaType;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -177,13 +178,25 @@ public class SecurityConfig {
      * This follows REST API best practices where:
      * - 401 = Authentication required/invalid
      * - 403 = Authenticated but not authorized for this resource
+     * <p>
+     * The response body carries the specific reason authentication failed, not just
+     * the bare 401. {@code JwtAuthenticationFilter} records an {@link AuthFailure} on
+     * the request as an attribute when it rejects a credential; this entry point reads
+     * that attribute and renders it via {@link AuthFailureRenderer}. When no attribute
+     * was recorded — e.g. the request was rejected before the JWT filter ran, such as
+     * an authenticated-only endpoint hit with no Authorization header at all — it falls
+     * back to {@link AuthFailure#missingCredentials()} so the caller still gets a
+     * coherent, specific answer.
+     * </p>
      */
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
-            response.setStatus(401);
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Authentication required or token invalid\"}");
+            Object recorded = request.getAttribute(AuthFailure.REQUEST_ATTRIBUTE);
+            AuthFailure failure = recorded instanceof AuthFailure f
+                    ? f
+                    : AuthFailure.missingCredentials();
+            AuthFailureRenderer.render(response, failure);
         };
     }
 

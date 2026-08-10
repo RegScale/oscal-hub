@@ -774,9 +774,44 @@ if response.status_code == 200:
 
 - `200 OK` — Request successful
 - `400 Bad Request` — Invalid request parameters
-- `401 Unauthorized` — Missing or invalid authentication token
+- `401 Unauthorized` — Authentication failed; see [Diagnosing a 401](#diagnosing-a-401) below
 - `404 Not Found` — Resource not found
 - `500 Internal Server Error` — Server error
+
+### Diagnosing a 401
+
+Every `401` from the API — whether from a missing header, a bad scheme, or a rejected token — returns the same JSON shape:
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Token was signed with a different key. It may have been issued by another environment.",
+  "code": "invalid_signature"
+}
+```
+
+- **`error`** is always the literal string `"Unauthorized"`. Code that keys off this field for a generic auth-failure check is unaffected by everything below.
+- **`message`** is a human-readable explanation you can log or surface to a user.
+- **`code`** is the stable, machine-readable value to branch your integration logic on — it will not change across releases.
+- **`expiredAt`** is present only when `code` is `token_expired`. It is an ISO-8601 instant in UTC, for example `2026-08-08T21:36:19Z`.
+
+The response also carries a `WWW-Authenticate` header per [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750) — standard HTTP clients and libraries that understand the Bearer challenge can surface the failure reason without parsing the JSON body.
+
+| `code` | Cause | What to do |
+|---|---|---|
+| `missing_credentials` | No `Authorization` header was sent | Add `Authorization: Bearer <token>` to the request |
+| `unsupported_auth_scheme` | The header is present but doesn't use the `Bearer` scheme | Use `Bearer <token>`, not `Basic`, `Token`, or another scheme |
+| `malformed_token` | The credential isn't a parseable JWT | Check that the whole token value was sent and that it wasn't truncated, wrapped, or left encrypted |
+| `token_expired` | The token's `exp` claim is in the past | Generate a replacement token; check `expiredAt` in the response for the exact expiry |
+| `invalid_signature` | The token was signed with a different key | The token was likely issued by another environment (e.g. dev vs. prod); mint a new one against the environment you're calling |
+| `service_token_revoked` | The service account token has been revoked | Generate a replacement token from your Profile page |
+| `service_token_unknown` | The service account token's identifier isn't recognized | The token may have been deleted or belongs to a different deployment; generate a replacement |
+| `service_token_legacy` | The service account token predates revocation support | Generate a replacement token from your Profile page — see [Tokens issued before August 2026](/guide/account/service-tokens#tokens-issued-before-august-2026) |
+| `invalid_token` | Catch-all for a token that failed validation for another reason | Generate a replacement token; if it recurs, check server logs for detail |
+
+<Callout type="info">
+Because `code` is stable and versioned as part of the API contract, it's the right thing to branch on in integration code. Reserve `message` for logs and human-facing text — its wording may be refined over time.
+</Callout>
 
 ### Example: Python Error Handling
 
@@ -810,7 +845,10 @@ def validate_with_error_handling(file_path: str, model_type: str, format: str):
         )
 
         if response.status_code == 401:
-            print('Error: Invalid or expired authentication token')
+            error_body = response.json()
+            print(f"Error: {error_body['message']} [code={error_body['code']}]")
+            if 'expiredAt' in error_body:
+                print(f"  Token expired at: {error_body['expiredAt']}")
             return False
         elif response.status_code == 400:
             print('Error: Invalid request parameters')

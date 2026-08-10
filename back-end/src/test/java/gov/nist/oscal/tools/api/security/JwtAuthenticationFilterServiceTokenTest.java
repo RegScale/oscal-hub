@@ -165,4 +165,67 @@ class JwtAuthenticationFilterServiceTokenTest {
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         verifyNoInteractions(repository);
     }
+
+    @Test
+    void revokedToken_reportsItsCodeInTheBody() throws Exception {
+        ServiceAccountToken revoked = new ServiceAccountToken();
+        revoked.setId(7L);
+        revoked.setJti("jti-1");
+        revoked.setRevokedAt(LocalDateTime.now().minusDays(1));
+        when(jwtUtil.extractTokenType("tok")).thenReturn("service-account");
+        when(jwtUtil.extractJti("tok")).thenReturn("jti-1");
+        when(repository.findByJti("jti-1")).thenReturn(Optional.of(revoked));
+
+        MockHttpServletRequest request = requestWithToken();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilterInternal(request, response, mock(FilterChain.class));
+
+        assertEquals(401, response.getStatus());
+        com.fasterxml.jackson.databind.JsonNode body =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getContentAsString());
+        assertEquals("service_token_revoked", body.get("code").asText());
+        assertEquals("Unauthorized", body.get("error").asText());
+        assertEquals("This service account token has been revoked.", body.get("message").asText());
+    }
+
+    @Test
+    void legacyToken_reportsItsCode() throws Exception {
+        when(jwtUtil.extractTokenType("tok")).thenReturn("service-account");
+        when(jwtUtil.extractJti("tok")).thenReturn(null);
+
+        MockHttpServletRequest request = requestWithToken();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilterInternal(request, response, mock(FilterChain.class));
+
+        com.fasterxml.jackson.databind.JsonNode body =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getContentAsString());
+        assertEquals("service_token_legacy", body.get("code").asText());
+    }
+
+    @Test
+    void unknownToken_reportsItsCode() throws Exception {
+        when(jwtUtil.extractTokenType("tok")).thenReturn("service-account");
+        when(jwtUtil.extractJti("tok")).thenReturn("jti-missing");
+        when(repository.findByJti("jti-missing")).thenReturn(Optional.empty());
+
+        MockHttpServletRequest request = requestWithToken();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilterInternal(request, response, mock(FilterChain.class));
+
+        com.fasterxml.jackson.databind.JsonNode body =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getContentAsString());
+        assertEquals("service_token_unknown", body.get("code").asText());
+    }
+
+    @Test
+    void gateResponse_setsChallengeHeader() throws Exception {
+        when(jwtUtil.extractTokenType("tok")).thenReturn("service-account");
+        when(jwtUtil.extractJti("tok")).thenReturn(null);
+
+        MockHttpServletRequest request = requestWithToken();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilterInternal(request, response, mock(FilterChain.class));
+
+        assertNotNull(response.getHeader("WWW-Authenticate"));
+    }
 }
