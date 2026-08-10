@@ -188,6 +188,39 @@ class JwtAuthenticationFilterDiagnosticsTest {
     }
 
     @Test
+    void lowercaseBearerScheme_authenticatesRatherThanRecordingUnsupportedScheme() throws Exception {
+        // RFC 7235: the auth-scheme token is case-insensitive. A client sending
+        // "bearer <token>" is not making a wrong-scheme mistake.
+        request.addHeader("Authorization", "bearer good");
+        UserDetails userDetails = User.builder()
+                .username("alice").password("p").authorities(new ArrayList<>()).build();
+        when(jwtUtil.extractUsername("good")).thenReturn("alice");
+        when(userDetailsService.loadUserByUsername("alice")).thenReturn(userDetails);
+        when(jwtUtil.validateToken(eq("good"), any())).thenReturn(true);
+        when(jwtUtil.extractTokenType("good")).thenReturn(null);
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(request.getAttribute(AuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void blankTokenAfterBearerPrefix_recordsMissingCredentials() throws Exception {
+        // "Authorization: Bearer " (trailing space, empty token) - typically an
+        // unset environment variable interpolated into the header. This should
+        // be diagnosed precisely rather than falling through to the JWT parser
+        // and coming out as the generic invalid_token.
+        request.addHeader("Authorization", "Bearer ");
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(recordedFailure().code()).isEqualTo("missing_credentials");
+        verify(jwtUtil, never()).extractUsername(any());
+    }
+
+    @Test
     void malformedToken_stillPassesDownTheChain() throws Exception {
         request.addHeader("Authorization", "Bearer not-a-jwt");
         when(jwtUtil.extractUsername("not-a-jwt"))

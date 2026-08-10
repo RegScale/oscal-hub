@@ -48,43 +48,61 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = null;
         String jwt = null;
 
-        // Extract JWT from Authorization header
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+        // Extract JWT from Authorization header. The scheme token is matched
+        // case-insensitively per RFC 7235; a client sending "bearer <token>"
+        // is not making a wrong-scheme mistake and must still authenticate.
+        if (authorizationHeader != null && authorizationHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
             jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("JWT token validated for user: " + username);
+            if (jwt.isBlank()) {
+                // "Authorization: Bearer " with nothing after it - most often an
+                // unset environment variable interpolated into the header. This
+                // is a precise, common misconfiguration; don't let it fall through
+                // to the JWT parser and come out as the generic invalid_token.
+                record(request, AuthFailure.missingCredentials());
+            } else {
+                try {
+                    username = jwtUtil.extractUsername(jwt);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("JWT token validated for user: " + username);
+                    }
+                } catch (ExpiredJwtException e) {
+                    logger.warn("JWT token has expired for request to " + request.getRequestURI() + ": " + e.getMessage()
+                            + " [code=token_expired]");
+                    Date expiry = e.getClaims() == null ? null : e.getClaims().getExpiration();
+                    record(request, AuthFailure.tokenExpired(expiry));
+                } catch (SignatureException e) {
+                    logger.warn("JWT signature validation failed for request to " + request.getRequestURI() + ": " + e.getMessage() + " - This may indicate the server was restarted with a different JWT secret [code=invalid_signature]");
+                    record(request, AuthFailure.invalidSignature());
+                } catch (MalformedJwtException e) {
+                    logger.warn("Malformed JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
+                            + " [code=malformed_token]");
+                    record(request, AuthFailure.malformedToken());
+                } catch (Exception e) {
+                    // Invalid token - continue without authentication
+                    logger.warn("Invalid JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
+                            + " [code=invalid_token]");
+                    record(request, AuthFailure.invalidToken());
                 }
-            } catch (ExpiredJwtException e) {
-                logger.warn("JWT token has expired for request to " + request.getRequestURI() + ": " + e.getMessage()
-                        + " [code=token_expired]");
-                Date expiry = e.getClaims() == null ? null : e.getClaims().getExpiration();
-                record(request, AuthFailure.tokenExpired(expiry));
-            } catch (SignatureException e) {
-                logger.warn("JWT signature validation failed for request to " + request.getRequestURI() + ": " + e.getMessage() + " - This may indicate the server was restarted with a different JWT secret [code=invalid_signature]");
-                record(request, AuthFailure.invalidSignature());
-            } catch (MalformedJwtException e) {
-                logger.warn("Malformed JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
-                        + " [code=malformed_token]");
-                record(request, AuthFailure.malformedToken());
-            } catch (Exception e) {
-                // Invalid token - continue without authentication
-                logger.warn("Invalid JWT token for request to " + request.getRequestURI() + ": " + e.getMessage()
-                        + " [code=invalid_token]");
-                record(request, AuthFailure.invalidToken());
             }
         } else if (authorizationHeader != null) {
             // Header present but not a Bearer credential. This branch used to be
             // silent, which made an integration sending the wrong scheme
             // indistinguishable from one sending nothing at all.
-            logger.warn("Authorization header with unsupported scheme for request to "
-                    + request.getRequestURI() + " [code=unsupported_auth_scheme]");
+            String uri = request.getRequestURI();
+            String message = "Authorization header with unsupported scheme for request to "
+                    + uri + " [code=unsupported_auth_scheme]";
+            if (isRoutineUnauthenticatedPath(uri)) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(message);
+                }
+            } else {
+                logger.warn(message);
+            }
             record(request, AuthFailure.unsupportedScheme());
         } else {
             // Log when Authorization header is missing for protected endpoints
             String uri = request.getRequestURI();
-            if (!uri.contains("/auth/") && !uri.contains("/health") && !uri.contains("/swagger") && !uri.contains("/v3/api-docs")) {
+            if (isRoutineUnauthenticatedPath(uri)) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("No Authorization header present for request to " + uri);
                 }
@@ -168,6 +186,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private void record(HttpServletRequest request, AuthFailure failure) {
         request.setAttribute(AuthFailure.REQUEST_ATTRIBUTE, failure);
+    }
+
+    /**
+     * True for request URIs that routinely arrive with no (or an unusual)
+     * {@code Authorization} header as part of normal operation - auth endpoints,
+     * health checks, and API docs. {@code /api/health} in particular is exempted
+     * from rate limiting ({@code RateLimitFilter.shouldNotFilter}), so anything
+     * that probes it frequently must not be able to drive unthrottled WARN
+     * volume here; those paths log at DEBUG instead.
+     */
+    private boolean isRoutineUnauthenticatedPath(String uri) {
+        return uri.contains("/auth/") || uri.contains("/health") || uri.contains("/swagger")
+                || uri.contains("/v3/api-docs");
     }
 
     /**
