@@ -98,11 +98,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
             if (jwtUtil.validateToken(jwt, userDetails)) {
-                String rejection = serviceTokenRejection(jwt);
+                AuthFailure rejection = serviceTokenRejection(jwt);
                 if (rejection != null) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"" + rejection + "\"}");
+                    // The one place this filter answers directly: the token
+                    // authenticated, so the refusal is unambiguous and does not
+                    // need the authorization rules to confirm it.
+                    AuthFailureRenderer.render(response, rejection);
                     return;
                 }
 
@@ -171,36 +172,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Revocation gate for service account tokens. Returns null when the request
-     * may proceed, or a message explaining the refusal.
+     * may proceed, or the {@link AuthFailure} explaining the refusal.
      * <p>
      * Session tokens carry no {@code tokenType} claim and pass straight through;
      * only service tokens are looked up. The messages distinguish revoked from
      * unknown from legacy because the caller already holds the credential — the
      * distinction leaks nothing and is what makes a failing pipeline diagnosable.
+     * The failure's {@code code} is the machine-readable form of that same
+     * distinction, for callers that branch on it instead of parsing prose.
      * </p>
      */
-    private String serviceTokenRejection(String jwt) {
+    private AuthFailure serviceTokenRejection(String jwt) {
         if (!"service-account".equals(jwtUtil.extractTokenType(jwt))) {
             return null;
         }
 
         String jti = jwtUtil.extractJti(jwt);
         if (jti == null || jti.isBlank()) {
-            logger.warn("Rejected a service account token issued before revocation support (no jti)");
-            return "This service account token predates revocation support. "
-                 + "Generate a replacement from your Profile page.";
+            logger.warn("Rejected a service account token issued before revocation support (no jti) [code=service_token_legacy]");
+            return AuthFailure.serviceTokenLegacy();
         }
 
         Optional<ServiceAccountToken> found = serviceAccountTokenRepository.findByJti(jti);
         if (found.isEmpty()) {
-            logger.warn("Rejected a service account token with an unrecognized jti: " + jti);
-            return "Service account token not recognized.";
+            logger.warn("Rejected a service account token with an unrecognized jti: " + jti
+                    + " [code=service_token_unknown]");
+            return AuthFailure.serviceTokenUnknown();
         }
 
         ServiceAccountToken record = found.get();
         if (record.getRevokedAt() != null) {
-            logger.warn("Rejected a revoked service account token: " + jti);
-            return "This service account token has been revoked.";
+            logger.warn("Rejected a revoked service account token: " + jti + " [code=service_token_revoked]");
+            return AuthFailure.serviceTokenRevoked();
         }
 
         touchLastUsed(record);
