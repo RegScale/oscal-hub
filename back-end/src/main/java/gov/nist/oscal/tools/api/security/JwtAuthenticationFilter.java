@@ -30,6 +30,14 @@ import java.util.Optional;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    /**
+     * The RFC 7235 auth-scheme token this filter accepts, matched
+     * case-insensitively. Kept as a named constant so the scheme name and its
+     * length (used for the prefix match below) never drift apart.
+     */
+    private static final String BEARER_SCHEME = "Bearer";
+    private static final String BEARER_PREFIX = BEARER_SCHEME + " ";
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -51,8 +59,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Extract JWT from Authorization header. The scheme token is matched
         // case-insensitively per RFC 7235; a client sending "bearer <token>"
         // is not making a wrong-scheme mistake and must still authenticate.
-        if (authorizationHeader != null && authorizationHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
-            jwt = authorizationHeader.substring(7);
+        if (authorizationHeader != null
+                && authorizationHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            jwt = authorizationHeader.substring(BEARER_PREFIX.length());
             if (jwt.isBlank()) {
                 // "Authorization: Bearer " with nothing after it - most often an
                 // unset environment variable interpolated into the header. This
@@ -84,6 +93,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     record(request, AuthFailure.invalidToken());
                 }
             }
+        } else if (authorizationHeader != null && authorizationHeader.equalsIgnoreCase(BEARER_SCHEME)) {
+            // "Authorization: Bearer" with no trailing space and no token at all.
+            // HTTP clients (curl included) strip trailing whitespace, so
+            // "Authorization: Bearer $UNSET_VAR" arrives on the wire as exactly
+            // this - the scheme with no separator or credential, not the
+            // "Bearer " form handled above. This is a missing credential, not an
+            // unsupported scheme: the caller did send Bearer.
+            record(request, AuthFailure.missingCredentials());
         } else if (authorizationHeader != null) {
             // Header present but not a Bearer credential. This branch used to be
             // silent, which made an integration sending the wrong scheme

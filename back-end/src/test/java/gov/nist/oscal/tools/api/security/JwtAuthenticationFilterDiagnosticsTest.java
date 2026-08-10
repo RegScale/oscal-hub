@@ -221,6 +221,45 @@ class JwtAuthenticationFilterDiagnosticsTest {
     }
 
     @Test
+    void schemeOnlyBearerHeader_recordsMissingCredentials() throws Exception {
+        // "Authorization: Bearer" with no trailing space and no token - what
+        // "Authorization: Bearer $UNSET_VAR" becomes on the wire once curl (and
+        // most HTTP clients) strip trailing whitespace from the header value.
+        // This must be diagnosed as a missing credential, not an unsupported
+        // scheme: the caller did send Bearer.
+        request.addHeader("Authorization", "Bearer");
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(recordedFailure().code()).isEqualTo("missing_credentials");
+        verify(jwtUtil, never()).extractUsername(any());
+    }
+
+    @Test
+    void lowercaseSchemeOnlyBearerHeader_recordsMissingCredentials() throws Exception {
+        // Same as above, but exercising the case-insensitive scheme match.
+        request.addHeader("Authorization", "bearer");
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(recordedFailure().code()).isEqualTo("missing_credentials");
+        verify(jwtUtil, never()).extractUsername(any());
+    }
+
+    @Test
+    void schemeNameThatMerelyStartsWithBearer_recordsUnsupportedScheme() throws Exception {
+        // Guard against over-broad matching: a scheme token that merely starts
+        // with "Bearer" (no space separator, and not the bare scheme) is not
+        // Bearer at all and must not be treated as a missing/blank credential.
+        request.addHeader("Authorization", "BearerXYZ");
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(recordedFailure().code()).isEqualTo("unsupported_auth_scheme");
+        verify(jwtUtil, never()).extractUsername(any());
+    }
+
+    @Test
     void malformedToken_stillPassesDownTheChain() throws Exception {
         request.addHeader("Authorization", "Bearer not-a-jwt");
         when(jwtUtil.extractUsername("not-a-jwt"))
