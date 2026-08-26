@@ -70,7 +70,7 @@
         <jjwt.version>0.13.0</jjwt.version>
         <postgres-socket-factory.version>1.29.0</postgres-socket-factory.version>
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
-        <tika.version>3.3.2</tika.version>
+        <tika.version>4.0.0</tika.version>
     </properties>
 
     <repositories>
