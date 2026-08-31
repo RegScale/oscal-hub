@@ -340,7 +340,7 @@ jobs:
       # Upload artifacts and SARIF
       # ----------------------------------------------------------------
       - name: Upload OWASP DC SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.37.6
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('reports/owasp/dependency-check-report.sarif') != ''
         with:
           sarif_file: reports/owasp/dependency-check-report.sarif
@@ -364,7 +364,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Grype SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4.37.6
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('grype-results.sarif') != ''
         with:
           sarif_file: grype-results.sarif
