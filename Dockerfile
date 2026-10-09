@@ -6,7 +6,7 @@
 # =============================================================================
 # Stage 1: Build Backend (Spring Boot with Maven) - OPTIMIZED
 # =============================================================================
-FROM maven:3-eclipse-temurin-26 AS backend-builder
+FROM maven:3-eclipse-temurin-27 AS backend-builder
 
 WORKDIR /build
 
