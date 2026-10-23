@@ -62,7 +62,7 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "vite": "^7.3.5",
+    "vite": "^7.3.7",
     "yaml": "^2.9.0"
   },
   "overrides": {
