@@ -536,3 +536,44 @@ This project builds upon the [OSCAL CLI tool](https://github.com/metaschema-fram
 ## Acknowledgments
 
 Based on the [OSCAL CLI](https://github.com/metaschema-framework/oscal-cli/blob/main/README.md) originally developed by NIST and maintained by the metaschema-framework project.
+
+## Graphify Knowledge Graph (Claude Code & Gemini CLI)
+
+This repository is configured with [Graphify](https://github.com/Graphify-Labs/graphify), which compiles the codebase into a local, queryable knowledge graph (`graphify-out/graph.json`, `GRAPH_REPORT.md`, and `graph.html`) using local `tree-sitter` AST parsing. Navigating the knowledge graph instead of repeatedly grepping and reading raw files cuts AI coding assistant token consumption by up to 70x.
+
+### One-Time Developer Setup
+
+1. **Install the `graphify` CLI** (requires Python 3.10+ and [`uv`](https://docs.astral.sh/uv/)):
+   ```bash
+   uv tool install graphifyy
+   uv tool update-shell
+   ```
+2. **Build the initial knowledge graph** in the repository root:
+   ```bash
+   # Fast, offline AST code-only extraction (no API key or LLM tokens required):
+   graphify extract . --code-only
+   GRAPHIFY_BACKEND=none graphify cluster-only .
+   ```
+   *(Alternatively, inside Claude Code or Gemini CLI, run `/graphify .` to build the full graph including semantic extraction on docs/markdown.)*
+
+3. **Install Git rebuild hooks** (for repositories that use standard `.git/hooks`):
+   ```bash
+   graphify hook install
+   ```
+   *(Repositories with tracked `.husky` or `.githooks` directories already include these hooks automatically.)*
+
+### How the Hooks Work
+
+#### 1. AI Assistant Tool Hooks (`PreToolUse` / `BeforeTool`)
+- **Claude Code** (`.claude/settings.json` & `CLAUDE.md`) and **Gemini CLI** (`.gemini/settings.json` & `GEMINI.md`) are configured in-repo with portable `graphify hook-guard` hooks.
+- Before executing `Bash`, `Grep`, `Read`, `Glob` (Claude) or `read_file`, `list_directory` (Gemini), the hook checks whether `graphify-out/graph.json` exists and nudges the agent to run scoped graph queries first:
+  - `graphify query "<question>"` — returns a focused subgraph for architecture or codebase questions
+  - `graphify path "<SymbolA>" "<SymbolB>"` — traces call/dependency paths between two symbols
+  - `graphify explain "<concept>"` — summarizes all nodes and edges connected to a symbol or concept
+
+#### 2. Git Lifecycle Hooks (`post-commit`, `pre-push`, `post-checkout`, `post-merge`, `post-rewrite`)
+- **`post-commit`**: After each commit, inspects `git diff --name-only HEAD~1 HEAD` and spawns a detached background process (`graphify update`) that incrementally re-parses only the modified files via local AST. It never blocks `git commit` and requires no LLM API key.
+- **`pre-push`**: Ensures the local knowledge graph is refreshed in the background whenever branches are pushed (`git push`).
+- **`post-checkout` / `post-merge` / `post-rewrite`**: Automatically triggers a background graph refresh when switching branches, merging, or completing a `git rebase` so the graph always matches your working tree.
+- **Git Merge Driver (`.gitattributes`)**: Registers `graphify-out/graph.json merge=graphify` so union merges of `graph.json` resolve cleanly if tracked.
+- **Logs & Controls**: Background rebuild logs are written to `~/.cache/graphify-rebuild.log`. Set `GRAPHIFY_SKIP_HOOK=1` on any git command to bypass the hook for a single operation.
