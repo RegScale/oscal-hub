@@ -49,3 +49,6 @@ back-end/sbom-*.json
 # Git worktrees
 .worktrees/
 node_modules/
+
+# Graphify local knowledge graph output
+graphify-out/
