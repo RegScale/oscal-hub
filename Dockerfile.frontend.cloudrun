@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1
 # OSCAL Tools Frontend - Cloud Run Optimized Dockerfile
 # Builds Next.js frontend for deployment to Google Cloud Run
+# REG-37161: Node 24 LTS. Node 25 is end-of-life and never got the
+# CVE-2026-111497 (Brotli) fix; node:24-alpine carries 24.22.1+.
 
 # =============================================================================
 # Stage 1: Install Dependencies
 # =============================================================================
-FROM node:25-alpine AS frontend-deps
+FROM node:24-alpine AS frontend-deps
 
 RUN apk add --no-cache libc6-compat
 
@@ -20,7 +22,7 @@ RUN npm ci --legacy-peer-deps
 # =============================================================================
 # Stage 2: Build Next.js Application
 # =============================================================================
-FROM node:25-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -43,7 +45,7 @@ RUN npm run build
 # =============================================================================
 # Stage 3: Runtime - Production Image for Cloud Run
 # =============================================================================
-FROM node:25-alpine AS runner
+FROM node:24-alpine AS runner
 
 # Add OCI metadata labels
 LABEL org.opencontainers.image.title="OSCAL Tools Frontend"
