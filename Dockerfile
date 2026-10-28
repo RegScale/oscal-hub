@@ -104,6 +104,10 @@ LABEL security.healthcheck="true"
 LABEL security.read-only-root="recommended"
 
 # Install Node.js for Next.js standalone server + security updates (OPTIMIZED)
+# REG-37161: CVE-2026-111497 (CISA KEV, Brotli decoder out-of-bounds write) is
+# fixed in Node 24.22.1 and Ubuntu libbrotli1 1.1.0-2ubuntu0.1. setup_24.x
+# installs whatever 24.x NodeSource serves, and a cached layer silently keeps an
+# older one (the 2026-08-10 prod build did), so fail the build below either floor.
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
@@ -114,6 +118,9 @@ RUN apt-get update && \
         gnupg && \
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
+    dpkg --compare-versions "$(dpkg-query -W -f='${Version}' nodejs)" ge 24.22.1 && \
+    { ! dpkg-query -W libbrotli1 >/dev/null 2>&1 || \
+      dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.1.0-2ubuntu0.1; } && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     # The runtime only executes the Next.js standalone server (node server.js);
