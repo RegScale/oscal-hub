@@ -536,3 +536,50 @@ This project builds upon the [OSCAL CLI tool](https://github.com/metaschema-fram
 ## Acknowledgments
 
 Based on the [OSCAL CLI](https://github.com/metaschema-framework/oscal-cli/blob/main/README.md) originally developed by NIST and maintained by the metaschema-framework project.
+
+## CodeGraph & TokenEconomizer (Claude Code)
+
+This repository uses [CodeGraph](https://github.com/colbymchenry/codegraph) and [TokenEconomizer](https://github.com/microsoft/TokenEconomizer) to reduce token usage and speed up Claude Code sessions.
+
+### 1. CodeGraph (Local Knowledge Graph)
+
+CodeGraph builds a local SQLite knowledge graph (`.codegraph/`, gitignored) of symbols, call edges, and dependencies, exposing `codegraph_explore` to Claude Code. A file watcher keeps the index up to date as you edit and switch branches.
+
+1. **Install the CLI and register the MCP server** (once per machine):
+   ```bash
+   # macOS / Linux
+   curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh
+
+   # Open a new terminal so codegraph is on PATH, then:
+   codegraph install
+   ```
+   Verify with `claude mcp list` (`codegraph` should show `✓ Connected`).
+
+2. **Index this checkout** (once per repo):
+   ```bash
+   codegraph init --yes
+   ```
+   *(Do not commit `.codegraph/`. Use `codegraph status` to check index state or `codegraph sync` to update manually.)*
+
+3. **Install the `regscale-int` plugin** (for automatic worktree index syncing via `worktree-codegraph`, requires Claude Code `2.1.289`+):
+   ```text
+   /plugin marketplace add RegScale/rs-ai
+   /plugin install regscale-int@regscale-internal-market
+   ```
+   Then restart Claude Code or run `/reload-plugins`.
+
+### 2. TokenEconomizer (Session Cost Reduction)
+
+TokenEconomizer learns per-repo facts (micro-skills), prunes unused tool definitions, and guards against repeated failure loops. Requires Python 3.10+ on `PATH`.
+
+1. **Clone and install the plugin** (from your checkouts folder; leave the clone in place):
+   ```bash
+   git clone https://github.com/microsoft/TokenEconomizer.git
+   claude plugin marketplace add "$PWD/TokenEconomizer"
+   claude plugin install tokeneconomizer@tokeneconomizer
+   ```
+
+2. **Initialize in Claude Code**:
+   - Start `claude` in the repo and trust the folder if prompted.
+   - Run `/tokeneconomizer:status` (allow its script if prompted).
+   - Run `/tokeneconomizer:toolprune refresh-catalog` (once per machine, and again after Claude Code updates).
